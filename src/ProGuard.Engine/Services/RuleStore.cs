@@ -3,6 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.IO;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ProGuard.Core.Data;
@@ -21,7 +23,12 @@ public class RuleStore : IRuleStore
 {
     private readonly ILogger<RuleStore> _logger;
     private readonly IServiceProvider _serviceProvider;
-    private readonly ConcurrentDictionary<string, ProcessRule> _processRules = new(StringComparer.Ordinal);
+    // Replaced wholesale on reload so rules deleted by the UI disappear from the cache too.
+    private volatile ConcurrentDictionary<string, ProcessRule> _processRules = new(StringComparer.Ordinal);
+
+    // The UI writes to the same database file directly; we notice by watching its write time.
+    private string? _dbFilePath;
+    private DateTime _lastLoadedWriteTimeUtc;
 
     // The watchdog timer enumerates these while IPC/UI threads mutate them, so every access goes through _sync
     // and readers get snapshots.
@@ -37,6 +44,22 @@ public class RuleStore : IRuleStore
         LoadRules();
     }
 
+    /// <summary>
+    /// Reloads every cache from the database if the database file has been written since the last load,
+    /// e.g. because the UI added or removed a rule. Returns true when a reload happened.
+    /// </summary>
+    public bool ReloadIfChanged()
+    {
+        if (string.IsNullOrEmpty(_dbFilePath) || !File.Exists(_dbFilePath)) return false;
+
+        var writeTime = File.GetLastWriteTimeUtc(_dbFilePath);
+        if (writeTime <= _lastLoadedWriteTimeUtc) return false;
+
+        _logger.LogInformation("Database changed on disk, reloading rules");
+        LoadRules();
+        return true;
+    }
+
     private void LoadRules()
     {
         try
@@ -45,10 +68,17 @@ public class RuleStore : IRuleStore
             var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
             db.Database.EnsureCreated();
 
+            // Take the timestamp before reading so a write that lands mid-load still triggers another reload.
+            _dbFilePath = db.Database.GetDbConnection().DataSource;
+            if (!string.IsNullOrEmpty(_dbFilePath) && File.Exists(_dbFilePath))
+                _lastLoadedWriteTimeUtc = File.GetLastWriteTimeUtc(_dbFilePath);
+
+            var processRules = new ConcurrentDictionary<string, ProcessRule>(StringComparer.Ordinal);
             foreach (var rule in db.ProcessRules.ToList())
             {
-                _processRules[ProcessExtensions.NormalizeName(rule.ProcessName)] = rule;
+                processRules[ProcessExtensions.NormalizeName(rule.ProcessName)] = rule;
             }
+            _processRules = processRules;
 
             lock (_sync)
             {

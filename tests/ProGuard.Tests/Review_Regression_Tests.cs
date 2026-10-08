@@ -66,13 +66,21 @@ public class Review_Regression_Tests
         public override string ToString() { lock (Lines) return string.Join(" || ", Lines); }
     }
 
-    /// <summary>CPU seconds used in each consecutive slice, e.g. "0.08 0.09 0.07".</summary>
-    private static string Profile(Process p, int slices, TimeSpan slice)
+    private static readonly TimeSpan Slice = TimeSpan.FromMilliseconds(500);
+    private const int WindowSlices = 2; // a "window" is two slices = 1s of wall time
+
+    /// <summary>CPU seconds used in each consecutive half-second slice.</summary>
+    private static double[] Profile(Process p, int slices)
     {
-        var parts = new List<string>();
-        for (int i = 0; i < slices; i++) parts.Add(CpuSecondsOver(p, slice).ToString("F2"));
-        return string.Join(" ", parts);
+        var result = new double[slices];
+        for (int i = 0; i < slices; i++) result[i] = CpuSecondsOver(p, Slice);
+        return result;
     }
+
+    private static IEnumerable<double> Windows(double[] slices) =>
+        Enumerable.Range(0, slices.Length - WindowSlices + 1).Select(i => slices.Skip(i).Take(WindowSlices).Sum());
+
+    private static string Show(double[] slices) => "[" + string.Join(" ", slices.Select(s => s.ToString("F2"))) + "]";
 
     private class TempDbContext : ProGuardDbContext
     {
@@ -109,8 +117,13 @@ public class Review_Regression_Tests
 
     // ---------- CpuLimiter ----------
 
-    // Windows' hard CPU cap converges over ~1-1.5s after assignment (measured), so don't sample before then.
-    private static readonly TimeSpan CapSettleTime = TimeSpan.FromSeconds(2);
+    // Windows' hard CPU cap is enforced by the scheduler and takes a variable ~1-2s to converge after a job is
+    // configured. These tests therefore assert the *property* ("the cap bites", "removal lets it run free")
+    // over a few seconds of 1s windows instead of asserting how quickly it converges.
+    // A free-running single-threaded spinner uses ~1.0 CPU-second per 1s window; a 1% cap on a many-core
+    // machine allows far less than that.
+    private const double FreeRunningWindow = 0.7; // generous lower bound for "running free"
+    private const double CappedWindow = 0.5;      // an effective 1% cap is well below this
 
     [Fact]
     public void CpuLimiter_AddLimit_ActuallyThrottlesTheProcess()
@@ -119,20 +132,16 @@ public class Review_Regression_Tests
         try
         {
             Thread.Sleep(1500); // let powershell finish starting up and begin spinning
-            double baseline = CpuSecondsOver(spinner, TimeSpan.FromSeconds(2));
-            Assert.True(baseline > 1.0, $"spinner should be busy before limiting (used {baseline:F2}s CPU in 2s)");
+            var before = Profile(spinner, 4);
+            Assert.True(Windows(before).Max() > FreeRunningWindow, $"precondition: spinner should be busy before limiting {Show(before)}");
 
             var log = new ListLogger<CpuLimiter>();
             using var limiter = new CpuLimiter(log);
             limiter.AddLimit(spinner.Id, 1); // 1% of the whole machine
 
-            // 0.5s slices so a failure shows *when* the cap kicked in rather than just a total.
-            string profile = Profile(spinner, 8, TimeSpan.FromMilliseconds(500));
-            double limited = profile.Split(' ').Skip(4).Sum(s => double.Parse(s)); // last 2s, after settling
-
-            Assert.True(limited < baseline * 0.5,
-                $"limit had no effect: {baseline:F2}s unlimited vs {limited:F2}s limited over the last 2s. " +
-                $"Per-0.5s profile after AddLimit: [{profile}]. Limiter log: {log}");
+            var after = Profile(spinner, 8);
+            Assert.True(Windows(after).Min() < CappedWindow,
+                $"limit had no effect. Per-0.5s CPU before {Show(before)}, after AddLimit {Show(after)}. Limiter log: {log}");
         }
         finally { KillQuietly(spinner); }
     }
@@ -144,18 +153,40 @@ public class Review_Regression_Tests
         try
         {
             Thread.Sleep(1500);
-            using var limiter = new CpuLimiter(NullLogger<CpuLimiter>.Instance);
+            var log = new ListLogger<CpuLimiter>();
+            using var limiter = new CpuLimiter(log);
             limiter.AddLimit(spinner.Id, 1);
-            Thread.Sleep(CapSettleTime);
-            double limited = CpuSecondsOver(spinner, TimeSpan.FromSeconds(2));
-            Assert.True(limited < 1.0, $"precondition: the cap should be biting, but the process used {limited:F2}s CPU in 2s");
+
+            var limited = Profile(spinner, 8);
+            Assert.True(Windows(limited).Min() < CappedWindow, $"precondition: cap should bite {Show(limited)}. Limiter log: {log}");
 
             limiter.RemoveLimit(spinner.Id);
-            Thread.Sleep(TimeSpan.FromSeconds(1));
-            double afterRemove = CpuSecondsOver(spinner, TimeSpan.FromSeconds(2));
 
-            Assert.True(afterRemove > 1.5,
-                $"RemoveLimit did not lift the cap: {limited:F2}s while limited, {afterRemove:F2}s after removal (a free-running spinner uses ~2.0s)");
+            var freed = Profile(spinner, 8);
+            Assert.True(Windows(freed).Max() > FreeRunningWindow,
+                $"RemoveLimit did not lift the cap. While limited {Show(limited)}, after removal {Show(freed)}. Limiter log: {log}");
+        }
+        finally { KillQuietly(spinner); }
+    }
+
+    [Fact]
+    public async Task CpuLimiter_ReLimitingAndStopping_DoesNotLeakOrLeaveProcessCapped()
+    {
+        using var spinner = StartSpinner();
+        try
+        {
+            Thread.Sleep(1500);
+            var log = new ListLogger<CpuLimiter>();
+            using var limiter = new CpuLimiter(log);
+
+            limiter.AddLimit(spinner.Id, 1);
+            limiter.AddLimit(spinner.Id, 2); // retunes the existing job rather than making a second one
+            Assert.DoesNotContain("Failed", log.ToString());
+
+            await limiter.StopAsync(CancellationToken.None); // engine shutdown must not leave a cap behind
+            var freed = Profile(spinner, 8);
+            Assert.True(Windows(freed).Max() > FreeRunningWindow,
+                $"process was left capped after the limiter stopped {Show(freed)}. Limiter log: {log}");
         }
         finally { KillQuietly(spinner); }
     }

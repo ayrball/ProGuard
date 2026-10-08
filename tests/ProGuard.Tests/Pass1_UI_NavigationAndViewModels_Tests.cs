@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Media;
+using ProGuard.Core.Data;
 using ProGuard.Core.Models;
 using ProGuard.UI.Converters;
 using ProGuard.UI.ViewModels;
@@ -186,6 +187,23 @@ public class Pass1_UI_NavigationAndViewModels_Tests
     [Fact]
     public void LogsViewModel_Loads_And_Filters_Correctly()
     {
+        // The log view shows what is in the database and nothing else (it no longer invents placeholder
+        // entries), so give it a real entry to load. TestEnvironment points this at a throw-away database.
+        using (var db = new ProGuardDbContext())
+        {
+            db.Database.EnsureCreated();
+            db.ProBalanceActions.Add(new ProBalanceAction
+            {
+                Timestamp = DateTime.UtcNow,
+                ProcessName = "System",
+                Pid = 4,
+                OriginalPriority = (int)ProcessPriorityClass.Normal,
+                NewPriority = (int)ProcessPriorityClass.BelowNormal,
+                Reason = "High CPU usage (50.0%)"
+            });
+            db.SaveChanges();
+        }
+
         var vm = new LogsViewModel();
         Assert.NotNull(vm.LogEntries);
         Assert.NotEmpty(vm.LogEntries);

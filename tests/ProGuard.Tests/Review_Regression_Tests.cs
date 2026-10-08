@@ -88,6 +88,9 @@ public class Review_Regression_Tests
 
     // ---------- CpuLimiter ----------
 
+    // Windows' hard CPU cap converges over ~1-1.5s after assignment (measured), so don't sample before then.
+    private static readonly TimeSpan CapSettleTime = TimeSpan.FromSeconds(2);
+
     [Fact]
     public void CpuLimiter_AddLimit_ActuallyThrottlesTheProcess()
     {
@@ -100,11 +103,11 @@ public class Review_Regression_Tests
 
             using var limiter = new CpuLimiter(NullLogger<CpuLimiter>.Instance);
             limiter.AddLimit(spinner.Id, 1); // 1% of the whole machine
-            Thread.Sleep(500);
+            Thread.Sleep(CapSettleTime);
 
-            double limited = CpuSecondsOver(spinner, TimeSpan.FromSeconds(3));
+            double limited = CpuSecondsOver(spinner, TimeSpan.FromSeconds(2));
             Assert.True(limited < baseline * 0.5,
-                $"limit had no effect: {baseline:F2}s unlimited vs {limited:F2}s limited over comparable windows");
+                $"limit had no effect: {baseline:F2}s unlimited vs {limited:F2}s limited over the same 2s window");
         }
         finally { KillQuietly(spinner); }
     }
@@ -118,15 +121,16 @@ public class Review_Regression_Tests
             Thread.Sleep(1500);
             using var limiter = new CpuLimiter(NullLogger<CpuLimiter>.Instance);
             limiter.AddLimit(spinner.Id, 1);
-            Thread.Sleep(500);
+            Thread.Sleep(CapSettleTime);
             double limited = CpuSecondsOver(spinner, TimeSpan.FromSeconds(2));
+            Assert.True(limited < 1.0, $"precondition: the cap should be biting, but the process used {limited:F2}s CPU in 2s");
 
             limiter.RemoveLimit(spinner.Id);
-            Thread.Sleep(500);
+            Thread.Sleep(TimeSpan.FromSeconds(1));
             double afterRemove = CpuSecondsOver(spinner, TimeSpan.FromSeconds(2));
 
-            Assert.True(afterRemove > Math.Max(limited * 3, 0.8),
-                $"RemoveLimit did not lift the cap: {limited:F2}s while limited, {afterRemove:F2}s after removal");
+            Assert.True(afterRemove > 1.5,
+                $"RemoveLimit did not lift the cap: {limited:F2}s while limited, {afterRemove:F2}s after removal (a free-running spinner uses ~2.0s)");
         }
         finally { KillQuietly(spinner); }
     }

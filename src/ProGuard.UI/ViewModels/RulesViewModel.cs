@@ -45,16 +45,6 @@ public partial class RulesViewModel : ViewModelBase
             db.Database.EnsureCreated();
 
             var dbRules = db.ProcessRules.ToList();
-            if (dbRules.Count == 0)
-            {
-                // Seed default rules if database is empty
-                var r1 = new ProcessRule { ProcessName = "chrome.exe", PriorityClass = (int)ProcessPriorityClass.Normal, AffinityMask = null, CpuLimitPercent = null, DisallowExecution = false };
-                var r2 = new ProcessRule { ProcessName = "discord.exe", PriorityClass = (int)ProcessPriorityClass.BelowNormal, AffinityMask = 0x0F, CpuLimitPercent = 10, DisallowExecution = false };
-                var r3 = new ProcessRule { ProcessName = "badapp.exe", PriorityClass = (int)ProcessPriorityClass.Idle, AffinityMask = null, CpuLimitPercent = null, DisallowExecution = true };
-                db.ProcessRules.AddRange(r1, r2, r3);
-                db.SaveChanges();
-                dbRules = db.ProcessRules.ToList();
-            }
 
             Rules.Clear();
             foreach (var r in dbRules)
@@ -76,14 +66,10 @@ public partial class RulesViewModel : ViewModelBase
                 });
             }
         }
-        catch
+        catch (Exception ex)
         {
-            if (Rules.Count == 0)
-            {
-                Rules.Add(new RuleDisplayItem { ProcessName = "chrome.exe", Priority = "Normal", Affinity = "All", CpuLimit = "None", MaxInstances = "None", IsDisallowed = false });
-                Rules.Add(new RuleDisplayItem { ProcessName = "discord.exe", Priority = "Below Normal", Affinity = "0-3", CpuLimit = "10%", MaxInstances = "1", IsDisallowed = false });
-                Rules.Add(new RuleDisplayItem { ProcessName = "badapp.exe", Priority = "Idle", Affinity = "None", CpuLimit = "None", MaxInstances = "0", IsDisallowed = true });
-            }
+            // Leave the list empty rather than showing invented rules the engine doesn't know about.
+            Debug.WriteLine($"Failed to load process rules: {ex}");
         }
     }
 

@@ -139,10 +139,6 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
             {
                 TopConsumers.Add(item);
             }
-            if (TopConsumers.Count == 0)
-            {
-                TopConsumers.Add(new TopConsumerItem { Name = "explorer.exe", Pid = 0, CpuPercent = "0.0%" });
-            }
         }
 
         if (Application.Current?.Dispatcher != null && !Application.Current.Dispatcher.CheckAccess())

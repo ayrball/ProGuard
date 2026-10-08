@@ -45,6 +45,7 @@ public class ProcessOrchestrator : IProcessOrchestrator
         RuleStore = ruleStore;
 
         Monitor.ProcessStarted += OnProcessStarted;
+        Monitor.ProcessExited += OnProcessExited;
     }
 
     public void Start()
@@ -57,8 +58,12 @@ public class ProcessOrchestrator : IProcessOrchestrator
     {
         _isRunning = false;
         Monitor.ProcessStarted -= OnProcessStarted;
+        Monitor.ProcessExited -= OnProcessExited;
         _logger.LogInformation("Process Orchestrator stopped");
     }
+
+    // Release the per-process job object (and its handle) once the limited process is gone.
+    private void OnProcessExited(object? sender, int pid) => CpuLimiter.RemoveLimit(pid);
 
     public Task StartAsync(CancellationToken cancellationToken) { Start(); return Task.CompletedTask; }
     public Task StopAsync(CancellationToken cancellationToken) { Stop(); return Task.CompletedTask; }

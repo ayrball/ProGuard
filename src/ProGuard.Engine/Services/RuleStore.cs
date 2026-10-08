@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ProGuard.Core.Data;
+using ProGuard.Core.Helpers;
 using ProGuard.Core.Models;
 using ProGuard.Core.Services;
 
@@ -13,12 +14,18 @@ namespace ProGuard.Engine.Services;
 
 /// <summary>
 /// SQLite-backed rule store with in-memory caching for fast lookups.
+/// Process rules are keyed by <see cref="ProcessExtensions.NormalizeName"/> so that a rule saved as
+/// "chrome.exe" is found for the running process "chrome".
 /// </summary>
 public class RuleStore : IRuleStore
 {
     private readonly ILogger<RuleStore> _logger;
     private readonly IServiceProvider _serviceProvider;
-    private readonly ConcurrentDictionary<string, ProcessRule> _processRules = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, ProcessRule> _processRules = new(StringComparer.Ordinal);
+
+    // The watchdog timer enumerates these while IPC/UI threads mutate them, so every access goes through _sync
+    // and readers get snapshots.
+    private readonly object _sync = new();
     private readonly List<WatchdogRule> _watchdogRules = new();
     private readonly List<PowerProfile> _powerProfiles = new();
     private AppSettings _settings = new();
@@ -29,7 +36,7 @@ public class RuleStore : IRuleStore
         _serviceProvider = serviceProvider;
         LoadRules();
     }
-    
+
     private void LoadRules()
     {
         try
@@ -37,21 +44,24 @@ public class RuleStore : IRuleStore
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
             db.Database.EnsureCreated();
-            
+
             foreach (var rule in db.ProcessRules.ToList())
             {
-                _processRules[rule.ProcessName] = rule;
+                _processRules[ProcessExtensions.NormalizeName(rule.ProcessName)] = rule;
             }
-            
-            _watchdogRules.Clear();
-            _watchdogRules.AddRange(db.WatchdogRules.ToList());
 
-            _powerProfiles.Clear();
-            _powerProfiles.AddRange(db.PowerProfiles.ToList());
+            lock (_sync)
+            {
+                _watchdogRules.Clear();
+                _watchdogRules.AddRange(db.WatchdogRules.ToList());
 
-            _settings = db.Settings.FirstOrDefault() ?? new AppSettings();
-            
-            _logger.LogInformation("Loaded {RuleCount} process rules, {WdCount} watchdog rules, {PpCount} power profiles", 
+                _powerProfiles.Clear();
+                _powerProfiles.AddRange(db.PowerProfiles.ToList());
+
+                _settings = db.Settings.FirstOrDefault() ?? new AppSettings();
+            }
+
+            _logger.LogInformation("Loaded {RuleCount} process rules, {WdCount} watchdog rules, {PpCount} power profiles",
                 _processRules.Count, _watchdogRules.Count, _powerProfiles.Count);
         }
         catch (Exception ex)
@@ -64,31 +74,45 @@ public class RuleStore : IRuleStore
 
     public ProcessRule? GetProcessRule(string processName)
     {
-        return _processRules.TryGetValue(processName, out var rule) ? rule : null;
+        return _processRules.TryGetValue(ProcessExtensions.NormalizeName(processName), out var rule) ? rule : null;
     }
 
-    public IEnumerable<ProcessRule> GetProcessRules() => _processRules.Values;
-    public IEnumerable<ProcessRule> GetAllProcessRules() => _processRules.Values;
+    public IEnumerable<ProcessRule> GetProcessRules() => _processRules.Values.ToList();
+    public IEnumerable<ProcessRule> GetAllProcessRules() => _processRules.Values.ToList();
 
     public void AddProcessRule(ProcessRule rule) => SaveProcessRule(rule);
 
     public void SaveProcessRule(ProcessRule rule)
     {
-        _processRules[rule.ProcessName] = rule;
-        
-        using var scope = _serviceProvider.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
-        
-        var existing = db.ProcessRules.FirstOrDefault(r => r.ProcessName == rule.ProcessName);
-        if (existing != null)
+        var key = ProcessExtensions.NormalizeName(rule.ProcessName);
+        string? previousKey = null;
+
+        using (var scope = _serviceProvider.CreateScope())
         {
-            db.Entry(existing).CurrentValues.SetValues(rule);
+            var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+
+            // Match by Id first (supports renames), then by name regardless of ".exe"/case.
+            var existing = rule.Id != 0 ? db.ProcessRules.Find(rule.Id) : null;
+            existing ??= db.ProcessRules.AsEnumerable()
+                .FirstOrDefault(r => ProcessExtensions.NormalizeName(r.ProcessName) == key);
+
+            if (existing != null)
+            {
+                previousKey = ProcessExtensions.NormalizeName(existing.ProcessName);
+                rule.Id = existing.Id; // the key can't be changed through SetValues
+                db.Entry(existing).CurrentValues.SetValues(rule);
+            }
+            else
+            {
+                db.ProcessRules.Add(rule);
+            }
+
+            db.SaveChanges();
         }
-        else
-        {
-            db.ProcessRules.Add(rule);
-        }
-        db.SaveChanges();
+
+        // Only touch the cache once the DB write has succeeded so the two can't diverge.
+        if (previousKey != null && previousKey != key) _processRules.TryRemove(previousKey, out _);
+        _processRules[key] = rule;
     }
 
     public void UpdateProcessRule(ProcessRule rule) => SaveProcessRule(rule);
@@ -102,13 +126,16 @@ public class RuleStore : IRuleStore
         {
             db.ProcessRules.Remove(rule);
             db.SaveChanges();
-            _processRules.TryRemove(rule.ProcessName, out _);
+            _processRules.TryRemove(ProcessExtensions.NormalizeName(rule.ProcessName), out _);
         }
     }
 
     // === Watchdog Rules ===
 
-    public IEnumerable<WatchdogRule> GetWatchdogRules() => _watchdogRules;
+    public IEnumerable<WatchdogRule> GetWatchdogRules()
+    {
+        lock (_sync) return _watchdogRules.ToList();
+    }
 
     public void AddWatchdogRule(WatchdogRule rule)
     {
@@ -116,7 +143,7 @@ public class RuleStore : IRuleStore
         var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
         db.WatchdogRules.Add(rule);
         db.SaveChanges();
-        _watchdogRules.Add(rule);
+        lock (_sync) _watchdogRules.Add(rule);
     }
 
     public void UpdateWatchdogRule(WatchdogRule rule)
@@ -128,8 +155,11 @@ public class RuleStore : IRuleStore
         {
             db.Entry(existing).CurrentValues.SetValues(rule);
             db.SaveChanges();
-            var idx = _watchdogRules.FindIndex(r => r.Id == rule.Id);
-            if (idx >= 0) _watchdogRules[idx] = rule;
+            lock (_sync)
+            {
+                var idx = _watchdogRules.FindIndex(r => r.Id == rule.Id);
+                if (idx >= 0) _watchdogRules[idx] = rule;
+            }
         }
     }
 
@@ -142,13 +172,16 @@ public class RuleStore : IRuleStore
         {
             db.WatchdogRules.Remove(rule);
             db.SaveChanges();
-            _watchdogRules.RemoveAll(r => r.Id == id);
+            lock (_sync) _watchdogRules.RemoveAll(r => r.Id == id);
         }
     }
 
     // === Power Profiles ===
 
-    public IEnumerable<PowerProfile> GetPowerProfiles() => _powerProfiles;
+    public IEnumerable<PowerProfile> GetPowerProfiles()
+    {
+        lock (_sync) return _powerProfiles.ToList();
+    }
 
     public void AddPowerProfile(PowerProfile profile)
     {
@@ -156,7 +189,7 @@ public class RuleStore : IRuleStore
         var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
         db.PowerProfiles.Add(profile);
         db.SaveChanges();
-        _powerProfiles.Add(profile);
+        lock (_sync) _powerProfiles.Add(profile);
     }
 
     public void UpdatePowerProfile(PowerProfile profile)
@@ -168,8 +201,11 @@ public class RuleStore : IRuleStore
         {
             db.Entry(existing).CurrentValues.SetValues(profile);
             db.SaveChanges();
-            var idx = _powerProfiles.FindIndex(p => p.Id == profile.Id);
-            if (idx >= 0) _powerProfiles[idx] = profile;
+            lock (_sync)
+            {
+                var idx = _powerProfiles.FindIndex(p => p.Id == profile.Id);
+                if (idx >= 0) _powerProfiles[idx] = profile;
+            }
         }
     }
 
@@ -182,29 +218,36 @@ public class RuleStore : IRuleStore
         {
             db.PowerProfiles.Remove(profile);
             db.SaveChanges();
-            _powerProfiles.RemoveAll(p => p.Id == id);
+            lock (_sync) _powerProfiles.RemoveAll(p => p.Id == id);
         }
     }
 
     // === Settings ===
 
-    public AppSettings GetSettings() => _settings;
+    public AppSettings GetSettings()
+    {
+        lock (_sync) return _settings;
+    }
 
     public void UpdateSettings(AppSettings settings)
     {
-        _settings = settings;
-        using var scope = _serviceProvider.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
-        var existing = db.Settings.FirstOrDefault();
-        if (existing != null)
+        using (var scope = _serviceProvider.CreateScope())
         {
-            db.Entry(existing).CurrentValues.SetValues(settings);
+            var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+            var existing = db.Settings.FirstOrDefault();
+            if (existing != null)
+            {
+                settings.Id = existing.Id; // the key can't be changed through SetValues
+                db.Entry(existing).CurrentValues.SetValues(settings);
+            }
+            else
+            {
+                db.Settings.Add(settings);
+            }
+            db.SaveChanges();
         }
-        else
-        {
-            db.Settings.Add(settings);
-        }
-        db.SaveChanges();
+
+        lock (_sync) _settings = settings;
     }
 
     // === Logging ===

@@ -57,7 +57,7 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
         }
 
         RefreshProcesses();
-        _refreshTimer = new Timer(_ => RefreshProcesses(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        _refreshTimer = new Timer(_ => SafeRefresh(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
         
         return Task.CompletedTask;
     }
@@ -88,7 +88,7 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
         {
             var targetInstance = (ManagementBaseObject)e.NewEvent["TargetInstance"];
             var pid = Convert.ToInt32(targetInstance["ProcessId"]);
-            var p = Process.GetProcessById(pid);
+            using var p = Process.GetProcessById(pid);
             var info = CreateProcessInfo(p);
             _processes[pid] = info;
             ProcessStarted?.Invoke(this, info);
@@ -113,6 +113,13 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
         {
             _logger.LogTrace(ex, "Error handling process stop event");
         }
+    }
+
+    // Timer-thread entry point: an exception escaping a timer callback would terminate the engine process.
+    private void SafeRefresh()
+    {
+        try { RefreshProcesses(); }
+        catch (Exception ex) { _logger.LogError(ex, "Error refreshing process list"); }
     }
 
     private void RefreshProcesses()
@@ -179,16 +186,11 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
             Status = ProcessStatus.Running
         };
 
-        try
-        {
-            info.FilePath = p.MainModule?.FileName ?? "";
-            info.PriorityClass = p.PriorityClass;
-            info.AffinityMask = p.ProcessorAffinity.ToInt64();
-        }
-        catch
-        {
-            // Access denied
-        }
+        // Independent attempts: reading MainModule is denied for many protected processes, and that must not
+        // also hide a priority/affinity that is perfectly readable.
+        try { info.FilePath = p.MainModule?.FileName ?? ""; } catch { /* access denied */ }
+        try { info.PriorityClass = p.PriorityClass; } catch { /* access denied */ }
+        try { info.AffinityMask = p.ProcessorAffinity.ToInt64(); } catch { /* access denied */ }
 
         return info;
     }

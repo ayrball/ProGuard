@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using ProGuard.Core.Helpers;
 using ProGuard.Core.Models;
 using ProGuard.Core.Services;
 
@@ -59,36 +60,46 @@ public class WatchdogService : IWatchdogService, IDisposable
         _logger.LogInformation("Updated watchdog rule {Id}", rule.Id);
     }
 
-    private void EvaluateRules()
+    internal void EvaluateRules()
     {
-        var rules = _ruleStore.GetWatchdogRules().Where(r => r.IsEnabled).ToList();
-        if (!rules.Any()) return;
-
-        var processes = _processMonitor.GetAllProcesses().ToList();
-
-        foreach (var rule in rules)
+        // Runs on a timer thread: an exception escaping here would terminate the whole engine process.
+        try
         {
-            var targets = processes.Where(p => p.Name.Equals(rule.TargetProcessName, StringComparison.OrdinalIgnoreCase)).ToList();
-            if (!targets.Any()) continue;
+            var rules = _ruleStore.GetWatchdogRules().Where(r => r.IsEnabled).ToList();
+            if (!rules.Any()) return;
 
-            foreach (var target in targets)
+            var processes = _processMonitor.GetAllProcesses().ToList();
+
+            foreach (var rule in rules)
             {
-                bool triggered = false;
-                switch (rule.ConditionType)
-                {
-                    case WatchdogCondition.CpuAbove:
-                        triggered = target.CpuPercent > rule.ThresholdValue;
-                        break;
-                    case WatchdogCondition.RamAbove:
-                        triggered = (target.WorkingSetBytes / (1024.0 * 1024.0)) > rule.ThresholdValue;
-                        break;
-                    case WatchdogCondition.InstanceCountAbove:
-                        triggered = targets.Count > rule.ThresholdValue;
-                        break;
-                }
+                // Rules are stored the way the UI shows them ("chrome.exe"); the monitor reports "chrome".
+                var wanted = ProcessExtensions.NormalizeName(rule.TargetProcessName);
+                var targets = processes.Where(p => ProcessExtensions.NormalizeName(p.Name) == wanted).ToList();
+                if (!targets.Any()) continue;
 
-                if (triggered) ExecuteAction(rule, target);
+                foreach (var target in targets)
+                {
+                    bool triggered = false;
+                    switch (rule.ConditionType)
+                    {
+                        case WatchdogCondition.CpuAbove:
+                            triggered = target.CpuPercent > rule.ThresholdValue;
+                            break;
+                        case WatchdogCondition.RamAbove:
+                            triggered = (target.WorkingSetBytes / (1024.0 * 1024.0)) > rule.ThresholdValue;
+                            break;
+                        case WatchdogCondition.InstanceCountAbove:
+                            triggered = targets.Count > rule.ThresholdValue;
+                            break;
+                    }
+
+                    if (triggered) ExecuteAction(rule, target);
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error evaluating watchdog rules");
         }
     }
 
@@ -104,7 +115,7 @@ public class WatchdogService : IWatchdogService, IDisposable
                     p.Kill();
                     break;
                 case WatchdogAction.SetPriority:
-                    p.PriorityClass = ProcessPriorityClass.Idle;
+                    if (p.PriorityClass != ProcessPriorityClass.Idle) p.PriorityClass = ProcessPriorityClass.Idle;
                     break;
                 case WatchdogAction.LogAlert:
                     break;

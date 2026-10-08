@@ -1,0 +1,58 @@
+<Page x:Class="ProGuard.UI.Views.LogsPage"
+         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+         Title="Logs">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <ui:TextBox Grid.Column="0" PlaceholderText="Search logs..." 
+                        Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                        Icon="{ui:SymbolIcon Symbol=Search24}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+
+            <ComboBox Grid.Column="1" SelectedIndex="{Binding SelectedTypeIndex, Mode=TwoWay}" Margin="0,0,12,0" Width="160" VerticalAlignment="Center">
+                <ComboBoxItem Content="All Types"/>
+                <ComboBoxItem Content="ProBalance"/>
+                <ComboBoxItem Content="Watchdog"/>
+                <ComboBoxItem Content="System"/>
+            </ComboBox>
+
+            <ui:Button Grid.Column="2" Content="Clear Logs" Icon="{ui:SymbolIcon Symbol=Delete24}" Command="{Binding ClearLogsCommand}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+            <ui:Button Grid.Column="3" Content="Export" Icon="{ui:SymbolIcon Symbol=Save24}" Command="{Binding ExportLogsCommand}" Appearance="Primary" VerticalAlignment="Center"/>
+        </Grid>
+
+        <ListView Grid.Row="1" ItemsSource="{Binding LogEntries}" 
+                  BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
+                  VirtualizingPanel.IsVirtualizing="True"
+                  VirtualizingPanel.VirtualizationMode="Recycling"
+                  VirtualizingPanel.ScrollUnit="Pixel">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="MinHeight" Value="36"/>
+                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                    <Setter Property="Padding" Value="10,4"/>
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Timestamp" DisplayMemberBinding="{Binding Timestamp}" Width="170"/>
+                    <GridViewColumn Header="Type" DisplayMemberBinding="{Binding Type}" Width="110"/>
+                    <GridViewColumn Header="Process" DisplayMemberBinding="{Binding ProcessName}" Width="160"/>
+                    <GridViewColumn Header="Message" DisplayMemberBinding="{Binding Message}" Width="520"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+    </Grid>
+</Page>

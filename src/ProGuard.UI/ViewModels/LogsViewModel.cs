@@ -50,12 +50,9 @@ public partial class LogsViewModel : ViewModelBase
                 });
             }
         }
-        catch { }
-
-        if (_allLogs.Count == 0)
+        catch (Exception ex)
         {
-            _allLogs.Add(new LogEntryItem { Timestamp = DateTime.Now.ToString("g"), Type = "System", ProcessName = "System", Message = "ProGuard initialized successfully. Protection engine active." });
-            _allLogs.Add(new LogEntryItem { Timestamp = DateTime.Now.AddMinutes(-5).ToString("g"), Type = "ProBalance", ProcessName = "devenv.exe", Message = "ProBalance monitoring active." });
+            System.Diagnostics.Debug.WriteLine($"Failed to load logs: {ex}");
         }
 
         ApplyFilter();

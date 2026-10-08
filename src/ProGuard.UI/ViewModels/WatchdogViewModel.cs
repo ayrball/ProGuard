@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -48,39 +49,6 @@ public partial class WatchdogViewModel : ViewModelBase
             db.Database.EnsureCreated();
 
             var rules = db.WatchdogRules.ToList();
-            if (rules.Count == 0)
-            {
-                var r1 = new WatchdogRule
-                {
-                    TargetProcessName = "chrome.exe",
-                    ConditionType = WatchdogCondition.RamAbove,
-                    ThresholdValue = 2048,
-                    DurationSeconds = 30,
-                    ActionType = WatchdogAction.Restart,
-                    IsEnabled = true
-                };
-                var r2 = new WatchdogRule
-                {
-                    TargetProcessName = "badminer.exe",
-                    ConditionType = WatchdogCondition.CpuAbove,
-                    ThresholdValue = 90,
-                    DurationSeconds = 60,
-                    ActionType = WatchdogAction.Terminate,
-                    IsEnabled = true
-                };
-                var r3 = new WatchdogRule
-                {
-                    TargetProcessName = "System",
-                    ConditionType = WatchdogCondition.RunningLongerThan,
-                    ThresholdValue = 300,
-                    DurationSeconds = 300,
-                    ActionType = WatchdogAction.LogAlert,
-                    IsEnabled = false
-                };
-                db.WatchdogRules.AddRange(r1, r2, r3);
-                db.SaveChanges();
-                rules = db.WatchdogRules.ToList();
-            }
 
             WatchdogRules.Clear();
             foreach (var r in rules)
@@ -88,14 +56,9 @@ public partial class WatchdogViewModel : ViewModelBase
                 WatchdogRules.Add(CreateDisplayItem(r));
             }
         }
-        catch
+        catch (Exception ex)
         {
-            if (WatchdogRules.Count == 0)
-            {
-                WatchdogRules.Add(new WatchdogRuleDisplayItem { Description = "IF chrome.exe memory > 2GB THEN Restart", Details = "Condition: Memory > 2048MB for 30s | Action: Restart Process", IsEnabled = true });
-                WatchdogRules.Add(new WatchdogRuleDisplayItem { Description = "IF badminer.exe CPU > 90% THEN Terminate", Details = "Condition: CPU > 90% for 60s | Action: Terminate Process", IsEnabled = true });
-                WatchdogRules.Add(new WatchdogRuleDisplayItem { Description = "IF System Idle > 5m THEN Set Power Plan Power Saver", Details = "Condition: System Idle > 300s | Action: Change Power Plan", IsEnabled = false });
-            }
+            Debug.WriteLine($"Failed to load watchdog rules: {ex}");
         }
     }
 

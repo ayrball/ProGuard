@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Windows;
+using ProGuard.UI.Services;
 using ProGuard.UI.ViewModels;
 using ProGuard.UI.Views;
 using Wpf.Ui;
@@ -36,6 +37,9 @@ public partial class MainWindow : FluentWindow
         
         _navigationHistory.Push(typeof(DashboardPage));
         RootNavigation.Navigate(typeof(DashboardPage));
+
+        // Pay the one-off cost of the first popup now, not on the user's first right-click.
+        PopupWarmUp.Schedule(this);
     }
 
     private void RootNavigation_ItemInvoked(NavigationView sender, RoutedEventArgs args)

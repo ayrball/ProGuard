@@ -13,6 +13,16 @@ public static class SystemInfo
     private static ulong _prevKernelTime;
     private static ulong _prevUserTime;
     private static bool _initialized;
+    private static long _lastSampleTick;
+    private static double _lastCpuPercent;
+
+    /// <summary>
+    /// Shortest span the system CPU figure is measured over. The delta baseline below is shared by every
+    /// caller (dashboard, status bar, tray, engine), so without this each caller would reset it for the
+    /// others and the percentage would be computed over tiny, irregular intervals. Must stay below the
+    /// engine's 500 ms sampling period.
+    /// </summary>
+    private const long MinSampleIntervalMs = 250;
     private static string? _cachedCpuName;
 
     public static int LogicalProcessorCount => Environment.ProcessorCount;
@@ -192,6 +202,11 @@ public static class SystemInfo
     {
         lock (_syncLock)
         {
+            if (_initialized && Environment.TickCount64 - _lastSampleTick < MinSampleIntervalMs)
+            {
+                return _lastCpuPercent;
+            }
+
             if (!Kernel32.GetSystemTimes(out var idleTime, out var kernelTime, out var userTime))
             {
                 return 0.0;
@@ -207,6 +222,8 @@ public static class SystemInfo
                 _prevKernelTime = curKernel;
                 _prevUserTime = curUser;
                 _initialized = true;
+                _lastSampleTick = Environment.TickCount64;
+                _lastCpuPercent = 0.0;
                 return 0.0;
             }
 
@@ -217,15 +234,19 @@ public static class SystemInfo
             _prevIdleTime = curIdle;
             _prevKernelTime = curKernel;
             _prevUserTime = curUser;
+            _lastSampleTick = Environment.TickCount64;
 
             ulong totalSystem = diffKernel + diffUser;
-            if (totalSystem == 0) return 0.0;
-
-            if (totalSystem < diffIdle) return 0.0;
+            if (totalSystem == 0 || totalSystem < diffIdle)
+            {
+                _lastCpuPercent = 0.0;
+                return 0.0;
+            }
 
             ulong totalUsage = totalSystem - diffIdle;
             double percent = (totalUsage * 100.0) / totalSystem;
-            return Math.Clamp(Math.Round(percent, 1), 0.0, 100.0);
+            _lastCpuPercent = Math.Clamp(Math.Round(percent, 1), 0.0, 100.0);
+            return _lastCpuPercent;
         }
     }
 

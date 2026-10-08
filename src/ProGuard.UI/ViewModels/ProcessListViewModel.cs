@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -10,6 +12,7 @@ using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ProGuard.Core.Data;
@@ -24,21 +27,47 @@ namespace ProGuard.UI.ViewModels;
 
 public partial class ProcessListViewModel : ViewModelBase, IDisposable
 {
-    private readonly record struct ProcessStaticMetadata(
-        int ParentPid,
-        DateTime StartTime,
-        string StartTimeText,
-        ImageSource? Icon,
-        bool IsSystem
-    );
+    /// <summary>One row of the filtered (and, in tree view, ordered) list, before it reaches the UI collection.</summary>
+    private readonly record struct ViewRow(ProcessDisplayItem Item, string DisplayName, int TreeLevel);
+
+    /// <summary>The filtered list plus the filter version it was computed for, so a stale one can be discarded.</summary>
+    private sealed record ViewSnapshot(List<ViewRow> Rows, int Version);
+
+    /// <summary>Lets the whole list be swapped with a single change notification instead of one per row.</summary>
+    private sealed class BulkCollection : ObservableCollection<ProcessDisplayItem>
+    {
+        public void ReplaceAll(IEnumerable<ProcessDisplayItem> items)
+        {
+            CheckReentrancy();
+            Items.Clear();
+            foreach (var item in items)
+            {
+                Items.Add(item);
+            }
+
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
+            OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+        }
+    }
 
     private readonly List<ProcessDisplayItem> _allProcesses = new();
     private readonly CpuUsageTracker _cpuTracker = new();
-    private readonly Dictionary<int, ProcessStaticMetadata> _metadataCache = new();
+    private readonly object _pollLock = new();
+    private HashSet<int> _lastPids = new();
     private readonly System.Timers.Timer _timer;
     private int _isPolling;
     private bool _disposed;
     private bool _isMockMode;
+
+    // Filtering happens off the UI thread; only the newest finished list is handed over, and at most one
+    // hand-over is ever queued, so a slow UI cannot build up a backlog of updates.
+    private readonly object _applyLock = new();
+    private readonly object _viewLock = new();
+    private ViewSnapshot? _pendingView;
+    private bool _applyQueued;
+    private int _filterVersion;
+    private int _rebuildRequested;
 
     [ObservableProperty]
     private bool isActive = true;
@@ -72,7 +101,7 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool hasSelectedProcess;
 
-    public ObservableCollection<ProcessDisplayItem> Processes { get; set; } = new();
+    public ObservableCollection<ProcessDisplayItem> Processes { get; set; } = new BulkCollection();
 
     public ProcessListViewModel()
     {
@@ -92,22 +121,18 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
     partial void OnSearchTextChanged(string value)
     {
         HasSearchText = !string.IsNullOrWhiteSpace(value);
-        ApplyFilter();
+        RequestRebuild();
     }
 
-    partial void OnSelectedFilterIndexChanged(int value) => ApplyFilter();
-    partial void OnIsTreeViewChanged(bool value) => ApplyFilter();
+    partial void OnSelectedFilterIndexChanged(int value) => RequestRebuild();
+    partial void OnIsTreeViewChanged(bool value) => RequestRebuild();
     partial void OnSelectedProcessChanged(ProcessDisplayItem? value)
     {
         HasSelectedProcess = value != null;
         if (value != null && string.IsNullOrEmpty(value.FilePath))
         {
-            try
-            {
-                using var p = Process.GetProcessById(value.Pid);
-                value.FilePath = p.MainModule?.FileName;
-            }
-            catch { }
+            // The poll normally supplies the path; this covers a row selected before its first refresh.
+            value.FilePath = ProcessProbe.TryGetImagePath(value.Pid);
         }
         UpdateStatus();
     }
@@ -117,101 +142,201 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
         StatusText = $"Processes: {Processes.Count} | Selected: {(SelectedProcess != null ? SelectedProcess.Name : "None")}";
     }
 
+    // The filter, search text or view mode changed: the whole list has to be re-ordered, not just patched.
+    private void RequestRebuild()
+    {
+        Interlocked.Increment(ref _filterVersion);
+        Interlocked.Exchange(ref _rebuildRequested, 1);
+        ApplyFilter();
+    }
+
     public void ApplyFilter()
     {
-        void UpdateList()
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher == null || dispatcher.CheckAccess())
         {
-            List<ProcessDisplayItem> source;
-            lock (_allProcesses)
+            // Already on the UI thread (or there is no UI at all, as in unit tests): do it right here.
+            lock (_applyLock)
             {
-                source = _allProcesses.ToList();
+                _pendingView = null;
             }
+            ApplyView(BuildView());
+            return;
+        }
 
-            var query = source.AsEnumerable();
+        var view = BuildView();
+        lock (_applyLock)
+        {
+            _pendingView = view;
+            if (_applyQueued) return;
+            _applyQueued = true;
+        }
 
-            if (SelectedFilterIndex == 1)
+        try
+        {
+            dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(ApplyPendingView));
+        }
+        catch
+        {
+            lock (_applyLock)
             {
-                query = query.Where(p => !p.IsSystem);
+                _applyQueued = false;
             }
-            else if (SelectedFilterIndex == 2)
-            {
-                query = query.Where(p => p.IsSystem);
-            }
-            else if (SelectedFilterIndex == 3)
-            {
-                query = query.Where(p => p.CpuPercent != "0.0%");
-            }
-            else if (SelectedFilterIndex == 4)
-            {
-                query = query.Where(p => p.WorkingSetBytes > 500L * 1024L * 1024L);
-            }
+        }
+    }
 
-            if (!string.IsNullOrWhiteSpace(SearchText))
+    private void ApplyPendingView()
+    {
+        ViewSnapshot? view;
+        lock (_applyLock)
+        {
+            view = _pendingView;
+            _pendingView = null;
+            _applyQueued = false;
+        }
+
+        if (view == null) return;
+
+        // The filter changed while this list was being built: it is out of date, so build it again.
+        if (view.Version != Volatile.Read(ref _filterVersion))
+        {
+            view = BuildView();
+        }
+
+        ApplyView(view);
+    }
+
+    // Applies the current filter, search text and tree/flat mode to the latest poll results. Safe on any
+    // thread; it does not touch anything the UI is bound to.
+    private ViewSnapshot BuildView()
+    {
+        int version = Volatile.Read(ref _filterVersion);
+        int filterIndex = SelectedFilterIndex;
+        string search = SearchText;
+        bool tree = IsTreeView;
+
+        List<ProcessDisplayItem> source;
+        lock (_allProcesses)
+        {
+            source = _allProcesses.ToList();
+        }
+
+        var query = source.AsEnumerable();
+
+        if (filterIndex == 1)
+        {
+            query = query.Where(p => !p.IsSystem);
+        }
+        else if (filterIndex == 2)
+        {
+            query = query.Where(p => p.IsSystem);
+        }
+        else if (filterIndex == 3)
+        {
+            query = query.Where(p => p.CpuPercent != "0.0%");
+        }
+        else if (filterIndex == 4)
+        {
+            query = query.Where(p => p.WorkingSetBytes > 500L * 1024L * 1024L);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(p => p.Name.Contains(search, StringComparison.OrdinalIgnoreCase) || p.Pid.ToString().Contains(search));
+        }
+
+        var filtered = query.ToList();
+        var rows = new List<ViewRow>(filtered.Count);
+
+        if (tree)
+        {
+            var pids = filtered.Select(p => p.Pid).ToHashSet();
+            var childrenMap = filtered.GroupBy(p => p.ParentPid).ToDictionary(g => g.Key, g => g.ToList());
+            var rootItems = filtered.Where(p => !pids.Contains(p.ParentPid)).ToList();
+
+            void Traverse(ProcessDisplayItem node, int depth)
             {
-                query = query.Where(p => p.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) || p.Pid.ToString().Contains(SearchText));
-            }
+                string displayName = depth > 0 ? $"{new string(' ', depth * 4)}↳ {node.Name}" : node.Name;
+                rows.Add(new ViewRow(node, displayName, depth));
 
-            var currentSelectedPid = SelectedProcess?.Pid;
-            var filtered = query.ToList();
-
-            if (IsTreeView)
-            {
-                var pids = filtered.Select(p => p.Pid).ToHashSet();
-                var childrenMap = filtered.GroupBy(p => p.ParentPid).ToDictionary(g => g.Key, g => g.ToList());
-                var rootItems = filtered.Where(p => !pids.Contains(p.ParentPid)).ToList();
-
-                var treeOrdered = new List<ProcessDisplayItem>();
-                void Traverse(ProcessDisplayItem node, int depth)
+                if (childrenMap.TryGetValue(node.Pid, out var children))
                 {
-                    node.TreeLevel = depth;
-                    node.DisplayName = depth > 0 ? $"{new string(' ', depth * 4)}↳ {node.Name}" : node.Name;
-                    treeOrdered.Add(node);
-
-                    if (childrenMap.TryGetValue(node.Pid, out var children))
+                    foreach (var child in children)
                     {
-                        foreach (var child in children)
-                        {
-                            Traverse(child, depth + 1);
-                        }
+                        Traverse(child, depth + 1);
                     }
                 }
-
-                foreach (var root in rootItems)
-                {
-                    Traverse(root, 0);
-                }
-
-                filtered = treeOrdered;
-            }
-            else
-            {
-                foreach (var p in filtered)
-                {
-                    p.DisplayName = p.Name;
-                    p.TreeLevel = 0;
-                }
             }
 
-            if (Processes.Count == 0 || _isMockMode)
+            foreach (var root in rootItems)
             {
-                Processes.Clear();
-                foreach (var p in filtered)
-                {
-                    Processes.Add(p);
-                }
+                Traverse(root, 0);
             }
-            else
+        }
+        else
+        {
+            foreach (var p in filtered)
             {
-                var existingPids = new Dictionary<int, ProcessDisplayItem>();
+                rows.Add(new ViewRow(p, p.Name, 0));
+            }
+        }
+
+        return new ViewSnapshot(rows, version);
+    }
+
+    // UI thread only. Brings the bound collection in line with the list, touching as little as possible.
+    private void ApplyView(ViewSnapshot view)
+    {
+        lock (_viewLock)
+        {
+            var rows = view.Rows;
+            var currentSelectedPid = SelectedProcess?.Pid;
+            bool rebuild = Interlocked.Exchange(ref _rebuildRequested, 0) == 1 || _isMockMode || Processes.Count == 0;
+
+            Dictionary<int, ProcessDisplayItem>? existingByPid = null;
+            if (!rebuild)
+            {
+                existingByPid = new Dictionary<int, ProcessDisplayItem>(Processes.Count);
                 foreach (var p in Processes)
                 {
-                    existingPids[p.Pid] = p;
+                    existingByPid[p.Pid] = p;
                 }
 
-                var filteredPids = new HashSet<int>();
-                foreach (var p in filtered)
+                // Rows are patched in place, which keeps them where they are. A tree whose shape changed
+                // has to be laid out again.
+                if (IsTreeView && (rows.Count != Processes.Count || rows.Any(r => !existingByPid.ContainsKey(r.Item.Pid))))
                 {
-                    filteredPids.Add(p.Pid);
+                    rebuild = true;
+                }
+            }
+
+            if (rebuild)
+            {
+                foreach (var row in rows)
+                {
+                    row.Item.DisplayName = row.DisplayName;
+                    row.Item.TreeLevel = row.TreeLevel;
+                }
+
+                if (Processes is BulkCollection bulk)
+                {
+                    bulk.ReplaceAll(rows.Select(r => r.Item));
+                }
+                else
+                {
+                    Processes.Clear();
+                    foreach (var row in rows)
+                    {
+                        Processes.Add(row.Item);
+                    }
+                }
+            }
+            else
+            {
+                var filteredPids = new HashSet<int>();
+                foreach (var row in rows)
+                {
+                    filteredPids.Add(row.Item.Pid);
                 }
 
                 for (int i = Processes.Count - 1; i >= 0; i--)
@@ -223,26 +348,35 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
                 }
 
                 int insertIndex = 0;
-                foreach (var p in filtered)
+                foreach (var row in rows)
                 {
-                    if (existingPids.TryGetValue(p.Pid, out var existing))
+                    var p = row.Item;
+                    if (existingByPid!.TryGetValue(p.Pid, out var existing))
                     {
-                        if (existing.DisplayName != p.DisplayName) existing.DisplayName = p.DisplayName;
-                        if (existing.TreeLevel != p.TreeLevel) existing.TreeLevel = p.TreeLevel;
-                        if (existing.CpuPercent != p.CpuPercent) existing.CpuPercent = p.CpuPercent;
-                        if (existing.MemoryText != p.MemoryText) existing.MemoryText = p.MemoryText;
-                        if (existing.WorkingSetBytes != p.WorkingSetBytes) existing.WorkingSetBytes = p.WorkingSetBytes;
-                        if (existing.Priority != p.Priority) existing.Priority = p.Priority;
-                        if (existing.AffinityText != p.AffinityText) existing.AffinityText = p.AffinityText;
-                        if (existing.RawAffinityMask != p.RawAffinityMask) existing.RawAffinityMask = p.RawAffinityMask;
-                        if (existing.Status != p.Status) existing.Status = p.Status;
-                        if (existing.ThreadCount != p.ThreadCount) existing.ThreadCount = p.ThreadCount;
-                        if (existing.HandleCount != p.HandleCount) existing.HandleCount = p.HandleCount;
-                        if (existing.StartTimeText != p.StartTimeText) existing.StartTimeText = p.StartTimeText;
-                        if (existing.Icon != p.Icon) existing.Icon = p.Icon;
+                        if (existing.DisplayName != row.DisplayName) existing.DisplayName = row.DisplayName;
+                        if (existing.TreeLevel != row.TreeLevel) existing.TreeLevel = row.TreeLevel;
+
+                        if (!ReferenceEquals(existing, p))
+                        {
+                            if (existing.ParentPid != p.ParentPid) existing.ParentPid = p.ParentPid;
+                            if (existing.CpuPercent != p.CpuPercent) existing.CpuPercent = p.CpuPercent;
+                            if (existing.MemoryText != p.MemoryText) existing.MemoryText = p.MemoryText;
+                            if (existing.WorkingSetBytes != p.WorkingSetBytes) existing.WorkingSetBytes = p.WorkingSetBytes;
+                            if (existing.Priority != p.Priority) existing.Priority = p.Priority;
+                            if (existing.AffinityText != p.AffinityText) existing.AffinityText = p.AffinityText;
+                            if (existing.RawAffinityMask != p.RawAffinityMask) existing.RawAffinityMask = p.RawAffinityMask;
+                            if (existing.Status != p.Status) existing.Status = p.Status;
+                            if (existing.ThreadCount != p.ThreadCount) existing.ThreadCount = p.ThreadCount;
+                            if (existing.HandleCount != p.HandleCount) existing.HandleCount = p.HandleCount;
+                            if (existing.StartTimeText != p.StartTimeText) existing.StartTimeText = p.StartTimeText;
+                            if (existing.FilePath != p.FilePath) existing.FilePath = p.FilePath;
+                            if (existing.Icon != p.Icon) existing.Icon = p.Icon;
+                        }
                     }
                     else
                     {
+                        p.DisplayName = row.DisplayName;
+                        p.TreeLevel = row.TreeLevel;
                         Processes.Insert(Math.Min(insertIndex, Processes.Count), p);
                     }
                     insertIndex++;
@@ -251,19 +385,14 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
 
             if (currentSelectedPid.HasValue)
             {
-                SelectedProcess = Processes.FirstOrDefault(p => p.Pid == currentSelectedPid.Value);
+                var current = Processes.FirstOrDefault(p => p.Pid == currentSelectedPid.Value);
+                if (!ReferenceEquals(SelectedProcess, current))
+                {
+                    SelectedProcess = current;
+                }
             }
 
             UpdateStatus();
-        }
-
-        if (Application.Current?.Dispatcher != null && !Application.Current.Dispatcher.CheckAccess())
-        {
-            try { Application.Current.Dispatcher.Invoke(UpdateList); } catch { }
-        }
-        else
-        {
-            UpdateList();
         }
     }
 
@@ -288,90 +417,92 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
 
     private void PollProcessesInternal()
     {
-        if (_isMockMode) return;
-        try
+        lock (_pollLock)
         {
-            var rawProcesses = Process.GetProcesses();
-            var updatedList = new List<ProcessDisplayItem>(rawProcesses.Length);
-            long allCoresMask = (1L << Math.Min(Environment.ProcessorCount, 64)) - 1;
-
-            foreach (var p in rawProcesses)
+            if (_isMockMode) return;
+            try
             {
-                try
-                {
-                    string name = p.ProcessName + ".exe";
-                    int pid = p.Id;
-                    double cpu = _cpuTracker.GetCpuUsage(p);
-                    long ws = 0;
-                    string priority = "Normal";
-                    long affinityMask = allCoresMask;
+                var rawProcesses = Process.GetProcesses();
+                var updatedList = new List<ProcessDisplayItem>(rawProcesses.Length);
+                var alivePids = new HashSet<int>(rawProcesses.Length);
+                long allCoresMask = (1L << Math.Min(Environment.ProcessorCount, 64)) - 1;
 
-                    if (!_metadataCache.TryGetValue(pid, out var meta))
+                foreach (var p in rawProcesses)
+                {
+                    try
                     {
-                        bool isSystem = ProcessExtensions.IsSystemProcess(p) || p.SessionId == 0;
-                        int parentPid = p.SafeGetParentPid();
-                        DateTime startTime = p.SafeGetStartTime();
-                        string startText = startTime != DateTime.MinValue ? startTime.ToLocalTime().ToString("HH:mm:ss") : "--";
-                        var icon = ProcessIconCache.GetIcon(null, name);
-                        meta = new ProcessStaticMetadata(parentPid, startTime, startText, icon, isSystem);
-                        _metadataCache[pid] = meta;
+                        string name = p.ProcessName + ".exe";
+                        int pid = p.Id;
+                        alivePids.Add(pid);
+
+                        // One limited handle yields times, priority, affinity, parent and path without the
+                        // access-denied exceptions Process raises for most system and service processes.
+                        double cpu = 0;
+                        string priority = "Normal";
+                        long affinityMask = allCoresMask;
+                        int parentPid = 0;
+                        string startText = "--";
+                        string? imagePath = null;
+                        if (ProcessProbe.TryQuery(pid, includeImagePath: true, out var probe))
+                        {
+                            cpu = _cpuTracker.GetCpuUsage(pid, probe.CpuTime);
+                            if (probe.Priority.HasValue) priority = probe.Priority.Value.ToString();
+                            if (probe.AffinityMask.HasValue) affinityMask = probe.AffinityMask.Value;
+                            parentPid = probe.ParentPid;
+                            imagePath = probe.ImagePath;
+                            if (probe.StartTimeUtc != DateTime.MinValue) startText = probe.StartTimeUtc.ToLocalTime().ToString("HH:mm:ss");
+                        }
+
+                        long ws = 0;
+                        try { ws = p.WorkingSet64; } catch { }
+
+                        updatedList.Add(new ProcessDisplayItem
+                        {
+                            Name = name,
+                            DisplayName = name,
+                            Pid = pid,
+                            ParentPid = parentPid,
+                            CpuPercent = $"{cpu:0.0}%",
+                            MemoryText = ProcessExtensions.ToReadableSize(ws),
+                            WorkingSetBytes = ws,
+                            Priority = priority,
+                            AffinityText = FormatAffinityText(affinityMask),
+                            RawAffinityMask = affinityMask,
+                            Status = "Running",
+                            IsSystem = ProcessExtensions.IsSystemProcess(p) || p.SessionId == 0,
+                            ThreadCount = p.SafeGetThreadCount(),
+                            HandleCount = p.SafeGetHandleCount(),
+                            StartTimeText = startText,
+                            FilePath = imagePath,
+                            Icon = ProcessIconCache.GetIconDeferred(imagePath)
+                        });
                     }
-
-                    int threadCount = p.SafeGetThreadCount();
-                    int handleCount = p.SafeGetHandleCount();
-
-                    try { ws = p.WorkingSet64; } catch { }
-                    try { priority = p.PriorityClass.ToString(); } catch { }
-                    try { affinityMask = p.ProcessorAffinity.ToInt64(); } catch { }
-
-                    string affinityText = FormatAffinityText(affinityMask);
-
-                    updatedList.Add(new ProcessDisplayItem
+                    catch { }
+                    finally
                     {
-                        Name = name,
-                        DisplayName = name,
-                        Pid = pid,
-                        ParentPid = meta.ParentPid,
-                        CpuPercent = $"{cpu:0.0}%",
-                        MemoryText = ProcessExtensions.ToReadableSize(ws),
-                        WorkingSetBytes = ws,
-                        Priority = priority,
-                        AffinityText = affinityText,
-                        RawAffinityMask = affinityMask,
-                        Status = "Running",
-                        IsSystem = meta.IsSystem,
-                        ThreadCount = threadCount,
-                        HandleCount = handleCount,
-                        StartTimeText = meta.StartTimeText,
-                        Icon = meta.Icon
-                    });
+                        p.Dispose();
+                    }
                 }
-                catch { }
-                finally
+
+                foreach (var gone in _lastPids.Where(pid => !alivePids.Contains(pid)))
                 {
-                    p.Dispose();
+                    _cpuTracker.RemoveProcess(gone);
                 }
-            }
+                _lastPids = alivePids;
 
-            if (_metadataCache.Count > 1000)
-            {
-                var activePids = rawProcesses.Select(proc => proc.Id).ToHashSet();
-                var deadPids = _metadataCache.Keys.Where(k => !activePids.Contains(k)).ToList();
-                foreach (var dead in deadPids)
+                lock (_allProcesses)
                 {
-                    _metadataCache.Remove(dead);
+                    // Mock data may have been loaded while this poll was running; it must not be overwritten.
+                    if (_isMockMode) return;
+
+                    _allProcesses.Clear();
+                    _allProcesses.AddRange(updatedList.OrderByDescending(p => p.CpuPercent != "0.0%").ThenBy(p => p.Name));
                 }
-            }
 
-            lock (_allProcesses)
-            {
-                _allProcesses.Clear();
-                _allProcesses.AddRange(updatedList.OrderByDescending(p => p.CpuPercent != "0.0%").ThenBy(p => p.Name));
+                ApplyFilter();
             }
-
-            ApplyFilter();
+            catch { }
         }
-        catch { }
     }
 
     public void AddProcess(ProcessDisplayItem item)
@@ -826,8 +957,7 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
             string? path = SelectedProcess.FilePath;
             if (string.IsNullOrEmpty(path))
             {
-                using var p = Process.GetProcessById(SelectedProcess.Pid);
-                path = p.MainModule?.FileName;
+                path = ProcessProbe.TryGetImagePath(SelectedProcess.Pid);
                 SelectedProcess.FilePath = path;
             }
 

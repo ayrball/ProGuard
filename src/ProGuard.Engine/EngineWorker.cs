@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
@@ -22,6 +23,9 @@ public class EngineWorker : BackgroundService
     private readonly ProcessGovernor _processGovernor;
     private readonly ForegroundBoostService _foregroundBoostService;
     private readonly PipeServer _pipeServer;
+    private readonly RuleStore _ruleStore;
+
+    private static readonly TimeSpan RuleReloadInterval = TimeSpan.FromSeconds(2);
 
     public EngineWorker(
         ILogger<EngineWorker> logger,
@@ -33,7 +37,8 @@ public class EngineWorker : BackgroundService
         WatchdogService watchdogService,
         ProcessGovernor processGovernor,
         ForegroundBoostService foregroundBoostService,
-        PipeServer pipeServer)
+        PipeServer pipeServer,
+        RuleStore ruleStore)
     {
         _logger = logger;
         _processMonitor = processMonitor;
@@ -45,6 +50,7 @@ public class EngineWorker : BackgroundService
         _processGovernor = processGovernor;
         _foregroundBoostService = foregroundBoostService;
         _pipeServer = pipeServer;
+        _ruleStore = ruleStore;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -62,10 +68,15 @@ public class EngineWorker : BackgroundService
 
         _pipeServer.Start();
 
-        // Keep alive until cancellation
+        // Keep alive until cancellation, picking up rule changes the UI writes to the shared database.
+        using var reloadTimer = new PeriodicTimer(RuleReloadInterval);
         try
         {
-            await Task.Delay(Timeout.Infinite, stoppingToken);
+            while (await reloadTimer.WaitForNextTickAsync(stoppingToken))
+            {
+                try { _ruleStore.ReloadIfChanged(); }
+                catch (Exception ex) { _logger.LogError(ex, "Failed to reload rules"); }
+            }
         }
         catch (OperationCanceledException) { }
 

@@ -5,6 +5,7 @@ using LiveChartsCore.Defaults;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Timers;
 using System;
 using System.Windows;
@@ -42,6 +43,7 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
     private readonly System.Timers.Timer _timer;
     private static bool s_dbInitialized;
     private int _dbCheckCounter;
+    private int _isUpdating;
     private int _cachedRulesCount;
     private int _cachedProBalanceCount;
     private bool _disposed;
@@ -89,9 +91,17 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
 
     private void Timer_Elapsed(object? sender, ElapsedEventArgs e)
     {
-        if (IsActive)
+        // A sample can take longer than the timer period; do not let samples pile up behind each other.
+        if (IsActive && Interlocked.Exchange(ref _isUpdating, 1) == 0)
         {
-            UpdateDashboardMetrics();
+            try
+            {
+                UpdateDashboardMetrics();
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _isUpdating, 0);
+            }
         }
     }
 
@@ -168,7 +178,10 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
                 try
                 {
                     if (p.Id == 0 || p.Id == 4) continue;
-                    double cpu = _cpuTracker.GetCpuUsage(p);
+                    // Process.TotalProcessorTime throws for protected processes; the probe does not.
+                    double cpu = ProcessProbe.TryQuery(p.Id, includeImagePath: false, out var probe)
+                        ? _cpuTracker.GetCpuUsage(p.Id, probe.CpuTime)
+                        : 0;
                     tracked.Add((p.ProcessName + ".exe", p.Id, cpu, p.WorkingSet64));
                 }
                 catch { }

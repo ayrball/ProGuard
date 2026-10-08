@@ -21,19 +21,35 @@ public class CpuUsageTracker
     {
         try
         {
-            var currentCpuTime = process.TotalProcessorTime;
+            return GetCpuUsage(process.Id, process.TotalProcessorTime);
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Same as <see cref="GetCpuUsage(Process)"/> for callers that already read the process's total CPU time
+    /// (for example through <see cref="ProcessProbe"/>, which does not throw for protected processes).
+    /// </summary>
+    public double GetCpuUsage(int pid, TimeSpan totalProcessorTime)
+    {
+        try
+        {
+            var currentCpuTime = totalProcessorTime;
             var currentTimestamp = DateTime.UtcNow;
 
-            if (!_snapshots.TryGetValue(process.Id, out var prev))
+            if (!_snapshots.TryGetValue(pid, out var prev))
             {
-                _snapshots[process.Id] = (currentCpuTime, currentTimestamp);
+                _snapshots[pid] = (currentCpuTime, currentTimestamp);
                 return 0;
             }
 
             var cpuDelta = (currentCpuTime - prev.PrevCpuTime).TotalMilliseconds;
             var timeDelta = (currentTimestamp - prev.PrevTimestamp).TotalMilliseconds;
 
-            _snapshots[process.Id] = (currentCpuTime, currentTimestamp);
+            _snapshots[pid] = (currentCpuTime, currentTimestamp);
 
             if (timeDelta <= 0) return 0;
 

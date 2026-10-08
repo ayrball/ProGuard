@@ -21,8 +21,19 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     private readonly IRuleStore _ruleStore;
     private Timer? _timer;
     private readonly ConcurrentDictionary<int, ProcessPriorityClass> _restrainedProcesses = new();
-    private readonly HashSet<string> _exclusions = new(StringComparer.OrdinalIgnoreCase);
-    private bool _enabled = true;
+    // Normalised names (see ProcessExtensions.NormalizeName). Mutated from IPC/UI threads while Evaluate reads.
+    private readonly ConcurrentDictionary<string, byte> _exclusions = new();
+    private volatile bool _enabled = true;
+
+    /// <summary>
+    /// Never restrained: lowering these hurts the whole machine (compositor, audio, session/security
+    /// processes) or is pointless/denied, and ProGuard must not throttle itself.
+    /// </summary>
+    private static readonly HashSet<string> ProtectedProcesses = new(StringComparer.Ordinal)
+    {
+        "system", "idle", "registry", "memory compression", "smss", "csrss", "wininit", "winlogon",
+        "services", "lsass", "dwm", "audiodg", "fontdrvhost", "proguard.engine", "proguard.ui"
+    };
     private int _sensitivity = 5;
 
     public double CpuLoadThreshold { get; set; } = 85.0;
@@ -32,11 +43,18 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     public bool IsEngaged => _restrainedProcesses.Count > 0;
     public int ActiveInterventions => _restrainedProcesses.Count;
 
-    public ProBalanceEngine(ILogger<ProBalanceEngine> logger, IProcessMonitor processMonitor, IRuleStore ruleStore)
+    private readonly Func<double> _systemCpuPercent;
+
+    public ProBalanceEngine(
+        ILogger<ProBalanceEngine> logger,
+        IProcessMonitor processMonitor,
+        IRuleStore ruleStore,
+        Func<double>? systemCpuPercent = null)
     {
         _logger = logger;
         _processMonitor = processMonitor;
         _ruleStore = ruleStore;
+        _systemCpuPercent = systemCpuPercent ?? Core.Helpers.SystemInfo.GetOverallCpuPercent;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -54,7 +72,12 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         return Task.CompletedTask;
     }
 
-    public void SetEnabled(bool enabled) => _enabled = enabled;
+    public void SetEnabled(bool enabled)
+    {
+        _enabled = enabled;
+        // Evaluate() stops running when disabled, so nothing else would ever lift the restraints.
+        if (!enabled) RestoreAll();
+    }
 
     public void SetSensitivity(int level)
     {
@@ -64,15 +87,17 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         CpuRecoveryThreshold = CpuLoadThreshold - 20.0;
     }
 
-    public void ExcludeProcess(string name) => _exclusions.Add(name);
-    public void RemoveExclusion(string name) => _exclusions.Remove(name);
+    public void ExcludeProcess(string name) => _exclusions[Core.Helpers.ProcessExtensions.NormalizeName(name)] = 0;
+    public void RemoveExclusion(string name) => _exclusions.TryRemove(Core.Helpers.ProcessExtensions.NormalizeName(name), out _);
 
-    private void Evaluate(object? state)
+    internal void Evaluate(object? state)
     {
         if (!_enabled) return;
         try
         {
-            var systemCpu = Core.Helpers.SystemInfo.GetOverallCpuPercent();
+            ForgetExitedProcesses();
+
+            var systemCpu = _systemCpuPercent();
             if (systemCpu > CpuLoadThreshold)
                 RestrainHogs();
             else if (systemCpu < CpuRecoveryThreshold && _restrainedProcesses.Count > 0)
@@ -94,7 +119,9 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         foreach (var pInfo in processes)
         {
             if (_restrainedProcesses.ContainsKey(pInfo.Pid)) continue;
-            if (_exclusions.Contains(pInfo.Name)) continue;
+
+            var name = Core.Helpers.ProcessExtensions.NormalizeName(pInfo.Name);
+            if (ProtectedProcesses.Contains(name) || _exclusions.ContainsKey(name)) continue;
 
             var rule = _ruleStore.GetProcessRule(pInfo.Name);
             if (rule != null && rule.ExcludeFromProBalance) continue;
@@ -125,6 +152,19 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
                     pInfo.Name, pInfo.Pid, origPriority);
             }
             catch (Exception ex) { _logger.LogDebug(ex, "Failed to restrain process {Pid}", pInfo.Pid); }
+        }
+    }
+
+    /// <summary>
+    /// Drops bookkeeping for restrained processes that have exited. Otherwise they count as active
+    /// interventions forever, and restoring would write the old priority onto a recycled PID.
+    /// </summary>
+    private void ForgetExitedProcesses()
+    {
+        foreach (var pid in _restrainedProcesses.Keys)
+        {
+            if (_processMonitor.GetProcess(pid) == null)
+                _restrainedProcesses.TryRemove(pid, out _);
         }
     }
 

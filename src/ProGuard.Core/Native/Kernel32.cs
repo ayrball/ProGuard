@@ -56,12 +56,17 @@ public struct SYSTEM_INFO
     public ushort wProcessorRevision;
 }
 
-[StructLayout(LayoutKind.Sequential)]
+/// <summary>
+/// Native layout is { DWORD ControlFlags; union { DWORD CpuRate; DWORD Weight; struct { WORD MinRate, MaxRate; }; } }
+/// = 8 bytes. SetInformationJobObject rejects any other length, so the union must overlap.
+/// </summary>
+[StructLayout(LayoutKind.Explicit, Size = 8)]
 public struct JOBOBJECT_CPU_RATE_CONTROL_INFORMATION
 {
-    public uint ControlFlags;
-    public uint CpuRate;
-    public uint Weight;
+    [FieldOffset(0)] public uint ControlFlags;
+    /// <summary>With HARD_CAP: percent of total CPU * 100 (1..10000).</summary>
+    [FieldOffset(4)] public uint CpuRate;
+    [FieldOffset(4)] public uint Weight;
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -183,6 +188,12 @@ public static class Kernel32
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetSystemTimes(out FILETIME lpIdleTime, out FILETIME lpKernelTime, out FILETIME lpUserTime);
+
+    /// <summary>JOBOBJECTINFOCLASS.JobObjectCpuRateControlInformation (8 is BasicAndIoAccounting, which is query-only).</summary>
+    public const int JobObjectCpuRateControlInformation = 15;
+    public const uint JOB_OBJECT_CPU_RATE_CONTROL_ENABLE = 0x1;
+    public const uint JOB_OBJECT_CPU_RATE_CONTROL_WEIGHT_BASED = 0x2;
+    public const uint JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP = 0x4;
 
     public const int ProcessPowerThrottling = 4;
     public const int ProcessMemoryPriority = 0;

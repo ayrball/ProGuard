@@ -20,6 +20,19 @@ public static class ProcessExtensions
         try { return process.StartTime; } catch { return DateTime.MinValue; }
     }
 
+    /// <summary>
+    /// Canonical form used to compare process names. The UI stores rules as "chrome.exe" while
+    /// <see cref="Process.ProcessName"/> (and therefore the engine's snapshots) is just "chrome".
+    /// </summary>
+    public static string NormalizeName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return string.Empty;
+        var trimmed = name.Trim();
+        if (trimmed.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            trimmed = trimmed[..^4];
+        return trimmed.ToLowerInvariant();
+    }
+
     public static string ToReadableSize(long bytes)
     {
         string[] sizes = { "B", "KB", "MB", "GB", "TB" };

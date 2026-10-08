@@ -53,6 +53,27 @@ public class Review_Regression_Tests
         return (p.TotalProcessorTime - before).TotalSeconds;
     }
 
+    /// <summary>Collects log lines so a failing assertion can show what the component itself reported.</summary>
+    private sealed class ListLogger<T> : ILogger<T>
+    {
+        public List<string> Lines { get; } = new();
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            lock (Lines) Lines.Add($"{logLevel}: {formatter(state, exception)}{(exception != null ? " | " + exception.Message : "")}");
+        }
+        public override string ToString() { lock (Lines) return string.Join(" || ", Lines); }
+    }
+
+    /// <summary>CPU seconds used in each consecutive slice, e.g. "0.08 0.09 0.07".</summary>
+    private static string Profile(Process p, int slices, TimeSpan slice)
+    {
+        var parts = new List<string>();
+        for (int i = 0; i < slices; i++) parts.Add(CpuSecondsOver(p, slice).ToString("F2"));
+        return string.Join(" ", parts);
+    }
+
     private class TempDbContext : ProGuardDbContext
     {
         private readonly string _path;
@@ -101,13 +122,17 @@ public class Review_Regression_Tests
             double baseline = CpuSecondsOver(spinner, TimeSpan.FromSeconds(2));
             Assert.True(baseline > 1.0, $"spinner should be busy before limiting (used {baseline:F2}s CPU in 2s)");
 
-            using var limiter = new CpuLimiter(NullLogger<CpuLimiter>.Instance);
+            var log = new ListLogger<CpuLimiter>();
+            using var limiter = new CpuLimiter(log);
             limiter.AddLimit(spinner.Id, 1); // 1% of the whole machine
-            Thread.Sleep(CapSettleTime);
 
-            double limited = CpuSecondsOver(spinner, TimeSpan.FromSeconds(2));
+            // 0.5s slices so a failure shows *when* the cap kicked in rather than just a total.
+            string profile = Profile(spinner, 8, TimeSpan.FromMilliseconds(500));
+            double limited = profile.Split(' ').Skip(4).Sum(s => double.Parse(s)); // last 2s, after settling
+
             Assert.True(limited < baseline * 0.5,
-                $"limit had no effect: {baseline:F2}s unlimited vs {limited:F2}s limited over the same 2s window");
+                $"limit had no effect: {baseline:F2}s unlimited vs {limited:F2}s limited over the last 2s. " +
+                $"Per-0.5s profile after AddLimit: [{profile}]. Limiter log: {log}");
         }
         finally { KillQuietly(spinner); }
     }

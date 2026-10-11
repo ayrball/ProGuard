@@ -73,6 +73,12 @@ public sealed class ProcessRuleDto
     public int? GpuPreference { get; set; }
     public bool ReapplyIfChanged { get; set; }
 
+    /// <summary>
+    /// Also have Windows apply the priority, I/O priority and memory priority as the process is created, through its
+    /// Image File Execution Options. Plain exe names only; administrators only.
+    /// </summary>
+    public bool ApplyPrioritiesAtCreation { get; set; }
+
     /// <summary>Relaunch the process with its last command line whenever it exits.</summary>
     public bool KeepRunning { get; set; }
 }

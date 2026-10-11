@@ -152,6 +152,21 @@ public sealed partial class ListField : ObservableObject
         .ToList();
 }
 
+/// <summary>One of a row of mutually exclusive buttons that act at once (a timer resolution, a power mode).</summary>
+public sealed partial class ChoiceOption<T> : ObservableObject
+{
+    public string Label { get; }
+    public T Value { get; }
+    [ObservableProperty] private bool isOn;
+
+    public ChoiceOption(string label, T value, bool isOn)
+    {
+        Label = label;
+        Value = value;
+        this.isOn = isOn;
+    }
+}
+
 public sealed partial class PlanOption : ObservableObject
 {
     public string Label { get; }

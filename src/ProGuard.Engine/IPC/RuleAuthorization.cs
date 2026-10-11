@@ -22,6 +22,9 @@ namespace ProGuard.Engine.IPC;
 /// user could have the engine lower the priority of, cap or trim a service (spoolsv.exe, svchost.exe) that Windows
 /// won't let them touch. Instances started later by other users are not checked: the rule names a program, and a
 /// standard user can already run that program and close it.</item>
+/// <item>No launch-time priorities (<see cref="ProcessRule.ApplyPrioritiesAtCreation"/>): they are written to
+/// Image File Execution Options under HKLM, a machine-wide setting only administrators may change, and apply to every
+/// user's copy of the program from the moment it is created.</item>
 /// <item>No Watchdog Launch actions: the program starts in the session of the process that triggered the rule, as that
 /// session's user, so it would let one user run code as another.</item>
 /// </list>
@@ -34,6 +37,7 @@ internal static class RuleAuthorization
         if (caller.IsAdministrator) return null;
         if (CriticalProcesses.IsCriticalName(rule.ProcessName)) return $"change rules for {rule.ProcessName}, a system process";
         if (IsRealtime(rule.PriorityClass) || IsRealtime(rule.StartupBoostPriorityClass)) return "set Realtime priority";
+        if (rule.ApplyPrioritiesAtCreation) return "apply priorities at launch: they are written to the machine-wide Image File Execution Options";
         if (rule.DisallowExecution || rule.MaxInstances != null) return CheckCanEnd(rule.ProcessName, caller, monitor);
 
         // The engine applies the rest as SYSTEM: priority, affinity, I/O and memory priority, EcoQoS, CPU Sets and

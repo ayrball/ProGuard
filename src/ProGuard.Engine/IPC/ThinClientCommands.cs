@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using ProGuard.Core.Helpers;
 using ProGuard.Core.Models;
 using ProGuard.Core.Services;
 using ProGuard.Engine.Services;
@@ -130,6 +131,9 @@ public sealed class ThinClientCommands
             case CommandTypes.SetPowerPlan:
                 result = SetPowerPlan(cmd.Argument);
                 return true;
+            case CommandTypes.SetPowerMode:
+                result = SetPowerMode(cmd.Argument);
+                return true;
 
             case CommandTypes.GetActivity:
             {
@@ -180,14 +184,34 @@ public sealed class ThinClientCommands
 
     // === Power ===
 
-    private PowerStateDto GetPower() => new()
+    private PowerStateDto GetPower()
     {
-        Plans = _power.GetAvailablePlans().Select(p => new PowerPlanDto { Id = p.Id, Name = p.Name }).ToList(),
-        ActivePlanId = _power.GetActivePlan(),
-        PerformanceMode = _power.IsPerformanceModeActive,
-        PerformanceModeAutomatic = _power.IsPerformanceModeAutomatic,
-        Owner = string.IsNullOrEmpty(_power.PlanOwnerName) ? "User" : _power.PlanOwnerName,
-    };
+        var mode = _power.GetPowerMode();
+        return new PowerStateDto
+        {
+            Plans = _power.GetAvailablePlans().Select(p => new PowerPlanDto { Id = p.Id, Name = p.Name }).ToList(),
+            ActivePlanId = _power.GetActivePlan(),
+            PerformanceMode = _power.IsPerformanceModeActive,
+            PerformanceModeAutomatic = _power.IsPerformanceModeAutomatic,
+            Owner = string.IsNullOrEmpty(_power.PlanOwnerName) ? "User" : _power.PlanOwnerName,
+            PowerModeSupported = mode != null,
+            PowerModeId = mode ?? Guid.Empty,
+            PowerModes = PowerModes.Offered.Select(m => new PowerModeDto { Id = m.Id, Name = m.Name }).ToList(),
+        };
+    }
+
+    /// <summary>
+    /// Moves the Windows power-mode slider, as anyone may in Windows' own settings. Only the modes the slider offers are
+    /// accepted. Wins over Performance Mode the way <see cref="SetPowerPlan"/> does.
+    /// </summary>
+    private CommandResult SetPowerMode(string? argument)
+    {
+        if (!Guid.TryParse(argument?.Trim(), out var id) || PowerModes.Offered.All(m => m.Id != id)) return CommandResult.Fail("Invalid power mode");
+        if (_power.GetPowerMode() == null) return CommandResult.Fail("This version of Windows has no power mode setting.");
+        return _power.SetPowerMode(id)
+            ? CommandResult.Ok()
+            : CommandResult.Fail($"Windows wouldn't switch the power mode to {PowerModes.Describe(id)}.");
+    }
 
     /// <summary>
     /// The user's choice of plan: applied through the power manager's arbitration (<see cref="IPowerManager.SetActivePlan"/>),

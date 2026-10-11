@@ -84,12 +84,16 @@ public class Program
                     sp.GetRequiredService<IProcessMonitor>(),
                     sp.GetRequiredService<IRuleStore>()));
 
+                services.AddSingleton(sp => new LaunchPriorityService(sp.GetRequiredService<ILogger<LaunchPriorityService>>()));
+
                 services.AddSingleton<ProcessOrchestrator>();
                 services.AddSingleton<IProcessOrchestrator>(sp => sp.GetRequiredService<ProcessOrchestrator>());
                 
                 services.AddSingleton<ProcessController>();
                 services.AddSingleton<IProcessController>(sp => sp.GetRequiredService<ProcessController>());
 
+                services.AddSingleton(sp => new TimerResolutionService(sp.GetRequiredService<ILogger<TimerResolutionService>>()));
+                services.AddSingleton(sp => new CoreParkingService(sp.GetRequiredService<ILogger<CoreParkingService>>(), sp.GetRequiredService<IRuleStore>()));
                 services.AddSingleton<SettingsApplier>();
 
                 services.AddSingleton<ForegroundBoostService>();

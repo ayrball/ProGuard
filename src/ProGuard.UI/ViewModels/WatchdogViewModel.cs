@@ -1,436 +1,236 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.Globalization;
-using System.Linq;
-using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using ProGuard.Core.Data;
-using ProGuard.Core.Helpers;
-using ProGuard.Core.Models;
 using ProGuard.Shared.Contracts;
+using ProGuard.Shared.Messages;
 using ProGuard.UI.Services;
 
 namespace ProGuard.UI.ViewModels;
 
-public partial class WatchdogViewModel : ViewModelBase
+internal static class WatchdogText
 {
-    private const int RecentEventCount = 5;
-
-    /// <summary>Condition choices on the add-rule panel, in display order.</summary>
-    public static IReadOnlyList<string> ConditionOptions { get; } = new[]
+    public static string Trigger(WatchdogTrigger t) => t switch
     {
-        "CPU Above (%)", "Memory Above (MB)", "Running Longer Than (s)", "Instance Count Above"
+        WatchdogTrigger.CpuAbove => "CPU ABOVE",
+        WatchdogTrigger.RamAbove => "MEMORY ABOVE",
+        WatchdogTrigger.RunningLongerThan => "RUNNING LONGER THAN",
+        _ => "INSTANCES ABOVE"
     };
 
-    private static readonly WatchdogCondition[] ConditionValues =
+    public static string Unit(WatchdogTrigger t) => t switch
     {
-        WatchdogCondition.CpuAbove, WatchdogCondition.RamAbove, WatchdogCondition.RunningLongerThan, WatchdogCondition.InstanceCountAbove
-    };
-
-    public static IReadOnlyList<string> MemoryMetricOptions { get; } = new[] { "Working set", "Private bytes" };
-
-    /// <summary>Action choices on the add-rule panel, in display order.</summary>
-    public static IReadOnlyList<string> ActionOptions { get; } = new[]
-    {
-        "Terminate", "Restart", "Set Priority", "Set I/O Priority", "Set Affinity", "Trim Working Set", "Launch Program", "Notify", "Log Only"
-    };
-
-    private static readonly WatchdogAction[] ActionValues =
-    {
-        WatchdogAction.Terminate, WatchdogAction.Restart, WatchdogAction.SetPriority, WatchdogAction.SetIoPriority,
-        WatchdogAction.SetAffinity, WatchdogAction.TrimWorkingSet, WatchdogAction.Launch, WatchdogAction.Notify, WatchdogAction.LogAlert
-    };
-
-    [ObservableProperty]
-    private bool isAddPanelOpen;
-
-    [ObservableProperty]
-    private string newProcessName = string.Empty;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsMemoryCondition))]
-    private string newCondition = ConditionOptions[0];
-
-    [ObservableProperty]
-    private string newMemoryMetric = MemoryMetricOptions[0];
-
-    [ObservableProperty]
-    private double newThreshold = 85.0;
-
-    [ObservableProperty]
-    private int newDuration = 30;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ActionArgumentHint), nameof(ActionTakesArgument), nameof(ActionTakesDuration), nameof(IsTrimAction))]
-    private string newAction = ActionOptions[0];
-
-    [ObservableProperty]
-    private string newActionArgument = string.Empty;
-
-    [ObservableProperty]
-    private int newActionDuration;
-
-    [ObservableProperty]
-    private bool newTrimContinuously;
-
-    [ObservableProperty]
-    private int newCooldown = 60;
-
-    [ObservableProperty]
-    private string newKeepRunningName = string.Empty;
-
-    [ObservableProperty]
-    private string recentTriggerText = "No watchdog events recorded yet.";
-
-    public ObservableCollection<WatchdogRuleDisplayItem> WatchdogRules { get; set; } = new();
-
-    /// <summary>Processes whose rule has Keep Running set.</summary>
-    public ObservableCollection<string> KeepRunningProcesses { get; } = new();
-
-    public bool IsMemoryCondition => SelectedCondition == WatchdogCondition.RamAbove;
-    public bool ActionTakesArgument => SelectedAction is WatchdogAction.SetPriority or WatchdogAction.SetIoPriority
-        or WatchdogAction.SetAffinity or WatchdogAction.Launch or WatchdogAction.Notify;
-    public bool ActionTakesDuration => SelectedAction is WatchdogAction.SetPriority or WatchdogAction.SetIoPriority or WatchdogAction.SetAffinity;
-    public bool IsTrimAction => SelectedAction == WatchdogAction.TrimWorkingSet;
-
-    public string ActionArgumentHint => SelectedAction switch
-    {
-        WatchdogAction.SetPriority => "Idle, BelowNormal, Normal, AboveNormal, High",
-        WatchdogAction.SetIoPriority => "VeryLow, Low, Normal, High",
-        WatchdogAction.SetAffinity => "CPU mask, e.g. 0x3",
-        WatchdogAction.Launch => @"""C:\path\app.exe"" arguments",
-        WatchdogAction.Notify => "Message (optional)",
+        WatchdogTrigger.CpuAbove => "%",
+        WatchdogTrigger.RamAbove => " MB",
+        WatchdogTrigger.RunningLongerThan => " s",
         _ => ""
     };
 
-    private WatchdogCondition SelectedCondition => Lookup(ConditionOptions, ConditionValues, NewCondition, WatchdogCondition.CpuAbove);
-    private WatchdogAction SelectedAction => Lookup(ActionOptions, ActionValues, NewAction, WatchdogAction.Terminate);
-
-    public WatchdogViewModel()
+    public static string Response(WatchdogResponse r) => r switch
     {
-        LoadRules();
-        LoadKeepRunning();
-        LoadRecentTriggers();
-    }
+        WatchdogResponse.Terminate => "END IT",
+        WatchdogResponse.Restart => "RESTART IT",
+        WatchdogResponse.SetPriority => "SET PRIORITY",
+        WatchdogResponse.SetAffinity => "SET CORES",
+        WatchdogResponse.SetIoPriority => "SET I/O PRIORITY",
+        WatchdogResponse.TrimWorkingSet => "TRIM MEMORY",
+        WatchdogResponse.Launch => "LAUNCH A PROGRAM",
+        WatchdogResponse.Notify => "NOTIFY ME",
+        _ => "JUST LOG IT"
+    };
 
-    public WatchdogViewModel(WatchdogNotificationListener listener) : this()
+    public static string Sustain(int seconds) => seconds switch
     {
-        if (listener.LatestEvent != null) ShowRecent(new[] { listener.LatestEvent });
-        listener.EventsReceived += (_, events) =>
-        {
-            var dispatcher = Application.Current?.Dispatcher;
-            if (dispatcher == null) ShowRecent(events);
-            else dispatcher.BeginInvoke(() => ShowRecent(events));
-        };
-    }
+        0 => "AT ONCE",
+        < 60 => $"FOR {seconds}s",
+        _ => $"FOR {seconds / 60}m"
+    };
+}
 
-    private readonly List<string> _recent = new();
+/// <summary>One watchdog rule shown as a sentence: WHEN x · CPU ABOVE 80% · FOR 30s → DROP TO IDLE.</summary>
+public sealed partial class WatchdogRow : ObservableObject
+{
+    public WatchdogRuleDto Dto { get; }
+    public string Name => Fmt.Exe(Dto.TargetProcessName).ToUpperInvariant();
+    public string Condition => $"{WatchdogText.Trigger(Dto.ConditionType)} {Dto.ThresholdValue:0.#}{WatchdogText.Unit(Dto.ConditionType)}";
+    public string Sustain => WatchdogText.Sustain(Dto.DurationSeconds);
+    public string Response => WatchdogText.Response(Dto.ActionType);
 
-    private void ShowRecent(IEnumerable<WatchdogEventDto> events)
+    [ObservableProperty] private bool enabled;
+
+    public WatchdogRow(WatchdogRuleDto dto)
     {
-        foreach (var e in events)
-            _recent.Insert(0, $"[{e.TimestampUtc.ToLocalTime():HH:mm:ss}] {e.Message}");
-        if (_recent.Count > RecentEventCount) _recent.RemoveRange(RecentEventCount, _recent.Count - RecentEventCount);
-        if (_recent.Count > 0) RecentTriggerText = string.Join(Environment.NewLine, _recent);
-    }
-
-    public void LoadRules()
-    {
-        try
-        {
-            using var db = new ProGuardDbContext();
-            db.EnsureSchema();
-
-            var rules = db.WatchdogRules.ToList();
-
-            WatchdogRules.Clear();
-            foreach (var r in rules)
-            {
-                WatchdogRules.Add(CreateDisplayItem(r));
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Failed to load watchdog rules: {ex}");
-        }
-    }
-
-    public void LoadKeepRunning()
-    {
-        try
-        {
-            using var db = new ProGuardDbContext();
-            db.EnsureSchema();
-            KeepRunningProcesses.Clear();
-            foreach (var name in db.ProcessRules.Where(r => r.KeepRunning).Select(r => r.ProcessName).ToList().OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
-                KeepRunningProcesses.Add(name);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Failed to load Keep Running processes: {ex}");
-        }
-    }
-
-    private void LoadRecentTriggers()
-    {
-        RecentTriggerText = "No watchdog events yet. Rules are checked every second by the engine service.";
-    }
-
-    private WatchdogRuleDisplayItem CreateDisplayItem(WatchdogRule r)
-    {
-        var item = new WatchdogRuleDisplayItem
-        {
-            Id = r.Id,
-            Description = $"IF {r.TargetProcessName} {DescribeCondition(r)} THEN {DescribeAction(r)}",
-            Details = DescribeDetails(r),
-            IsEnabled = r.IsEnabled
-        };
-
-        item.PropertyChanged += (s, e) =>
-        {
-            if (e.PropertyName == nameof(WatchdogRuleDisplayItem.IsEnabled))
-            {
-                try
-                {
-                    using var db = new ProGuardDbContext();
-                    var entity = db.WatchdogRules.FirstOrDefault(w => w.Id == item.Id);
-                    if (entity != null)
-                    {
-                        entity.IsEnabled = item.IsEnabled;
-                        db.SaveChanges();
-                    }
-                }
-                catch { }
-            }
-        };
-
-        return item;
-    }
-
-    internal static string DescribeCondition(WatchdogRule r)
-    {
-        var value = r.ThresholdValue.ToString("0.##", CultureInfo.InvariantCulture);
-        return r.ConditionType switch
-        {
-            WatchdogCondition.CpuAbove => $"CPU > {value}%",
-            WatchdogCondition.RamAbove => $"{(r.MemoryMetric == WatchdogMemoryMetric.PrivateBytes ? "private bytes" : "working set")} > {value} MB",
-            WatchdogCondition.RunningLongerThan => $"runs longer than {value} s",
-            WatchdogCondition.InstanceCountAbove => $"instances > {value}",
-            _ => r.ConditionType.ToString()
-        };
-    }
-
-    internal static string DescribeAction(WatchdogRule r)
-    {
-        var argument = r.ActionArgument?.Trim();
-        var forDuration = r.ActionDurationSeconds > 0 ? $" for {r.ActionDurationSeconds} s" : "";
-        return r.ActionType switch
-        {
-            WatchdogAction.Terminate => "terminate",
-            WatchdogAction.Restart => "restart",
-            WatchdogAction.SetPriority => $"set priority {(string.IsNullOrEmpty(argument) ? WatchdogArguments.DefaultPriority.ToString() : argument)}{forDuration}",
-            WatchdogAction.SetIoPriority => $"set I/O priority {(string.IsNullOrEmpty(argument) ? "Low" : argument)}{forDuration}",
-            WatchdogAction.SetAffinity => $"set affinity {argument}{forDuration}",
-            WatchdogAction.TrimWorkingSet => WatchdogArguments.IsContinuousTrim(argument) ? "trim working set continuously" : "trim working set",
-            WatchdogAction.Launch => $"launch {argument}",
-            WatchdogAction.Notify => "notify",
-            WatchdogAction.LogAlert => "log",
-            _ => r.ActionType.ToString()
-        };
-    }
-
-    private static string DescribeDetails(WatchdogRule r)
-    {
-        var held = r.ConditionType == WatchdogCondition.RunningLongerThan || r.DurationSeconds <= 0 ? "" : $" for {r.DurationSeconds}s";
-        var again = r.CooldownSeconds > 0 ? $"again after {r.CooldownSeconds}s if still true" : "again once it clears";
-        return $"Condition: {DescribeCondition(r)}{held} | Action: {DescribeAction(r)} | Fires {again}";
-    }
-
-    [RelayCommand]
-    private void AddRule()
-    {
-        IsAddPanelOpen = !IsAddPanelOpen;
-    }
-
-    /// <summary>Builds a rule from the add-rule panel, or returns why the input is invalid.</summary>
-    internal string? TryBuildRule(out WatchdogRule rule)
-    {
-        rule = new WatchdogRule();
-        if (string.IsNullOrWhiteSpace(NewProcessName)) return "Please enter a target process name.";
-        if (NewThreshold < 0) return "The threshold can't be negative.";
-        if (NewDuration < 0 || NewActionDuration < 0 || NewCooldown < 0) return "Durations can't be negative.";
-
-        var action = SelectedAction;
-        var argument = NewActionArgument?.Trim() ?? "";
-        switch (action)
-        {
-            case WatchdogAction.SetPriority when argument.Length > 0 && !WatchdogArguments.TryParsePriority(argument, out _):
-                return $"Unknown priority '{argument}'. Use Idle, BelowNormal, Normal, AboveNormal, High or RealTime.";
-            case WatchdogAction.SetIoPriority when argument.Length > 0 && !WatchdogArguments.TryParseIoPriority(argument, out _):
-                return $"Unknown I/O priority '{argument}'. Use VeryLow, Low, Normal or High.";
-            case WatchdogAction.SetAffinity when !WatchdogArguments.TryParseAffinity(argument, out _):
-                return "Set Affinity needs a CPU mask, such as 0x3 for the first two CPUs.";
-            case WatchdogAction.Launch when !WatchdogArguments.TrySplitCommandLine(argument, out _, out _):
-                return "Launch Program needs the program to start.";
-        }
-        if (action == WatchdogAction.TrimWorkingSet) argument = NewTrimContinuously ? WatchdogArguments.ContinuousTrim : "";
-        else if (!ActionTakesArgument) argument = "";
-
-        rule = new WatchdogRule
-        {
-            TargetProcessName = NormalizeExeName(NewProcessName),
-            ConditionType = SelectedCondition,
-            ThresholdValue = NewThreshold,
-            DurationSeconds = NewDuration,
-            MemoryMetric = NewMemoryMetric == MemoryMetricOptions[1] ? WatchdogMemoryMetric.PrivateBytes : WatchdogMemoryMetric.WorkingSet,
-            ActionType = action,
-            ActionArgument = argument.Length > 0 ? argument : null,
-            ActionDurationSeconds = ActionTakesDuration ? NewActionDuration : 0,
-            CooldownSeconds = NewCooldown,
-            IsEnabled = true
-        };
-        return null;
-    }
-
-    [RelayCommand]
-    private void SaveNewRule()
-    {
-        var error = TryBuildRule(out var entity);
-        if (error != null)
-        {
-            MessageBox.Show(error, "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        try
-        {
-            using var db = new ProGuardDbContext();
-            db.EnsureSchema();
-
-            db.WatchdogRules.Add(entity);
-            db.SaveChanges();
-
-            WatchdogRules.Add(CreateDisplayItem(entity));
-
-            NewProcessName = string.Empty;
-            NewActionArgument = string.Empty;
-            IsAddPanelOpen = false;
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Failed to save watchdog rule: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    [RelayCommand]
-    private void CancelAddRule()
-    {
-        IsAddPanelOpen = false;
-        NewProcessName = string.Empty;
-    }
-
-    [RelayCommand]
-    private void DeleteRule(WatchdogRuleDisplayItem item)
-    {
-        if (item == null) return;
-        try
-        {
-            using var db = new ProGuardDbContext();
-            db.EnsureSchema();
-
-            var entity = db.WatchdogRules.FirstOrDefault(r => r.Id == item.Id);
-            if (entity != null)
-            {
-                db.WatchdogRules.Remove(entity);
-                db.SaveChanges();
-            }
-
-            WatchdogRules.Remove(item);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Error deleting watchdog rule: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    /// <summary>Sets Keep Running on the process's rule, creating the rule if it has none.</summary>
-    [RelayCommand]
-    private void AddKeepRunning()
-    {
-        if (string.IsNullOrWhiteSpace(NewKeepRunningName)) return;
-        var name = NormalizeExeName(NewKeepRunningName);
-        try
-        {
-            SetKeepRunning(name, true);
-            NewKeepRunningName = string.Empty;
-            LoadKeepRunning();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Failed to save Keep Running: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    /// <summary>Clears Keep Running. The process rule stays, since it may carry other settings.</summary>
-    [RelayCommand]
-    private void RemoveKeepRunning(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return;
-        try
-        {
-            SetKeepRunning(name, false);
-            LoadKeepRunning();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Failed to remove Keep Running: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    internal static void SetKeepRunning(string processName, bool keepRunning)
-    {
-        using var db = new ProGuardDbContext();
-        db.EnsureSchema();
-        var key = ProcessExtensions.NormalizeName(processName);
-        var rules = db.ProcessRules.ToList().Where(r => ProcessExtensions.NormalizeName(r.ProcessName) == key).ToList();
-        if (rules.Count == 0)
-        {
-            if (!keepRunning) return;
-            db.ProcessRules.Add(new ProcessRule { ProcessName = processName, KeepRunning = true });
-        }
-        foreach (var rule in rules) rule.KeepRunning = keepRunning;
-        db.SaveChanges();
-    }
-
-    private static string NormalizeExeName(string name)
-    {
-        var clean = name.Trim();
-        if (!clean.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && !clean.Equals("System", StringComparison.OrdinalIgnoreCase))
-            clean += ".exe";
-        return clean;
-    }
-
-    private static T Lookup<T>(IReadOnlyList<string> labels, T[] values, string label, T fallback)
-    {
-        for (var i = 0; i < labels.Count; i++)
-            if (labels[i] == label) return values[i];
-        return fallback;
+        Dto = dto;
+        enabled = dto.IsEnabled;
     }
 }
 
-public class WatchdogRuleDisplayItem : CommunityToolkit.Mvvm.ComponentModel.ObservableObject
+public sealed partial class WatchdogEditor : ObservableObject
 {
-    public int Id { get; set; }
-    public string Description { get; set; } = string.Empty;
-    public string Details { get; set; } = string.Empty;
+    public int Id { get; init; }
+    public string Heading => Id == 0 ? "NEW WATCH" : "EDIT WATCH";
 
-    private bool _isEnabled;
-    public bool IsEnabled
+    public IReadOnlyList<Choice<WatchdogTrigger>> Triggers { get; } = Enum.GetValues<WatchdogTrigger>()
+        .Select(t => new Choice<WatchdogTrigger>(WatchdogText.Trigger(t), t)).ToList();
+
+    public IReadOnlyList<Choice<WatchdogResponse>> Responses { get; } = Enum.GetValues<WatchdogResponse>()
+        .Select(r => new Choice<WatchdogResponse>(WatchdogText.Response(r), r)).ToList();
+
+    public IReadOnlyList<Choice<int>> Sustains { get; } = new[] { 0, 10, 30, 60, 300 }
+        .Select(s => new Choice<int>(WatchdogText.Sustain(s), s)).ToList();
+
+    [ObservableProperty] private string processName = string.Empty;
+    [ObservableProperty] private Choice<WatchdogTrigger> trigger;
+    [ObservableProperty] private string threshold = "80";
+    [ObservableProperty] private Choice<int> sustain;
+    [ObservableProperty] private Choice<WatchdogResponse> response;
+    [ObservableProperty] private bool enabled = true;
+
+    public string Unit => WatchdogText.Unit(Trigger.Value).Trim();
+
+    partial void OnTriggerChanged(Choice<WatchdogTrigger> value)
     {
-        get => _isEnabled;
-        set => SetProperty(ref _isEnabled, value);
+        OnPropertyChanged(nameof(Unit));
+        // Offer a sensible starting number for the new kind of condition.
+        Threshold = value.Value switch
+        {
+            WatchdogTrigger.CpuAbove => "80",
+            WatchdogTrigger.RamAbove => "2048",
+            WatchdogTrigger.RunningLongerThan => "3600",
+            _ => "1"
+        };
+    }
+
+    public WatchdogEditor(WatchdogRuleDto? from = null)
+    {
+        trigger = Triggers[0];
+        sustain = Sustains[2];
+        response = Responses[1];
+        if (from == null) return;
+
+        Id = from.Id;
+        _original = from;
+        processName = Fmt.Exe(from.TargetProcessName);
+        trigger = Triggers.First(t => t.Value == from.ConditionType);
+        threshold = from.ThresholdValue.ToString("0.#");
+        sustain = Sustains.FirstOrDefault(s => s.Value == from.DurationSeconds) ?? new Choice<int>(WatchdogText.Sustain(from.DurationSeconds), from.DurationSeconds);
+        response = Responses.First(r => r.Value == from.ActionType);
+        enabled = from.IsEnabled;
+    }
+
+    /// <summary>The rule being edited, as loaded; fields this editor doesn't show are sent back unchanged.</summary>
+    private readonly WatchdogRuleDto? _original;
+
+    public bool TryBuild(out WatchdogRuleDto dto, out string? error)
+    {
+        dto = new WatchdogRuleDto();
+        error = null;
+        if (string.IsNullOrWhiteSpace(ProcessName))
+        {
+            error = "Name the program to watch, e.g. chrome.exe.";
+            return false;
+        }
+        if (!double.TryParse(Threshold, out var value) || value <= 0)
+        {
+            error = "The threshold has to be a number above zero.";
+            return false;
+        }
+        if (Trigger.Value == WatchdogTrigger.CpuAbove && value > 100)
+        {
+            error = "CPU can't go above 100%.";
+            return false;
+        }
+
+        dto = _original == null ? new WatchdogRuleDto() : DtoCopy.Clone(_original);
+        dto.Id = Id;
+        dto.TargetProcessName = ProcessName.Trim();
+        dto.IsEnabled = Enabled;
+        dto.ConditionType = Trigger.Value;
+        dto.ThresholdValue = value;
+        dto.DurationSeconds = Sustain.Value;
+        dto.ActionType = Response.Value;
+        // "Drop to idle" was the rebuild's only priority action; keep that as the default argument.
+        if (dto.ActionType == WatchdogResponse.SetPriority && string.IsNullOrWhiteSpace(dto.ActionArgument)) dto.ActionArgument = "Idle";
+        return true;
+    }
+}
+
+/// <summary>"If this happens, do that" rules the engine checks continuously.</summary>
+public sealed partial class WatchdogViewModel : ObservableObject, IPage
+{
+    private readonly EngineHub _hub;
+    private readonly ShellViewModel _shell;
+
+    public ObservableCollection<WatchdogRow> Rules { get; } = new();
+
+    [ObservableProperty] private WatchdogEditor? editor;
+    [ObservableProperty] private bool isLoaded;
+
+    public WatchdogViewModel(EngineHub hub, ShellViewModel shell)
+    {
+        _hub = hub;
+        _shell = shell;
+    }
+
+    public void OnShown() => _ = LoadAsync();
+    public void OnHidden() { }
+
+    private async Task LoadAsync()
+    {
+        var rules = await _hub.QueryAsync<List<WatchdogRuleDto>>(CommandTypes.GetWatchdogRules, quiet: true);
+        if (rules == null) return;
+        Rules.Clear();
+        foreach (var rule in rules.OrderBy(r => r.TargetProcessName, StringComparer.OrdinalIgnoreCase))
+        {
+            var row = new WatchdogRow(rule);
+            row.PropertyChanged += async (_, e) =>
+            {
+                if (e.PropertyName == nameof(WatchdogRow.Enabled)) await ToggleAsync(row);
+            };
+            Rules.Add(row);
+        }
+        IsLoaded = true;
+    }
+
+    private async Task ToggleAsync(WatchdogRow row)
+    {
+        row.Dto.IsEnabled = row.Enabled;
+        await _hub.QueryAsync<WatchdogRuleDto>(CommandTypes.SaveWatchdogRule, argument: row.Dto);
+        _shell.Toaster.Show($"{row.Name} WATCH {(row.Enabled ? "ARMED" : "PAUSED")}");
+    }
+
+    [RelayCommand] private void New() => Editor = new WatchdogEditor();
+    [RelayCommand] private void Edit(WatchdogRow row) => Editor = new WatchdogEditor(row.Dto);
+    [RelayCommand] private void Cancel() => Editor = null;
+
+    [RelayCommand]
+    private async Task SaveAsync()
+    {
+        if (Editor is not { } editor) return;
+        if (!editor.TryBuild(out var dto, out var error))
+        {
+            _shell.Toaster.Show(error!, isError: true);
+            return;
+        }
+
+        var saved = await _hub.QueryAsync<WatchdogRuleDto>(CommandTypes.SaveWatchdogRule, argument: dto);
+        if (saved == null) return;
+
+        _shell.Toaster.Show($"WATCH SAVED · {Fmt.Exe(saved.TargetProcessName)}");
+        Editor = null;
+        await LoadAsync();
+    }
+
+    [RelayCommand]
+    private void Delete(WatchdogRow row)
+    {
+        _shell.Confirm("DELETE WATCH?", $"ProGuard stops watching {row.Name} for: {row.Condition} {row.Sustain}.", "DELETE",
+            async () =>
+            {
+                if (await _hub.RunAsync(CommandTypes.DeleteWatchdogRule, argument: row.Dto.Id, success: $"WATCH DELETED · {row.Name}"))
+                {
+                    if (Editor?.Id == row.Dto.Id) Editor = null;
+                    await LoadAsync();
+                }
+            });
     }
 }

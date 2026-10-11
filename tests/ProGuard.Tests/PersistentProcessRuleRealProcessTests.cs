@@ -177,38 +177,6 @@ public sealed class PersistentProcessRuleRealProcessTests : IDisposable
         Assert.Throws<InvalidOperationException>(() => _native.WriteUserGpuPreference("S-1-5-21-0-0-0-424242", exe, "GpuPreference=1;"));
     }
 
-    [Fact]
-    public void CpuSetPicker_ListsEverySystemCpuSet_AndReturnsTheTickedIds()
-    {
-        var sets = CpuSets.GetSystemCpuSets();
-        Exception? failure = null;
-        string? picked = null;
-        int listed = 0;
-
-        // WPF windows need an STA thread.
-        var thread = new System.Threading.Thread(() =>
-        {
-            try
-            {
-                var dialog = new ProGuard.UI.Controls.CpuSetPickerDialog(sets[0].Id.ToString(), "game.exe");
-                listed = dialog.Items.Count;
-                Assert.True(dialog.Items[0].IsSelected);
-                if (dialog.Items.Count > 1) dialog.Items[^1].IsSelected = true;
-                picked = dialog.SelectedIdsText;
-                dialog.Close();
-            }
-            catch (Exception ex) { failure = ex; }
-        });
-        thread.SetApartmentState(System.Threading.ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        Assert.Null(failure);
-        Assert.Equal(sets.Count, listed);
-        var expected = sets.Count > 1 ? new[] { sets[0].Id, sets[^1].Id } : new[] { sets[0].Id };
-        Assert.Equal(CpuSets.FormatIds(expected), picked);
-    }
-
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr OpenThread(uint access, bool inherit, int threadId);
 

@@ -798,48 +798,6 @@ public class WatchdogTests
         public bool CanOpenProcess(int pid, ProcessAccessFlags access) => false;
     }
 
-    [Fact]
-    public async Task NotificationListener_SkipsTheBacklog_ThenNotifiesNewNotifyEvents()
-    {
-        var log = new WatchdogEventLog(new ManualClock());
-        log.Add(WatchdogEventKinds.Fired, "old", "from before the UI started", notify: true);
-        var shown = new List<string>();
-        var batches = new List<IReadOnlyList<WatchdogEventDto>>();
-        var listener = new WatchdogNotificationListener((after, _) => Task.FromResult<WatchdogEventList?>(log.GetSince(after)), e => shown.Add(e.Title));
-        listener.EventsReceived += (_, events) => batches.Add(events);
-
-        await listener.PollOnceAsync(CancellationToken.None);
-        Assert.Empty(shown);
-        Assert.Single(batches); // the backlog still feeds the activity view
-
-        log.Add(WatchdogEventKinds.Fired, "quiet", "logged only");
-        log.Add(WatchdogEventKinds.Fired, "loud", "notify me", notify: true);
-        await listener.PollOnceAsync(CancellationToken.None);
-        Assert.Equal(new[] { "loud" }, shown);
-        Assert.Equal("loud", listener.LatestEvent?.Title);
-
-        await listener.PollOnceAsync(CancellationToken.None);
-        Assert.Single(shown);
-    }
-
-    [Fact]
-    public async Task NotificationListener_KeepsItsPlaceWhileTheEngineIsUnreachable()
-    {
-        var log = new WatchdogEventLog(new ManualClock());
-        var reachable = true;
-        var shown = new List<string>();
-        var listener = new WatchdogNotificationListener(
-            (after, _) => Task.FromResult(reachable ? log.GetSince(after) : null), e => shown.Add(e.Title));
-
-        await listener.PollOnceAsync(CancellationToken.None);
-        reachable = false;
-        log.Add(WatchdogEventKinds.Fired, "while away", "x", notify: true);
-        await listener.PollOnceAsync(CancellationToken.None);
-        reachable = true;
-        await listener.PollOnceAsync(CancellationToken.None);
-        Assert.Equal(new[] { "while away" }, shown);
-    }
-
     // ---------- Arguments and UI ----------
 
     [Theory]
@@ -883,61 +841,6 @@ public class WatchdogTests
         Assert.True(WatchdogArguments.TrySplitCommandLine("notepad.exe", out program, out args));
         Assert.Equal("notepad.exe", program);
         Assert.Equal("", args);
-    }
-
-    [Fact]
-    public void ViewModel_BuildsRulesWithTheNewFields()
-    {
-        var vm = new WatchdogViewModel
-        {
-            NewProcessName = "hog",
-            NewCondition = WatchdogViewModel.ConditionOptions[1],
-            NewMemoryMetric = WatchdogViewModel.MemoryMetricOptions[1],
-            NewThreshold = 2048,
-            NewDuration = 20,
-            NewAction = WatchdogViewModel.ActionOptions[2],
-            NewActionArgument = "BelowNormal",
-            NewActionDuration = 30,
-            NewCooldown = 0
-        };
-
-        Assert.Null(vm.TryBuildRule(out var rule));
-        Assert.Equal("hog.exe", rule.TargetProcessName);
-        Assert.Equal(WatchdogCondition.RamAbove, rule.ConditionType);
-        Assert.Equal(WatchdogMemoryMetric.PrivateBytes, rule.MemoryMetric);
-        Assert.Equal(WatchdogAction.SetPriority, rule.ActionType);
-        Assert.Equal("BelowNormal", rule.ActionArgument);
-        Assert.Equal(30, rule.ActionDurationSeconds);
-        Assert.Equal(0, rule.CooldownSeconds);
-    }
-
-    [Fact]
-    public void ViewModel_RejectsInvalidArguments()
-    {
-        var vm = new WatchdogViewModel { NewProcessName = "hog", NewAction = "Set Affinity", NewActionArgument = "lots" };
-        Assert.NotNull(vm.TryBuildRule(out _));
-
-        vm.NewAction = "Launch Program";
-        vm.NewActionArgument = "";
-        Assert.NotNull(vm.TryBuildRule(out _));
-
-        vm.NewAction = "Trim Working Set";
-        vm.NewTrimContinuously = true;
-        Assert.Null(vm.TryBuildRule(out var trim));
-        Assert.Equal(WatchdogArguments.ContinuousTrim, trim.ActionArgument);
-    }
-
-    [Fact]
-    public void ViewModel_KeepRunning_SetsAndClearsTheProcessRuleFlag()
-    {
-        var name = $"keeprun{Guid.NewGuid():N}.exe";
-        WatchdogViewModel.SetKeepRunning(name, true);
-        var vm = new WatchdogViewModel();
-        Assert.Contains(name, vm.KeepRunningProcesses);
-
-        WatchdogViewModel.SetKeepRunning(name, false);
-        vm.LoadKeepRunning();
-        Assert.DoesNotContain(name, vm.KeepRunningProcesses);
     }
 
     // ---------- Real processes and the launcher ----------

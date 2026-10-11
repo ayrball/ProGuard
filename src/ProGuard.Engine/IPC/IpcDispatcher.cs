@@ -57,15 +57,18 @@ public class IpcDispatcher
         _processMonitor = processMonitor;
     }
 
-    /// <summary>Handles one JSON request line and returns the JSON reply line. Never throws.</summary>
-    public string HandleLine(string line)
+    /// <summary>Handles a request from code inside the engine, which needs no authorization.</summary>
+    public string HandleLine(string line) => HandleLine(line, IpcCaller.InProcess);
+
+    /// <summary>Handles one JSON request line from <paramref name="caller"/> and returns the JSON reply line. Never throws.</summary>
+    public string HandleLine(string line, IIpcCaller caller)
     {
         IpcMessage response;
         try
         {
             // CommandMessage is a superset of IpcMessage, so every request deserializes into it.
             var request = JsonSerializer.Deserialize<CommandMessage>(line, JsonOptions);
-            response = request == null ? Result(CommandResult.Fail("Empty request")) : Dispatch(request);
+            response = request == null ? Result(CommandResult.Fail("Empty request")) : Dispatch(request, caller);
         }
         catch (JsonException ex)
         {
@@ -76,16 +79,26 @@ public class IpcDispatcher
         return JsonSerializer.Serialize(response);
     }
 
-    public IpcMessage Dispatch(CommandMessage request)
+    /// <summary>Dispatches a request from code inside the engine, which needs no authorization.</summary>
+    public IpcMessage Dispatch(CommandMessage request) => Dispatch(request, IpcCaller.InProcess);
+
+    public IpcMessage Dispatch(CommandMessage request, IIpcCaller caller)
     {
         try
         {
+            var denied = IpcAuthorization.Check(request, caller);
+            if (denied != null)
+            {
+                _logger.LogWarning("Refused IPC request {Type}/{Command} (pid {Pid}) from {Caller}", request.Type, request.CommandType, request.TargetPid, caller.Name);
+                return Result(denied);
+            }
+
             return request.Type switch
             {
                 MessageType.Ping => new IpcMessage { Type = MessageType.Pong, Payload = "{}" },
                 MessageType.GetStatus => new IpcMessage { Type = MessageType.Status, Payload = JsonSerializer.Serialize(BuildStatus()) },
                 MessageType.SetSetting => Result(ReplaceSettings(request.Payload)),
-                MessageType.Command => Result(ExecuteCommand(request)),
+                MessageType.Command => Result(ExecuteCommand(request, caller)),
                 _ => Result(CommandResult.Fail($"Unsupported message type {request.Type}"))
             };
         }
@@ -96,9 +109,9 @@ public class IpcDispatcher
         }
     }
 
-    private CommandResult ExecuteCommand(CommandMessage cmd)
+    private CommandResult ExecuteCommand(CommandMessage cmd, IIpcCaller caller)
     {
-        _logger.LogInformation("IPC command {Command} (pid {Pid}, arg {Argument})", cmd.CommandType, cmd.TargetPid, cmd.Argument);
+        _logger.LogInformation("IPC command {Command} (pid {Pid}, arg {Argument}) from {Caller}", cmd.CommandType, cmd.TargetPid, cmd.Argument, caller.Name);
 
         switch (cmd.CommandType)
         {
@@ -217,7 +230,7 @@ public class IpcDispatcher
         ProcessCount = _processMonitor.GetAllProcesses().Count()
     };
 
-    private static IpcMessage Result(CommandResult result) =>
+    internal static IpcMessage Result(CommandResult result) =>
         new() { Type = MessageType.CommandResult, Payload = JsonSerializer.Serialize(result) };
 
     private static int RequirePid(CommandMessage cmd) =>

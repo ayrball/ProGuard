@@ -125,7 +125,7 @@ public sealed class ForegroundPipeServer
             using var reader = new StreamReader(pipe, Encoding.UTF8);
             while (pipe.IsConnected && !token.IsCancellationRequested)
             {
-                var line = await ReadLineAsync(reader, token);
+                var line = await PipeLineReader.ReadLineAsync(reader, MaxLineLength, token);
                 if (line == null) break;
                 if (line.Length == 0) continue;
 
@@ -159,20 +159,4 @@ public sealed class ForegroundPipeServer
         long.TryParse(argument, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var ms)
             ? TimeSpan.FromMilliseconds(Math.Min(ms, uint.MaxValue))  // GetLastInputInfo can't say more; avoids overflow
             : null;
-
-    /// <summary>Like ReadLineAsync, but a line longer than <see cref="MaxLineLength"/> ends the connection.</summary>
-    private static async Task<string?> ReadLineAsync(StreamReader reader, CancellationToken token)
-    {
-        var line = new StringBuilder();
-        var buffer = new char[1];
-        while (true)
-        {
-            if (await reader.ReadAsync(buffer.AsMemory(), token) == 0)
-                return line.Length > 0 ? line.ToString() : null;
-            var c = buffer[0];
-            if (c == '\n') return line.ToString().TrimEnd('\r');
-            if (line.Length >= MaxLineLength) throw new InvalidDataException("Foreground report too long");
-            line.Append(c);
-        }
-    }
 }

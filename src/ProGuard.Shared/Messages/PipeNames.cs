@@ -2,7 +2,10 @@ namespace ProGuard.Shared.Messages;
 
 public static class PipeNames
 {
-    /// <summary>Request/reply command pipe. Default pipe security: only administrators and SYSTEM can write.</summary>
+    /// <summary>
+    /// Request/reply command pipe. Any interactive user may connect; the engine checks each request against the
+    /// caller's own rights, so a standard user can only act on processes they could open themselves.
+    /// </summary>
     public const string Engine = "ProGuardEngine";
 
     /// <summary>

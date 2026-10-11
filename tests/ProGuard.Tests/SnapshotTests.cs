@@ -204,7 +204,10 @@ public class SnapshotTests
         var h = new ThinHarness();
         for (var i = 0; i < 200; i++) h.Process(1000 + i, "p" + i);
 
-        var results = await Task.WhenAll(Enumerable.Range(0, 16).Select(_ => Task.Run(h.Snapshots.GetShared)));
+        // Each caller on a thread of its own: the ones waiting for the build block, and 16 of them on the thread pool
+        // would starve a small machine's pool (and every other test running alongside) until it grew.
+        var results = await Task.WhenAll(Enumerable.Range(0, 16).Select(_ => Task.Factory.StartNew(h.Snapshots.GetShared,
+            CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default)));
 
         Assert.Equal(1, h.Snapshots.BuildCount);
         Assert.All(results, r => Assert.Same(results[0], r));

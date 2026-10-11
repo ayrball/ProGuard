@@ -24,7 +24,9 @@ public sealed class FileLoggerProvider : ILoggerProvider
 
     public long MaxBytes { get; init; } = 10 * 1024 * 1024;
 
-    public FileLoggerProvider(string path, LogLevel minimumLevel = LogLevel.Information)
+    // The minimum level defaults to everything: the Logging:LogLevel configuration (appsettings.json) does the filtering,
+    // so a category can be turned up to Debug there.
+    public FileLoggerProvider(string path, LogLevel minimumLevel = LogLevel.Trace)
     {
         _path = Path.GetFullPath(path);
         _minimumLevel = minimumLevel;

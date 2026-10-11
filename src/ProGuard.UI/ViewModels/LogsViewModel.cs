@@ -36,7 +36,7 @@ public partial class LogsViewModel : ViewModelBase
         try
         {
             using var db = new ProGuardDbContext();
-            db.Database.EnsureCreated();
+            db.EnsureSchema();
 
             var actions = db.ResponsivenessGuardActions.OrderByDescending(a => a.Timestamp).Take(200).ToList();
             foreach (var a in actions)
@@ -88,7 +88,7 @@ public partial class LogsViewModel : ViewModelBase
         try
         {
             using var db = new ProGuardDbContext();
-            db.Database.EnsureCreated();
+            db.EnsureSchema();
             db.ResponsivenessGuardActions.RemoveRange(db.ResponsivenessGuardActions);
             db.SaveChanges();
         }

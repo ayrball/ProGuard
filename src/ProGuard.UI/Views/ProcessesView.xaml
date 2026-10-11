@@ -198,7 +198,7 @@
         <!-- ============================================================ search + filters -->
         <DockPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,20,0,16">
             <Grid DockPanel.Dock="Left" Width="300" Margin="0,0,26,0">
-                <TextBox x:Name="SearchBox" Style="{StaticResource Field}" Tag="SEARCH NAME OR PID" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox x:Name="SearchBox" AutomationProperties.Name="SEARCH NAME OR PID" Style="{StaticResource Field}" Tag="SEARCH NAME OR PID" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}"/>
                 <Button Style="{StaticResource Btn.Ghost}" Content="&#xE711;" FontFamily="{StaticResource Glyphs}" FontWeight="Normal" FontSize="10"
                         HorizontalAlignment="Right" Padding="8" Command="{Binding ClearSearchCommand}" ToolTip="Clear"
                         Visibility="{Binding Search, Converter={StaticResource VisibleWhen}}"/>
@@ -243,7 +243,7 @@
         </Border>
 
         <!-- ============================================================ table -->
-        <ListBox x:Name="Table" Grid.Row="3" Style="{StaticResource Table}" ItemContainerStyle="{StaticResource Table.Row}"
+        <ListBox x:Name="Table" AutomationProperties.AutomationId="ProcessTable" Grid.Row="3" Style="{StaticResource Table}" ItemContainerStyle="{StaticResource Table.Row}"
                  ItemTemplate="{StaticResource RowTemplate}" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}"
                  ContextMenu="{StaticResource RowMenu}"
                  MouseEnter="OnTableMouseEnter" MouseLeave="OnTableMouseLeave"
@@ -317,15 +317,15 @@
 
                         <TextBlock Text="PRIORITY" Style="{StaticResource Text.Label}" Margin="0,22,0,8"/>
                         <UniformGrid Columns="5">
-                            <Button Style="{StaticResource Seg}" Content="IDLE" Command="{Binding SetPriorityCommand}" CommandParameter="Idle"
+                            <Button Style="{StaticResource Seg}" Content="IDLE" AutomationProperties.Name="PRIORITY IDLE" Command="{Binding SetPriorityCommand}" CommandParameter="Idle"
                                     ui:Seg.IsOn="{Binding Selected.Priority, Converter={StaticResource EqualsParameter}, ConverterParameter=Idle, Mode=OneWay}"/>
-                            <Button Style="{StaticResource Seg}" Content="LOW" Command="{Binding SetPriorityCommand}" CommandParameter="BelowNormal"
+                            <Button Style="{StaticResource Seg}" Content="LOW" AutomationProperties.Name="PRIORITY BELOW NORMAL" Command="{Binding SetPriorityCommand}" CommandParameter="BelowNormal"
                                     ui:Seg.IsOn="{Binding Selected.Priority, Converter={StaticResource EqualsParameter}, ConverterParameter=BelowNormal, Mode=OneWay}"/>
-                            <Button Style="{StaticResource Seg}" Content="NORM" Command="{Binding SetPriorityCommand}" CommandParameter="Normal"
+                            <Button Style="{StaticResource Seg}" Content="NORM" AutomationProperties.Name="PRIORITY NORMAL" Command="{Binding SetPriorityCommand}" CommandParameter="Normal"
                                     ui:Seg.IsOn="{Binding Selected.Priority, Converter={StaticResource EqualsParameter}, ConverterParameter=Normal, Mode=OneWay}"/>
-                            <Button Style="{StaticResource Seg}" Content="ABOVE" Command="{Binding SetPriorityCommand}" CommandParameter="AboveNormal"
+                            <Button Style="{StaticResource Seg}" Content="ABOVE" AutomationProperties.Name="PRIORITY ABOVE NORMAL" Command="{Binding SetPriorityCommand}" CommandParameter="AboveNormal"
                                     ui:Seg.IsOn="{Binding Selected.Priority, Converter={StaticResource EqualsParameter}, ConverterParameter=AboveNormal, Mode=OneWay}"/>
-                            <Button Style="{StaticResource Seg}" Content="HIGH" Command="{Binding SetPriorityCommand}" CommandParameter="High"
+                            <Button Style="{StaticResource Seg}" Content="HIGH" AutomationProperties.Name="PRIORITY HIGH" Command="{Binding SetPriorityCommand}" CommandParameter="High"
                                     ui:Seg.IsOn="{Binding Selected.Priority, Converter={StaticResource EqualsParameter}, ConverterParameter=High, Mode=OneWay}"/>
                         </UniformGrid>
 
@@ -335,27 +335,27 @@
                             <TextBlock Text="I/O PRIORITY" Style="{StaticResource Text.Label}"/>
                         </DockPanel>
                         <UniformGrid Columns="4">
-                            <Button Style="{StaticResource Seg}" Content="V.LOW" Command="{Binding SetIoPriorityCommand}" CommandParameter="0"
+                            <Button Style="{StaticResource Seg}" Content="V.LOW" AutomationProperties.Name="I/O VERY LOW" Command="{Binding SetIoPriorityCommand}" CommandParameter="0"
                                     ui:Seg.IsOn="{Binding Selected.IoPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=0, Mode=OneWay}"/>
-                            <Button Style="{StaticResource Seg}" Content="LOW" Command="{Binding SetIoPriorityCommand}" CommandParameter="1"
+                            <Button Style="{StaticResource Seg}" Content="LOW" AutomationProperties.Name="I/O LOW" Command="{Binding SetIoPriorityCommand}" CommandParameter="1"
                                     ui:Seg.IsOn="{Binding Selected.IoPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=1, Mode=OneWay}"/>
-                            <Button Style="{StaticResource Seg}" Content="NORM" Command="{Binding SetIoPriorityCommand}" CommandParameter="2"
+                            <Button Style="{StaticResource Seg}" Content="NORM" AutomationProperties.Name="I/O NORMAL" Command="{Binding SetIoPriorityCommand}" CommandParameter="2"
                                     ui:Seg.IsOn="{Binding Selected.IoPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=2, Mode=OneWay}"/>
-                            <Button Style="{StaticResource Seg}" Content="HIGH" Command="{Binding SetIoPriorityCommand}" CommandParameter="3"
+                            <Button Style="{StaticResource Seg}" Content="HIGH" AutomationProperties.Name="I/O HIGH" Command="{Binding SetIoPriorityCommand}" CommandParameter="3"
                                     ui:Seg.IsOn="{Binding Selected.IoPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=3, Mode=OneWay}"/>
                         </UniformGrid>
 
                         <TextBlock Text="MEMORY PRIORITY" Style="{StaticResource Text.Label}" Margin="0,22,0,8"/>
                         <UniformGrid Columns="5">
-                            <Button Style="{StaticResource Seg}" Content="V.LOW" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="1"
+                            <Button Style="{StaticResource Seg}" Content="V.LOW" AutomationProperties.Name="MEMORY VERY LOW" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="1"
                                     ui:Seg.IsOn="{Binding Selected.MemoryPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=1, Mode=OneWay}"/>
-                            <Button Style="{StaticResource Seg}" Content="LOW" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="2"
+                            <Button Style="{StaticResource Seg}" Content="LOW" AutomationProperties.Name="MEMORY LOW" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="2"
                                     ui:Seg.IsOn="{Binding Selected.MemoryPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=2, Mode=OneWay}"/>
-                            <Button Style="{StaticResource Seg}" Content="MED" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="3"
+                            <Button Style="{StaticResource Seg}" Content="MED" AutomationProperties.Name="MEMORY MEDIUM" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="3"
                                     ui:Seg.IsOn="{Binding Selected.MemoryPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=3, Mode=OneWay}"/>
-                            <Button Style="{StaticResource Seg}" Content="BELOW" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="4"
+                            <Button Style="{StaticResource Seg}" Content="BELOW" AutomationProperties.Name="MEMORY BELOW NORMAL" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="4"
                                     ui:Seg.IsOn="{Binding Selected.MemoryPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=4, Mode=OneWay}"/>
-                            <Button Style="{StaticResource Seg}" Content="NORM" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="5"
+                            <Button Style="{StaticResource Seg}" Content="NORM" AutomationProperties.Name="MEMORY NORMAL" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="5"
                                     ui:Seg.IsOn="{Binding Selected.MemoryPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=5, Mode=OneWay}"/>
                         </UniformGrid>
 

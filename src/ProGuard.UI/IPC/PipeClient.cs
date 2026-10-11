@@ -16,7 +16,15 @@ namespace ProGuard.UI.IPC;
 /// </summary>
 public class PipeClient : IDisposable
 {
-    public const string DefaultPipeName = "ProGuardEngine";
+    /// <summary>Environment variable that overrides <see cref="DefaultPipeName"/>.</summary>
+    public const string PipeNameVariable = "PROGUARD_PIPE_NAME";
+
+    /// <summary>
+    /// The engine's command pipe (<see cref="PipeNames.Engine"/>), unless <see cref="PipeNameVariable"/> names another. The
+    /// tests set it to a pipe no engine serves, so a view model they create can never drive an installed engine.
+    /// </summary>
+    public static string DefaultPipeName =>
+        Environment.GetEnvironmentVariable(PipeNameVariable) is { Length: > 0 } name ? name : PipeNames.Engine;
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -27,9 +35,9 @@ public class PipeClient : IDisposable
     private bool _wasConnected;
     private bool _disposed;
 
-    public PipeClient(string pipeName = DefaultPipeName)
+    public PipeClient(string? pipeName = null)
     {
-        PipeName = pipeName;
+        PipeName = pipeName ?? DefaultPipeName;
     }
 
     public string PipeName { get; }

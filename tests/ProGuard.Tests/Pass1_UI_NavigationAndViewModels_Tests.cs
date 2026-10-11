@@ -88,7 +88,8 @@ public class Pass1_UI_NavigationAndViewModels_Tests
     [Fact]
     public void PowerViewModel_PerformanceMode_TogglesCorrectly()
     {
-        var vm = new PowerViewModel();
+        // No engine here, and the fallback must not switch this machine's power plan.
+        var vm = new PowerViewModel(new ProGuard.UI.IPC.EngineProxy(), _ => { });
         bool initialState = vm.IsPerformanceModeEnabled;
 
         vm.IsPerformanceModeEnabled = !initialState;

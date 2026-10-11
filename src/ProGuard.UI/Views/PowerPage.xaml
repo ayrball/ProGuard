@@ -14,17 +14,48 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel>
                         <TextBlock Text="Performance Mode" FontSize="18" FontWeight="SemiBold"/>
-                        <TextBlock Text="Automatically switches to High Performance when demanding applications are running." Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        <TextBlock Text="Switches to the performance plan below. Turned on here, it stays on until you turn it off; it also turns on by itself while a listed or detected game runs." Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
                     </StackPanel>
                     <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding IsPerformanceModeEnabled}" Content="Enabled" VerticalAlignment="Center"/>
                 </Grid>
+            </ui:CardControl>
+
+            <TextBlock Text="Automatic Performance Mode" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,8"/>
+            <ui:CardControl Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Performance plan:" Margin="0,0,0,4"/>
+                    <ComboBox ItemsSource="{Binding PowerPlans}" DisplayMemberPath="Name" SelectedIndex="{Binding PerformanceModePlanIndex, Mode=TwoWay}" Width="300" HorizontalAlignment="Left" Margin="0,0,0,16"/>
+
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Turn on while a detected game runs (Steam, Epic, GOG, Ubisoft, Battle.net, EA folders)" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding DetectGames, Mode=TwoWay}"/>
+                    </Grid>
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Turn on while a game from your Steam libraries runs" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding EngageForSteam, Mode=TwoWay}"/>
+                    </Grid>
+
+                    <TextBlock Text="Also turn on for these processes (one per line: name like game.exe, or full path; * allowed):" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                    <TextBox Text="{Binding AutoPerformanceModeProcesses, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="NoWrap" MinHeight="60" MaxHeight="140" VerticalScrollBarVisibility="Auto" Margin="0,0,0,16"/>
+
+                    <TextBlock Text="Never turn on for these processes:" Margin="0,0,0,4"/>
+                    <TextBox Text="{Binding AutoPerformanceModeExclusions, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="NoWrap" MinHeight="60" MaxHeight="140" VerticalScrollBarVisibility="Auto"/>
+                </StackPanel>
             </ui:CardControl>
 
             <TextBlock Text="Power Plans" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,8"/>
             <ui:CardControl Margin="0,0,0,16">
                 <StackPanel>
                     <TextBlock Text="{Binding CurrentPowerPlanText}" FontWeight="SemiBold" Foreground="{DynamicResource SystemFillColorSuccessBrush}" Margin="0,0,0,16"/>
-                    
+
                     <ItemsControl ItemsSource="{Binding PowerPlans}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
@@ -35,18 +66,21 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <TextBlock Text="When ProGuard starts, switch to:" Margin="0,8,0,4"/>
+                    <ComboBox ItemsSource="{Binding StartupPlanChoices}" SelectedIndex="{Binding StartupPlanIndex, Mode=TwoWay}" Width="300" HorizontalAlignment="Left"/>
                 </StackPanel>
             </ui:CardControl>
 
             <TextBlock Text="IdleSaver" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,8"/>
-            <ui:CardControl>
+            <ui:CardControl Margin="0,0,0,16">
                 <StackPanel>
                     <Grid Margin="0,0,0,16">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Drop to lower power plan when idle" VerticalAlignment="Center"/>
+                        <TextBlock Text="Drop to lower power plan when idle (not while Performance Mode is on)" TextWrapping="Wrap" VerticalAlignment="Center"/>
                         <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding IsIdleSaverEnabled, Mode=TwoWay}" Content="Enabled"/>
                     </Grid>
 
@@ -55,12 +89,43 @@
                         <ui:NumberBox Value="{Binding IdleTimeout, Mode=TwoWay}" Margin="0,0,0,16" Maximum="3600" Minimum="10"/>
 
                         <TextBlock Text="Idle Power Plan:" Margin="0,0,0,4"/>
-                        <ComboBox SelectedIndex="{Binding SelectedIdlePlanIndex, Mode=TwoWay}" Width="250" HorizontalAlignment="Left">
-                            <ComboBoxItem Content="Balanced"/>
-                            <ComboBoxItem Content="High Performance"/>
-                            <ComboBoxItem Content="Power Saver"/>
-                        </ComboBox>
+                        <ComboBox ItemsSource="{Binding PowerPlans}" DisplayMemberPath="Name" SelectedIndex="{Binding SelectedIdlePlanIndex, Mode=TwoWay}" Width="300" HorizontalAlignment="Left"/>
                     </StackPanel>
+                </StackPanel>
+            </ui:CardControl>
+
+            <TextBlock Text="Load-Based Power Switcher" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,8"/>
+            <ui:CardControl>
+                <StackPanel>
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Switch power plan by CPU load (Performance Mode and IdleSaver take precedence)" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding IsLoadSwitcherEnabled, Mode=TwoWay}" Content="Enabled"/>
+                    </Grid>
+
+                    <StackPanel IsEnabled="{Binding IsLoadSwitcherEnabled}">
+                        <TextBlock Text="Above this average CPU load (%), use the high plan:" Margin="0,0,0,4"/>
+                        <ui:NumberBox Value="{Binding LoadSwitcherHighThreshold, Mode=TwoWay}" Minimum="0" Maximum="100" Margin="0,0,0,8"/>
+                        <TextBlock Text="High plan:" Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding PowerPlans}" DisplayMemberPath="Name" SelectedIndex="{Binding LoadSwitcherHighPlanIndex, Mode=TwoWay}" Width="300" HorizontalAlignment="Left" Margin="0,0,0,16"/>
+
+                        <TextBlock Text="Below this average CPU load (%), leave the high plan:" Margin="0,0,0,4"/>
+                        <ui:NumberBox Value="{Binding LoadSwitcherLowThreshold, Mode=TwoWay}" Minimum="0" Maximum="100" Margin="0,0,0,8"/>
+                        <CheckBox Content="Go back to the plan from before (instead of a low plan)" IsChecked="{Binding LoadSwitcherDeferLowPlan, Mode=TwoWay}" Margin="0,0,0,8"/>
+                        <TextBlock Text="Low plan:" Margin="0,0,0,4" IsEnabled="{Binding IsLoadSwitcherLowPlanUsed}"/>
+                        <ComboBox ItemsSource="{Binding PowerPlans}" DisplayMemberPath="Name" SelectedIndex="{Binding LoadSwitcherLowPlanIndex, Mode=TwoWay}" Width="300" HorizontalAlignment="Left" Margin="0,0,0,16" IsEnabled="{Binding IsLoadSwitcherLowPlanUsed}"/>
+
+                        <TextBlock Text="Average over (samples, one per second):" Margin="0,0,0,4"/>
+                        <ui:NumberBox Value="{Binding LoadSwitcherAveragingSamples, Mode=TwoWay}" Minimum="1" Maximum="600" Margin="0,0,0,16"/>
+
+                        <TextBlock Text="Minimum time in a plan before switching again (ms):" Margin="0,0,0,4"/>
+                        <ui:NumberBox Value="{Binding LoadSwitcherMinimumTimeInPlanMs, Mode=TwoWay}" Minimum="0" Maximum="3600000" Margin="0,0,0,8"/>
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding LoadSwitcherError}" Foreground="{DynamicResource SystemFillColorCriticalBrush}" TextWrapping="Wrap"/>
                 </StackPanel>
             </ui:CardControl>
         </StackPanel>

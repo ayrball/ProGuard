@@ -169,11 +169,12 @@ public class Pass1_UI_NavigationAndViewModels_Tests
     [Fact]
     public void PowerViewModel_Initializes_With_Available_Plans()
     {
+        // The plans installed on this machine, not a fixed list: OEM images often lack High Performance.
         var vm = new PowerViewModel();
         Assert.NotNull(vm.PowerPlans);
-        Assert.True(vm.PowerPlans.Count >= 3);
-        Assert.Contains(vm.PowerPlans, p => p.Name.Contains("Balanced"));
-        Assert.Contains(vm.PowerPlans, p => p.Name.Contains("High Performance"));
+        Assert.Equal(ProGuard.Core.Helpers.PowerPlans.Enumerate().Select(p => p.Id), vm.PowerPlans.Select(p => p.Guid));
+        Assert.Contains(vm.PowerPlans, p => p.Guid == ProGuard.Core.Native.Powrprof.Balanced);
+        Assert.All(vm.PowerPlans, p => Assert.False(string.IsNullOrWhiteSpace(p.Name)));
     }
 
     [Fact]

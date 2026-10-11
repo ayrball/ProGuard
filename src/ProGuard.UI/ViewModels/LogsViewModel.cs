@@ -7,6 +7,7 @@ using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ProGuard.Core.Data;
+using ProGuard.Core.Models;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -41,6 +42,18 @@ public partial class LogsViewModel : ViewModelBase
             var actions = db.ProBalanceActions.OrderByDescending(a => a.Timestamp).Take(200).ToList();
             foreach (var a in actions)
             {
+                if (a.Pid == 0 && a.ProcessName == ProBalanceAction.PowerPlanEntryName)
+                {
+                    _allLogs.Add(new LogEntryItem
+                    {
+                        Timestamp = a.Timestamp.ToString("g"),
+                        Type = "System",
+                        ProcessName = a.ProcessName,
+                        Message = a.Reason
+                    });
+                    continue;
+                }
+
                 // CPU Limiter (affinity reduction) entries leave both priorities at 0 and put the masks in Reason.
                 bool isCpuLimiter = a.OriginalPriority == 0 && a.NewPriority == 0;
                 _allLogs.Add(new LogEntryItem

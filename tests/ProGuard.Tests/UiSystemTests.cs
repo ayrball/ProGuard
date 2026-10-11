@@ -598,6 +598,62 @@ public class UiSystemTests
         Assert.Equal("SET BY YOU", vm.PlanOwnerText);
     }
 
+    // Synchronous on purpose: the toasts are posted to this thread's dispatcher, and only this thread can run it.
+    [Fact]
+    public void Processes_Trim_ThatTheEngineRefuses_ShowsTheRefusal_AndNoAmountFreed()
+    {
+        using var engine = new SyncDisposable(new FakeEngine());
+        engine.Value.Handler = _ => CommandResult.Fail("Access denied: you may not trim the memory of process 4324.");
+        var shell = NewShell(pipe: engine.Value.PipeName);
+        shell.Processes.Selected = new ProcessRow(4324, "spoolsv.exe");
+
+        shell.Processes.TrimCommand.ExecuteAsync(null).GetAwaiter().GetResult();
+
+        Assert.Equal(new[] { "Access denied: you may not trim the memory of process 4324." }, Toasts(shell));
+    }
+
+    [Fact]
+    public void Processes_Trim_ShowsTheAmountFreed()
+    {
+        using var engine = new SyncDisposable(new FakeEngine());
+        engine.Value.Handler = _ => CommandResult.Ok("14680064");
+        var shell = NewShell(pipe: engine.Value.PipeName);
+        shell.Processes.Selected = new ProcessRow(8656, "pgproc.exe");
+
+        shell.Processes.TrimCommand.ExecuteAsync(null).GetAwaiter().GetResult();
+
+        Assert.Equal(new[] { "pgproc.exe · freed 14 MB" }, Toasts(shell));
+    }
+
+    [Fact]
+    public void System_TrimEverything_ThatTheEngineRefuses_ShowsTheRefusal_AndNoAmountFreed()
+    {
+        using var engine = new SyncDisposable(new FakeEngine());
+        engine.Value.Handler = _ => CommandResult.Fail("The engine is busy.");
+        var shell = NewShell(pipe: engine.Value.PipeName);
+
+        shell.System.TrimAllCommand.Execute(null);
+        var confirm = Assert.IsType<ConfirmDialogViewModel>(shell.Dialog);
+        confirm.ConfirmCommand.ExecuteAsync(null).GetAwaiter().GetResult();
+
+        Assert.Equal(new[] { "The engine is busy." }, Toasts(shell));
+    }
+
+    /// <summary>The toasts on screen once everything already posted to this thread's dispatcher has run.</summary>
+    private static string[] Toasts(ShellViewModel shell)
+    {
+        var frame = new DispatcherFrame();
+        Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background, () => frame.Continue = false);
+        Dispatcher.PushFrame(frame);
+        return shell.Toaster.Items.Select(t => t.Message).ToArray();
+    }
+
+    private sealed class SyncDisposable(FakeEngine value) : IDisposable
+    {
+        public FakeEngine Value { get; } = value;
+        public void Dispose() => Value.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    }
+
     private static async Task WaitForAsync(Func<bool> condition)
     {
         var deadline = Stopwatch.StartNew();

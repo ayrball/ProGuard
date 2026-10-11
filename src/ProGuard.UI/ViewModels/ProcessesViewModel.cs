@@ -337,7 +337,8 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
     private async Task TrimAsync()
     {
         if (Selected is not { } row) return;
-        var freed = await _hub.QueryAsync<long>(CommandTypes.TrimWorkingSet, row.Pid);
+        // Null when the engine refused or failed: QueryAsync has already said why.
+        if (await _hub.QueryAsync<long?>(CommandTypes.TrimWorkingSet, row.Pid) is not { } freed) return;
         _shell.Toaster.Show($"{row.Name} · freed {Fmt.Bytes(freed)}");
         _hub.RefreshNow();
     }

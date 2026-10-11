@@ -43,6 +43,41 @@ public partial class RulesViewModel : ViewModelBase
     [ObservableProperty]
     private string newCpuLimitDuration = CpuAffinityLimitDefaults.DurationSeconds.ToString();
 
+    // Instance limit
+    [ObservableProperty]
+    private string newMaxInstances = "None";
+
+    [ObservableProperty]
+    private bool newMaxInstancesAllSessions;
+
+    // Instance Balancer
+    public string[] BalancerModes { get; } = { BalancerOff, BalancerEqual, BalancerFixed };
+    private const string BalancerOff = "Off";
+    private const string BalancerEqual = "Equal cores per instance";
+    private const string BalancerFixed = "Fixed cores per instance";
+
+    [ObservableProperty]
+    private string newBalancerMode = BalancerOff;
+
+    [ObservableProperty]
+    private string newBalancerCoresPerInstance = "1";
+
+    [ObservableProperty]
+    private bool newBalancerAvoidSmt;
+
+    [ObservableProperty]
+    private string newBalancerReservedCores = "0";
+
+    [ObservableProperty]
+    private string newBalancerMinCpu = "0";
+
+    // Startup boost
+    [ObservableProperty]
+    private string newStartupBoostPriority = "None";
+
+    [ObservableProperty]
+    private string newStartupBoostSeconds = "10";
+
     public ObservableCollection<RuleDisplayItem> Rules { get; set; } = new();
 
     public RulesViewModel()
@@ -65,7 +100,7 @@ public partial class RulesViewModel : ViewModelBase
                 string prioText = r.PriorityClass.HasValue ? ((ProcessPriorityClass)r.PriorityClass.Value).ToString() : "Normal";
                 string affText = r.AffinityMask.HasValue ? ProcessListViewModel.FormatAffinityText(r.AffinityMask.Value) : "All Cores";
                 string cpuText = r.CpuLimitPercent.HasValue ? $"{r.CpuLimitPercent.Value}%" : "None";
-                string maxInst = r.MaxInstances.HasValue ? r.MaxInstances.Value.ToString() : "None";
+                string maxInst = FormatMaxInstances(r);
 
                 Rules.Add(new RuleDisplayItem
                 {
@@ -76,6 +111,8 @@ public partial class RulesViewModel : ViewModelBase
                     CpuLimit = cpuText,
                     CpuAffinityLimit = FormatCpuAffinityLimit(r),
                     MaxInstances = maxInst,
+                    InstanceBalancer = FormatBalancer(r),
+                    StartupBoost = FormatStartupBoost(r),
                     IsDisallowed = r.DisallowExecution
                 });
             }
@@ -132,6 +169,7 @@ public partial class RulesViewModel : ViewModelBase
                 CpuLimitPercent = cpuLimitVal,
                 DisallowExecution = NewIsDisallowed
             };
+            ApplyInstanceAndBoostFields(entity);
 
             var affinityLimitError = ApplyCpuAffinityLimit(entity, NewCpuLimitThreshold, NewCpuLimitOverSeconds, NewCpuLimitCores, NewCpuLimitDuration);
             if (affinityLimitError != null)
@@ -151,7 +189,9 @@ public partial class RulesViewModel : ViewModelBase
                 Affinity = "All",
                 CpuLimit = cpuLimitVal.HasValue ? $"{cpuLimitVal}%" : "None",
                 CpuAffinityLimit = FormatCpuAffinityLimit(entity),
-                MaxInstances = "None",
+                MaxInstances = FormatMaxInstances(entity),
+                InstanceBalancer = FormatBalancer(entity),
+                StartupBoost = FormatStartupBoost(entity),
                 IsDisallowed = entity.DisallowExecution
             });
 
@@ -206,6 +246,41 @@ public partial class RulesViewModel : ViewModelBase
         return $"≥{rule.CpuLimitThresholdPercent.Value}% for {over}s: -{cores} core{(cores == 1 ? "" : "s")} for {duration}s";
     }
 
+    /// <summary>Copies the instance limit, Instance Balancer and startup boost inputs onto <paramref name="rule"/>.</summary>
+    public void ApplyInstanceAndBoostFields(ProcessRule rule)
+    {
+        rule.MaxInstances = int.TryParse(NewMaxInstances?.Trim(), out var max) && max >= 1 ? max : null;
+        rule.MaxInstancesAllSessions = NewMaxInstancesAllSessions;
+
+        rule.InstanceBalancerMode = NewBalancerMode switch
+        {
+            BalancerEqual => InstanceBalancerMode.EqualCoresPerInstance,
+            BalancerFixed => InstanceBalancerMode.FixedCoresPerInstance,
+            _ => null
+        };
+        rule.InstanceBalancerCoresPerInstance = int.TryParse(NewBalancerCoresPerInstance?.Trim(), out var cores) && cores >= 1 ? cores : null;
+        rule.InstanceBalancerAvoidSmt = NewBalancerAvoidSmt;
+        rule.InstanceBalancerReservedCores = int.TryParse(NewBalancerReservedCores?.Trim(), out var reserved) && reserved > 0 ? reserved : null;
+        rule.InstanceBalancerMinCpuPercent =
+            double.TryParse(NewBalancerMinCpu?.Replace("%", "").Trim(), out var minCpu) && minCpu > 0 ? Math.Min(minCpu, 100) : null;
+
+        rule.StartupBoostPriorityClass = Enum.TryParse<ProcessPriorityClass>(NewStartupBoostPriority, out var boost) ? (int)boost : null;
+        rule.StartupBoostSeconds = int.TryParse(NewStartupBoostSeconds?.Trim(), out var seconds) ? Math.Clamp(seconds, 1, 3600) : null;
+    }
+
+    private static string FormatMaxInstances(ProcessRule r) =>
+        r.MaxInstances is int max ? (r.MaxInstancesAllSessions ? $"{max} (all sessions)" : max.ToString()) : "None";
+
+    private static string FormatBalancer(ProcessRule r) => r.InstanceBalancerMode switch
+    {
+        InstanceBalancerMode.EqualCoresPerInstance => "Equal",
+        InstanceBalancerMode.FixedCoresPerInstance => $"{r.InstanceBalancerCoresPerInstance ?? 1} per instance",
+        _ => "Off"
+    };
+
+    private static string FormatStartupBoost(ProcessRule r) =>
+        r.StartupBoostPriorityClass is int p ? $"{(ProcessPriorityClass)p} for {r.StartupBoostSeconds ?? 10}s" : "None";
+
     [RelayCommand]
     private void CancelAddRule()
     {
@@ -252,5 +327,7 @@ public class RuleDisplayItem
     public string CpuLimit { get; set; } = string.Empty;
     public string CpuAffinityLimit { get; set; } = "None";
     public string MaxInstances { get; set; } = string.Empty;
+    public string InstanceBalancer { get; set; } = string.Empty;
+    public string StartupBoost { get; set; } = string.Empty;
     public bool IsDisallowed { get; set; }
 }

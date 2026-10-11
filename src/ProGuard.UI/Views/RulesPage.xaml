@@ -63,6 +63,68 @@
                         <CheckBox IsChecked="{Binding NewIsDisallowed}" Content="Disallow Execution" Margin="0,0,0,6"/>
                     </StackPanel>
 
+                </WrapPanel>
+
+                <!-- Instance limit, Instance Balancer and startup boost -->
+                <WrapPanel Orientation="Horizontal">
+                    <StackPanel Margin="0,0,16,12">
+                        <TextBlock Text="Max Instances:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,6"/>
+                        <ui:TextBox Text="{Binding NewMaxInstances, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="e.g. 2 or None" Width="110"
+                                    ToolTip="Newer instances over this count are terminated"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,20,12" VerticalAlignment="Bottom">
+                        <CheckBox IsChecked="{Binding NewMaxInstancesAllSessions}" Content="Count all sessions" Margin="0,0,0,6"
+                                  ToolTip="Count instances of every user instead of only the new instance's session"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,16,12">
+                        <TextBlock Text="Instance Balancer:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,6"/>
+                        <ComboBox ItemsSource="{Binding BalancerModes}" SelectedItem="{Binding NewBalancerMode}" Width="200"
+                                  ToolTip="Split the CPU cores across the running instances"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,16,12">
+                        <TextBlock Text="Cores / Instance:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,6"/>
+                        <ui:TextBox Text="{Binding NewBalancerCoresPerInstance, UpdateSourceTrigger=PropertyChanged}" Width="90"
+                                    ToolTip="Used by 'Fixed cores per instance'"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,16,12">
+                        <TextBlock Text="Reserve Cores:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,6"/>
+                        <ui:TextBox Text="{Binding NewBalancerReservedCores, UpdateSourceTrigger=PropertyChanged}" Width="90"
+                                    ToolTip="The lowest cores are never given to an instance"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,16,12">
+                        <TextBlock Text="Min CPU (%):" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,6"/>
+                        <ui:TextBox Text="{Binding NewBalancerMinCpu, UpdateSourceTrigger=PropertyChanged}" Width="90"
+                                    ToolTip="An instance gets its own cores once it uses this much CPU"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,20,12" VerticalAlignment="Bottom">
+                        <CheckBox IsChecked="{Binding NewBalancerAvoidSmt}" Content="Avoid SMT siblings" Margin="0,0,0,6"
+                                  ToolTip="Use only the first logical processor of each physical core"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,16,12">
+                        <TextBlock Text="Startup Boost:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,6"/>
+                        <ComboBox SelectedValue="{Binding NewStartupBoostPriority}" SelectedValuePath="Content" Width="150"
+                                  ToolTip="Priority class for the first seconds after the process starts">
+                            <ComboBoxItem Content="None" IsSelected="True"/>
+                            <ComboBoxItem Content="RealTime"/>
+                            <ComboBoxItem Content="High"/>
+                            <ComboBoxItem Content="AboveNormal"/>
+                            <ComboBoxItem Content="Normal"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,16,12">
+                        <TextBlock Text="Boost For (s):" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,6"/>
+                        <ui:TextBox Text="{Binding NewStartupBoostSeconds, UpdateSourceTrigger=PropertyChanged}" Width="90"
+                                    ToolTip="1 to 3600 seconds"/>
+                    </StackPanel>
+
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" Margin="0,0,0,12">
                         <ui:Button Content="Save Rule" Appearance="Primary" Command="{Binding SaveNewRuleCommand}" Margin="0,0,8,0"/>
                         <ui:Button Content="Cancel" Command="{Binding CancelAddRuleCommand}"/>
@@ -83,6 +145,8 @@
                 <DataGridTextColumn Header="CPU Limit" Binding="{Binding CpuLimit}" Width="120" ElementStyle="{StaticResource FluentDataGridTextStyle}"/>
                 <DataGridTextColumn Header="CPU Limiter (affinity)" Binding="{Binding CpuAffinityLimit}" Width="220" ElementStyle="{StaticResource FluentDataGridTextStyle}"/>
                 <DataGridTextColumn Header="Max Instances" Binding="{Binding MaxInstances}" Width="130" ElementStyle="{StaticResource FluentDataGridTextStyle}"/>
+                <DataGridTextColumn Header="Instance Balancer" Binding="{Binding InstanceBalancer}" Width="140" ElementStyle="{StaticResource FluentDataGridTextStyle}"/>
+                <DataGridTextColumn Header="Startup Boost" Binding="{Binding StartupBoost}" Width="140" ElementStyle="{StaticResource FluentDataGridTextStyle}"/>
                 <DataGridCheckBoxColumn Header="Disallowed" Binding="{Binding IsDisallowed}" Width="110"/>
             </DataGrid.Columns>
         </DataGrid>

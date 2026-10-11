@@ -197,7 +197,7 @@ public sealed class StandInMachine
             }
             case CommandTypes.ClearActionLog:
             {
-                if (!_admin) return Deny($"run {cmd.CommandType}");
+                if (!_admin) return Deny("clear the action log");
                 // Like the engine: only the database action log goes. Watchdog events, manual actions and engine
                 // messages live elsewhere and stay.
                 Mutate(() => _activity.RemoveAll(a => a.Kind is not (ActivityKind.Watchdog or ActivityKind.Manual or ActivityKind.System)));
@@ -205,7 +205,7 @@ public sealed class StandInMachine
             }
             case CommandTypes.PurgeMemory:
             {
-                if (!_admin) return Deny($"run {cmd.CommandType}");
+                if (!_admin) return Deny("purge memory");
                 var result = new MemoryPurgeResultDto
                 {
                     ProcessesTrimmed = 31,
@@ -295,8 +295,8 @@ public sealed class StandInMachine
             // ---- rules
             case CommandTypes.SaveProcessRule:
             {
-                if (!_admin) return Deny($"run {cmd.CommandType}");
                 var rule = Argument<ProcessRuleDto>(cmd);
+                if ((RuleRefusal(rule) ?? RuleRefusal(_rules.FirstOrDefault(r => r.Id == rule.Id && rule.Id != 0))) is { } refused) return Deny(refused);
                 if (ValidateRule(rule) is { } problem) return CommandResult.Fail(problem);
                 if (rule.Id != 0 && _rules.All(r => r.Id != rule.Id)) return CommandResult.Fail($"Rule {rule.Id} doesn't exist.");
                 if (rule.Id == 0) rule.Id = _rules.Count == 0 ? 1 : _rules.Max(r => r.Id) + 1;
@@ -311,9 +311,9 @@ public sealed class StandInMachine
             }
             case CommandTypes.DeleteProcessRule:
             {
-                if (!_admin) return Deny($"run {cmd.CommandType}");
                 if (!int.TryParse(cmd.Argument, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) || _rules.All(r => r.Id != id))
                     return CommandResult.Fail("That rule doesn't exist.");
+                if (RuleRefusal(_rules.First(r => r.Id == id)) is { } refused) return Deny(refused);
                 Mutate(() =>
                 {
                     _rules.RemoveAll(r => r.Id == id);
@@ -323,8 +323,8 @@ public sealed class StandInMachine
             }
             case CommandTypes.SaveWatchdogRule:
             {
-                if (!_admin) return Deny($"run {cmd.CommandType}");
                 var rule = Argument<WatchdogRuleDto>(cmd);
+                if ((WatchRefusal(rule) ?? WatchRefusal(_watchdog.FirstOrDefault(r => r.Id == rule.Id && rule.Id != 0))) is { } refused) return Deny(refused);
                 if (string.IsNullOrWhiteSpace(rule.TargetProcessName)) return CommandResult.Fail("A watchdog rule needs a process name");
                 if (rule.ThresholdValue <= 0) return CommandResult.Fail("The threshold has to be above zero.");
                 if (rule.ConditionType == WatchdogTrigger.CpuAbove && rule.ThresholdValue > 100) return CommandResult.Fail("CPU can't go above 100%.");
@@ -342,9 +342,9 @@ public sealed class StandInMachine
             }
             case CommandTypes.DeleteWatchdogRule:
             {
-                if (!_admin) return Deny($"run {cmd.CommandType}");
                 if (!int.TryParse(cmd.Argument, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) || _watchdog.All(r => r.Id != id))
                     return CommandResult.Fail("That rule doesn't exist.");
+                if (WatchRefusal(_watchdog.First(r => r.Id == id)) is { } refused) return Deny(refused);
                 Mutate(() => _watchdog.RemoveAll(r => r.Id == id));
                 return CommandResult.Ok();
             }
@@ -508,12 +508,12 @@ public sealed class StandInMachine
         var found = _processes.FirstOrDefault(s => s.Process.Pid == pid)?.Process;
         if (found == null)
         {
-            error = _admin ? CommandResult.Fail($"Process {pid} isn't running.") : Deny($"{cmd.CommandType} process {pid}: it belongs to another user, is elevated or protected, or is not running");
+            error = _admin ? CommandResult.Fail($"Process {pid} isn't running.") : Deny($"{CommandTypes.Describe(cmd.CommandType)} process {pid}: it belongs to another user, is elevated or protected, or is not running");
             return false;
         }
         if (!CanTouch(found))
         {
-            error = Deny($"{cmd.CommandType} process {pid}: it belongs to another user, is elevated or protected, or is not running");
+            error = Deny($"{CommandTypes.Describe(cmd.CommandType)} process {pid}: it belongs to another user, is elevated or protected, or is not running");
             return false;
         }
         process = found;
@@ -552,6 +552,47 @@ public sealed class StandInMachine
             : JsonSerializer.Deserialize<T>(cmd.Argument, EngineClient.Json) ?? throw new ArgumentException($"{cmd.CommandType} needs an argument.");
 
     private static CommandResult Data(object value) => CommandResult.Ok(JsonSerializer.Serialize(value, value.GetType()));
+
+    // ---- what a standard user may put in a rule: a simplified copy of the engine's RuleAuthorization
+
+    private static readonly HashSet<string> CriticalNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "system", "idle", "registry", "memory compression", "secure system", "smss", "csrss", "wininit",
+        "winlogon", "services", "lsass", "lsaiso", "dwm", "fontdrvhost", "proguard.engine", "proguard.ui"
+    };
+
+    private static string Bare(string name)
+    {
+        var file = System.IO.Path.GetFileName(name.Trim());
+        return file.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? file[..^4] : file;
+    }
+
+    /// <summary>Some running instance of the program belongs to Windows or another user, so the caller couldn't end it.</summary>
+    private bool HasInstanceCallerCantEnd(string name) =>
+        _processes.Any(s => s.Process.IsSystem && string.Equals(s.Process.Name, Bare(name), StringComparison.OrdinalIgnoreCase));
+
+    private string? RuleRefusal(ProcessRuleDto? rule)
+    {
+        if (_admin || rule == null) return null;
+        if (CriticalNames.Contains(Bare(rule.ProcessName))) return $"change rules for {rule.ProcessName}, a system process";
+        if (rule.PriorityClass == (int)ProcessPriorityClass.RealTime || rule.StartupBoostPriorityClass == (int)ProcessPriorityClass.RealTime)
+            return "set Realtime priority";
+        if ((rule.DisallowExecution || rule.MaxInstances != null) && HasInstanceCallerCantEnd(rule.ProcessName))
+            return $"make a rule that ends {rule.ProcessName}: some of its instances belong to Windows or another user";
+        return null;
+    }
+
+    private string? WatchRefusal(WatchdogRuleDto? rule)
+    {
+        if (_admin || rule == null) return null;
+        if (CriticalNames.Contains(Bare(rule.TargetProcessName))) return $"change rules for {rule.TargetProcessName}, a system process";
+        if (rule.ActionType == WatchdogResponse.Launch) return "add a Watchdog Launch action: the program would start as another user";
+        if (rule.ActionType == WatchdogResponse.SetPriority && string.Equals(rule.ActionArgument?.Trim(), "RealTime", StringComparison.OrdinalIgnoreCase))
+            return "set Realtime priority";
+        if (rule.ActionType is WatchdogResponse.Terminate or WatchdogResponse.Restart && HasInstanceCallerCantEnd(rule.TargetProcessName))
+            return $"make a rule that ends {rule.TargetProcessName}: some of its instances belong to Windows or another user";
+        return null;
+    }
 
     private static CommandResult Deny(string what) =>
         CommandResult.Fail($"Access denied: {Caller} may not {what}. Run ProGuard as administrator to do this.");

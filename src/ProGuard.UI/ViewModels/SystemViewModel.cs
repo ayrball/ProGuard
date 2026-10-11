@@ -71,9 +71,8 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     public ObservableCollection<PowerPlanRow> Plans { get; } = new();
     public ObservableCollection<CoreToggle> RestraintCores { get; } = new();
 
-    // ResponsivenessGuard
-    public NumberField TriggerPercent { get; } = new("USE ABOVE", "%", 1, 100, integer: false);
-    public NumberField RecoveryPercent { get; } = new("RESTORE BELOW", "%", 0, 100, integer: false);
+    // ResponsivenessGuard. ResponsivenessGuardCpuThreshold/RecoveryThreshold have no control: the engine's ResponsivenessGuard follows Process
+    // otherpm's timing (set through the sensitivity) and ignores them, so they go back exactly as stored.
     public NumberField IdlePauseMs { get; } = new("PAUSE AFTER IDLE FOR", "MS", 1000, 3_600_000);
 
     // MemoryTrim
@@ -179,7 +178,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
         _logical = Math.Max(1, hub.Snapshot?.LogicalProcessors ?? Environment.ProcessorCount);
         BuildCores(0);
 
-        foreach (var field in new[] { TriggerPercent, RecoveryPercent, IdlePauseMs, TrimInterval, TrimThresholdMb, TrimMinRamLoad, StandbyFreeRamMb,
+        foreach (var field in new[] { IdlePauseMs, TrimInterval, TrimThresholdMb, TrimMinRamLoad, StandbyFreeRamMb,
                                        IdleTimeout, AveragingSamples, MinimumTimeInPlanMs, PollingInterval })
         {
             field.Committed += QueueSave;
@@ -221,8 +220,6 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
 
                 ResponsivenessGuardEnabled = settings.ResponsivenessGuardEnabled;
                 SensitivityLevel = Math.Clamp(settings.ResponsivenessGuardSensitivity, 1, 10);
-                TriggerPercent.Load(settings.ResponsivenessGuardCpuThreshold);
-                RecoveryPercent.Load(settings.ResponsivenessGuardRecoveryThreshold);
                 RestrainByAffinity = settings.ResponsivenessGuardRestrainByAffinity;
                 BuildCores(settings.ResponsivenessGuardRestraintAffinity);
                 DropOneRandomCore = settings.ResponsivenessGuardDropOneRandomCore;
@@ -497,8 +494,6 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
 
         s.ResponsivenessGuardEnabled = ResponsivenessGuardEnabled;
         if (Math.Clamp(s.ResponsivenessGuardSensitivity, 1, 10) != SensitivityLevel) s.ResponsivenessGuardSensitivity = SensitivityLevel;
-        s.ResponsivenessGuardCpuThreshold = TriggerPercent.ToStored(s.ResponsivenessGuardCpuThreshold);
-        s.ResponsivenessGuardRecoveryThreshold = RecoveryPercent.ToStored(s.ResponsivenessGuardRecoveryThreshold);
         s.ResponsivenessGuardRestrainByAffinity = RestrainByAffinity;
         s.ResponsivenessGuardRestraintAffinity = MergeMask(s.ResponsivenessGuardRestraintAffinity);
         s.ResponsivenessGuardDropOneRandomCore = DropOneRandomCore;

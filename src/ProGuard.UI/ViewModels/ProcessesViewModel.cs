@@ -380,10 +380,10 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
     }
 
     [RelayCommand]
-    private void MakeRule()
+    private async Task MakeRuleAsync()
     {
         if (Selected is not { } row) return;
-        _shell.Rules.StartNew(row.Name, row.Priority, row.CpuLimitPercent);
+        await _shell.Rules.StartNewAsync(row.Name, row.Priority, row.CpuLimitPercent);
         _shell.GoTo(_shell.Rules);
     }
 

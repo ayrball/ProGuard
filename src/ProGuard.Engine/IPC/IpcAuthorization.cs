@@ -131,12 +131,12 @@ public static class IpcAuthorization
 
     private static CommandResult? CheckCommand(CommandMessage cmd, IIpcCaller caller)
     {
-        if (AdministratorOnlyCommands.Contains(cmd.CommandType)) return Deny(caller, $"run {cmd.CommandType}");
+        if (AdministratorOnlyCommands.Contains(cmd.CommandType)) return Deny(caller, CommandTypes.Describe(cmd.CommandType));
         if (UnrestrictedCommands.Contains(cmd.CommandType) || RuleCommands.Contains(cmd.CommandType)) return null;
         if (cmd.CommandType == CommandTypes.TrimWorkingSet && cmd.TargetPid == null) return null;
 
         if (!ProcessCommandAccess.TryGetValue(cmd.CommandType, out var access))
-            return Deny(caller, $"run {cmd.CommandType}");
+            return Deny(caller, CommandTypes.Describe(cmd.CommandType));
 
         // A missing or invalid pid is the dispatcher's to report; there is nothing to act on.
         if (cmd.TargetPid is not int pid || pid <= 0) return null;
@@ -153,7 +153,7 @@ public static class IpcAuthorization
 
         return caller.CanOpenProcess(pid, access)
             ? null
-            : Deny(caller, $"{cmd.CommandType} process {pid}: it belongs to another user, is elevated or protected, or is not running");
+            : Deny(caller, $"{CommandTypes.Describe(cmd.CommandType)} process {pid}: it belongs to another user, is elevated or protected, or is not running");
     }
 
     internal static CommandResult Deny(IIpcCaller caller, string what) =>

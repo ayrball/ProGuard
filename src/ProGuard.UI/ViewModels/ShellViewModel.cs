@@ -1,3 +1,4 @@
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ProGuard.Shared.Contracts;
@@ -46,6 +47,9 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private bool _windowSettingsRequested;
 
+    // Ticks on its own, so the header clock keeps time while the engine is offline and no snapshots arrive.
+    private readonly DispatcherTimer _clockTimer;
+
     public ShellViewModel(EngineHub hub, Toaster toaster, IconCache icons, IStartupRegistration? startup = null)
     {
         Hub = hub;
@@ -68,6 +72,10 @@ public sealed partial class ShellViewModel : ObservableObject
             new PageItem("06", "SYSTEM", System),
         };
         currentPage = Pages[0];
+
+        clock = DateTime.Now.ToString("HH:mm:ss");
+        _clockTimer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background,
+            (_, _) => Clock = DateTime.Now.ToString("HH:mm:ss"), Dispatcher.CurrentDispatcher);
 
         hub.SnapshotApplied += OnSnapshot;
         hub.PropertyChanged += (_, e) =>
@@ -104,7 +112,6 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         var mode = snapshot.CallerIsAdministrator ? "ADMIN" : "STANDARD RIGHTS";
         StatusLine = $"ENGINE ONLINE · {mode} · UP {Fmt.Uptime(snapshot.EngineUptime)}";
-        Clock = DateTime.Now.ToString("HH:mm:ss");
 
         // The tray behaviour needs MinimizeToTray before the System page has ever been opened.
         if (!_windowSettingsRequested)

@@ -323,11 +323,8 @@ public class StandInEngineTests
     }
 
     [Theory]
-    [InlineData(CommandTypes.SaveProcessRule)]
-    [InlineData(CommandTypes.DeleteProcessRule)]
-    [InlineData(CommandTypes.SaveWatchdogRule)]
-    [InlineData(CommandTypes.DeleteWatchdogRule)]
     [InlineData(CommandTypes.PurgeMemory)]
+    [InlineData(CommandTypes.ClearActionLog)]
     public async Task StandardUser_IsDeniedWhatNeedsAdministrator(string command)
     {
         await using var rig = new Rig(administrator: false);
@@ -335,6 +332,27 @@ public class StandInEngineTests
 
         var ex = await Assert.ThrowsAsync<EngineCommandException>(() => rig.Client.CommandAsync(command, pid, argument));
         Assert.True(ex.IsAccessDenied, ex.Message);
+    }
+
+    [Fact]
+    public async Task StandardUser_MayEditRules_WithinTheEnginesLimits()
+    {
+        // Like the engine's RuleAuthorization: ordinary rules are fine; system programs, Realtime, ending programs
+        // the caller couldn't end and Watchdog Launch actions are refused, with the reason in words.
+        await using var rig = new Rig(administrator: false);
+
+        var saved = await rig.Client.QueryAsync<ProcessRuleDto>(CommandTypes.SaveProcessRule, argument: new ProcessRuleDto { ProcessName = "game.exe", PriorityClass = (int)ProcessPriorityClass.High });
+        Assert.NotEqual(0, saved.Id);
+        await rig.Client.CommandAsync(CommandTypes.DeleteProcessRule, argument: saved.Id);
+        await rig.Client.QueryAsync<WatchdogRuleDto>(CommandTypes.SaveWatchdogRule, argument: new WatchdogRuleDto { TargetProcessName = "game.exe", ThresholdValue = 50, ActionType = WatchdogResponse.LogAlert });
+
+        async Task<string> Refused(string command, object argument) =>
+            (await Assert.ThrowsAsync<EngineCommandException>(() => rig.Client.CommandAsync(command, argument: argument))).Message;
+
+        Assert.Contains("a system process", await Refused(CommandTypes.SaveProcessRule, new ProcessRuleDto { ProcessName = "lsass.exe", IoPriority = 1 }));
+        Assert.Contains("Realtime", await Refused(CommandTypes.SaveProcessRule, new ProcessRuleDto { ProcessName = "game.exe", PriorityClass = (int)ProcessPriorityClass.RealTime }));
+        Assert.Contains("ends svchost.exe", await Refused(CommandTypes.SaveProcessRule, new ProcessRuleDto { ProcessName = "svchost.exe", DisallowExecution = true }));
+        Assert.Contains("Launch", await Refused(CommandTypes.SaveWatchdogRule, new WatchdogRuleDto { TargetProcessName = "game.exe", ThresholdValue = 50, ActionType = WatchdogResponse.Launch, ActionArgument = "calc.exe" }));
     }
 
     [Fact]

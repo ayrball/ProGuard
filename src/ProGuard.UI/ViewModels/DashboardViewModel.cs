@@ -117,7 +117,7 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
                 using var db = new ProGuardDbContext();
                 if (!s_dbInitialized)
                 {
-                    db.Database.EnsureCreated();
+                    db.EnsureSchema();
                     s_dbInitialized = true;
                 }
                 _cachedRulesCount = db.ProcessRules.Count();

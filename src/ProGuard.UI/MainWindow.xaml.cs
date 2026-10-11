@@ -9,8 +9,48 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        StateChanged += (_, _) => SyncMaximized();
+        StateChanged += (_, _) => { SyncMaximized(); HideToTrayIfMinimized(); };
+        Closing += OnClosing;
         PreviewKeyDown += OnPreviewKeyDown;
+    }
+
+    /// <summary>True once there is a tray icon to fall back on. Without one the window always minimises and closes normally.</summary>
+    public bool HasTray { get; set; }
+
+    /// <summary>The app is quitting (tray menu, Windows shutting down): let the window close instead of hiding.</summary>
+    public bool IsQuitting { get; set; }
+
+    private bool KeepInTray => !IsQuitting && HasTray && (DataContext as ShellViewModel)?.MinimizeToTray == true;
+
+    // MinimizeToTray: minimising and closing both send the window to the tray; "Exit" in the tray menu quits.
+    private void HideToTrayIfMinimized()
+    {
+        if (WindowState == WindowState.Minimized && KeepInTray)
+        {
+            WindowState = WindowState.Normal; // so Show() brings it back as a normal window, not a minimised one
+            Hide();
+        }
+    }
+
+    private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (!KeepInTray) return;
+        e.Cancel = true;
+        Hide();
+    }
+
+    /// <summary>Shows the window, restored and in front.</summary>
+    public void BringToFront()
+    {
+        if (!IsVisible) Show();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    public void ToggleVisibility()
+    {
+        if (IsVisible && WindowState != WindowState.Minimized) Hide();
+        else BringToFront();
     }
 
     private void SyncMaximized()

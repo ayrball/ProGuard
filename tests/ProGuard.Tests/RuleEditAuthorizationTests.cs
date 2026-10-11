@@ -158,7 +158,7 @@ public class RuleEditAuthorizationTests
     public void ClearingTheActionLog_IsForAdministrators()
     {
         var h = new ThinHarness();
-        AssertDenied(h.Send(Standard, CommandTypes.ClearActionLog), "ClearActionLog");
+        AssertDenied(h.Send(Standard, CommandTypes.ClearActionLog), "clear the action log");
         h.Store.Verify(s => s.ClearProBalanceActions(), Times.Never);
 
         Assert.True(h.Send(Admin, CommandTypes.ClearActionLog).Success);

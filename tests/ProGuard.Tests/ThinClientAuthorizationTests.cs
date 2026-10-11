@@ -102,7 +102,9 @@ public class ThinClientAuthorizationTests
         {
             var refused = h.Send(new ThinCaller(), command);
             Assert.True(Denied(refused), command);
-            Assert.Contains(command, refused.Error);
+            // Denials name the action in words, not the command: they are shown to the user as-is.
+            Assert.Contains(CommandTypes.Describe(command), refused.Error);
+            Assert.DoesNotContain(command, refused.Error);
 
             Assert.False(Denied(h.Send(ThinCaller.Admin(), command)), command);
         }

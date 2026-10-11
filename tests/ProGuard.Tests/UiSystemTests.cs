@@ -190,8 +190,6 @@ public class UiSystemTests
 
         Assert.False(vm.ProBalanceEnabled);
         Assert.Equal(10, vm.SensitivityLevel);
-        Assert.Equal("33.3", vm.TriggerPercent.Text);
-        Assert.Equal("7.5", vm.RecoveryPercent.Text);
         Assert.True(vm.RestrainByAffinity);
         Assert.Equal(new[] { 4, 5, 6, 7 }, vm.RestraintCores.Where(c => c.IsOn).Select(c => c.Index).ToArray());
         Assert.Equal(8, vm.RestraintCores.Count);
@@ -243,8 +241,6 @@ public class UiSystemTests
 
         vm.ProBalanceEnabled = true;
         vm.SetSensitivityCommand.Execute(3);
-        vm.TriggerPercent.Text = "40";
-        vm.RecoveryPercent.Text = "12";
         vm.RestrainByAffinity = false;
         vm.RestraintCores[0].IsOn = true; // cores 0 and 4-7
         vm.DropOneRandomCore = false;
@@ -293,8 +289,9 @@ public class UiSystemTests
         var s = saved[^1];
         Assert.True(s.ProBalanceEnabled);
         Assert.Equal(3, s.ProBalanceSensitivity);
-        Assert.Equal(40, s.ProBalanceCpuThreshold);
-        Assert.Equal(12, s.ProBalanceRecoveryThreshold);
+        // No control on the page (the engine's ProBalance doesn't use them): they go back exactly as stored.
+        Assert.Equal(33.3, s.ProBalanceCpuThreshold);
+        Assert.Equal(7.5, s.ProBalanceRecoveryThreshold);
         Assert.False(s.ProBalanceRestrainByAffinity);
         Assert.Equal(0x0AB0_0000_0000_00F1L, s.ProBalanceRestraintAffinity); // bits for cores that aren't shown survive
         Assert.False(s.ProBalanceDropOneRandomCore || s.ProBalanceLowerIoPriority || s.ProBalanceUseEfficiencyMode || s.ProBalanceDoNotLowerPriorityClass || s.ProBalanceDisableWhenSysIdle);

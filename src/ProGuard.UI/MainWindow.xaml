@@ -27,6 +27,7 @@
         <DataTemplate DataType="{x:Type vm:ConfirmDialogViewModel}"><views:ConfirmDialog/></DataTemplate>
         <DataTemplate DataType="{x:Type vm:AffinityDialogViewModel}"><views:AffinityDialog/></DataTemplate>
         <DataTemplate DataType="{x:Type vm:CpuLimitDialogViewModel}"><views:CpuLimitDialog/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:CpuSetDialogViewModel}"><views:CpuSetDialog/></DataTemplate>
     </Window.Resources>
 
     <Border x:Name="Frame" BorderBrush="{StaticResource VoltLineBrush}" BorderThickness="1">
@@ -128,7 +129,9 @@
                     <Grid Background="{StaticResource InkBrush}" Visibility="{Binding Hub.IsOffline, Converter={StaticResource VisibleWhen}}">
                         <StackPanel VerticalAlignment="Center" Margin="56,0">
                             <TextBlock Text="NO SIGNAL" Style="{StaticResource Text.Label}" FontSize="14"/>
-                            <TextBlock Text="ENGINE&#x0a;OFFLINE" Style="{StaticResource Text.Hero}" FontSize="150" LineHeight="130" Margin="0,8,0,0"/>
+                            <!-- BlockLineHeight: the 130 px lines start below the kicker instead of reaching up into it. -->
+                            <TextBlock Text="ENGINE&#x0a;OFFLINE" Style="{StaticResource Text.Hero}" FontSize="150" LineHeight="130"
+                                       LineStackingStrategy="BlockLineHeight" Margin="0,18,0,0"/>
                             <Rectangle Height="6" Fill="{StaticResource VoltBrush}" Width="220" HorizontalAlignment="Left" Margin="0,26,0,24"/>
                             <TextBlock Style="{StaticResource Text.Body}" FontSize="17" MaxWidth="620" HorizontalAlignment="Left" Opacity="0.8"
                                        Text="ProGuard's engine does the actual work: watching processes, applying rules, balancing load. Start ProGuard.Engine (run.ps1 starts both) and this screen will clear by itself."/>
@@ -137,7 +140,8 @@
                     </Grid>
 
                     <!-- Toasts -->
-                    <ItemsControl ItemsSource="{Binding Toaster.Items}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,28,22" Width="380">
+                    <!-- Top right, under the header: at the bottom they covered the editors' Save and Cancel buttons. -->
+                    <ItemsControl ItemsSource="{Binding Toaster.Items}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,14,28,0" Width="380">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Margin="0,8,0,0" Padding="16,12" BorderThickness="2" BorderBrush="{StaticResource VoltBrush}">

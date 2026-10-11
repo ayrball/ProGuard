@@ -112,6 +112,29 @@ public static class CommandTypes
     /// <summary>No args. Data = List&lt;<see cref="Contracts.CpuSetDto"/>&gt;.</summary>
     public const string GetCpuSets = "GetCpuSets";
 
+    /// <summary>
+    /// What a command does, as words that read after "may not" ("end", "purge memory"). Access-denied replies are
+    /// shown to the user as-is, so they name the action rather than the command.
+    /// </summary>
+    public static string Describe(string commandType) => commandType switch
+    {
+        SetPriority => "change the priority of",
+        SetAffinity => "change the cores of",
+        SetCpuLimit => "cap the CPU of",
+        RemoveCpuLimit => "remove the CPU cap from",
+        TerminateProcess => "end",
+        TerminateProcessTree => "end the process tree of",
+        SuspendProcess => "pause",
+        ResumeProcess => "resume",
+        TrimWorkingSet => "trim the memory of",
+        SetEfficiencyMode => "change the efficiency mode of",
+        SetIoPriority => "change the I/O priority of",
+        SetMemoryPriority => "change the memory priority of",
+        PurgeMemory => "purge memory",
+        ClearActionLog => "clear the action log",
+        _ => "run " + System.Text.RegularExpressions.Regex.Replace(commandType, "(?<=[a-z])(?=[A-Z])", " ").ToLowerInvariant()
+    };
+
     /// <summary>No args. Administrators only. Deletes the logged ProBalance, CPU Limiter and power-plan actions the activity feed shows.</summary>
     public const string ClearActionLog = "ClearActionLog";
 }

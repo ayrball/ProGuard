@@ -71,9 +71,8 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     public ObservableCollection<PowerPlanRow> Plans { get; } = new();
     public ObservableCollection<CoreToggle> RestraintCores { get; } = new();
 
-    // ProBalance
-    public NumberField TriggerPercent { get; } = new("USE ABOVE", "%", 1, 100, integer: false);
-    public NumberField RecoveryPercent { get; } = new("RESTORE BELOW", "%", 0, 100, integer: false);
+    // ProBalance. ProBalanceCpuThreshold/RecoveryThreshold have no control: the engine's ProBalance follows Process
+    // Lasso's timing (set through the sensitivity) and ignores them, so they go back exactly as stored.
     public NumberField IdlePauseMs { get; } = new("PAUSE AFTER IDLE FOR", "MS", 1000, 3_600_000);
 
     // SmartTrim
@@ -179,7 +178,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
         _logical = Math.Max(1, hub.Snapshot?.LogicalProcessors ?? Environment.ProcessorCount);
         BuildCores(0);
 
-        foreach (var field in new[] { TriggerPercent, RecoveryPercent, IdlePauseMs, TrimInterval, TrimThresholdMb, TrimMinRamLoad, StandbyFreeRamMb,
+        foreach (var field in new[] { IdlePauseMs, TrimInterval, TrimThresholdMb, TrimMinRamLoad, StandbyFreeRamMb,
                                        IdleTimeout, AveragingSamples, MinimumTimeInPlanMs, PollingInterval })
         {
             field.Committed += QueueSave;
@@ -221,8 +220,6 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
 
                 ProBalanceEnabled = settings.ProBalanceEnabled;
                 SensitivityLevel = Math.Clamp(settings.ProBalanceSensitivity, 1, 10);
-                TriggerPercent.Load(settings.ProBalanceCpuThreshold);
-                RecoveryPercent.Load(settings.ProBalanceRecoveryThreshold);
                 RestrainByAffinity = settings.ProBalanceRestrainByAffinity;
                 BuildCores(settings.ProBalanceRestraintAffinity);
                 DropOneRandomCore = settings.ProBalanceDropOneRandomCore;
@@ -497,8 +494,6 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
 
         s.ProBalanceEnabled = ProBalanceEnabled;
         if (Math.Clamp(s.ProBalanceSensitivity, 1, 10) != SensitivityLevel) s.ProBalanceSensitivity = SensitivityLevel;
-        s.ProBalanceCpuThreshold = TriggerPercent.ToStored(s.ProBalanceCpuThreshold);
-        s.ProBalanceRecoveryThreshold = RecoveryPercent.ToStored(s.ProBalanceRecoveryThreshold);
         s.ProBalanceRestrainByAffinity = RestrainByAffinity;
         s.ProBalanceRestraintAffinity = MergeMask(s.ProBalanceRestraintAffinity);
         s.ProBalanceDropOneRandomCore = DropOneRandomCore;

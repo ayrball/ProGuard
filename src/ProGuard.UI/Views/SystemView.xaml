@@ -199,13 +199,7 @@
                         </ItemsControl>
                         <TextBlock Text="{Binding SensitivityDescription}" FontWeight="Bold" FontSize="13" Margin="0,10,0,0" Opacity="0.8"/>
 
-                        <TextBlock Text="WHEN TO STEP IN" Style="{StaticResource Sub}"/>
-                        <WrapPanel>
-                            <ContentControl Content="{Binding TriggerPercent}" Focusable="False"/>
-                            <ContentControl Content="{Binding RecoveryPercent}" Focusable="False"/>
-                        </WrapPanel>
-
-                        <TextBlock Text="WHAT RESTRAINT DOES" Style="{StaticResource Sub}" Margin="0,14,0,0"/>
+                        <TextBlock Text="WHAT RESTRAINT DOES" Style="{StaticResource Sub}"/>
                         <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding DoNotLowerPriorityClass}" Margin="0,0,0,0"
                                   Content="LEAVE THE PRIORITY CLASS ALONE"
                                   ToolTip="Restrain only through the extra actions below"/>

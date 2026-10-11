@@ -538,9 +538,14 @@ public sealed partial class RulesViewModel : ObservableObject, IPage
         IsLoaded = true;
     }
 
-    /// <summary>Opens the editor pre-filled from a running process (the "make a rule" action).</summary>
-    public void StartNew(string processName, ProcessPriorityClass? priority, double? cpuLimit)
+    /// <summary>
+    /// Opens the editor pre-filled from a running process (the "make a rule" action), or on that program's existing
+    /// rule. The list loads only when the Rules page is shown, so it is fetched first: otherwise a program that
+    /// already has a rule would get a NEW RULE editor, which the engine then refuses as a duplicate.
+    /// </summary>
+    public async Task StartNewAsync(string processName, ProcessPriorityClass? priority, double? cpuLimit)
     {
+        await LoadAsync();
         var existing = Rules.FirstOrDefault(r => string.Equals(RuleText.Display(r.Dto.ProcessName), RuleText.Display(processName), StringComparison.OrdinalIgnoreCase));
         Editor = existing != null
             ? new RuleEditor(Logical, existing.Dto)

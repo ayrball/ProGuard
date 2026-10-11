@@ -201,7 +201,7 @@ public sealed class SnapshotBuilder
             ResponsivenessGuardPaused = enabled && _responsiveness guard.IsPausedForIdle,
             ResponsivenessGuardRestrained = restrained.Count,
             ResponsivenessGuardRestraintsTotal = _responsiveness guard.TotalRestraints,
-            ForegroundBoostEnabled = _foregroundBoost?.IsEnabled ?? true,
+            ForegroundBoostEnabled = _foregroundBoost?.IsEnabled ?? false,
             ForegroundPid = foregroundPid,
             PerformanceModeActive = _power.IsPerformanceModeActive,
             PowerPlanOwner = string.IsNullOrEmpty(_power.PlanOwnerName) ? "User" : _power.PlanOwnerName,

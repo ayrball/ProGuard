@@ -30,8 +30,8 @@ public class AppSettings
     /// <summary>[DisableResponsivenessGuardIfSysIdleThisManyMS] 30000.</summary>
     public int ResponsivenessGuardDisableIfSysIdleMs { get; set; } = 30000;
     
-    /// <summary>Raise the foreground process from Normal to Above Normal while it has focus (ForegroundBoostService).</summary>
-    public bool ForegroundBoostEnabled { get; set; } = true;
+    /// <summary>Raise the foreground process from Normal to Above Normal while it has focus (ForegroundBoostService). Off by default, as in another process manager.</summary>
+    public bool ForegroundBoostEnabled { get; set; } = false;
 
     // MemoryTrim. Defaults are another process manager's [MemoryManagement] ones (otherpm.ini key in brackets).
     public bool MemoryTrimEnabled { get; set; } = false;

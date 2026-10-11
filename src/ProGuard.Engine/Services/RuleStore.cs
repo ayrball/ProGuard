@@ -297,6 +297,13 @@ public class RuleStore : IRuleStore
         }
     }
 
+    public void ClearResponsivenessGuardActions()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+        db.ResponsivenessGuardActions.ExecuteDelete();
+    }
+
     public IReadOnlyList<ResponsivenessGuardAction> GetRecentActions(int count)
     {
         if (count <= 0) return Array.Empty<ResponsivenessGuardAction>();

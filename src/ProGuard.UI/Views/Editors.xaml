@@ -153,10 +153,13 @@
         <StackPanel>
             <DockPanel>
                 <ListBox DockPanel.Dock="Right" Style="{StaticResource Choices}" ItemsSource="{Binding Units}" SelectedItem="{Binding Unit}"
+                         AutomationProperties.Name="{Binding (AutomationProperties.Name), RelativeSource={RelativeSource AncestorType=ContentControl}, StringFormat='{}{0} UNIT'}"
                          Margin="12,0,0,0" VerticalAlignment="Center"/>
-                <TextBox Style="{StaticResource Ed.Num}" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox Style="{StaticResource Ed.Num}" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
+                         AutomationProperties.Name="{Binding (AutomationProperties.Name), RelativeSource={RelativeSource AncestorType=ContentControl}}"/>
             </DockPanel>
-            <ListBox Style="{StaticResource Choices}" ItemsSource="{Binding Presets}" SelectedItem="{Binding Preset}" Margin="0,8,0,0"/>
+            <ListBox Style="{StaticResource Choices}" ItemsSource="{Binding Presets}" SelectedItem="{Binding Preset}" Margin="0,8,0,0"
+                     AutomationProperties.Name="{Binding (AutomationProperties.Name), RelativeSource={RelativeSource AncestorType=ContentControl}, StringFormat='{}{0} PRESETS'}"/>
         </StackPanel>
     </DataTemplate>
 </ResourceDictionary>

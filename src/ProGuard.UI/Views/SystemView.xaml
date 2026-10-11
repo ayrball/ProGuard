@@ -92,7 +92,7 @@
             <StackPanel Margin="0,0,34,16" MinWidth="130">
                 <TextBlock Text="{Binding Label}" Style="{StaticResource Text.Label}" Margin="0,0,0,2"/>
                 <StackPanel Orientation="Horizontal">
-                    <TextBox Style="{StaticResource NumberBox}" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBox Style="{StaticResource NumberBox}" AutomationProperties.Name="{Binding Label}" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"/>
                     <TextBlock Text="{Binding Unit}" Style="{StaticResource Text.Label}" FontWeight="Bold" Margin="8,0,0,8" VerticalAlignment="Bottom"/>
                 </StackPanel>
                 <TextBlock Text="{Binding Range}" FontFamily="{StaticResource Mono}" FontSize="10" Margin="0,4,0,0">
@@ -114,14 +114,14 @@
         <DataTemplate DataType="{x:Type vm:ListField}">
             <StackPanel Margin="0,0,0,16">
                 <TextBlock Text="{Binding Label}" Style="{StaticResource Text.Label}" Margin="0,0,0,6"/>
-                <TextBox Style="{StaticResource ListEditor}" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox Style="{StaticResource ListEditor}" AutomationProperties.Name="{Binding Label}" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"/>
             </StackPanel>
         </DataTemplate>
 
         <DataTemplate DataType="{x:Type vm:PlanPicker}">
             <StackPanel Margin="0,0,0,12">
                 <TextBlock Text="{Binding Label}" Style="{StaticResource Text.Label}" Margin="0,0,0,8"/>
-                <ItemsControl ItemsSource="{Binding Options}" Focusable="False">
+                <ItemsControl ItemsSource="{Binding Options}" Focusable="False" AutomationProperties.Name="{Binding Label}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
@@ -176,7 +176,8 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Button Command="{Binding DataContext.SetSensitivityCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                            CommandParameter="{Binding Level}" Height="44" Margin="0,0,4,0" ToolTip="{Binding Level}">
+                                            CommandParameter="{Binding Level}" Height="44" Margin="0,0,4,0" ToolTip="{Binding Level}"
+                                            AutomationProperties.Name="{Binding Level, StringFormat='SENSITIVITY {0}'}">
                                         <Button.Style>
                                             <Style TargetType="Button" BasedOn="{StaticResource Btn.Base}">
                                                 <Setter Property="Background" Value="Transparent"/>
@@ -401,7 +402,7 @@
                         <TextBlock DockPanel.Dock="Right" Text="{Binding PlanOwnerText}" FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.7" VerticalAlignment="Center"/>
                         <TextBlock Text="INSTALLED PLANS" Style="{StaticResource Text.Label}"/>
                     </DockPanel>
-                    <ItemsControl ItemsSource="{Binding Plans}" Focusable="False">
+                    <ItemsControl ItemsSource="{Binding Plans}" Focusable="False" AutomationProperties.Name="INSTALLED PLANS">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>

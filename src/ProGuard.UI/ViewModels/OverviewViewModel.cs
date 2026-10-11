@@ -36,6 +36,22 @@ public sealed partial class OverviewViewModel : ObservableObject
     [ObservableProperty] private string coresText = "—";
     [ObservableProperty] private bool isElevated = true;
 
+    // Responsiveness (another process manager's measure of how long the CPU queue is) and the load of each logical processor.
+    [ObservableProperty] private double responsiveness;
+    [ObservableProperty] private string responsivenessText = "—";
+    [ObservableProperty] private IReadOnlyList<double> coreLoads = Array.Empty<double>();
+
+    // ResponsivenessGuard in detail: armed, paused because the user is idle, or off; and how many restraints so far.
+    [ObservableProperty] private bool responsiveness guardPaused;
+    [ObservableProperty] private string responsiveness guardState = "—";
+    [ObservableProperty] private int restraintsTotal;
+    [ObservableProperty] private string restraintsText = "—";
+
+    [ObservableProperty] private bool performanceModeActive;
+    [ObservableProperty] private string performanceModeText = "—";
+    [ObservableProperty] private string activePlan = "—";
+    [ObservableProperty] private string planOwner = "—";
+
     public OverviewViewModel(EngineHub hub, ShellViewModel shell)
     {
         Hub = hub;
@@ -44,8 +60,22 @@ public sealed partial class OverviewViewModel : ObservableObject
         for (int i = 0; i < TopCount; i++) TopConsumers.Add(new ConsumerRow { Rank = i + 1 });
     }
 
-    private void Apply(EngineSnapshot s)
+    internal void Apply(EngineSnapshot s)
     {
+        Responsiveness = s.ResponsivenessPercent ?? 0;
+        ResponsivenessText = s.ResponsivenessPercent is double r ? $"{r:0}%" : "—";
+        CoreLoads = s.CoreCpuPercent.ToArray();
+
+        ResponsivenessGuardPaused = s.ResponsivenessGuardEnabled && s.ResponsivenessGuardPaused;
+        ResponsivenessGuardState = !s.ResponsivenessGuardEnabled ? "OFF" : s.ResponsivenessGuardPaused ? "PAUSED · IDLE" : "ARMED";
+        RestraintsTotal = s.ResponsivenessGuardRestraintsTotal;
+        RestraintsText = $"{s.ResponsivenessGuardRestrained} NOW · {s.ResponsivenessGuardRestraintsTotal} TOTAL";
+
+        PerformanceModeActive = s.PerformanceModeActive;
+        PerformanceModeText = s.PerformanceModeActive ? "ON" : "OFF";
+        ActivePlan = string.IsNullOrEmpty(s.ActivePowerPlanName) ? "—" : s.ActivePowerPlanName.ToUpperInvariant();
+        PlanOwner = Fmt.PlanOwner(s.PowerPlanOwner);
+
         Cpu = (int)Math.Round(s.CpuPercent);
         Memory = (int)Math.Round(s.MemoryPercent);
         MemoryDetail = $"{Fmt.Bytes(s.TotalMemoryBytes - s.AvailableMemoryBytes)} OF {Fmt.Bytes(s.TotalMemoryBytes)}";

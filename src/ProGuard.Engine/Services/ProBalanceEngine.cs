@@ -33,9 +33,9 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     private readonly IProcessPriorityAccess _access;
     private readonly Func<double> _systemCpuPercent;
     private readonly Func<long> _nowMs;
-    private Timer? _timer;
+    private bool _started;
 
-    // Evaluate runs on a timer thread; SetEnabled, ReleaseRestraint and StopAsync come from other threads.
+    // Evaluate runs on the process monitor's refresh thread; SetEnabled, ReleaseRestraint and StopAsync come from other threads.
     private readonly object _gate = new();
     private readonly ConcurrentDictionary<int, Restraint> _restrained = new();
     // PID -> time (ms) the process was first seen over quota in the current unbroken run.
@@ -79,9 +79,6 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     public bool ExcludeChildrenOfForeground { get; set; } = true;
     /// <summary>Processes in session 0 (services) are exempt.</summary>
     public bool ExcludeServices { get; set; } = true;
-    /// <summary>How often usage is evaluated (prolasso.ini: <c>UpdateSpeedCore</c>). Applies on the next start.</summary>
-    public int UpdateSpeedCore { get; set; } = 1000;
-
     public bool IsEngaged => !_restrained.IsEmpty;
     public int ActiveInterventions => _restrained.Count;
 
@@ -104,14 +101,18 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting ProBalance Engine");
-        _timer = new Timer(Evaluate, null, TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(Math.Max(100, UpdateSpeedCore)));
+        // Evaluate right after each process refresh (prolasso.ini UpdateSpeedCore is the monitor's polling interval),
+        // as Process Lasso samples and decides in one loop. On a separate timer the usage it judged could be up to a
+        // whole interval old, which made restraints and restores about a second late.
+        if (!_started) _processMonitor.Refreshed += OnProcessesRefreshed;
+        _started = true;
         return Task.CompletedTask;
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Stopping ProBalance Engine");
-        _timer?.Change(Timeout.Infinite, 0);
+        Unsubscribe();
         RestoreAll("ProBalance stopped");
         return Task.CompletedTask;
     }
@@ -344,5 +345,13 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         _ => 2
     };
 
-    public void Dispose() => _timer?.Dispose();
+    private void OnProcessesRefreshed(object? sender, EventArgs e) => Evaluate(null);
+
+    private void Unsubscribe()
+    {
+        if (_started) _processMonitor.Refreshed -= OnProcessesRefreshed;
+        _started = false;
+    }
+
+    public void Dispose() => Unsubscribe();
 }

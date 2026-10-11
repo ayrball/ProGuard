@@ -33,6 +33,7 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
     
     public event EventHandler<ProcessInfo>? ProcessStarted;
     public event EventHandler<int>? ProcessExited;
+    public event EventHandler? Refreshed;
 
     private readonly IForegroundTracker _foreground;
 
@@ -141,7 +142,7 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
             currentPids.Add(p.Id);
             try
             {
-                var cpuUsage = _cpuTracker.GetCpuUsage(p);
+                var cpuUsage = _cpuTracker.GetCpuUsage(p, seedFromLifetime: true);
                 if (_processes.TryGetValue(p.Id, out var info))
                 {
                     info.CpuPercent = cpuUsage;
@@ -176,6 +177,8 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
             _cpuTracker.RemoveProcess(pid);
             ProcessExited?.Invoke(this, pid);
         }
+
+        Refreshed?.Invoke(this, EventArgs.Empty);
     }
 
     private ProcessInfo CreateProcessInfo(Process p)

@@ -1,86 +1,81 @@
-using System;
-using System.Collections.Generic;
 using System.Windows;
-using ProGuard.UI.Services;
+using System.Windows.Input;
 using ProGuard.UI.ViewModels;
-using ProGuard.UI.Views;
-using Wpf.Ui;
-using Wpf.Ui.Controls;
 
 namespace ProGuard.UI;
 
-public partial class MainWindow : FluentWindow
+public partial class MainWindow : Window
 {
-    private readonly INavigationService _navigationService;
-    private readonly ISnackbarService _snackbarService;
-    private readonly Stack<Type> _navigationHistory = new();
-    private bool _isNavigatingBack;
-    private bool _initialized;
-
-    public MainWindow(MainViewModel viewModel, INavigationService navigationService, ISnackbarService snackbarService)
+    public MainWindow()
     {
         InitializeComponent();
-        DataContext = viewModel;
-        _navigationService = navigationService;
-        _snackbarService = snackbarService;
-
-        _navigationService.SetNavigationControl(RootNavigation);
-        _snackbarService.SetSnackbarPresenter(SnackbarPresenter);
-        
-        Loaded += MainWindow_Loaded;
+        StateChanged += (_, _) => { SyncMaximized(); HideToTrayIfMinimized(); };
+        Closing += OnClosing;
+        PreviewKeyDown += OnPreviewKeyDown;
     }
 
-    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
-    {
-        if (_initialized) return;
-        _initialized = true;
-        
-        _navigationHistory.Push(typeof(DashboardPage));
-        RootNavigation.Navigate(typeof(DashboardPage));
+    /// <summary>True once there is a tray icon to fall back on. Without one the window always minimises and closes normally.</summary>
+    public bool HasTray { get; set; }
 
-        // Pay the one-off cost of the first popup now, not on the user's first right-click.
-        PopupWarmUp.Schedule(this);
-    }
+    /// <summary>The app is quitting (tray menu, Windows shutting down): let the window close instead of hiding.</summary>
+    public bool IsQuitting { get; set; }
 
-    private void RootNavigation_ItemInvoked(NavigationView sender, RoutedEventArgs args)
+    private bool KeepInTray => !IsQuitting && HasTray && (DataContext as ShellViewModel)?.MinimizeToTray == true;
+
+    // MinimizeToTray: minimising and closing both send the window to the tray; "Exit" in the tray menu quits.
+    private void HideToTrayIfMinimized()
     {
-        if (sender.SelectedItem is NavigationViewItem item && item.TargetPageType != null)
+        if (WindowState == WindowState.Minimized && KeepInTray)
         {
-            if (!_isNavigatingBack)
-            {
-                _navigationHistory.Push(item.TargetPageType);
-            }
-            _navigationService.Navigate(item.TargetPageType);
+            WindowState = WindowState.Normal; // so Show() brings it back as a normal window, not a minimised one
+            Hide();
         }
     }
 
-    private void OnBackButtonClicked(object sender, RoutedEventArgs e)
+    private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
-        try
-        {
-            if (_navigationHistory.Count > 1)
-            {
-                _isNavigatingBack = true;
-                _navigationHistory.Pop(); // Current page
-                var previous = _navigationHistory.Pop(); // Previous target
-                _navigationHistory.Push(previous);
-                _navigationService.Navigate(previous);
-                _isNavigatingBack = false;
-            }
-            else
-            {
-                _navigationService.Navigate(typeof(DashboardPage));
-            }
-        }
-        catch { }
+        if (!KeepInTray) return;
+        e.Cancel = true;
+        Hide();
     }
 
-    private void OnPaneToggleButtonClicked(object sender, RoutedEventArgs e)
+    /// <summary>Shows the window, restored and in front.</summary>
+    public void BringToFront()
     {
-        try
-        {
-            RootNavigation.IsPaneOpen = !RootNavigation.IsPaneOpen;
-        }
-        catch { }
+        if (!IsVisible) Show();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
     }
+
+    public void ToggleVisibility()
+    {
+        if (IsVisible && WindowState != WindowState.Minimized) Hide();
+        else BringToFront();
+    }
+
+    private void SyncMaximized()
+    {
+        bool max = WindowState == WindowState.Maximized;
+        // A borderless window maximises past the screen edge by the resize border; pull the content back in.
+        var edge = SystemParameters.WindowResizeBorderThickness;
+        Frame.Margin = max ? new Thickness(edge.Left + 1, edge.Top + 1, edge.Right + 1, edge.Bottom + 1) : new Thickness(0);
+        Frame.BorderThickness = new Thickness(max ? 0 : 1);
+        MaxButton.Content = max ? "" : "";
+    }
+
+    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && DataContext is ShellViewModel { Dialog: not null } shell)
+        {
+            shell.CloseDialog();
+            e.Handled = true;
+        }
+    }
+
+    private void OnMinimize(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+
+    private void OnMaximize(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+
+    private void OnClose(object sender, RoutedEventArgs e) => Close();
 }

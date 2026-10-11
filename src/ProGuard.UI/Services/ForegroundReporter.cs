@@ -1,12 +1,11 @@
 using System;
 using System.IO;
 using System.IO.Pipes;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Hosting;
-using ProGuard.Core.Native;
 using ProGuard.Shared.Messages;
 
 namespace ProGuard.UI.Services;
@@ -23,7 +22,7 @@ namespace ProGuard.UI.Services;
 /// engine promptly when they come back, so a report that drops the idle time from a long value is sent at once.
 /// </para>
 /// </summary>
-public sealed class ForegroundReporter : IHostedService, IDisposable
+public sealed class ForegroundReporter : IDisposable
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(2);
@@ -39,7 +38,7 @@ public sealed class ForegroundReporter : IHostedService, IDisposable
     private CancellationTokenSource? _cts;
     private Task? _loop;
 
-    public ForegroundReporter() : this(PipeNames.Foreground, ReadForegroundPid, User32.GetIdleTime) { }
+    public ForegroundReporter() : this(PipeNames.Foreground, ReadForegroundPid, ReadIdleTime) { }
 
     internal ForegroundReporter(string pipeName, Func<int> foregroundPid, Func<TimeSpan?>? idleTime = null)
     {
@@ -124,11 +123,37 @@ public sealed class ForegroundReporter : IHostedService, IDisposable
 
     private static int ReadForegroundPid()
     {
-        var hwnd = User32.GetForegroundWindow();
+        var hwnd = GetForegroundWindow();
         if (hwnd == IntPtr.Zero) return 0;
-        User32.GetWindowThreadProcessId(hwnd, out var pid);
+        GetWindowThreadProcessId(hwnd, out var pid);
         return (int)pid;
     }
+
+    /// <summary>Time since the last keyboard or mouse input on this desktop; null if Windows won't say.</summary>
+    private static TimeSpan? ReadIdleTime()
+    {
+        var info = new LASTINPUTINFO { cbSize = (uint)Marshal.SizeOf<LASTINPUTINFO>() };
+        if (!GetLastInputInfo(ref info)) return null;
+        // Both are milliseconds since boot in 32 bits; unsigned subtraction handles the 49.7-day wrap.
+        return TimeSpan.FromMilliseconds(unchecked((uint)Environment.TickCount - info.dwTime));
+    }
+
+    // The UI's own desktop only: reading the foreground window and input time touches no other process.
+    [StructLayout(LayoutKind.Sequential)]
+    private struct LASTINPUTINFO
+    {
+        public uint cbSize;
+        public uint dwTime;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
 
     public void Dispose()
     {

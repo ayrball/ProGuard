@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Developer tool, not part of the product. Runs the real UI against a stand-in engine that answers every command with
+    canned, realistic data, and renders each page and dialog to PNG without a live engine or administrator rights.
+    Run it with:  .\run.ps1 -Preview   (see tools/ProGuard.Preview/Program.cs for the options)
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>ProGuard.Preview</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ProGuard.UI\ProGuard.UI.csproj" />
+    <ProjectReference Include="..\..\src\ProGuard.Shared\ProGuard.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

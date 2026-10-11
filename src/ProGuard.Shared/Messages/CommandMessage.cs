@@ -105,6 +105,11 @@ public static class CommandTypes
     public const string GetPower = "GetPower";
     /// <summary>Argument = power plan GUID (plain text).</summary>
     public const string SetPowerPlan = "SetPowerPlan";
+    /// <summary>
+    /// Argument = power mode GUID (plain text; the empty GUID is Balanced), one of <see cref="Contracts.PowerStateDto.PowerModes"/>.
+    /// Moves the Windows power-mode slider.
+    /// </summary>
+    public const string SetPowerMode = "SetPowerMode";
 
     /// <summary>Argument = maximum number of entries (plain integer, default 200). Data = List&lt;<see cref="Contracts.ActivityEntry"/>&gt;, newest first.</summary>
     public const string GetActivity = "GetActivity";

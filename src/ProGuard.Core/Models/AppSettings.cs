@@ -76,6 +76,11 @@ public class AppSettings
     public bool AutoPerformanceModeDetectGames { get; set; } = false;
     /// <summary>Turn it on while a game from one of the Steam libraries runs (GamingModeEngageForSteam).</summary>
     public bool PerformanceModeEngageForSteam { get; set; } = false;
+    /// <summary>
+    /// Also move the Windows power-mode slider to Best performance while Performance Mode is on, and back afterwards.
+    /// Windows applies the mode only under the Balanced plan, so this matters when Performance Mode's plan is Balanced.
+    /// </summary>
+    public bool PerformanceModeSetBestPerformance { get; set; } = false;
 
     // Load-based power switcher ([LoadBasedPowerSwitcher])
     public bool LoadSwitcherEnabled { get; set; } = false;

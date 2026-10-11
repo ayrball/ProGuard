@@ -41,4 +41,16 @@ public interface IPowerManager
 
     /// <summary>Plan to switch to when the engine starts; <see cref="Guid.Empty"/> leaves the plan alone.</summary>
     void ConfigureStartupPlan(Guid planId);
+
+    /// <summary>The Windows power mode in force (<see cref="Helpers.PowerModes"/>), or null where there is no power-mode slider.</summary>
+    Guid? GetPowerMode();
+
+    /// <summary>
+    /// The user's choice of power mode. Like <see cref="SetActivePlan"/>, it wins over Performance Mode: a mode
+    /// Performance Mode set is not put back over it. Returns false if Windows refused it.
+    /// </summary>
+    bool SetPowerMode(Guid mode);
+
+    /// <summary>Also move the power mode to Best performance while Performance Mode is on.</summary>
+    void ConfigurePerformanceModePowerMode(bool bestPerformance);
 }

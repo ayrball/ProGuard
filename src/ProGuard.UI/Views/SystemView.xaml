@@ -354,6 +354,12 @@
 
                     <TextBlock Text="WHAT IT DOES" Style="{StaticResource Sub}"/>
                     <ContentControl Content="{Binding PerformancePlan}" Focusable="False"/>
+                    <StackPanel Visibility="{Binding PowerModeSupported, Converter={StaticResource VisibleWhen}}">
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding PerformanceSetsBestMode}" Margin="0,4,0,0"
+                                  Content="ALSO SET THE POWER MODE TO BEST PERFORMANCE"/>
+                        <TextBlock Style="{StaticResource Note}"
+                                   Text="Your power mode comes back when Performance Mode ends. Windows uses it only under the Balanced plan, so pick Balanced above for this to count."/>
+                    </StackPanel>
 
                     <TextBlock Text="TURNING ON BY ITSELF" Style="{StaticResource Sub}" Margin="0,18,0,12"/>
                     <ContentControl Content="{Binding AutoProcesses}" Focusable="False"/>
@@ -452,6 +458,24 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <StackPanel Visibility="{Binding PowerModeSupported, Converter={StaticResource VisibleWhen}}" Margin="0,22,0,0">
+                        <TextBlock Text="POWER MODE" Style="{StaticResource Text.Label}" Margin="0,0,0,8"/>
+                        <ItemsControl ItemsSource="{Binding PowerModes}" Focusable="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Style="{StaticResource Opt}" Content="{Binding Label}"
+                                            Command="{Binding DataContext.PickPowerModeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            ui:Seg.IsOn="{Binding IsOn, Mode=OneWay}"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Style="{StaticResource Note}" Text="{Binding PowerModeNote}"/>
+                    </StackPanel>
 
                     <ContentControl Content="{Binding StartWithPlan}" Focusable="False" Margin="0,22,0,0"/>
                 </StackPanel>

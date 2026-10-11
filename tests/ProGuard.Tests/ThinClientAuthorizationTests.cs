@@ -23,7 +23,7 @@ public class ThinClientAuthorizationTests
         CommandTypes.EnablePerformanceMode, CommandTypes.DisablePerformanceMode,
         CommandTypes.GetSnapshot, CommandTypes.GetProcessRules, CommandTypes.GetWatchdogRules, CommandTypes.GetSettings,
         CommandTypes.GetPower, CommandTypes.GetActivity, CommandTypes.GetCpuSets, CommandTypes.GetTimerResolution,
-        CommandTypes.SaveSettings, CommandTypes.SetPowerPlan,
+        CommandTypes.SaveSettings, CommandTypes.SetPowerPlan, CommandTypes.SetPowerMode,
         // Open here; the dispatcher then checks the rule itself (see RuleEditAuthorizationTests).
         CommandTypes.SaveProcessRule, CommandTypes.DeleteProcessRule, CommandTypes.SaveWatchdogRule, CommandTypes.DeleteWatchdogRule,
     };

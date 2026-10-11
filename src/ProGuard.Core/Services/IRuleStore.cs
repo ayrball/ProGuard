@@ -36,4 +36,7 @@ public interface IRuleStore
 
     // Logging
     Task LogResponsivenessGuardActionAsync(ResponsivenessGuardAction action);
+
+    /// <summary>The newest <paramref name="count"/> logged actions (restraints, restores, CPU Limiter, power plan changes), newest first.</summary>
+    IReadOnlyList<ResponsivenessGuardAction> GetRecentActions(int count);
 }

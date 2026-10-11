@@ -80,6 +80,7 @@ public class PowerManager : IPowerManager
     private Guid _applied;
     private Guid _baseline;
     private bool _userOverrode;
+    private bool _baselineFromStartWith;   // the plan outside any feature was last set by the start-with plan, not by the user
     private (PowerPlanOwner Owner, Guid Plan)? _failedSwitch;   // not retried until the decision changes
     private PendingPlanRestore? _recorded;   // what the recovery store holds, as far as this run knows
 
@@ -148,6 +149,27 @@ public class PowerManager : IPowerManager
         get { lock (_sync) return PerformanceModeWanted; }
     }
 
+    /// <inheritdoc/>
+    public bool IsPerformanceModeAutomatic
+    {
+        get { lock (_sync) return PerformanceModeWanted && !_manualPerformanceMode; }
+    }
+
+    /// <inheritdoc/>
+    public string PlanOwnerName
+    {
+        get
+        {
+            lock (_sync)
+            {
+                // A feature that was overridden still counts as the owner internally (it ends the usual way), but the
+                // plan on the machine is the user's.
+                if (_owner != PowerPlanOwner.None && !_userOverrode) return _owner.ToString();
+                return _baselineFromStartWith ? "StartWith" : "User";
+            }
+        }
+    }
+
     private bool PerformanceModeWanted => _manualPerformanceMode || (_automaticPerformanceMode && !_automaticSuppressed);
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -163,7 +185,10 @@ public class PowerManager : IPowerManager
             {
                 var current = _readActivePlan();
                 if (current != _startupPlan && _writeActivePlan(_startupPlan))
+                {
+                    _baselineFromStartWith = true;
                     Record(current, _startupPlan, PowerPlanOwner.None, "engine started (start with power plan)");
+                }
             }
         }
         _cts = new CancellationTokenSource();
@@ -449,6 +474,7 @@ public class PowerManager : IPowerManager
         {
             var current = _readActivePlan();
             if (!_writeActivePlan(planId)) return;
+            _baselineFromStartWith = false;
             Record(current, planId, PowerPlanOwner.None, "set by the user");
             // A manual choice: whatever feature holds the plan must not restore over it.
             if (_owner != PowerPlanOwner.None)

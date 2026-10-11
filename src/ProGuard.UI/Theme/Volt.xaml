@@ -235,6 +235,26 @@
         </Style.Triggers>
     </Style>
 
+    <!-- A chip that is a button: for a wrapped list of options where ui:Seg.IsOn (bound one-way) says which is current. -->
+    <Style x:Key="Opt" TargetType="Button" BasedOn="{StaticResource Btn.Base}">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="{StaticResource VoltLineBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource VoltBrush}"/>
+        <Setter Property="Padding" Value="13,7"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Margin" Value="0,0,6,6"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="BorderBrush" Value="{StaticResource VoltBrush}"/>
+            </Trigger>
+            <Trigger Property="ui:Seg.IsOn" Value="True">
+                <Setter Property="Background" Value="{StaticResource VoltBrush}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource VoltBrush}"/>
+                <Setter Property="Foreground" Value="{StaticResource InkBrush}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
     <!-- A wrapping row of chips bound to a list of choices (SelectedItem = the choice). -->
     <Style x:Key="Choice" TargetType="ListBoxItem">
         <Setter Property="Foreground" Value="{StaticResource VoltBrush}"/>

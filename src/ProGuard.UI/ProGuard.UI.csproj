@@ -6,14 +6,28 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!-- Only for the tray icon (NotifyIcon). Everything else is WPF, so WinForms' implicit usings are removed below:
+         they would make Application, Button, Brushes, MessageBox... ambiguous. -->
+    <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>ProGuard.UI</RootNamespace>
     <AssemblyName>ProGuard.UI</AssemblyName>
     <ApplicationIcon>Assets\proguard-icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- WPF declares its DPI mode in the manifest; WinForms (tray icon only) would rather it came from code. -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\proguard-icon.ico" />
   </ItemGroup>
 
   <ItemGroup>

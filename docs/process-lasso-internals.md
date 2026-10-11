@@ -153,7 +153,7 @@ PL's design point: low thresholds and per-process hysteresis. It restrains early
 | Instance limits / keep running / instance balancer | `MaxInstances` field unused; no keep-running | |
 | Startup boost | missing | |
 | SmartTrim | Done (`SmartTrimService.cs`): trims WS ≥ 196 MB every 15 min while load ≥ 65 %; standby purge (80/4) below 1024 MB free, optionally only in Performance Mode; optional file cache purge (`SetSystemFileCacheSize(-1,-1,0)`); privileges enabled via `AdjustTokenPrivileges`; admin-only "Purge now" IPC command | — |
-| Performance Mode / IdleSaver / load switcher | Plan switch exists but is never invoked; no idle detection; hardcoded 3 plans | `GetLastInputInfo`, `PowerEnumerate`, moving-average switcher, overlay schemes |
+| Performance Mode / IdleSaver / load switcher | Done (`PowerManager.cs`): installed plans via `PowerEnumerate`; one arbitration point, Performance Mode > IdleSaver > load switcher; automatic Performance Mode for listed processes, detected games and Steam libraries (`GameDetector.cs`, `SteamLibrary.cs`); load switcher (`LoadPowerSwitcher.cs`); start-with plan; every switch logged with its reason | Overlay schemes (Windows 11 power-mode slider), standby purge when Performance Mode starts, IdleSaver exclusions and CPU gate, core parking |
 | Watchdog | Duration ignored; Restart/SetAffinity no-ops; SetPriority ignores argument | Implement "for Y seconds" and the remaining actions |
 | Timer resolution, group extender | missing | Low priority |
 | Metrics | `GetSystemTimes`; per-process CPU via `TotalProcessorTime` (0 % for protected processes) | PDH `% Processor Utility` to match Task Manager; `Processor Queue Length` for responsiveness |

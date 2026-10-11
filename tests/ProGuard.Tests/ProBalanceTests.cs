@@ -5,15 +5,20 @@ using Moq;
 using ProGuard.Core.Models;
 using ProGuard.Core.Services;
 using ProGuard.Engine.Services;
+using ProGuard.Engine.Services.ProcessRules;
 
 namespace ProGuard.Tests;
 
-/// <summary>In-memory processes for ProBalance: priorities, parents and sessions without touching real PIDs.</summary>
+/// <summary>In-memory processes for ProBalance: priorities, affinities, I/O priorities, efficiency mode, parents and
+/// sessions without touching real PIDs.</summary>
 internal sealed class FakeProcessAccess : IProcessPriorityAccess
 {
     public Dictionary<int, ProcessPriorityClass> Priority { get; } = new();
     public Dictionary<int, int> Parent { get; } = new();
     public Dictionary<int, int> Session { get; } = new();
+    public Dictionary<int, long> Affinity { get; } = new();
+    public Dictionary<int, int> Io { get; } = new();
+    public Dictionary<int, EfficiencyModeState> Eco { get; } = new();
     public int SetCalls { get; private set; }
 
     public ProcessPriorityClass? GetPriorityClass(int pid) => Priority.TryGetValue(pid, out var p) ? p : null;
@@ -28,6 +33,27 @@ internal sealed class FakeProcessAccess : IProcessPriorityAccess
 
     public int? GetParentPid(int pid) => Parent.TryGetValue(pid, out var p) ? p : null;
     public int? GetSessionId(int pid) => Session.TryGetValue(pid, out var s) ? s : null;
+
+    public long? GetAffinityMask(int pid) => Affinity.TryGetValue(pid, out var m) ? m : null;
+    public bool SetAffinityMask(int pid, long mask) => Set(Affinity, pid, mask);
+    public int? GetIoPriority(int pid) => Io.TryGetValue(pid, out var io) ? io : null;
+    public bool SetIoPriority(int pid, int priority) => Set(Io, pid, priority);
+    public EfficiencyModeState? GetEfficiencyMode(int pid) => Eco.TryGetValue(pid, out var e) ? e : null;
+    public bool SetEfficiencyMode(int pid, EfficiencyModeState state) => Set(Eco, pid, state);
+
+    private bool Set<T>(Dictionary<int, T> values, int pid, T value)
+    {
+        if (!values.ContainsKey(pid)) return false;
+        SetCalls++;
+        values[pid] = value;
+        return true;
+    }
+}
+
+internal sealed class FakeIdleSource : IUserIdleSource
+{
+    public TimeSpan? Idle { get; set; }
+    public TimeSpan? GetIdleTime() => Idle;
 }
 
 /// <summary>
@@ -41,6 +67,7 @@ internal sealed class ProBalanceHarness : IDisposable
     public int ForegroundPid { get; set; }
     public List<ProcessInfo> Processes { get; } = new();
     public FakeProcessAccess Access { get; } = new();
+    public FakeIdleSource IdleSource { get; } = new();
     public Mock<IRuleStore> Store { get; } = new();
     public ProBalanceEngine Engine { get; }
 
@@ -51,16 +78,20 @@ internal sealed class ProBalanceHarness : IDisposable
         monitor.Setup(m => m.GetProcess(It.IsAny<int>())).Returns((int pid) => Processes.FirstOrDefault(p => p.Pid == pid));
         monitor.Setup(m => m.GetForegroundPid()).Returns(() => ForegroundPid);
         Engine = new ProBalanceEngine(NullLogger<ProBalanceEngine>.Instance, monitor.Object, Store.Object,
-            () => SystemCpu, Access, () => Now);
+            () => SystemCpu, Access, () => Now, IdleSource);
     }
 
     public ProcessInfo Add(int pid, double cpu, ProcessPriorityClass priority = ProcessPriorityClass.Normal,
-        int session = 1, int? parent = null, string name = "hog")
+        int session = 1, int? parent = null, string name = "hog", long affinity = 0xFF, int io = 2,
+        EfficiencyModeState eco = EfficiencyModeState.NotSet)
     {
         var info = new ProcessInfo { Pid = pid, Name = name, CpuPercent = cpu, ParentPid = parent };
         Processes.Add(info);
         Access.Priority[pid] = priority;
         Access.Session[pid] = session;
+        Access.Affinity[pid] = affinity;
+        Access.Io[pid] = io;
+        Access.Eco[pid] = eco;
         return info;
     }
 
@@ -68,6 +99,9 @@ internal sealed class ProBalanceHarness : IDisposable
     {
         Processes.RemoveAll(p => p.Pid == pid);
         Access.Priority.Remove(pid);
+        Access.Affinity.Remove(pid);
+        Access.Io.Remove(pid);
+        Access.Eco.Remove(pid);
     }
 
     public ProcessPriorityClass PriorityOf(int pid) => Access.Priority[pid];
@@ -103,6 +137,39 @@ public class ProBalanceTests
         Assert.True(engine.ExcludeChildrenOfForeground);
         Assert.True(engine.ExcludeServices);
         Assert.Equal(1000, engine.UpdateSpeedCore);
+        Assert.False(engine.RestrainByAffinity);
+        Assert.Equal(0, engine.RestraintAffinity);
+        Assert.False(engine.ProBalanceDropOneRandomCore);
+        Assert.False(engine.LowerIOPriorityDuringRestraint);
+        Assert.False(engine.UseEfficiencyMode);
+        Assert.False(engine.DoNotLowerPriorityClass);
+        Assert.False(engine.DisableProBalanceWhenSysIdle);
+        Assert.Equal(30000, engine.DisableProBalanceIfSysIdleThisManyMS);
+    }
+
+    [Fact]
+    public void RestraintOptionDefaults_AreAllOff_InOptionsAndSettings()
+    {
+        Assert.Equal(new ProBalanceRestraintOptions(), ProBalanceRestraintOptions.FromSettings(new AppSettings()));
+        var o = new ProBalanceRestraintOptions();
+        Assert.False(o.RestrainByAffinity || o.ProBalanceDropOneRandomCore || o.LowerIOPriorityDuringRestraint
+                     || o.UseEfficiencyMode || o.DoNotLowerPriorityClass || o.DisableProBalanceWhenSysIdle);
+        Assert.Equal(30000, o.DisableProBalanceIfSysIdleThisManyMS);
+    }
+
+    [Fact]
+    public void Defaults_TouchOnlyThePriorityClass()
+    {
+        using var h = new ProBalanceHarness();
+        h.Add(100, cpu: 50);
+
+        h.At(0);
+        h.At(1000);
+
+        Assert.Equal(ProcessPriorityClass.BelowNormal, h.PriorityOf(100));
+        Assert.Equal(0xFF, h.Access.Affinity[100]);
+        Assert.Equal(2, h.Access.Io[100]);
+        Assert.Equal(EfficiencyModeState.NotSet, h.Access.Eco[100]);
     }
 
     [Fact]

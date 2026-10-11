@@ -140,6 +140,7 @@ Paths are under `src/`.
 | Services excluded | yes | no |
 | Ends on becoming foreground | yes | no, and ForegroundBoost won't boost it either |
 | Respect manual change during restraint | yes | overwrites |
+| Optional restraint actions (affinity / drop one random core, I/O priority Low, efficiency mode, `DoNotLowerPriorityClass`) and `DisableProBalanceWhenSysIdle` | yes, all off by default | done, all off by default; each setting is put back unless changed externally meanwhile; idle time comes from the UI's foreground reports. `OocDisableCoreParkingWhileIn` not implemented |
 
 PL's design point: low thresholds and per-process hysteresis. It restrains early and briefly, rather than waiting until the machine is already pegged at 85 %.
 

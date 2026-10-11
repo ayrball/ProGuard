@@ -23,6 +23,63 @@
 
                     <TextBlock Text="CPU Threshold (%):" Margin="0,0,0,4"/>
                     <ui:NumberBox Value="{Binding CpuThreshold, Mode=TwoWay}" Margin="0,0,0,16" Minimum="10" Maximum="95"/>
+
+                    <TextBlock Text="While a process is restrained" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <Grid Margin="0,0,0,12" ToolTip="Leave the priority class alone. With none of the actions below on, nothing is restrained.">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Do not lower the priority class (restrain only with the actions below)" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding ProBalanceDoNotLowerPriorityClass, Mode=TwoWay}" Content="Enabled"/>
+                    </Grid>
+                    <Grid Margin="0,0,0,4" ToolTip="Limits a restrained process to the chosen CPUs (of those it may already use). Its affinity is put back when the restraint ends.">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Restrict CPU affinity to the chosen CPUs" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding ProBalanceRestrainByAffinity, Mode=TwoWay}" Content="Enabled"/>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <ui:Button Content="Choose CPUs..." Command="{Binding ChooseRestraintAffinityCommand}"/>
+                        <TextBlock Text="{Binding ProBalanceRestraintAffinityText}" VerticalAlignment="Center" Margin="12,0,0,0"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
+                    <Grid Margin="0,0,0,12" ToolTip="Takes one CPU away from the affinity the process already has, instead of using the chosen CPUs.">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Restrict CPU affinity by dropping one random CPU" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding ProBalanceDropOneRandomCore, Mode=TwoWay}" Content="Enabled"/>
+                    </Grid>
+                    <Grid Margin="0,0,0,12" ToolTip="Put back when the restraint ends.">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Lower I/O priority to Low" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding ProBalanceLowerIoPriority, Mode=TwoWay}" Content="Enabled"/>
+                    </Grid>
+                    <Grid Margin="0,0,0,16" ToolTip="Put back when the restraint ends.">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Turn on efficiency mode (EcoQoS)" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding ProBalanceUseEfficiencyMode, Mode=TwoWay}" Content="Enabled"/>
+                    </Grid>
+                    <Grid Margin="0,0,0,4" ToolTip="Lifts every restraint and restrains nothing after this long without keyboard or mouse input. The idle time comes from the ProGuard window or tray icon, so it must be running.">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Pause ProBalance while the user is idle" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding ProBalanceDisableWhenSysIdle, Mode=TwoWay}" Content="Enabled"/>
+                    </Grid>
+                    <TextBlock Text="Idle after (seconds):" Margin="0,0,0,4"/>
+                    <ui:NumberBox Value="{Binding ProBalanceDisableIfSysIdleSeconds, Mode=TwoWay}" Margin="0,0,0,16" Minimum="1" Maximum="86400"/>
                 </StackPanel>
             </ui:CardControl>
 

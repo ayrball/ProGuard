@@ -428,6 +428,35 @@ public class IpcDispatchAndSettingsTests
     }
 
     [Fact]
+    public void SettingsApplier_ProBalanceRestraintActions_AreAppliedWhenTheyChange()
+    {
+        var h = new Harness();
+        var settings = new AppSettings();
+        h.Applier.Apply(settings);
+        h.ProBalance.Verify(p => p.ConfigureRestraint(new ProBalanceRestraintOptions()), Times.Once);
+
+        h.Applier.Apply(settings.Clone());
+        h.ProBalance.Verify(p => p.ConfigureRestraint(It.IsAny<ProBalanceRestraintOptions>()), Times.Once);
+
+        var changed = settings.Clone();
+        changed.ProBalanceRestrainByAffinity = true;
+        changed.ProBalanceRestraintAffinity = 0x3;
+        changed.ProBalanceLowerIoPriority = true;
+        changed.ProBalanceUseEfficiencyMode = true;
+        changed.ProBalanceDoNotLowerPriorityClass = true;
+        changed.ProBalanceDisableWhenSysIdle = true;
+        changed.ProBalanceDisableIfSysIdleMs = 60000;
+        h.Applier.Apply(changed);
+
+        h.ProBalance.Verify(p => p.ConfigureRestraint(new ProBalanceRestraintOptions
+        {
+            RestrainByAffinity = true, RestraintAffinity = 0x3, LowerIOPriorityDuringRestraint = true, UseEfficiencyMode = true,
+            DoNotLowerPriorityClass = true, DisableProBalanceWhenSysIdle = true, DisableProBalanceIfSysIdleThisManyMS = 60000
+        }), Times.Once);
+        h.ProBalance.Verify(p => p.SetSensitivity(It.IsAny<int>()), Times.Once);
+    }
+
+    [Fact]
     public void SettingsApplier_MissingOrBadIdlePlan_FallsBackToPowerSaver()
     {
         var h = new Harness();

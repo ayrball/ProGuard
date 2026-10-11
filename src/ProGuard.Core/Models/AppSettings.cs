@@ -12,6 +12,23 @@ public class AppSettings
     public int ProBalanceSensitivity { get; set; } = 5;
     public double ProBalanceCpuThreshold { get; set; } = 25.0;
     public double ProBalanceRecoveryThreshold { get; set; } = 10.0;
+    // Optional restraint actions ([OutOfControlProcessRestraint], see ProBalanceRestraintOptions). All off, as in Process Lasso.
+    /// <summary>[RestrainByAffinity] Also restrict a restrained process to <see cref="ProBalanceRestraintAffinity"/>.</summary>
+    public bool ProBalanceRestrainByAffinity { get; set; } = false;
+    /// <summary>[RestraintAffinity] CPU mask for <see cref="ProBalanceRestrainByAffinity"/>; 0 = none chosen.</summary>
+    public long ProBalanceRestraintAffinity { get; set; } = 0;
+    /// <summary>[ProBalanceDropOneRandomCore] Restrict affinity by removing one random CPU instead.</summary>
+    public bool ProBalanceDropOneRandomCore { get; set; } = false;
+    /// <summary>[LowerIOPriorityDuringRestraint] I/O priority Low while restrained.</summary>
+    public bool ProBalanceLowerIoPriority { get; set; } = false;
+    /// <summary>[UseEfficiencyMode] EcoQoS while restrained.</summary>
+    public bool ProBalanceUseEfficiencyMode { get; set; } = false;
+    /// <summary>[DoNotLowerPriorityClass] Restrain only through the actions above.</summary>
+    public bool ProBalanceDoNotLowerPriorityClass { get; set; } = false;
+    /// <summary>[DisableProBalanceWhenSysIdle] Pause while the user is idle.</summary>
+    public bool ProBalanceDisableWhenSysIdle { get; set; } = false;
+    /// <summary>[DisableProBalanceIfSysIdleThisManyMS] 30000.</summary>
+    public int ProBalanceDisableIfSysIdleMs { get; set; } = 30000;
     
     // SmartTrim. Defaults are Process Lasso's [MemoryManagement] ones (prolasso.ini key in brackets).
     public bool SmartTrimEnabled { get; set; } = false;

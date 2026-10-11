@@ -1,11 +1,13 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ProGuard.Core.Data;
 using ProGuard.Core.Models;
 using ProGuard.Shared.Messages;
+using ProGuard.UI.Controls;
 using ProGuard.UI.IPC;
 
 namespace ProGuard.UI.ViewModels;
@@ -23,6 +25,33 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty]
     private int cpuThreshold = 25;
+
+    // ProBalance restraint actions ([OutOfControlProcessRestraint]); all off by default, as in Process Lasso.
+    [ObservableProperty]
+    private bool proBalanceRestrainByAffinity;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ProBalanceRestraintAffinityText))]
+    private long proBalanceRestraintAffinity;
+
+    [ObservableProperty]
+    private bool proBalanceDropOneRandomCore;
+
+    [ObservableProperty]
+    private bool proBalanceLowerIoPriority;
+
+    [ObservableProperty]
+    private bool proBalanceUseEfficiencyMode;
+
+    [ObservableProperty]
+    private bool proBalanceDoNotLowerPriorityClass;
+
+    [ObservableProperty]
+    private bool proBalanceDisableWhenSysIdle;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ProBalanceDisableIfSysIdleSeconds))]
+    private int proBalanceDisableIfSysIdleMs = 30000;
 
     [ObservableProperty]
     private bool isSmartTrimEnabled = false;
@@ -75,6 +104,18 @@ public partial class SettingsViewModel : ViewModelBase
         set => SmartTrimIntervalSeconds = Math.Max(1, value) * 60;
     }
 
+    /// <summary>The CPUs a restrained process is limited to, as the page shows them.</summary>
+    public string ProBalanceRestraintAffinityText => ProBalanceRestraintAffinity == 0
+        ? "No CPUs chosen"
+        : ProcessListViewModel.FormatAffinityText(ProBalanceRestraintAffinity);
+
+    /// <summary>The page edits the idle time in seconds.</summary>
+    public int ProBalanceDisableIfSysIdleSeconds
+    {
+        get => ProBalanceDisableIfSysIdleMs / 1000;
+        set => ProBalanceDisableIfSysIdleMs = Math.Max(1, value) * 1000;
+    }
+
     public SettingsViewModel() : this(new EngineProxy()) { }
 
     public SettingsViewModel(EngineProxy engine)
@@ -93,6 +134,16 @@ public partial class SettingsViewModel : ViewModelBase
         PurgeResultText = "Purging...";
         var (result, report) = await _engine.PurgeMemoryAsync();
         PurgeResultText = DescribePurge(result, report);
+    }
+
+    [RelayCommand]
+    private void ChooseRestraintAffinity()
+    {
+        var dialog = new AffinityPickerDialog(ProBalanceRestraintAffinity == 0 ? -1L : ProBalanceRestraintAffinity, "processes ProBalance restrains")
+        {
+            Owner = Application.Current?.MainWindow
+        };
+        if (dialog.ShowDialog() == true) ProBalanceRestraintAffinity = dialog.SelectedMask;
     }
 
     internal static string DescribePurge(CommandResult? result, MemoryPurgeReport? report)
@@ -121,6 +172,14 @@ public partial class SettingsViewModel : ViewModelBase
             IsProBalanceEnabled = s.ProBalanceEnabled;
             Sensitivity = s.ProBalanceSensitivity;
             CpuThreshold = (int)s.ProBalanceCpuThreshold;
+            ProBalanceRestrainByAffinity = s.ProBalanceRestrainByAffinity;
+            ProBalanceRestraintAffinity = s.ProBalanceRestraintAffinity;
+            ProBalanceDropOneRandomCore = s.ProBalanceDropOneRandomCore;
+            ProBalanceLowerIoPriority = s.ProBalanceLowerIoPriority;
+            ProBalanceUseEfficiencyMode = s.ProBalanceUseEfficiencyMode;
+            ProBalanceDoNotLowerPriorityClass = s.ProBalanceDoNotLowerPriorityClass;
+            ProBalanceDisableWhenSysIdle = s.ProBalanceDisableWhenSysIdle;
+            ProBalanceDisableIfSysIdleMs = s.ProBalanceDisableIfSysIdleMs;
             IsSmartTrimEnabled = s.SmartTrimEnabled;
             SmartTrimIntervalSeconds = s.SmartTrimIntervalSeconds;
             SmartTrimThresholdMb = s.SmartTrimMemoryThresholdMB;
@@ -162,6 +221,14 @@ public partial class SettingsViewModel : ViewModelBase
                 s.ProBalanceEnabled = IsProBalanceEnabled;
                 s.ProBalanceSensitivity = Sensitivity;
                 s.ProBalanceCpuThreshold = CpuThreshold;
+                s.ProBalanceRestrainByAffinity = ProBalanceRestrainByAffinity;
+                s.ProBalanceRestraintAffinity = ProBalanceRestraintAffinity;
+                s.ProBalanceDropOneRandomCore = ProBalanceDropOneRandomCore;
+                s.ProBalanceLowerIoPriority = ProBalanceLowerIoPriority;
+                s.ProBalanceUseEfficiencyMode = ProBalanceUseEfficiencyMode;
+                s.ProBalanceDoNotLowerPriorityClass = ProBalanceDoNotLowerPriorityClass;
+                s.ProBalanceDisableWhenSysIdle = ProBalanceDisableWhenSysIdle;
+                s.ProBalanceDisableIfSysIdleMs = Math.Max(1000, ProBalanceDisableIfSysIdleMs);
                 s.SmartTrimEnabled = IsSmartTrimEnabled;
                 s.SmartTrimIntervalSeconds = SmartTrimIntervalSeconds;
                 s.SmartTrimMemoryThresholdMB = SmartTrimThresholdMb;
@@ -190,6 +257,14 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnIsProBalanceEnabledChanged(bool value) => SaveSettings();
     partial void OnSensitivityChanged(int value) => SaveSettings();
     partial void OnCpuThresholdChanged(int value) => SaveSettings();
+    partial void OnProBalanceRestrainByAffinityChanged(bool value) => SaveSettings();
+    partial void OnProBalanceRestraintAffinityChanged(long value) => SaveSettings();
+    partial void OnProBalanceDropOneRandomCoreChanged(bool value) => SaveSettings();
+    partial void OnProBalanceLowerIoPriorityChanged(bool value) => SaveSettings();
+    partial void OnProBalanceUseEfficiencyModeChanged(bool value) => SaveSettings();
+    partial void OnProBalanceDoNotLowerPriorityClassChanged(bool value) => SaveSettings();
+    partial void OnProBalanceDisableWhenSysIdleChanged(bool value) => SaveSettings();
+    partial void OnProBalanceDisableIfSysIdleMsChanged(int value) => SaveSettings();
     partial void OnIsSmartTrimEnabledChanged(bool value) => SaveSettings();
     partial void OnSmartTrimIntervalSecondsChanged(int value) => SaveSettings();
     partial void OnSmartTrimThresholdMbChanged(long value) => SaveSettings();

@@ -150,6 +150,14 @@ public class IpcDispatcher
                 else _memory trim.TrimMemory();
                 return CommandResult.Ok();
 
+            case CommandTypes.PurgeMemory:
+                var report = _memory trim.PurgeNow() ?? new MemoryPurgeReport();
+                var data = JsonSerializer.Serialize(report);
+                // Partial success (e.g. trimmed, but the standby purge lacked a privilege) is a success; the report says what failed.
+                return report.Errors.Count > 0 && !report.AnyAction
+                    ? new CommandResult { Success = false, Error = report.Summary(), Data = data }
+                    : CommandResult.Ok(data);
+
             case CommandTypes.EnableResponsivenessGuard:
                 return UpdateSettings(s => s.ResponsivenessGuardEnabled = true);
 

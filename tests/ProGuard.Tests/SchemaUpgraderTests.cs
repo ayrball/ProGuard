@@ -81,11 +81,13 @@ public class SchemaUpgraderTests : IDisposable
             var settings = db.Settings.Single();
             Assert.Equal(1, settings.Id);
             Assert.False(settings.ResponsivenessGuardEnabled); // existing value untouched
-            Assert.Equal(5, settings.ResponsivenessGuardSensitivity);
-            Assert.Equal(25.0, settings.ResponsivenessGuardCpuThreshold);
-            Assert.Equal(300, settings.MemoryTrimIntervalSeconds);
-            Assert.Equal(1024, settings.MemoryTrimMemoryThresholdMB);
-            Assert.True(settings.MinimizeToTray);
+            // Added columns take whatever a new AppSettings defaults to, so feature branches can change defaults.
+            var defaults = new AppSettings();
+            Assert.Equal(defaults.ResponsivenessGuardSensitivity, settings.ResponsivenessGuardSensitivity);
+            Assert.Equal(defaults.ResponsivenessGuardCpuThreshold, settings.ResponsivenessGuardCpuThreshold);
+            Assert.Equal(defaults.MemoryTrimIntervalSeconds, settings.MemoryTrimIntervalSeconds);
+            Assert.Equal(defaults.MemoryTrimMemoryThresholdMB, settings.MemoryTrimMemoryThresholdMB);
+            Assert.Equal(defaults.MinimizeToTray, settings.MinimizeToTray);
             Assert.Equal("System", settings.Theme);
             Assert.Null(settings.IdlePowerPlanGuid);
 

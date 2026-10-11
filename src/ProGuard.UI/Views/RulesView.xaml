@@ -278,7 +278,7 @@
                                     </StackPanel>
                                 </CheckBox>
 
-                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ApplyAtLaunch}" Margin="0,18,0,0"
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ApplyAtLaunch}" AutomationProperties.Name="SET AT LAUNCH" Margin="0,18,0,0"
                                           IsEnabled="{Binding CanSetAtLaunch}">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal">

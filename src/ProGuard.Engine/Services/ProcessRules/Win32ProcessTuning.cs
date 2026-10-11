@@ -72,6 +72,13 @@ public sealed class Win32ProcessTuning : IProcessTuningNative
         WithProcess(pid, Set, h => SetInformation(h, Kernel32.ProcessPowerThrottling, state, "SetProcessInformation(ProcessPowerThrottling)"));
     }
 
+    /// <summary>Clears the EXECUTION_SPEED control bit, so Windows decides again (not part of <see cref="IProcessTuningNative"/>).</summary>
+    public void ResetEfficiencyMode(int pid)
+    {
+        var state = new PROCESS_POWER_THROTTLING_STATE { Version = PROCESS_POWER_THROTTLING_STATE.PROCESS_POWER_THROTTLING_CURRENT_VERSION };
+        WithProcess(pid, Set, h => SetInformation(h, Kernel32.ProcessPowerThrottling, state, "SetProcessInformation(ProcessPowerThrottling)"));
+    }
+
     // === Dynamic priority boost ===
 
     public bool TryGetPriorityBoostDisabled(int pid, out bool disabled)

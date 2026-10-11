@@ -428,6 +428,35 @@ public class IpcDispatchAndSettingsTests
     }
 
     [Fact]
+    public void SettingsApplier_ResponsivenessGuardRestraintActions_AreAppliedWhenTheyChange()
+    {
+        var h = new Harness();
+        var settings = new AppSettings();
+        h.Applier.Apply(settings);
+        h.ResponsivenessGuard.Verify(p => p.ConfigureRestraint(new ResponsivenessGuardRestraintOptions()), Times.Once);
+
+        h.Applier.Apply(settings.Clone());
+        h.ResponsivenessGuard.Verify(p => p.ConfigureRestraint(It.IsAny<ResponsivenessGuardRestraintOptions>()), Times.Once);
+
+        var changed = settings.Clone();
+        changed.ResponsivenessGuardRestrainByAffinity = true;
+        changed.ResponsivenessGuardRestraintAffinity = 0x3;
+        changed.ResponsivenessGuardLowerIoPriority = true;
+        changed.ResponsivenessGuardUseEfficiencyMode = true;
+        changed.ResponsivenessGuardDoNotLowerPriorityClass = true;
+        changed.ResponsivenessGuardDisableWhenSysIdle = true;
+        changed.ResponsivenessGuardDisableIfSysIdleMs = 60000;
+        h.Applier.Apply(changed);
+
+        h.ResponsivenessGuard.Verify(p => p.ConfigureRestraint(new ResponsivenessGuardRestraintOptions
+        {
+            RestrainByAffinity = true, RestraintAffinity = 0x3, LowerIOPriorityDuringRestraint = true, UseEfficiencyMode = true,
+            DoNotLowerPriorityClass = true, DisableResponsivenessGuardWhenSysIdle = true, DisableResponsivenessGuardIfSysIdleThisManyMS = 60000
+        }), Times.Once);
+        h.ResponsivenessGuard.Verify(p => p.SetSensitivity(It.IsAny<int>()), Times.Once);
+    }
+
+    [Fact]
     public void SettingsApplier_MissingOrBadIdlePlan_FallsBackToPowerSaver()
     {
         var h = new Harness();

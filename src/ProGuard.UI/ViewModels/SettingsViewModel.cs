@@ -1,11 +1,13 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ProGuard.Core.Data;
 using ProGuard.Core.Models;
 using ProGuard.Shared.Messages;
+using ProGuard.UI.Controls;
 using ProGuard.UI.IPC;
 
 namespace ProGuard.UI.ViewModels;
@@ -23,6 +25,33 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty]
     private int cpuThreshold = 25;
+
+    // ResponsivenessGuard restraint actions ([OutOfControlProcessRestraint]); all off by default, as in another process manager.
+    [ObservableProperty]
+    private bool responsiveness guardRestrainByAffinity;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ResponsivenessGuardRestraintAffinityText))]
+    private long responsiveness guardRestraintAffinity;
+
+    [ObservableProperty]
+    private bool responsiveness guardDropOneRandomCore;
+
+    [ObservableProperty]
+    private bool responsiveness guardLowerIoPriority;
+
+    [ObservableProperty]
+    private bool responsiveness guardUseEfficiencyMode;
+
+    [ObservableProperty]
+    private bool responsiveness guardDoNotLowerPriorityClass;
+
+    [ObservableProperty]
+    private bool responsiveness guardDisableWhenSysIdle;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ResponsivenessGuardDisableIfSysIdleSeconds))]
+    private int responsiveness guardDisableIfSysIdleMs = 30000;
 
     [ObservableProperty]
     private bool isMemoryTrimEnabled = false;
@@ -75,6 +104,18 @@ public partial class SettingsViewModel : ViewModelBase
         set => MemoryTrimIntervalSeconds = Math.Max(1, value) * 60;
     }
 
+    /// <summary>The CPUs a restrained process is limited to, as the page shows them.</summary>
+    public string ResponsivenessGuardRestraintAffinityText => ResponsivenessGuardRestraintAffinity == 0
+        ? "No CPUs chosen"
+        : ProcessListViewModel.FormatAffinityText(ResponsivenessGuardRestraintAffinity);
+
+    /// <summary>The page edits the idle time in seconds.</summary>
+    public int ResponsivenessGuardDisableIfSysIdleSeconds
+    {
+        get => ResponsivenessGuardDisableIfSysIdleMs / 1000;
+        set => ResponsivenessGuardDisableIfSysIdleMs = Math.Max(1, value) * 1000;
+    }
+
     public SettingsViewModel() : this(new EngineProxy()) { }
 
     public SettingsViewModel(EngineProxy engine)
@@ -93,6 +134,16 @@ public partial class SettingsViewModel : ViewModelBase
         PurgeResultText = "Purging...";
         var (result, report) = await _engine.PurgeMemoryAsync();
         PurgeResultText = DescribePurge(result, report);
+    }
+
+    [RelayCommand]
+    private void ChooseRestraintAffinity()
+    {
+        var dialog = new AffinityPickerDialog(ResponsivenessGuardRestraintAffinity == 0 ? -1L : ResponsivenessGuardRestraintAffinity, "processes ResponsivenessGuard restrains")
+        {
+            Owner = Application.Current?.MainWindow
+        };
+        if (dialog.ShowDialog() == true) ResponsivenessGuardRestraintAffinity = dialog.SelectedMask;
     }
 
     internal static string DescribePurge(CommandResult? result, MemoryPurgeReport? report)
@@ -121,6 +172,14 @@ public partial class SettingsViewModel : ViewModelBase
             IsResponsivenessGuardEnabled = s.ResponsivenessGuardEnabled;
             Sensitivity = s.ResponsivenessGuardSensitivity;
             CpuThreshold = (int)s.ResponsivenessGuardCpuThreshold;
+            ResponsivenessGuardRestrainByAffinity = s.ResponsivenessGuardRestrainByAffinity;
+            ResponsivenessGuardRestraintAffinity = s.ResponsivenessGuardRestraintAffinity;
+            ResponsivenessGuardDropOneRandomCore = s.ResponsivenessGuardDropOneRandomCore;
+            ResponsivenessGuardLowerIoPriority = s.ResponsivenessGuardLowerIoPriority;
+            ResponsivenessGuardUseEfficiencyMode = s.ResponsivenessGuardUseEfficiencyMode;
+            ResponsivenessGuardDoNotLowerPriorityClass = s.ResponsivenessGuardDoNotLowerPriorityClass;
+            ResponsivenessGuardDisableWhenSysIdle = s.ResponsivenessGuardDisableWhenSysIdle;
+            ResponsivenessGuardDisableIfSysIdleMs = s.ResponsivenessGuardDisableIfSysIdleMs;
             IsMemoryTrimEnabled = s.MemoryTrimEnabled;
             MemoryTrimIntervalSeconds = s.MemoryTrimIntervalSeconds;
             MemoryTrimThresholdMb = s.MemoryTrimMemoryThresholdMB;
@@ -162,6 +221,14 @@ public partial class SettingsViewModel : ViewModelBase
                 s.ResponsivenessGuardEnabled = IsResponsivenessGuardEnabled;
                 s.ResponsivenessGuardSensitivity = Sensitivity;
                 s.ResponsivenessGuardCpuThreshold = CpuThreshold;
+                s.ResponsivenessGuardRestrainByAffinity = ResponsivenessGuardRestrainByAffinity;
+                s.ResponsivenessGuardRestraintAffinity = ResponsivenessGuardRestraintAffinity;
+                s.ResponsivenessGuardDropOneRandomCore = ResponsivenessGuardDropOneRandomCore;
+                s.ResponsivenessGuardLowerIoPriority = ResponsivenessGuardLowerIoPriority;
+                s.ResponsivenessGuardUseEfficiencyMode = ResponsivenessGuardUseEfficiencyMode;
+                s.ResponsivenessGuardDoNotLowerPriorityClass = ResponsivenessGuardDoNotLowerPriorityClass;
+                s.ResponsivenessGuardDisableWhenSysIdle = ResponsivenessGuardDisableWhenSysIdle;
+                s.ResponsivenessGuardDisableIfSysIdleMs = Math.Max(1000, ResponsivenessGuardDisableIfSysIdleMs);
                 s.MemoryTrimEnabled = IsMemoryTrimEnabled;
                 s.MemoryTrimIntervalSeconds = MemoryTrimIntervalSeconds;
                 s.MemoryTrimMemoryThresholdMB = MemoryTrimThresholdMb;
@@ -190,6 +257,14 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnIsResponsivenessGuardEnabledChanged(bool value) => SaveSettings();
     partial void OnSensitivityChanged(int value) => SaveSettings();
     partial void OnCpuThresholdChanged(int value) => SaveSettings();
+    partial void OnResponsivenessGuardRestrainByAffinityChanged(bool value) => SaveSettings();
+    partial void OnResponsivenessGuardRestraintAffinityChanged(long value) => SaveSettings();
+    partial void OnResponsivenessGuardDropOneRandomCoreChanged(bool value) => SaveSettings();
+    partial void OnResponsivenessGuardLowerIoPriorityChanged(bool value) => SaveSettings();
+    partial void OnResponsivenessGuardUseEfficiencyModeChanged(bool value) => SaveSettings();
+    partial void OnResponsivenessGuardDoNotLowerPriorityClassChanged(bool value) => SaveSettings();
+    partial void OnResponsivenessGuardDisableWhenSysIdleChanged(bool value) => SaveSettings();
+    partial void OnResponsivenessGuardDisableIfSysIdleMsChanged(int value) => SaveSettings();
     partial void OnIsMemoryTrimEnabledChanged(bool value) => SaveSettings();
     partial void OnMemoryTrimIntervalSecondsChanged(int value) => SaveSettings();
     partial void OnMemoryTrimThresholdMbChanged(long value) => SaveSettings();

@@ -12,6 +12,23 @@ public class AppSettings
     public int ResponsivenessGuardSensitivity { get; set; } = 5;
     public double ResponsivenessGuardCpuThreshold { get; set; } = 25.0;
     public double ResponsivenessGuardRecoveryThreshold { get; set; } = 10.0;
+    // Optional restraint actions ([OutOfControlProcessRestraint], see ResponsivenessGuardRestraintOptions). All off, as in another process manager.
+    /// <summary>[RestrainByAffinity] Also restrict a restrained process to <see cref="ResponsivenessGuardRestraintAffinity"/>.</summary>
+    public bool ResponsivenessGuardRestrainByAffinity { get; set; } = false;
+    /// <summary>[RestraintAffinity] CPU mask for <see cref="ResponsivenessGuardRestrainByAffinity"/>; 0 = none chosen.</summary>
+    public long ResponsivenessGuardRestraintAffinity { get; set; } = 0;
+    /// <summary>[ResponsivenessGuardDropOneRandomCore] Restrict affinity by removing one random CPU instead.</summary>
+    public bool ResponsivenessGuardDropOneRandomCore { get; set; } = false;
+    /// <summary>[LowerIOPriorityDuringRestraint] I/O priority Low while restrained.</summary>
+    public bool ResponsivenessGuardLowerIoPriority { get; set; } = false;
+    /// <summary>[UseEfficiencyMode] EcoQoS while restrained.</summary>
+    public bool ResponsivenessGuardUseEfficiencyMode { get; set; } = false;
+    /// <summary>[DoNotLowerPriorityClass] Restrain only through the actions above.</summary>
+    public bool ResponsivenessGuardDoNotLowerPriorityClass { get; set; } = false;
+    /// <summary>[DisableResponsivenessGuardWhenSysIdle] Pause while the user is idle.</summary>
+    public bool ResponsivenessGuardDisableWhenSysIdle { get; set; } = false;
+    /// <summary>[DisableResponsivenessGuardIfSysIdleThisManyMS] 30000.</summary>
+    public int ResponsivenessGuardDisableIfSysIdleMs { get; set; } = 30000;
     
     // MemoryTrim. Defaults are another process manager's [MemoryManagement] ones (otherpm.ini key in brackets).
     public bool MemoryTrimEnabled { get; set; } = false;

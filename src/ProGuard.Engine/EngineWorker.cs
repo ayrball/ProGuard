@@ -23,6 +23,7 @@ public class EngineWorker : BackgroundService
     private readonly ProcessOrchestrator _processOrchestrator;
     private readonly ForegroundBoostService _foregroundBoostService;
     private readonly PipeServer _pipeServer;
+    private readonly ForegroundPipeServer _foregroundPipeServer;
     private readonly RuleStore _ruleStore;
     private readonly SettingsApplier _settingsApplier;
 
@@ -39,6 +40,7 @@ public class EngineWorker : BackgroundService
         ProcessOrchestrator processOrchestrator,
         ForegroundBoostService foregroundBoostService,
         PipeServer pipeServer,
+        ForegroundPipeServer foregroundPipeServer,
         RuleStore ruleStore,
         SettingsApplier settingsApplier)
     {
@@ -52,6 +54,7 @@ public class EngineWorker : BackgroundService
         _processOrchestrator = processOrchestrator;
         _foregroundBoostService = foregroundBoostService;
         _pipeServer = pipeServer;
+        _foregroundPipeServer = foregroundPipeServer;
         _ruleStore = ruleStore;
         _settingsApplier = settingsApplier;
     }
@@ -63,6 +66,8 @@ public class EngineWorker : BackgroundService
         // Before the services start, so they come up with the user's settings rather than their defaults.
         _settingsApplier.Apply(_ruleStore.GetSettings());
 
+        // Before anything asks for the foreground process, so a UI that's already running can reconnect.
+        _foregroundPipeServer.Start();
         await _processMonitor.StartAsync(stoppingToken);
         await _responsiveness guardEngine.StartAsync(stoppingToken);
         await _cpuLimiter.StartAsync(stoppingToken);
@@ -93,6 +98,7 @@ public class EngineWorker : BackgroundService
         _logger.LogInformation("ProGuard.Engine stopping at: {time}", System.DateTimeOffset.Now);
         
         _pipeServer.Stop();
+        _foregroundPipeServer.Stop();
         _foregroundBoostService.Stop();
 
         await _processOrchestrator.StopAsync(stoppingToken);

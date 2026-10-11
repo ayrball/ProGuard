@@ -213,4 +213,16 @@ public static class Kernel32
 
     [DllImport("kernel32.dll", SetLastError = true)]
     public static extern IntPtr LocalFree(IntPtr hMem);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool ProcessIdToSessionId(uint dwProcessId, out uint pSessionId);
+
+    /// <summary>Session attached to the physical console; 0xFFFFFFFF while a session switch is in progress.</summary>
+    [DllImport("kernel32.dll")]
+    public static extern uint WTSGetActiveConsoleSessionId();
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetNamedPipeClientSessionId(SafeHandle pipe, out uint clientSessionId);
 }

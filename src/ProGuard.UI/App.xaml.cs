@@ -20,6 +20,7 @@ public partial class App : Application
         .ConfigureServices((context, services) =>
         {
             services.AddHostedService<ApplicationHostService>();
+            services.AddHostedService<ForegroundReporter>();
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<ISnackbarService, SnackbarService>();
             

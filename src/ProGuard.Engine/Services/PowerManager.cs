@@ -129,6 +129,7 @@ public class PowerManager : IPowerManager
         get { lock (_sync) return _owner; }
     }
 
+    /// <summary>Whether Performance Mode is on (manually or automatically). SmartTrim reads it to gate its standby list purge.</summary>
     public bool IsPerformanceModeActive
     {
         get { lock (_sync) return PerformanceModeWanted; }
@@ -395,12 +396,6 @@ public class PowerManager : IPowerManager
             _logger.LogError(ex, "Failed to set active power scheme");
         }
         return false;
-    }
-
-    /// <summary>Whether Performance Mode is on. SmartTrim reads it to gate its standby list purge.</summary>
-    public bool IsPerformanceModeActive
-    {
-        get { lock (_sync) return _performanceModeActive; }
     }
 
     /// <inheritdoc/>

@@ -1,8 +1,0 @@
-<UserControl x:Class="ProGuard.UI.Controls.CpuGraphControl"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF">
-    <Grid>
-        <lvc:CartesianChart Series="{Binding ChartSeries}" XAxes="{Binding ChartXAxes}" YAxes="{Binding ChartYAxes}" />
-    </Grid>
-</UserControl>

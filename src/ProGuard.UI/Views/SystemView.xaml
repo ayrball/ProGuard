@@ -1,0 +1,184 @@
+<UserControl x:Class="ProGuard.UI.Views.SystemView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <!-- A section: big number + name on the left, controls on the right. -->
+        <Style x:Key="Section" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{StaticResource VoltLineBrush}"/>
+            <Setter Property="BorderThickness" Value="0,2,0,0"/>
+            <Setter Property="Padding" Value="0,22,0,26"/>
+        </Style>
+        <Style x:Key="SectionNumber" TargetType="TextBlock" BasedOn="{StaticResource Text.Mono}">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Opacity" Value="0.45"/>
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="0,0,16,0">
+            <TextBlock Text="SYSTEM" Style="{StaticResource Text.Title}"/>
+            <TextBlock Text="HOW THE ENGINE BEHAVES. CHANGES APPLY THE MOMENT YOU MAKE THEM." Style="{StaticResource Text.Label}" Margin="0,6,0,28"/>
+
+            <!-- ============================================================ ProBalance -->
+            <Border Style="{StaticResource Section}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="320"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,30,0">
+                        <TextBlock Text="A" Style="{StaticResource SectionNumber}"/>
+                        <TextBlock Text="PROBALANCE" Style="{StaticResource Text.H2}" FontSize="32"/>
+                        <TextBlock Style="{StaticResource Text.Body}" Opacity="0.7" Margin="0,8,0,0"
+                                   Text="When the machine is overloaded, background hogs get their priority lowered so whatever you're using stays responsive. Restored the moment things calm down."/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ProBalanceEnabled}">
+                            <TextBlock Text="BALANCE AUTOMATICALLY" FontWeight="Bold" FontSize="15"/>
+                        </CheckBox>
+                        <DockPanel Margin="0,26,0,10">
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding SensitivityLevel, StringFormat='{}{0} / 10'}" FontFamily="{StaticResource Mono}" FontWeight="Bold" FontSize="16"/>
+                            <TextBlock Text="SENSITIVITY" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
+                        </DockPanel>
+                        <!-- Ten blocks; click one to set the level. Everything up to it lights up. -->
+                        <ItemsControl ItemsSource="{Binding Sensitivity}" IsEnabled="{Binding ProBalanceEnabled}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Command="{Binding DataContext.SetSensitivityCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding Level}" Height="44" Margin="0,0,4,0" ToolTip="{Binding Level}">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource Btn.Base}">
+                                                <Setter Property="Background" Value="Transparent"/>
+                                                <Setter Property="BorderBrush" Value="{StaticResource VoltLineBrush}"/>
+                                                <Setter Property="Padding" Value="0"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsLit}" Value="True">
+                                                        <Setter Property="Background" Value="{StaticResource VoltBrush}"/>
+                                                        <Setter Property="BorderBrush" Value="{StaticResource VoltBrush}"/>
+                                                    </DataTrigger>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="BorderBrush" Value="{StaticResource VoltBrush}"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding SensitivityDescription}" FontWeight="Bold" FontSize="13" Margin="0,10,0,0" Opacity="0.8"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ============================================================ Focus boost -->
+            <Border Style="{StaticResource Section}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="320"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,30,0">
+                        <TextBlock Text="B" Style="{StaticResource SectionNumber}"/>
+                        <TextBlock Text="FOCUS BOOST" Style="{StaticResource Text.H2}" FontSize="32"/>
+                        <TextBlock Style="{StaticResource Text.Body}" Opacity="0.7" Margin="0,8,0,0"
+                                   Text="The window you're working in runs one step above normal priority, and drops back when you switch away."/>
+                    </StackPanel>
+                    <CheckBox Grid.Column="1" Style="{StaticResource Switch}" IsChecked="{Binding ForegroundBoostEnabled}" VerticalAlignment="Top">
+                        <TextBlock Text="BOOST THE FOCUSED APP" FontWeight="Bold" FontSize="15"/>
+                    </CheckBox>
+                </Grid>
+            </Border>
+
+            <!-- ============================================================ SmartTrim -->
+            <Border Style="{StaticResource Section}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="320"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,30,0">
+                        <TextBlock Text="C" Style="{StaticResource SectionNumber}"/>
+                        <TextBlock Text="SMARTTRIM" Style="{StaticResource Text.H2}" FontSize="32"/>
+                        <TextBlock Style="{StaticResource Text.Body}" Opacity="0.7" Margin="0,8,0,0"
+                                   Text="Every few minutes, background programs above the threshold give idle memory back to Windows. Useful on machines short of RAM; unnecessary on most."/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding SmartTrimEnabled}">
+                            <TextBlock Text="TRIM AUTOMATICALLY" FontWeight="Bold" FontSize="15"/>
+                        </CheckBox>
+                        <TextBlock Text="WHEN A BACKGROUND PROGRAM USES MORE THAN" Style="{StaticResource Text.Label}" Margin="0,22,0,8"/>
+                        <ListBox Style="{StaticResource Choices}" ItemsSource="{Binding TrimThresholds}" SelectedItem="{Binding TrimThreshold}"
+                                 IsEnabled="{Binding SmartTrimEnabled}"/>
+                        <Button Style="{StaticResource Btn.Outline}" Content="TRIM EVERYTHING NOW" Command="{Binding TrimAllCommand}"
+                                HorizontalAlignment="Left" Margin="0,14,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ============================================================ Power -->
+            <Border Style="{StaticResource Section}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="320"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,30,0">
+                        <TextBlock Text="D" Style="{StaticResource SectionNumber}"/>
+                        <TextBlock Text="POWER" Style="{StaticResource Text.H2}" FontSize="32"/>
+                        <TextBlock Style="{StaticResource Text.Body}" Opacity="0.7" Margin="0,8,0,0"
+                                   Text="Switch Windows power plans. Performance mode jumps to High Performance and puts your previous plan back when you turn it off."/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding PerformanceMode}">
+                            <TextBlock Text="PERFORMANCE MODE" FontWeight="Bold" FontSize="15"/>
+                        </CheckBox>
+                        <TextBlock Text="PLANS" Style="{StaticResource Text.Label}" Margin="0,22,0,8"/>
+                        <ItemsControl ItemsSource="{Binding Plans}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Command="{Binding DataContext.ActivatePlanCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}" Margin="0,0,8,8" MinWidth="170" Padding="16,14" HorizontalContentAlignment="Left">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource Btn.Outline}">
+                                                <Setter Property="BorderBrush" Value="{StaticResource VoltLineBrush}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                        <Setter Property="Background" Value="{StaticResource VoltBrush}"/>
+                                                        <Setter Property="BorderBrush" Value="{StaticResource VoltBrush}"/>
+                                                        <Setter Property="Foreground" Value="{StaticResource InkBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                        <StackPanel>
+                                            <TextBlock FontSize="10" FontWeight="SemiBold" Opacity="0.7">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="SWITCH TO"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                <Setter Property="Text" Value="ACTIVE"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Text="{Binding Name}" FontSize="17"/>
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

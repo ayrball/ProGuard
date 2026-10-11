@@ -426,29 +426,6 @@ public class CpuAffinityLimiterTests
 
     // ---------- Rule editor and persistence ----------
 
-    [Fact]
-    public void RuleEditor_ParsesAndValidatesAffinityLimitFields()
-    {
-        var rule = new ProcessRule { ProcessName = "x.exe" };
-
-        Assert.Null(RulesViewModel.ApplyCpuAffinityLimit(rule, "85%", "10", "2", "60"));
-        Assert.Equal(85, rule.CpuLimitThresholdPercent);
-        Assert.Equal(10, rule.CpuLimitOverThresholdSeconds);
-        Assert.Equal(2, rule.CpuLimitCoresToRemove);
-        Assert.Equal(60, rule.CpuLimitDurationSeconds);
-        Assert.Equal("≥85% for 10s: -2 cores for 60s", RulesViewModel.FormatCpuAffinityLimit(rule));
-
-        Assert.NotNull(RulesViewModel.ApplyCpuAffinityLimit(rule, "150", "10", "2", "60"));
-        Assert.NotNull(RulesViewModel.ApplyCpuAffinityLimit(rule, "50", "-1", "2", "60"));
-        Assert.NotNull(RulesViewModel.ApplyCpuAffinityLimit(rule, "50", "10", "0", "60"));
-        Assert.NotNull(RulesViewModel.ApplyCpuAffinityLimit(rule, "50", "10", "2", "0"));
-
-        Assert.Null(RulesViewModel.ApplyCpuAffinityLimit(rule, " ", "10", "2", "60"));
-        Assert.Null(rule.CpuLimitThresholdPercent);
-        Assert.Null(rule.CpuLimitCoresToRemove);
-        Assert.Equal("None", RulesViewModel.FormatCpuAffinityLimit(rule));
-    }
-
     /// <summary>Its own database file: EnsureCreated racing other test classes on the shared one is flaky.</summary>
     private sealed class PrivateDbContext(string path) : ProGuardDbContext
     {

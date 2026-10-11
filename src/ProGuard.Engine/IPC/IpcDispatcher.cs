@@ -233,14 +233,14 @@ public class IpcDispatcher
     }
 
     /// <summary>
-    /// Creates or updates the process rule named in a <see cref="RuleDto"/>. Only the fields the DTO carries change;
-    /// the rest of an existing rule is kept. The engine applies it to processes as they start (or on the next
+    /// Creates or updates the process rule named in a <see cref="ProcessRuleDto"/>. The DTO carries every field, so
+    /// it replaces the stored rule (keeping its Id). The engine applies it to processes as they start (or on the next
     /// re-apply check).
     /// </summary>
     private CommandResult SaveRule(string payload)
     {
-        var dto = ParseArgument<RuleDto>(payload);
-        if (string.IsNullOrWhiteSpace(dto.Name)) return CommandResult.Fail("A rule needs a process name");
+        var dto = ParseArgument<ProcessRuleDto>(payload);
+        if (string.IsNullOrWhiteSpace(dto.ProcessName)) return CommandResult.Fail("A rule needs a process name");
         if (dto.IoPriority is int io && !ProcessRuleOptions.IsValid(ProcessRuleOptions.IoPriorities, io)) return CommandResult.Fail("Invalid I/O priority");
         if (dto.MemoryPriority is int mem && !ProcessRuleOptions.IsValid(ProcessRuleOptions.MemoryPriorities, mem, ProcessRuleOptions.MinMemoryPriority)) return CommandResult.Fail("Invalid memory priority");
         if (dto.GpuPriority is int gpu && !ProcessRuleOptions.IsValid(ProcessRuleOptions.GpuPriorities, gpu)) return CommandResult.Fail("Invalid GPU priority");
@@ -249,13 +249,14 @@ public class IpcDispatcher
 
         // Copy rather than mutate the cached rule: other threads are reading it.
         var rule = new ProcessRule();
-        var existing = _ruleStore.GetProcessRule(dto.Name);
+        var existing = _ruleStore.GetProcessRule(dto.ProcessName);
         if (existing != null)
         {
             foreach (var property in typeof(ProcessRule).GetProperties().Where(p => p.CanWrite))
                 property.SetValue(rule, property.GetValue(existing));
         }
         RuleDtoMapper.CopyTo(dto, rule);
+        if (existing != null) rule.Id = existing.Id; // the stored row keeps its key whatever the client sent
         _ruleStore.SaveProcessRule(rule);
         return CommandResult.Ok();
     }

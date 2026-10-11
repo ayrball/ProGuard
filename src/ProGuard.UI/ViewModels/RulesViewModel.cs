@@ -1,420 +1,181 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Linq;
-using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using ProGuard.Core.Data;
-using ProGuard.Core.Helpers;
-using ProGuard.Core.Models;
-using ProGuard.UI.Controls;
+using ProGuard.Shared.Contracts;
+using ProGuard.Shared.Messages;
+using ProGuard.UI.Services;
 
 namespace ProGuard.UI.ViewModels;
 
-public partial class RulesViewModel : ViewModelBase
+/// <summary>A labelled value for a row of chip-style choices.</summary>
+public sealed record Choice<T>(string Label, T Value);
+
+public sealed class RuleRow
 {
-    [ObservableProperty]
-    private RuleDisplayItem? selectedRule;
+    public ProcessRuleDto Dto { get; }
+    public string Name => Fmt.Exe(Dto.ProcessName).ToUpperInvariant();
+    public IReadOnlyList<string> Effects { get; }
 
-    [ObservableProperty]
-    private bool isAddPanelOpen;
-
-    [ObservableProperty]
-    private string newProcessName = string.Empty;
-
-    [ObservableProperty]
-    private string newPriority = "Normal";
-
-    [ObservableProperty]
-    private string newCpuLimit = "None";
-
-    [ObservableProperty]
-    private bool newIsDisallowed;
-
-    // CPU Limiter, affinity-reduction mode. A blank threshold leaves it off.
-    [ObservableProperty]
-    private string newCpuLimitThreshold = string.Empty;
-
-    [ObservableProperty]
-    private string newCpuLimitOverSeconds = CpuAffinityLimitDefaults.OverThresholdSeconds.ToString();
-
-    [ObservableProperty]
-    private string newCpuLimitCores = CpuAffinityLimitDefaults.CoresToRemove.ToString();
-
-    [ObservableProperty]
-    private string newCpuLimitDuration = CpuAffinityLimitDefaults.DurationSeconds.ToString();
-
-    // Instance limit
-    [ObservableProperty]
-    private string newMaxInstances = "None";
-
-    [ObservableProperty]
-    private bool newMaxInstancesAllSessions;
-
-    // Instance Balancer
-    public string[] BalancerModes { get; } = { BalancerOff, BalancerEqual, BalancerFixed };
-    private const string BalancerOff = "Off";
-    private const string BalancerEqual = "Equal cores per instance";
-    private const string BalancerFixed = "Fixed cores per instance";
-
-    [ObservableProperty]
-    private string newBalancerMode = BalancerOff;
-
-    [ObservableProperty]
-    private string newBalancerCoresPerInstance = "1";
-
-    [ObservableProperty]
-    private bool newBalancerAvoidSmt;
-
-    [ObservableProperty]
-    private string newBalancerReservedCores = "0";
-
-    [ObservableProperty]
-    private string newBalancerMinCpu = "0";
-
-    // Startup boost
-    [ObservableProperty]
-    private string newStartupBoostPriority = "None";
-
-    [ObservableProperty]
-    private string newStartupBoostSeconds = "10";
-
-    // Persistent per-process defaults. Index 0 of every option list is "(unchanged)", which stores null.
-    private const string Unchanged = "(unchanged)";
-    public IReadOnlyList<string> IoPriorityOptions { get; } = WithUnchanged(ProcessRuleOptions.IoPriorities);
-    /// <summary>The index is the stored MEMORY_PRIORITY value (1..5).</summary>
-    public IReadOnlyList<string> MemoryPriorityOptions { get; } = WithUnchanged(ProcessRuleOptions.MemoryPriorities.Skip(ProcessRuleOptions.MinMemoryPriority));
-    public IReadOnlyList<string> EfficiencyModeOptions { get; } = new[] { Unchanged, "On (EcoQoS)", "Off" };
-    public IReadOnlyList<string> PriorityBoostOptions { get; } = new[] { Unchanged, "Disable boost", "Allow boost" };
-    public IReadOnlyList<string> GpuPriorityOptions { get; } = WithUnchanged(ProcessRuleOptions.GpuPriorities);
-    public IReadOnlyList<string> GpuPreferenceOptions { get; } = WithUnchanged(ProcessRuleOptions.GpuPreferences);
-
-    [ObservableProperty] private int newIoPriorityIndex;
-    [ObservableProperty] private int newMemoryPriorityIndex;
-    [ObservableProperty] private int newEfficiencyModeIndex;
-    [ObservableProperty] private int newPriorityBoostIndex;
-    [ObservableProperty] private int newGpuPriorityIndex;
-    [ObservableProperty] private int newGpuPreferenceIndex;
-    [ObservableProperty] private string newCpuSetIds = string.Empty;
-    [ObservableProperty] private bool newReapplyIfChanged;
-
-    public ObservableCollection<RuleDisplayItem> Rules { get; set; } = new();
-
-    public RulesViewModel()
+    public RuleRow(ProcessRuleDto dto, int logical)
     {
-        LoadRules();
-    }
-
-    public void LoadRules()
-    {
-        try
-        {
-            using var db = new ProGuardDbContext();
-            db.EnsureSchema();
-
-            var dbRules = db.ProcessRules.ToList();
-
-            Rules.Clear();
-            foreach (var r in dbRules)
-            {
-                string prioText = r.PriorityClass.HasValue ? ((ProcessPriorityClass)r.PriorityClass.Value).ToString() : "Normal";
-                string affText = r.AffinityMask.HasValue ? ProcessListViewModel.FormatAffinityText(r.AffinityMask.Value) : "All Cores";
-                string cpuText = r.CpuLimitPercent.HasValue ? $"{r.CpuLimitPercent.Value}%" : "None";
-                string maxInst = FormatMaxInstances(r);
-
-                Rules.Add(new RuleDisplayItem
-                {
-                    Id = r.Id,
-                    ProcessName = r.ProcessName,
-                    Priority = prioText,
-                    Affinity = affText,
-                    CpuLimit = cpuText,
-                    CpuAffinityLimit = FormatCpuAffinityLimit(r),
-                    MaxInstances = maxInst,
-                    InstanceBalancer = FormatBalancer(r),
-                    StartupBoost = FormatStartupBoost(r),
-                    IsDisallowed = r.DisallowExecution,
-                    Defaults = DescribeDefaults(r)
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            // Leave the list empty rather than showing invented rules the engine doesn't know about.
-            Debug.WriteLine($"Failed to load process rules: {ex}");
-        }
-    }
-
-    [RelayCommand]
-    private void AddRule()
-    {
-        IsAddPanelOpen = !IsAddPanelOpen;
-    }
-
-    [RelayCommand]
-    private void SaveNewRule()
-    {
-        if (string.IsNullOrWhiteSpace(NewProcessName))
-        {
-            MessageBox.Show("Please enter a process name (e.g., game.exe).", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        string cleanName = NewProcessName.Trim();
-        if (!cleanName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-        {
-            cleanName += ".exe";
-        }
-
-        try
-        {
-            using var db = new ProGuardDbContext();
-            db.EnsureSchema();
-
-            int? prioVal = null;
-            if (Enum.TryParse<ProcessPriorityClass>(NewPriority, out var pc))
-            {
-                prioVal = (int)pc;
-            }
-
-            double? cpuLimitVal = null;
-            if (double.TryParse(NewCpuLimit.Replace("%", "").Trim(), out var parsedCpu))
-            {
-                cpuLimitVal = parsedCpu;
-            }
-
-            var cpuSetIds = string.IsNullOrWhiteSpace(NewCpuSetIds) ? null : NewCpuSetIds.Trim();
-            if (cpuSetIds != null && !CpuSets.TryParseIds(cpuSetIds, out _))
-            {
-                MessageBox.Show("CPU Sets must be a comma-separated list of CPU Set IDs (use Pick...).", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            var entity = new ProcessRule
-            {
-                ProcessName = cleanName,
-                PriorityClass = prioVal,
-                CpuLimitPercent = cpuLimitVal,
-                DisallowExecution = NewIsDisallowed,
-                IoPriority = FromOptionIndex(NewIoPriorityIndex),
-                MemoryPriority = NewMemoryPriorityIndex > 0 ? NewMemoryPriorityIndex : null,
-                EfficiencyMode = FromTriState(NewEfficiencyModeIndex),
-                DisablePriorityBoost = FromTriState(NewPriorityBoostIndex),
-                CpuSetIds = cpuSetIds,
-                GpuPriority = FromOptionIndex(NewGpuPriorityIndex),
-                GpuPreference = FromOptionIndex(NewGpuPreferenceIndex),
-                ReapplyIfChanged = NewReapplyIfChanged
-            };
-            ApplyInstanceAndBoostFields(entity);
-
-            var affinityLimitError = ApplyCpuAffinityLimit(entity, NewCpuLimitThreshold, NewCpuLimitOverSeconds, NewCpuLimitCores, NewCpuLimitDuration);
-            if (affinityLimitError != null)
-            {
-                MessageBox.Show(affinityLimitError, "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            db.ProcessRules.Add(entity);
-            db.SaveChanges();
-
-            Rules.Add(new RuleDisplayItem
-            {
-                Id = entity.Id,
-                ProcessName = entity.ProcessName,
-                Priority = NewPriority,
-                Affinity = "All",
-                CpuLimit = cpuLimitVal.HasValue ? $"{cpuLimitVal}%" : "None",
-                CpuAffinityLimit = FormatCpuAffinityLimit(entity),
-                MaxInstances = FormatMaxInstances(entity),
-                InstanceBalancer = FormatBalancer(entity),
-                StartupBoost = FormatStartupBoost(entity),
-                IsDisallowed = entity.DisallowExecution,
-                Defaults = DescribeDefaults(entity)
-            });
-
-            NewProcessName = string.Empty;
-            NewCpuLimitThreshold = string.Empty;
-            ResetPersistentDefaults();
-            IsAddPanelOpen = false;
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Failed to save rule: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    /// <summary>
-    /// Fills the CPU Limiter (affinity reduction) fields of <paramref name="rule"/> from the editor's text boxes.
-    /// A blank threshold turns the mode off. Returns an error message, or null when the input is valid.
-    /// </summary>
-    public static string? ApplyCpuAffinityLimit(ProcessRule rule, string threshold, string overSeconds, string cores, string duration)
-    {
-        if (string.IsNullOrWhiteSpace(threshold) || threshold.Trim().Equals("None", StringComparison.OrdinalIgnoreCase))
-        {
-            rule.CpuLimitThresholdPercent = null;
-            rule.CpuLimitOverThresholdSeconds = null;
-            rule.CpuLimitCoresToRemove = null;
-            rule.CpuLimitDurationSeconds = null;
-            return null;
-        }
-
-        if (!double.TryParse(threshold.Replace("%", "").Trim(), out var t) || t <= 0 || t > 100)
-            return "CPU Limiter threshold must be a percentage between 1 and 100.";
-        if (!int.TryParse(overSeconds.Trim(), out var o) || o < 0)
-            return "CPU Limiter time over threshold must be 0 or more seconds.";
-        if (!int.TryParse(cores.Trim(), out var c) || c < 1)
-            return "CPU Limiter must remove at least 1 core.";
-        if (!int.TryParse(duration.Trim(), out var d) || d < 1)
-            return "CPU Limiter duration must be at least 1 second.";
-
-        rule.CpuLimitThresholdPercent = t;
-        rule.CpuLimitOverThresholdSeconds = o;
-        rule.CpuLimitCoresToRemove = c;
-        rule.CpuLimitDurationSeconds = d;
-        return null;
-    }
-
-    /// <summary>One-line summary of a rule's CPU Limiter (affinity reduction) settings for the grid.</summary>
-    public static string FormatCpuAffinityLimit(ProcessRule rule)
-    {
-        if (!rule.CpuLimitThresholdPercent.HasValue) return "None";
-        var over = rule.CpuLimitOverThresholdSeconds ?? CpuAffinityLimitDefaults.OverThresholdSeconds;
-        var cores = rule.CpuLimitCoresToRemove ?? CpuAffinityLimitDefaults.CoresToRemove;
-        var duration = rule.CpuLimitDurationSeconds ?? CpuAffinityLimitDefaults.DurationSeconds;
-        return $"≥{rule.CpuLimitThresholdPercent.Value}% for {over}s: -{cores} core{(cores == 1 ? "" : "s")} for {duration}s";
-    }
-
-    /// <summary>Copies the instance limit, Instance Balancer and startup boost inputs onto <paramref name="rule"/>.</summary>
-    public void ApplyInstanceAndBoostFields(ProcessRule rule)
-    {
-        rule.MaxInstances = int.TryParse(NewMaxInstances?.Trim(), out var max) && max >= 1 ? max : null;
-        rule.MaxInstancesAllSessions = NewMaxInstancesAllSessions;
-
-        rule.InstanceBalancerMode = NewBalancerMode switch
-        {
-            BalancerEqual => InstanceBalancerMode.EqualCoresPerInstance,
-            BalancerFixed => InstanceBalancerMode.FixedCoresPerInstance,
-            _ => null
-        };
-        rule.InstanceBalancerCoresPerInstance = int.TryParse(NewBalancerCoresPerInstance?.Trim(), out var cores) && cores >= 1 ? cores : null;
-        rule.InstanceBalancerAvoidSmt = NewBalancerAvoidSmt;
-        rule.InstanceBalancerReservedCores = int.TryParse(NewBalancerReservedCores?.Trim(), out var reserved) && reserved > 0 ? reserved : null;
-        rule.InstanceBalancerMinCpuPercent =
-            double.TryParse(NewBalancerMinCpu?.Replace("%", "").Trim(), out var minCpu) && minCpu > 0 ? Math.Min(minCpu, 100) : null;
-
-        rule.StartupBoostPriorityClass = Enum.TryParse<ProcessPriorityClass>(NewStartupBoostPriority, out var boost) ? (int)boost : null;
-        rule.StartupBoostSeconds = int.TryParse(NewStartupBoostSeconds?.Trim(), out var seconds) ? Math.Clamp(seconds, 1, 3600) : null;
-    }
-
-    private static string FormatMaxInstances(ProcessRule r) =>
-        r.MaxInstances is int max ? (r.MaxInstancesAllSessions ? $"{max} (all sessions)" : max.ToString()) : "None";
-
-    private static string FormatBalancer(ProcessRule r) => r.InstanceBalancerMode switch
-    {
-        InstanceBalancerMode.EqualCoresPerInstance => "Equal",
-        InstanceBalancerMode.FixedCoresPerInstance => $"{r.InstanceBalancerCoresPerInstance ?? 1} per instance",
-        _ => "Off"
-    };
-
-    private static string FormatStartupBoost(ProcessRule r) =>
-        r.StartupBoostPriorityClass is int p ? $"{(ProcessPriorityClass)p} for {r.StartupBoostSeconds ?? 10}s" : "None";
-
-    [RelayCommand]
-    private void CancelAddRule()
-    {
-        IsAddPanelOpen = false;
-        NewProcessName = string.Empty;
-        ResetPersistentDefaults();
-    }
-
-    [RelayCommand]
-    private void PickCpuSets()
-    {
-        try
-        {
-            var dialog = new CpuSetPickerDialog(NewCpuSetIds, string.IsNullOrWhiteSpace(NewProcessName) ? null : NewProcessName.Trim())
-            {
-                Owner = Application.Current?.MainWindow
-            };
-            if (dialog.ShowDialog() == true) NewCpuSetIds = dialog.SelectedIdsText;
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Failed to read the CPU Sets: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    private void ResetPersistentDefaults()
-    {
-        NewIoPriorityIndex = NewMemoryPriorityIndex = NewEfficiencyModeIndex = NewPriorityBoostIndex = 0;
-        NewGpuPriorityIndex = NewGpuPreferenceIndex = 0;
-        NewCpuSetIds = string.Empty;
-        NewReapplyIfChanged = false;
-    }
-
-    private static IReadOnlyList<string> WithUnchanged(IEnumerable<string> options) => new[] { Unchanged }.Concat(options).ToArray();
-    private static int? FromOptionIndex(int index) => index > 0 ? index - 1 : null;
-    private static bool? FromTriState(int index) => index switch { 1 => true, 2 => false, _ => null };
-
-    /// <summary>One-line summary of a rule's persistent per-process defaults for the rules grid.</summary>
-    internal static string DescribeDefaults(ProcessRule r)
-    {
-        var parts = new List<string>();
-        if (r.IoPriority is int io) parts.Add("I/O " + ProcessRuleOptions.Label(ProcessRuleOptions.IoPriorities, io));
-        if (r.MemoryPriority is int mem) parts.Add("Memory " + ProcessRuleOptions.Label(ProcessRuleOptions.MemoryPriorities, mem));
-        if (r.EfficiencyMode is bool eco) parts.Add(eco ? "Eco on" : "Eco off");
-        if (r.DisablePriorityBoost is bool boost) parts.Add(boost ? "No boost" : "Boost");
-        if (r.CpuSetIds != null) parts.Add(r.CpuSetIds.Length == 0 ? "CPU Sets cleared" : "CPU Sets " + r.CpuSetIds);
-        if (r.GpuPriority is int gpu) parts.Add("GPU " + ProcessRuleOptions.Label(ProcessRuleOptions.GpuPriorities, gpu));
-        if (r.GpuPreference is int pref) parts.Add(ProcessRuleOptions.Label(ProcessRuleOptions.GpuPreferences, pref));
-        if (parts.Count > 0 && r.ReapplyIfChanged) parts.Add("re-apply");
-        return string.Join(" · ", parts);
-    }
-
-    [RelayCommand]
-    private void DeleteRule()
-    {
-        if (SelectedRule == null)
-        {
-            MessageBox.Show("Please select a rule to delete.", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        try
-        {
-            using var db = new ProGuardDbContext();
-            db.EnsureSchema();
-
-            var entity = db.ProcessRules.FirstOrDefault(r => r.Id == SelectedRule.Id || r.ProcessName == SelectedRule.ProcessName);
-            if (entity != null)
-            {
-                db.ProcessRules.Remove(entity);
-                db.SaveChanges();
-            }
-
-            Rules.Remove(SelectedRule);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Error deleting rule: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        Dto = dto;
+        var effects = new List<string>();
+        if (dto.DisallowExecution) effects.Add("BLOCKED");
+        if (dto.PriorityClass is { } p) effects.Add($"PRIORITY {Fmt.Priority((ProcessPriorityClass)p)}");
+        if (dto.CpuLimitPercent is { } l) effects.Add($"CAP {l:0.#}%");
+        if (dto.AffinityMask is { } m) effects.Add($"CORES {Fmt.Affinity(m, logical)}");
+        if (dto.ExcludeFromProBalance) effects.Add("PROBALANCE OFF");
+        if (effects.Count == 0) effects.Add("NO EFFECT");
+        Effects = effects;
     }
 }
 
-public class RuleDisplayItem
+/// <summary>The rule being created or changed in the side panel.</summary>
+public sealed partial class RuleEditor : ObservableObject
 {
-    public int Id { get; set; }
-    public string ProcessName { get; set; } = string.Empty;
-    public string Priority { get; set; } = string.Empty;
-    public string Affinity { get; set; } = string.Empty;
-    public string CpuLimit { get; set; } = string.Empty;
-    public string CpuAffinityLimit { get; set; } = "None";
-    public string MaxInstances { get; set; } = string.Empty;
-    public string InstanceBalancer { get; set; } = string.Empty;
-    public string StartupBoost { get; set; } = string.Empty;
-    public bool IsDisallowed { get; set; }
-    /// <summary>Summary of the persistent per-process defaults (I/O, memory, EcoQoS, boost, CPU Sets, GPU).</summary>
-    public string Defaults { get; set; } = string.Empty;
+    public int Id { get; init; }
+    public bool IsNew => Id == 0;
+    public string Heading => IsNew ? "NEW RULE" : "EDIT RULE";
+
+    public IReadOnlyList<Choice<ProcessPriorityClass?>> Priorities { get; } = new Choice<ProcessPriorityClass?>[]
+    {
+        new("LEAVE", null),
+        new("IDLE", ProcessPriorityClass.Idle),
+        new("LOW", ProcessPriorityClass.BelowNormal),
+        new("NORMAL", ProcessPriorityClass.Normal),
+        new("ABOVE", ProcessPriorityClass.AboveNormal),
+        new("HIGH", ProcessPriorityClass.High),
+    };
+
+    public ObservableCollection<CoreToggle> Cores { get; } = new();
+
+    [ObservableProperty] private string processName = string.Empty;
+    [ObservableProperty] private Choice<ProcessPriorityClass?> priority;
+    [ObservableProperty] private bool limitEnabled;
+    [ObservableProperty] private double limit = 25;
+    [ObservableProperty] private bool affinityEnabled;
+    [ObservableProperty] private bool excludeFromProBalance;
+    [ObservableProperty] private bool disallowExecution;
+
+    public RuleEditor(int logical, ProcessRuleDto? from = null)
+    {
+        priority = Priorities[0];
+        long mask = from?.AffinityMask ?? -1;
+        for (int i = 0; i < Math.Clamp(logical, 1, 64); i++) Cores.Add(new CoreToggle(i, (mask & (1L << i)) != 0));
+
+        if (from == null) return;
+        _original = DtoCopy.Clone(from);
+        Id = from.Id;
+        processName = Fmt.Exe(from.ProcessName);
+        priority = Priorities.FirstOrDefault(c => (int?)c.Value == from.PriorityClass) ?? Priorities[0];
+        limitEnabled = from.CpuLimitPercent.HasValue;
+        limit = from.CpuLimitPercent ?? 25;
+        affinityEnabled = from.AffinityMask.HasValue;
+        excludeFromProBalance = from.ExcludeFromProBalance;
+        disallowExecution = from.DisallowExecution;
+    }
+
+    public int LimitWhole => (int)Math.Round(Limit);
+    partial void OnLimitChanged(double value) => OnPropertyChanged(nameof(LimitWhole));
+
+    /// <summary>The rule being edited, as loaded; fields this editor doesn't show are sent back unchanged.</summary>
+    private readonly ProcessRuleDto _original = new();
+
+    public ProcessRuleDto ToDto()
+    {
+        long mask = Cores.Where(c => c.IsOn).Aggregate(0L, (m, c) => m | (1L << c.Index));
+        var dto = DtoCopy.Clone(_original);
+        dto.Id = Id;
+        dto.ProcessName = ProcessName.Trim();
+        dto.PriorityClass = (int?)Priority.Value;
+        dto.CpuLimitPercent = LimitEnabled ? Math.Clamp(LimitWhole, 1, 99) : null;
+        dto.AffinityMask = AffinityEnabled && mask != 0 ? mask : null;
+        dto.ExcludeFromProBalance = ExcludeFromProBalance;
+        dto.DisallowExecution = DisallowExecution;
+        return dto;
+    }
+}
+
+/// <summary>Persistent per-program rules: listed on the left, edited in a panel on the right.</summary>
+public sealed partial class RulesViewModel : ObservableObject, IPage
+{
+    private readonly EngineHub _hub;
+    private readonly ShellViewModel _shell;
+
+    public ObservableCollection<RuleRow> Rules { get; } = new();
+
+    [ObservableProperty] private RuleEditor? editor;
+    [ObservableProperty] private bool isLoaded;
+
+    public RulesViewModel(EngineHub hub, ShellViewModel shell)
+    {
+        _hub = hub;
+        _shell = shell;
+    }
+
+    private int Logical => _hub.Snapshot?.LogicalProcessors ?? Environment.ProcessorCount;
+
+    public void OnShown() => _ = LoadAsync();
+    public void OnHidden() { }
+
+    private async Task LoadAsync()
+    {
+        var rules = await _hub.QueryAsync<List<ProcessRuleDto>>(CommandTypes.GetProcessRules, quiet: true);
+        if (rules == null) return;
+        Rules.Clear();
+        foreach (var rule in rules.OrderBy(r => r.ProcessName, StringComparer.OrdinalIgnoreCase)) Rules.Add(new RuleRow(rule, Logical));
+        IsLoaded = true;
+    }
+
+    /// <summary>Opens the editor pre-filled from a running process (the "make a rule" action).</summary>
+    public void StartNew(string processName, ProcessPriorityClass? priority, double? cpuLimit)
+    {
+        var existing = Rules.FirstOrDefault(r => string.Equals(Fmt.Exe(r.Dto.ProcessName), Fmt.Exe(processName), StringComparison.OrdinalIgnoreCase));
+        Editor = existing != null
+            ? new RuleEditor(Logical, existing.Dto)
+            : new RuleEditor(Logical, new ProcessRuleDto { ProcessName = processName, PriorityClass = (int?)priority, CpuLimitPercent = cpuLimit });
+    }
+
+    [RelayCommand]
+    private void New() => Editor = new RuleEditor(Logical);
+
+    [RelayCommand]
+    private void Edit(RuleRow row) => Editor = new RuleEditor(Logical, row.Dto);
+
+    [RelayCommand]
+    private void Cancel() => Editor = null;
+
+    [RelayCommand]
+    private async Task SaveAsync()
+    {
+        if (Editor is not { } editor) return;
+        if (string.IsNullOrWhiteSpace(editor.ProcessName))
+        {
+            _shell.Toaster.Show("Name the program the rule is for, e.g. chrome.exe.", isError: true);
+            return;
+        }
+
+        var saved = await _hub.QueryAsync<ProcessRuleDto>(CommandTypes.SaveProcessRule, argument: editor.ToDto());
+        if (saved == null) return;
+
+        _shell.Toaster.Show($"RULE SAVED · {Fmt.Exe(saved.ProcessName)}");
+        Editor = null;
+        await LoadAsync();
+        _hub.RefreshNow();
+    }
+
+    [RelayCommand]
+    private void Delete(RuleRow row)
+    {
+        _shell.Confirm("DELETE RULE?", $"{row.Name} goes back to running however Windows starts it. Processes already running keep their current settings.", "DELETE",
+            async () =>
+            {
+                if (await _hub.RunAsync(CommandTypes.DeleteProcessRule, argument: row.Dto.Id, success: $"RULE DELETED · {row.Name}"))
+                {
+                    if (Editor?.Id == row.Dto.Id) Editor = null;
+                    await LoadAsync();
+                }
+            });
+    }
 }

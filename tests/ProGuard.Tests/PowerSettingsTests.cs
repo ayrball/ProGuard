@@ -5,7 +5,6 @@ using ProGuard.Core.Models;
 using ProGuard.Core.Native;
 using ProGuard.Core.Services;
 using ProGuard.Engine.Services;
-using ProGuard.UI.IPC;
 using ProGuard.UI.ViewModels;
 
 namespace ProGuard.Tests;
@@ -90,33 +89,4 @@ public class PowerSettingsTests
 
     // ---------- the Power page ----------
 
-    private static PowerViewModel ViewModel(params PowerPlanInfo[] plans) =>
-        new(new EngineProxy(), _ => { }, plans);
-
-    [Fact]
-    public void PowerPage_ListsTheInstalledPlans_InEveryPicker()
-    {
-        var vm = ViewModel(
-            new PowerPlanInfo(Powrprof.Balanced, "Balanced"),
-            new PowerPlanInfo(Bitsum, "Bitsum Highest Performance"));
-
-        Assert.Equal(new[] { "Balanced", "Bitsum Highest Performance" }, vm.PowerPlans.Select(p => p.Name));
-        Assert.Equal(new[] { "Leave the plan unchanged", "Balanced", "Bitsum Highest Performance" }, vm.StartupPlanChoices);
-        // A plan that isn't installed (High Performance, the default) can't be preselected.
-        Assert.Equal(-1, vm.PerformanceModePlanIndex);
-        Assert.Equal(0, vm.LoadSwitcherLowPlanIndex);
-    }
-
-    [Fact]
-    public void PowerPage_LoadSwitcherOptions_ComeFromThePickers()
-    {
-        var vm = ViewModel(
-            new PowerPlanInfo(Powrprof.Balanced, "Balanced"),
-            new PowerPlanInfo(Powrprof.HighPerformance, "High performance"));
-        var options = vm.LoadSwitcherOptions;
-        Assert.Equal(Powrprof.Balanced, options.LowPlan);
-        Assert.Equal(Powrprof.HighPerformance, options.HighPlan);
-        Assert.Null(options.Validate());
-        Assert.NotNull((options with { LowThreshold = 50, HighThreshold = 50 }).Validate());
-    }
 }

@@ -68,30 +68,4 @@ public class RuleTests
         Assert.Equal("High", deserialized.Argument);
     }
 
-    [Fact]
-    public void ProcessSnapshot_DtoMapping_Works()
-    {
-        var snapshot = new ProcessSnapshot
-        {
-            Pid = 456,
-            Name = "explorer.exe",
-            CpuPercent = 3.5,
-            WorkingSetBytes = 1024 * 1024 * 80,
-            PriorityClass = (int)System.Diagnostics.ProcessPriorityClass.Normal,
-            AffinityMask = 255,
-            IsForeground = true,
-            Status = "Running"
-        };
-
-        Assert.Equal(456, snapshot.Pid);
-        Assert.Equal("explorer.exe", snapshot.Name);
-        Assert.Equal(3.5, snapshot.CpuPercent);
-        Assert.True(snapshot.IsForeground);
-    }
-
-    [Fact]
-    public void TestSymbols()
-    {
-        Assert.True(Enum.IsDefined(typeof(Wpf.Ui.Controls.SymbolRegular), "DeveloperBoard24"));
-    }
 }

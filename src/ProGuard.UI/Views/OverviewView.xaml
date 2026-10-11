@@ -1,0 +1,155 @@
+<UserControl x:Class="ProGuard.UI.Views.OverviewView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="clr-namespace:ProGuard.UI.Controls">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="44"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ============================================================ CPU -->
+        <StackPanel Grid.Column="0">
+            <DockPanel>
+                <TextBlock Text="{Binding CoresText}" DockPanel.Dock="Right" Style="{StaticResource Text.Label}" VerticalAlignment="Bottom"/>
+                <TextBlock Text="CPU LOAD" Style="{StaticResource Text.Label}" FontSize="13"/>
+            </DockPanel>
+            <StackPanel Orientation="Horizontal" Margin="-6,22,0,0">
+                <TextBlock Text="{Binding Cpu}" Style="{StaticResource Text.Hero}" FontSize="150" LineHeight="128"/>
+                <TextBlock Text="%" Style="{StaticResource Text.Title}" VerticalAlignment="Bottom" Margin="4,0,0,14" Opacity="0.55"/>
+            </StackPanel>
+            <ui:BlockMeter Value="{Binding Cpu}" Blocks="32" Height="16" Gap="3" Margin="0,8,0,0"/>
+            <ui:Sparkline Values="{Binding Hub.CpuHistory}" Stroke="{StaticResource VoltBrush}" Fill="{StaticResource VoltGhostBrush}"
+                          Height="120" Margin="0,18,0,0"/>
+            <Rectangle Height="2" Fill="{StaticResource VoltLineBrush}"/>
+            <DockPanel Margin="0,6,0,0">
+                <TextBlock Text="NOW" DockPanel.Dock="Right" FontFamily="{StaticResource Mono}" FontSize="10" Opacity="0.45"/>
+                <TextBlock Text="90 SECONDS" FontFamily="{StaticResource Mono}" FontSize="10" Opacity="0.45"/>
+            </DockPanel>
+        </StackPanel>
+
+        <!-- ============================================================ Memory -->
+        <StackPanel Grid.Column="2">
+            <DockPanel>
+                <TextBlock Text="{Binding MemoryDetail}" DockPanel.Dock="Right" Style="{StaticResource Text.Label}" VerticalAlignment="Bottom"/>
+                <TextBlock Text="MEMORY" Style="{StaticResource Text.Label}" FontSize="13"/>
+            </DockPanel>
+            <StackPanel Orientation="Horizontal" Margin="-6,22,0,0">
+                <TextBlock Text="{Binding Memory}" Style="{StaticResource Text.Hero}" FontSize="150" LineHeight="128"/>
+                <TextBlock Text="%" Style="{StaticResource Text.Title}" VerticalAlignment="Bottom" Margin="4,0,0,14" Opacity="0.55"/>
+            </StackPanel>
+            <ui:BlockMeter Value="{Binding Memory}" Blocks="32" Height="16" Gap="3" Margin="0,8,0,0"/>
+            <ui:Sparkline Values="{Binding Hub.MemoryHistory}" Stroke="{StaticResource VoltBrush}" Fill="{StaticResource VoltGhostBrush}"
+                          Height="120" Margin="0,18,0,0"/>
+            <Rectangle Height="2" Fill="{StaticResource VoltLineBrush}"/>
+            <DockPanel Margin="0,6,0,0">
+                <TextBlock Text="NOW" DockPanel.Dock="Right" FontFamily="{StaticResource Mono}" FontSize="10" Opacity="0.45"/>
+                <TextBlock Text="90 SECONDS" FontFamily="{StaticResource Mono}" FontSize="10" Opacity="0.45"/>
+            </DockPanel>
+        </StackPanel>
+
+        <!-- ============================================================ lower band -->
+        <Grid Grid.Row="1" Grid.ColumnSpan="3" Margin="0,34,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="44"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Stat tiles: the first is a solid volt block, the rest are outlined. -->
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <UniformGrid Columns="2" Rows="2">
+                    <Button Style="{StaticResource Btn.Solid}" Command="{Binding OpenProcessesCommand}" Padding="18,14" Margin="0,0,6,6"
+                            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" ToolTip="Open the process table">
+                        <Grid>
+                            <TextBlock Text="PROCESSES" FontSize="11.5" FontWeight="SemiBold" Opacity="0.7" VerticalAlignment="Top"/>
+                            <TextBlock Text="{Binding ProcessCount}" FontSize="58" FontWeight="Bold" FontStretch="Condensed" VerticalAlignment="Bottom" Margin="0,18,0,-8"/>
+                            <TextBlock Text="&#xE72A;" Style="{StaticResource Text.Glyph}" FontSize="16" HorizontalAlignment="Right" VerticalAlignment="Top"/>
+                        </Grid>
+                    </Button>
+                    <Border BorderBrush="{StaticResource VoltBrush}" BorderThickness="2" Padding="18,14" Margin="0,0,0,6">
+                        <Grid>
+                            <TextBlock Text="BALANCED NOW" Style="{StaticResource Text.Label}" VerticalAlignment="Top"/>
+                            <TextBlock Text="{Binding RestrainedCount}" FontSize="58" FontWeight="Bold" FontStretch="Condensed" VerticalAlignment="Bottom" Margin="0,18,0,-8"/>
+                        </Grid>
+                    </Border>
+                    <Border BorderBrush="{StaticResource VoltLineBrush}" BorderThickness="2" Padding="18,14" Margin="0,0,6,0">
+                        <Grid>
+                            <TextBlock Text="UNDER A RULE" Style="{StaticResource Text.Label}" VerticalAlignment="Top"/>
+                            <TextBlock Text="{Binding RuledCount}" FontSize="58" FontWeight="Bold" FontStretch="Condensed" VerticalAlignment="Bottom" Margin="0,18,0,-8"/>
+                        </Grid>
+                    </Border>
+                    <Border BorderBrush="{StaticResource VoltLineBrush}" BorderThickness="2" Padding="18,14">
+                        <Grid>
+                            <TextBlock Text="CPU CAPPED" Style="{StaticResource Text.Label}" VerticalAlignment="Top"/>
+                            <TextBlock Text="{Binding LimitedCount}" FontSize="58" FontWeight="Bold" FontStretch="Condensed" VerticalAlignment="Bottom" Margin="0,18,0,-8"/>
+                        </Grid>
+                    </Border>
+                </UniformGrid>
+
+                <StackPanel Grid.Row="1" Margin="0,18,0,0">
+                    <TextBlock Text="IN FOCUS" Style="{StaticResource Text.Label}"/>
+                    <DockPanel Margin="0,2,0,0">
+                        <Border DockPanel.Dock="Right" Style="{StaticResource Tag}" VerticalAlignment="Center"
+                                Visibility="{Binding ProBalanceEnabled, Converter={StaticResource VisibleWhen}}">
+                            <TextBlock Text="PROBALANCE ARMED" Style="{StaticResource Tag.Text}"/>
+                        </Border>
+                        <Border DockPanel.Dock="Right" Style="{StaticResource Tag}" VerticalAlignment="Center"
+                                Visibility="{Binding ProBalanceEnabled, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}">
+                            <TextBlock Text="PROBALANCE OFF" Style="{StaticResource Tag.Text}"/>
+                        </Border>
+                        <TextBlock Text="{Binding Foreground}" Style="{StaticResource Text.H2}" TextTrimming="CharacterEllipsis"/>
+                    </DockPanel>
+                </StackPanel>
+
+                <Border Grid.Row="2" Margin="0,16,0,0" Padding="14,10" Background="{StaticResource VoltBrush}" VerticalAlignment="Top"
+                        Visibility="{Binding IsElevated, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}">
+                    <TextBlock Foreground="{StaticResource InkBrush}" FontWeight="SemiBold" TextWrapping="Wrap" FontSize="13"
+                               Text="You are running ProGuard without administrator rights, so you can only change processes you own. Editing rules and watchdogs, Purge now and Realtime priority need administrator rights: restart ProGuard as administrator to use them."/>
+                </Border>
+            </Grid>
+
+            <!-- Top consumers -->
+            <DockPanel Grid.Column="2">
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                    <TextBlock Text="CPU %" DockPanel.Dock="Right" Style="{StaticResource Text.Label}"/>
+                    <TextBlock Text="WHO'S WORKING HARDEST" Style="{StaticResource Text.Label}" FontSize="13"/>
+                </DockPanel>
+                <ItemsControl ItemsSource="{Binding TopConsumers}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="{StaticResource VoltLineBrush}" BorderThickness="0,0,0,1" Padding="0,10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="34"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="58"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Rank, StringFormat='{}{0:00}'}" FontFamily="{StaticResource Mono}" FontSize="12" Opacity="0.45" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="17" FontStretch="SemiCondensed" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding MemoryText}" FontFamily="{StaticResource Mono}" FontSize="10.5" Opacity="0.5"/>
+                                    </StackPanel>
+                                    <ui:BlockMeter Grid.Column="2" Value="{Binding CpuPercent}" Maximum="25" Blocks="10" Height="12" Gap="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                    <TextBlock Grid.Column="3" Text="{Binding CpuText}" FontFamily="{StaticResource Mono}" FontSize="16" FontWeight="Bold"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </DockPanel>
+        </Grid>
+    </Grid>
+</UserControl>

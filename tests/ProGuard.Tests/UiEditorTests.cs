@@ -950,11 +950,11 @@ public class UiEditorTests
     public void Views_LoadWithTheVoltTheme_AndShowAFullyFilledEditor()
     {
         Exception? failure = null;
-        var thread = new Thread(() =>
+        UiTestApp.Run(() =>
         {
             try
             {
-                var app = System.Windows.Application.Current ?? new System.Windows.Application();
+                var app = System.Windows.Application.Current;
                 // Other UI tests set up the same app-wide resources in the same process, so add only what's missing.
                 if (!app.Resources.Contains("VoltBrush"))
                     app.Resources.MergedDictionaries.Add(new System.Windows.ResourceDictionary { Source = new Uri("pack://application:,,,/ProGuard.UI;component/Theme/Volt.xaml") });
@@ -985,9 +985,6 @@ public class UiEditorTests
                 failure = ex;
             }
         });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
 
         Assert.True(failure == null, failure?.ToString());
     }

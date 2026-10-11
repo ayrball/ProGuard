@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same PR makes the older run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      # No packages.lock.json in the repo, so cache on the project files that list the packages.
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      # Some tests behave differently when elevated or without a console session; record what this runner is.
+      - name: Describe the runner
+        shell: pwsh
+        run: |
+          $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+          $admin = ([Security.Principal.WindowsPrincipal]$id).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+          "User: $($id.Name)  Elevated: $admin  Session: $([Diagnostics.Process]::GetCurrentProcess().SessionId)"
+          "Logical CPUs: $([Environment]::ProcessorCount)"
+          "Interactive: $([Environment]::UserInteractive)"
+          dotnet --info | Select-Object -First 12
+
+      - name: Restore
+        run: dotnet restore ProGuard.sln
+
+      - name: Build
+        id: build
+        run: dotnet build ProGuard.sln -c Release --no-restore
+
+      - name: Test
+        id: test
+        run: >
+          dotnet test ProGuard.sln -c Release --no-build
+          --blame-hang --blame-hang-timeout 5m
+          --results-directory TestResults
+          --logger "trx;LogFileName=ProGuard.Tests.trx"
+          --logger "console;verbosity=normal"
+
+      - name: Upload test results
+        if: failure() && steps.test.outcome == 'failure' || cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            TestResults/**/*.trx
+            TestResults/**/*.dmp
+            TestResults/**/Sequence_*.xml
+          if-no-files-found: ignore
+
+      # Renders every page and dialog of the UI against the stand-in engine, so reviewers can see UI changes.
+      - name: Render UI preview
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: tools/ProGuard.Preview/bin/Release/net8.0-windows/ProGuard.Preview.exe artifacts/preview --mode all
+
+      - name: Upload UI preview
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-preview
+          path: artifacts/preview/
+          if-no-files-found: warn

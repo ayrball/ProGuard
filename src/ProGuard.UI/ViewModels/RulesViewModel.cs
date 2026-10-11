@@ -30,6 +30,19 @@ public partial class RulesViewModel : ViewModelBase
     [ObservableProperty]
     private bool newIsDisallowed;
 
+    // CPU Limiter, affinity-reduction mode. A blank threshold leaves it off.
+    [ObservableProperty]
+    private string newCpuLimitThreshold = string.Empty;
+
+    [ObservableProperty]
+    private string newCpuLimitOverSeconds = CpuAffinityLimitDefaults.OverThresholdSeconds.ToString();
+
+    [ObservableProperty]
+    private string newCpuLimitCores = CpuAffinityLimitDefaults.CoresToRemove.ToString();
+
+    [ObservableProperty]
+    private string newCpuLimitDuration = CpuAffinityLimitDefaults.DurationSeconds.ToString();
+
     public ObservableCollection<RuleDisplayItem> Rules { get; set; } = new();
 
     public RulesViewModel()
@@ -61,6 +74,7 @@ public partial class RulesViewModel : ViewModelBase
                     Priority = prioText,
                     Affinity = affText,
                     CpuLimit = cpuText,
+                    CpuAffinityLimit = FormatCpuAffinityLimit(r),
                     MaxInstances = maxInst,
                     IsDisallowed = r.DisallowExecution
                 });
@@ -119,6 +133,13 @@ public partial class RulesViewModel : ViewModelBase
                 DisallowExecution = NewIsDisallowed
             };
 
+            var affinityLimitError = ApplyCpuAffinityLimit(entity, NewCpuLimitThreshold, NewCpuLimitOverSeconds, NewCpuLimitCores, NewCpuLimitDuration);
+            if (affinityLimitError != null)
+            {
+                MessageBox.Show(affinityLimitError, "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             db.ProcessRules.Add(entity);
             db.SaveChanges();
 
@@ -129,17 +150,60 @@ public partial class RulesViewModel : ViewModelBase
                 Priority = NewPriority,
                 Affinity = "All",
                 CpuLimit = cpuLimitVal.HasValue ? $"{cpuLimitVal}%" : "None",
+                CpuAffinityLimit = FormatCpuAffinityLimit(entity),
                 MaxInstances = "None",
                 IsDisallowed = entity.DisallowExecution
             });
 
             NewProcessName = string.Empty;
+            NewCpuLimitThreshold = string.Empty;
             IsAddPanelOpen = false;
         }
         catch (Exception ex)
         {
             MessageBox.Show($"Failed to save rule: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    /// <summary>
+    /// Fills the CPU Limiter (affinity reduction) fields of <paramref name="rule"/> from the editor's text boxes.
+    /// A blank threshold turns the mode off. Returns an error message, or null when the input is valid.
+    /// </summary>
+    public static string? ApplyCpuAffinityLimit(ProcessRule rule, string threshold, string overSeconds, string cores, string duration)
+    {
+        if (string.IsNullOrWhiteSpace(threshold) || threshold.Trim().Equals("None", StringComparison.OrdinalIgnoreCase))
+        {
+            rule.CpuLimitThresholdPercent = null;
+            rule.CpuLimitOverThresholdSeconds = null;
+            rule.CpuLimitCoresToRemove = null;
+            rule.CpuLimitDurationSeconds = null;
+            return null;
+        }
+
+        if (!double.TryParse(threshold.Replace("%", "").Trim(), out var t) || t <= 0 || t > 100)
+            return "CPU Limiter threshold must be a percentage between 1 and 100.";
+        if (!int.TryParse(overSeconds.Trim(), out var o) || o < 0)
+            return "CPU Limiter time over threshold must be 0 or more seconds.";
+        if (!int.TryParse(cores.Trim(), out var c) || c < 1)
+            return "CPU Limiter must remove at least 1 core.";
+        if (!int.TryParse(duration.Trim(), out var d) || d < 1)
+            return "CPU Limiter duration must be at least 1 second.";
+
+        rule.CpuLimitThresholdPercent = t;
+        rule.CpuLimitOverThresholdSeconds = o;
+        rule.CpuLimitCoresToRemove = c;
+        rule.CpuLimitDurationSeconds = d;
+        return null;
+    }
+
+    /// <summary>One-line summary of a rule's CPU Limiter (affinity reduction) settings for the grid.</summary>
+    public static string FormatCpuAffinityLimit(ProcessRule rule)
+    {
+        if (!rule.CpuLimitThresholdPercent.HasValue) return "None";
+        var over = rule.CpuLimitOverThresholdSeconds ?? CpuAffinityLimitDefaults.OverThresholdSeconds;
+        var cores = rule.CpuLimitCoresToRemove ?? CpuAffinityLimitDefaults.CoresToRemove;
+        var duration = rule.CpuLimitDurationSeconds ?? CpuAffinityLimitDefaults.DurationSeconds;
+        return $"≥{rule.CpuLimitThresholdPercent.Value}% for {over}s: -{cores} core{(cores == 1 ? "" : "s")} for {duration}s";
     }
 
     [RelayCommand]
@@ -186,6 +250,7 @@ public class RuleDisplayItem
     public string Priority { get; set; } = string.Empty;
     public string Affinity { get; set; } = string.Empty;
     public string CpuLimit { get; set; } = string.Empty;
+    public string CpuAffinityLimit { get; set; } = "None";
     public string MaxInstances { get; set; } = string.Empty;
     public bool IsDisallowed { get; set; }
 }

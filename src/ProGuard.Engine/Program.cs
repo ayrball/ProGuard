@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using ProGuard.Core.Services;
 using ProGuard.Core.Data;
 using ProGuard.Engine.Services;
+using ProGuard.Engine.Services.ProcessRules;
 using ProGuard.Engine.IPC;
 
 namespace ProGuard.Engine;
@@ -65,6 +66,9 @@ public class Program
                 services.AddSingleton<InstanceLimiter>();
                 services.AddSingleton<InstanceSpread>();
                 services.AddSingleton<StartupBoostService>();
+
+                services.AddSingleton<IProcessTuningNative, Win32ProcessTuning>();
+                services.AddSingleton<PersistentRuleService>();
 
                 services.AddSingleton<ProcessOrchestrator>();
                 services.AddSingleton<IProcessOrchestrator>(sp => sp.GetRequiredService<ProcessOrchestrator>());

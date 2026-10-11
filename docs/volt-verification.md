@@ -273,7 +273,11 @@ They now carry names or AutomationIds.
 
 ## Tests
 
-`dotnet test ProGuard.sln` on the final commit: 1068 tests, 1066 passed, 2 skipped, 0 failed.
+`dotnet test ProGuard.sln` after merging main (PR #15): 1148 tests, 1146 passed, 2 skipped, 0 failed.
+
+`Review_Regression_Tests.CpuLimiter_AddLimit_ActuallyThrottlesTheProcess` and `CpuLimiter_RemoveLimit_LiftsTheCap`
+are flaky while the machine is busy (a game was running): they failed in 2 of 3 runs of the same filter on unmodified
+`origin/main` too, and pass on their own.
 
 ## Follow-ups (not fixed here)
 

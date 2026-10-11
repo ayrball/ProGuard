@@ -1,17 +1,49 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ProGuard.Core.Data;
+using ProGuard.Core.Helpers;
 using ProGuard.Core.Models;
+using ProGuard.Shared.Contracts;
+using ProGuard.UI.Services;
 
 namespace ProGuard.UI.ViewModels;
 
 public partial class WatchdogViewModel : ViewModelBase
 {
+    private const int RecentEventCount = 5;
+
+    /// <summary>Condition choices on the add-rule panel, in display order.</summary>
+    public static IReadOnlyList<string> ConditionOptions { get; } = new[]
+    {
+        "CPU Above (%)", "Memory Above (MB)", "Running Longer Than (s)", "Instance Count Above"
+    };
+
+    private static readonly WatchdogCondition[] ConditionValues =
+    {
+        WatchdogCondition.CpuAbove, WatchdogCondition.RamAbove, WatchdogCondition.RunningLongerThan, WatchdogCondition.InstanceCountAbove
+    };
+
+    public static IReadOnlyList<string> MemoryMetricOptions { get; } = new[] { "Working set", "Private bytes" };
+
+    /// <summary>Action choices on the add-rule panel, in display order.</summary>
+    public static IReadOnlyList<string> ActionOptions { get; } = new[]
+    {
+        "Terminate", "Restart", "Set Priority", "Set I/O Priority", "Set Affinity", "Trim Working Set", "Launch Program", "Notify", "Log Only"
+    };
+
+    private static readonly WatchdogAction[] ActionValues =
+    {
+        WatchdogAction.Terminate, WatchdogAction.Restart, WatchdogAction.SetPriority, WatchdogAction.SetIoPriority,
+        WatchdogAction.SetAffinity, WatchdogAction.TrimWorkingSet, WatchdogAction.Launch, WatchdogAction.Notify, WatchdogAction.LogAlert
+    };
+
     [ObservableProperty]
     private bool isAddPanelOpen;
 
@@ -19,7 +51,11 @@ public partial class WatchdogViewModel : ViewModelBase
     private string newProcessName = string.Empty;
 
     [ObservableProperty]
-    private string newCondition = "CPU Above";
+    [NotifyPropertyChangedFor(nameof(IsMemoryCondition))]
+    private string newCondition = ConditionOptions[0];
+
+    [ObservableProperty]
+    private string newMemoryMetric = MemoryMetricOptions[0];
 
     [ObservableProperty]
     private double newThreshold = 85.0;
@@ -28,17 +64,77 @@ public partial class WatchdogViewModel : ViewModelBase
     private int newDuration = 30;
 
     [ObservableProperty]
-    private string newAction = "Terminate";
+    [NotifyPropertyChangedFor(nameof(ActionArgumentHint), nameof(ActionTakesArgument), nameof(ActionTakesDuration), nameof(IsTrimAction))]
+    private string newAction = ActionOptions[0];
+
+    [ObservableProperty]
+    private string newActionArgument = string.Empty;
+
+    [ObservableProperty]
+    private int newActionDuration;
+
+    [ObservableProperty]
+    private bool newTrimContinuously;
+
+    [ObservableProperty]
+    private int newCooldown = 60;
+
+    [ObservableProperty]
+    private string newKeepRunningName = string.Empty;
 
     [ObservableProperty]
     private string recentTriggerText = "No watchdog events recorded yet.";
 
     public ObservableCollection<WatchdogRuleDisplayItem> WatchdogRules { get; set; } = new();
 
+    /// <summary>Processes whose rule has Keep Running set.</summary>
+    public ObservableCollection<string> KeepRunningProcesses { get; } = new();
+
+    public bool IsMemoryCondition => SelectedCondition == WatchdogCondition.RamAbove;
+    public bool ActionTakesArgument => SelectedAction is WatchdogAction.SetPriority or WatchdogAction.SetIoPriority
+        or WatchdogAction.SetAffinity or WatchdogAction.Launch or WatchdogAction.Notify;
+    public bool ActionTakesDuration => SelectedAction is WatchdogAction.SetPriority or WatchdogAction.SetIoPriority or WatchdogAction.SetAffinity;
+    public bool IsTrimAction => SelectedAction == WatchdogAction.TrimWorkingSet;
+
+    public string ActionArgumentHint => SelectedAction switch
+    {
+        WatchdogAction.SetPriority => "Idle, BelowNormal, Normal, AboveNormal, High",
+        WatchdogAction.SetIoPriority => "VeryLow, Low, Normal, High",
+        WatchdogAction.SetAffinity => "CPU mask, e.g. 0x3",
+        WatchdogAction.Launch => @"""C:\path\app.exe"" arguments",
+        WatchdogAction.Notify => "Message (optional)",
+        _ => ""
+    };
+
+    private WatchdogCondition SelectedCondition => Lookup(ConditionOptions, ConditionValues, NewCondition, WatchdogCondition.CpuAbove);
+    private WatchdogAction SelectedAction => Lookup(ActionOptions, ActionValues, NewAction, WatchdogAction.Terminate);
+
     public WatchdogViewModel()
     {
         LoadRules();
+        LoadKeepRunning();
         LoadRecentTriggers();
+    }
+
+    public WatchdogViewModel(WatchdogNotificationListener listener) : this()
+    {
+        if (listener.LatestEvent != null) ShowRecent(new[] { listener.LatestEvent });
+        listener.EventsReceived += (_, events) =>
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null) ShowRecent(events);
+            else dispatcher.BeginInvoke(() => ShowRecent(events));
+        };
+    }
+
+    private readonly List<string> _recent = new();
+
+    private void ShowRecent(IEnumerable<WatchdogEventDto> events)
+    {
+        foreach (var e in events)
+            _recent.Insert(0, $"[{e.TimestampUtc.ToLocalTime():HH:mm:ss}] {e.Message}");
+        if (_recent.Count > RecentEventCount) _recent.RemoveRange(RecentEventCount, _recent.Count - RecentEventCount);
+        if (_recent.Count > 0) RecentTriggerText = string.Join(Environment.NewLine, _recent);
     }
 
     public void LoadRules()
@@ -62,38 +158,34 @@ public partial class WatchdogViewModel : ViewModelBase
         }
     }
 
-    private void LoadRecentTriggers()
+    public void LoadKeepRunning()
     {
         try
         {
             using var db = new ProGuardDbContext();
             db.EnsureSchema();
-            var lastAction = db.ProBalanceActions.OrderByDescending(a => a.Timestamp).FirstOrDefault();
-            if (lastAction != null)
-            {
-                RecentTriggerText = $"[{lastAction.Timestamp:HH:mm:ss}] ProBalance {lastAction.Reason}: '{lastAction.ProcessName}' (PID {lastAction.Pid})";
-            }
-            else
-            {
-                RecentTriggerText = "Engine initialized. Ready to execute watchdog triggers.";
-            }
+            KeepRunningProcesses.Clear();
+            foreach (var name in db.ProcessRules.Where(r => r.KeepRunning).Select(r => r.ProcessName).ToList().OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
+                KeepRunningProcesses.Add(name);
         }
-        catch
+        catch (Exception ex)
         {
-            RecentTriggerText = "Engine standing by. All rules active.";
+            Debug.WriteLine($"Failed to load Keep Running processes: {ex}");
         }
+    }
+
+    private void LoadRecentTriggers()
+    {
+        RecentTriggerText = "No watchdog events yet. Rules are checked every second by the engine service.";
     }
 
     private WatchdogRuleDisplayItem CreateDisplayItem(WatchdogRule r)
     {
-        string desc = $"IF {r.TargetProcessName} {r.ConditionType} {r.ThresholdValue} THEN {r.ActionType}";
-        string details = $"Condition: {r.ConditionType} > {r.ThresholdValue} for {r.DurationSeconds}s | Action: {r.ActionType}";
-
         var item = new WatchdogRuleDisplayItem
         {
             Id = r.Id,
-            Description = desc,
-            Details = details,
+            Description = $"IF {r.TargetProcessName} {DescribeCondition(r)} THEN {DescribeAction(r)}",
+            Details = DescribeDetails(r),
             IsEnabled = r.IsEnabled
         };
 
@@ -118,52 +210,105 @@ public partial class WatchdogViewModel : ViewModelBase
         return item;
     }
 
+    internal static string DescribeCondition(WatchdogRule r)
+    {
+        var value = r.ThresholdValue.ToString("0.##", CultureInfo.InvariantCulture);
+        return r.ConditionType switch
+        {
+            WatchdogCondition.CpuAbove => $"CPU > {value}%",
+            WatchdogCondition.RamAbove => $"{(r.MemoryMetric == WatchdogMemoryMetric.PrivateBytes ? "private bytes" : "working set")} > {value} MB",
+            WatchdogCondition.RunningLongerThan => $"runs longer than {value} s",
+            WatchdogCondition.InstanceCountAbove => $"instances > {value}",
+            _ => r.ConditionType.ToString()
+        };
+    }
+
+    internal static string DescribeAction(WatchdogRule r)
+    {
+        var argument = r.ActionArgument?.Trim();
+        var forDuration = r.ActionDurationSeconds > 0 ? $" for {r.ActionDurationSeconds} s" : "";
+        return r.ActionType switch
+        {
+            WatchdogAction.Terminate => "terminate",
+            WatchdogAction.Restart => "restart",
+            WatchdogAction.SetPriority => $"set priority {(string.IsNullOrEmpty(argument) ? WatchdogArguments.DefaultPriority.ToString() : argument)}{forDuration}",
+            WatchdogAction.SetIoPriority => $"set I/O priority {(string.IsNullOrEmpty(argument) ? "Low" : argument)}{forDuration}",
+            WatchdogAction.SetAffinity => $"set affinity {argument}{forDuration}",
+            WatchdogAction.TrimWorkingSet => WatchdogArguments.IsContinuousTrim(argument) ? "trim working set continuously" : "trim working set",
+            WatchdogAction.Launch => $"launch {argument}",
+            WatchdogAction.Notify => "notify",
+            WatchdogAction.LogAlert => "log",
+            _ => r.ActionType.ToString()
+        };
+    }
+
+    private static string DescribeDetails(WatchdogRule r)
+    {
+        var held = r.ConditionType == WatchdogCondition.RunningLongerThan || r.DurationSeconds <= 0 ? "" : $" for {r.DurationSeconds}s";
+        var again = r.CooldownSeconds > 0 ? $"again after {r.CooldownSeconds}s if still true" : "again once it clears";
+        return $"Condition: {DescribeCondition(r)}{held} | Action: {DescribeAction(r)} | Fires {again}";
+    }
+
     [RelayCommand]
     private void AddRule()
     {
         IsAddPanelOpen = !IsAddPanelOpen;
     }
 
+    /// <summary>Builds a rule from the add-rule panel, or returns why the input is invalid.</summary>
+    internal string? TryBuildRule(out WatchdogRule rule)
+    {
+        rule = new WatchdogRule();
+        if (string.IsNullOrWhiteSpace(NewProcessName)) return "Please enter a target process name.";
+        if (NewThreshold < 0) return "The threshold can't be negative.";
+        if (NewDuration < 0 || NewActionDuration < 0 || NewCooldown < 0) return "Durations can't be negative.";
+
+        var action = SelectedAction;
+        var argument = NewActionArgument?.Trim() ?? "";
+        switch (action)
+        {
+            case WatchdogAction.SetPriority when argument.Length > 0 && !WatchdogArguments.TryParsePriority(argument, out _):
+                return $"Unknown priority '{argument}'. Use Idle, BelowNormal, Normal, AboveNormal, High or RealTime.";
+            case WatchdogAction.SetIoPriority when argument.Length > 0 && !WatchdogArguments.TryParseIoPriority(argument, out _):
+                return $"Unknown I/O priority '{argument}'. Use VeryLow, Low, Normal or High.";
+            case WatchdogAction.SetAffinity when !WatchdogArguments.TryParseAffinity(argument, out _):
+                return "Set Affinity needs a CPU mask, such as 0x3 for the first two CPUs.";
+            case WatchdogAction.Launch when !WatchdogArguments.TrySplitCommandLine(argument, out _, out _):
+                return "Launch Program needs the program to start.";
+        }
+        if (action == WatchdogAction.TrimWorkingSet) argument = NewTrimContinuously ? WatchdogArguments.ContinuousTrim : "";
+        else if (!ActionTakesArgument) argument = "";
+
+        rule = new WatchdogRule
+        {
+            TargetProcessName = NormalizeExeName(NewProcessName),
+            ConditionType = SelectedCondition,
+            ThresholdValue = NewThreshold,
+            DurationSeconds = NewDuration,
+            MemoryMetric = NewMemoryMetric == MemoryMetricOptions[1] ? WatchdogMemoryMetric.PrivateBytes : WatchdogMemoryMetric.WorkingSet,
+            ActionType = action,
+            ActionArgument = argument.Length > 0 ? argument : null,
+            ActionDurationSeconds = ActionTakesDuration ? NewActionDuration : 0,
+            CooldownSeconds = NewCooldown,
+            IsEnabled = true
+        };
+        return null;
+    }
+
     [RelayCommand]
     private void SaveNewRule()
     {
-        if (string.IsNullOrWhiteSpace(NewProcessName))
+        var error = TryBuildRule(out var entity);
+        if (error != null)
         {
-            MessageBox.Show("Please enter a target process name.", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(error, "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
-
-        string cleanName = NewProcessName.Trim();
-        if (!cleanName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && !cleanName.Equals("System", StringComparison.OrdinalIgnoreCase))
-        {
-            cleanName += ".exe";
-        }
-
-        var cond = WatchdogCondition.CpuAbove;
-        if (NewCondition.Contains("RAM", StringComparison.OrdinalIgnoreCase)) cond = WatchdogCondition.RamAbove;
-        else if (NewCondition.Contains("Longer", StringComparison.OrdinalIgnoreCase)) cond = WatchdogCondition.RunningLongerThan;
-        else if (NewCondition.Contains("Instance", StringComparison.OrdinalIgnoreCase)) cond = WatchdogCondition.InstanceCountAbove;
-
-        var act = WatchdogAction.Terminate;
-        if (NewAction.Contains("Restart", StringComparison.OrdinalIgnoreCase)) act = WatchdogAction.Restart;
-        else if (NewAction.Contains("Priority", StringComparison.OrdinalIgnoreCase)) act = WatchdogAction.SetPriority;
-        else if (NewAction.Contains("Affinity", StringComparison.OrdinalIgnoreCase)) act = WatchdogAction.SetAffinity;
-        else if (NewAction.Contains("Log", StringComparison.OrdinalIgnoreCase)) act = WatchdogAction.LogAlert;
 
         try
         {
             using var db = new ProGuardDbContext();
             db.EnsureSchema();
-
-            var entity = new WatchdogRule
-            {
-                TargetProcessName = cleanName,
-                ConditionType = cond,
-                ThresholdValue = NewThreshold,
-                DurationSeconds = NewDuration,
-                ActionType = act,
-                IsEnabled = true
-            };
 
             db.WatchdogRules.Add(entity);
             db.SaveChanges();
@@ -171,6 +316,7 @@ public partial class WatchdogViewModel : ViewModelBase
             WatchdogRules.Add(CreateDisplayItem(entity));
 
             NewProcessName = string.Empty;
+            NewActionArgument = string.Empty;
             IsAddPanelOpen = false;
         }
         catch (Exception ex)
@@ -208,6 +354,70 @@ public partial class WatchdogViewModel : ViewModelBase
         {
             MessageBox.Show($"Error deleting watchdog rule: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    /// <summary>Sets Keep Running on the process's rule, creating the rule if it has none.</summary>
+    [RelayCommand]
+    private void AddKeepRunning()
+    {
+        if (string.IsNullOrWhiteSpace(NewKeepRunningName)) return;
+        var name = NormalizeExeName(NewKeepRunningName);
+        try
+        {
+            SetKeepRunning(name, true);
+            NewKeepRunningName = string.Empty;
+            LoadKeepRunning();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to save Keep Running: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>Clears Keep Running. The process rule stays, since it may carry other settings.</summary>
+    [RelayCommand]
+    private void RemoveKeepRunning(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        try
+        {
+            SetKeepRunning(name, false);
+            LoadKeepRunning();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to remove Keep Running: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    internal static void SetKeepRunning(string processName, bool keepRunning)
+    {
+        using var db = new ProGuardDbContext();
+        db.EnsureSchema();
+        var key = ProcessExtensions.NormalizeName(processName);
+        var rules = db.ProcessRules.ToList().Where(r => ProcessExtensions.NormalizeName(r.ProcessName) == key).ToList();
+        if (rules.Count == 0)
+        {
+            if (!keepRunning) return;
+            db.ProcessRules.Add(new ProcessRule { ProcessName = processName, KeepRunning = true });
+        }
+        foreach (var rule in rules) rule.KeepRunning = keepRunning;
+        db.SaveChanges();
+    }
+
+    private static string NormalizeExeName(string name)
+    {
+        var clean = name.Trim();
+        if (!clean.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && !clean.Equals("System", StringComparison.OrdinalIgnoreCase))
+            clean += ".exe";
+        return clean;
+    }
+
+    private static T Lookup<T>(IReadOnlyList<string> labels, T[] values, string label, T fallback)
+    {
+        for (var i = 0; i < labels.Count; i++)
+            if (labels[i] == label) return values[i];
+        return fallback;
     }
 }
 

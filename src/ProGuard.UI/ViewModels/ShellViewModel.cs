@@ -55,7 +55,7 @@ public sealed partial class ShellViewModel : ObservableObject
         Processes = new ProcessesViewModel(hub, icons, this);
         Rules = new RulesViewModel(hub, this);
         Watchdog = new WatchdogViewModel(hub, this);
-        Activity = new ActivityViewModel(hub);
+        Activity = new ActivityViewModel(hub, this);
         System = new SystemViewModel(hub, this, startup);
 
         Pages = new[]

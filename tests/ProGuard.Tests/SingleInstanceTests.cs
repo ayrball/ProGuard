@@ -46,4 +46,11 @@ public class SingleInstanceTests
         Assert.True(SingleInstance.TryClaim(() => { }, out var next, name: name));
         using (next) Assert.NotNull(next);
     }
+
+    [Fact]
+    public void StandardAndElevatedCopies_AreCountedSeparately()
+    {
+        Assert.NotEqual(SingleInstance.NameFor(elevated: false), SingleInstance.NameFor(elevated: true));
+        Assert.Equal(SingleInstance.DefaultName, SingleInstance.NameFor(elevated: false));
+    }
 }

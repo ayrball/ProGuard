@@ -26,7 +26,8 @@ public partial class App : Application
         bool trayStart = e.Args.Contains(RunKeyStartup.TrayArgument, StringComparer.OrdinalIgnoreCase);
 
         // A copy already runs in this session: it shows its window (unless this is the sign-in start) and this one leaves.
-        if (!SingleInstance.TryClaim(() => Dispatcher.BeginInvoke(() => (MainWindow as MainWindow)?.BringToFront()), out _instance, askToShow: !trayStart))
+        if (!SingleInstance.TryClaim(() => Dispatcher.BeginInvoke(() => (MainWindow as MainWindow)?.BringToFront()), out _instance, askToShow: !trayStart,
+            name: SingleInstance.NameFor(IsElevated())))
         {
             Shutdown();
             return;
@@ -62,6 +63,12 @@ public partial class App : Application
 
         _hub.Start();
         _foregroundReporter.StartAsync(CancellationToken.None);
+    }
+
+    private static bool IsElevated()
+    {
+        using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+        return new System.Security.Principal.WindowsPrincipal(identity).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
     }
 
     private void Quit()

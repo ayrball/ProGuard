@@ -135,7 +135,7 @@ public sealed class ForegroundPipeServer
                     _logger.LogDebug("Foreground pipe ignored a {Type}/{Command} message", message?.Type, message?.CommandType);
                     continue;
                 }
-                _tracker.Report(connectionId, (int)session, message.TargetPid ?? 0);
+                _tracker.Report(connectionId, (int)session, message.TargetPid ?? 0, ParseIdle(message.Argument));
             }
         }
         catch (OperationCanceledException) { }
@@ -153,6 +153,12 @@ public sealed class ForegroundPipeServer
             pipe.Dispose();
         }
     }
+
+    /// <summary>Argument of <see cref="CommandTypes.ReportForeground"/>: idle milliseconds, absent from older UIs.</summary>
+    internal static TimeSpan? ParseIdle(string? argument) =>
+        long.TryParse(argument, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var ms)
+            ? TimeSpan.FromMilliseconds(Math.Min(ms, uint.MaxValue))  // GetLastInputInfo can't say more; avoids overflow
+            : null;
 
     /// <summary>Like ReadLineAsync, but a line longer than <see cref="MaxLineLength"/> ends the connection.</summary>
     private static async Task<string?> ReadLineAsync(StreamReader reader, CancellationToken token)

@@ -16,6 +16,12 @@ namespace ProGuard.UI.Services;
 /// and can't see the user's desktop, so ProBalance's foreground exemption and Foreground Boost depend on this.
 /// Keeps one connection open (the engine drops the report when it closes) and sends a line whenever the
 /// foreground process changes.
+/// <para>
+/// Each report also carries how long this desktop has had no keyboard or mouse input, for IdleSaver: the engine
+/// can't call <c>GetLastInputInfo</c> for the user's session from session 0. The engine ages the last report by
+/// the time since it arrived, so reports while the user is away just confirm it; what matters is telling the
+/// engine promptly when they come back, so a report that drops the idle time from a long value is sent at once.
+/// </para>
 /// </summary>
 public sealed class ForegroundReporter : IHostedService, IDisposable
 {
@@ -23,18 +29,23 @@ public sealed class ForegroundReporter : IHostedService, IDisposable
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(2);
     // A write is the only way to notice the engine went away (e.g. restarted), so repeat the report now and then.
     private static readonly TimeSpan ResendInterval = TimeSpan.FromSeconds(5);
+    // Input after the engine was told we'd been idle this long is reported immediately. Below it, the engine's aged
+    // estimate is at most this plus ResendInterval too high until the next report, far under any IdleSaver timeout.
+    private static readonly TimeSpan ReturnReportThreshold = ResendInterval;
 
     private readonly string _pipeName;
     private readonly Func<int> _foregroundPid;
+    private readonly Func<TimeSpan?> _idleTime;
     private CancellationTokenSource? _cts;
     private Task? _loop;
 
-    public ForegroundReporter() : this(PipeNames.Foreground, ReadForegroundPid) { }
+    public ForegroundReporter() : this(PipeNames.Foreground, ReadForegroundPid, User32.GetIdleTime) { }
 
-    internal ForegroundReporter(string pipeName, Func<int> foregroundPid)
+    internal ForegroundReporter(string pipeName, Func<int> foregroundPid, Func<TimeSpan?>? idleTime = null)
     {
         _pipeName = pipeName;
         _foregroundPid = foregroundPid;
+        _idleTime = idleTime ?? (() => null);
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -79,25 +90,36 @@ public sealed class ForegroundReporter : IHostedService, IDisposable
     {
         await using var writer = new StreamWriter(pipe, new UTF8Encoding(false)) { AutoFlush = true };
         int? lastSent = null;
+        TimeSpan? lastSentIdle = null;
         var lastSentAt = DateTime.MinValue;
         while (!token.IsCancellationRequested)
         {
             var pid = _foregroundPid();
+            var idle = _idleTime();
             // Always sent on a new connection: the engine knows nothing about this desktop until we speak.
-            if (pid != lastSent || DateTime.UtcNow - lastSentAt >= ResendInterval)
+            if (ShouldSend(pid, idle, lastSent, lastSentIdle, DateTime.UtcNow - lastSentAt))
             {
-                await writer.WriteLineAsync(Serialize(pid).AsMemory(), token);
+                await writer.WriteLineAsync(Serialize(pid, idle).AsMemory(), token);
                 lastSent = pid;
+                lastSentIdle = idle;
                 lastSentAt = DateTime.UtcNow;
             }
             await Task.Delay(PollInterval, token);
         }
     }
 
-    internal static string Serialize(int pid) => JsonSerializer.Serialize(new CommandMessage
+    internal static bool ShouldSend(int pid, TimeSpan? idle, int? lastSentPid, TimeSpan? lastSentIdle, TimeSpan sinceLastSend)
+    {
+        if (pid != lastSentPid || sinceLastSend >= ResendInterval) return true;
+        // Idle time only ever grows, so a smaller value means the user is back.
+        return lastSentIdle >= ReturnReportThreshold && (idle == null || idle < lastSentIdle);
+    }
+
+    internal static string Serialize(int pid, TimeSpan? idle = null) => JsonSerializer.Serialize(new CommandMessage
     {
         CommandType = CommandTypes.ReportForeground,
-        TargetPid = pid
+        TargetPid = pid,
+        Argument = idle is { } t ? ((long)t.TotalMilliseconds).ToString(System.Globalization.CultureInfo.InvariantCulture) : null
     });
 
     private static int ReadForegroundPid()

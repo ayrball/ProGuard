@@ -50,6 +50,7 @@ public static class CommandTypes
     /// <summary>
     /// TargetPid = process owning the foreground window, 0 if none. Sent by the UI on
     /// <see cref="PipeNames.Foreground"/> only: the engine runs as a service in session 0 and can't see the desktop.
+    /// Argument = milliseconds since the last keyboard/mouse input on that desktop (for IdleSaver), or null if unknown.
     /// </summary>
     public const string ReportForeground = "ReportForeground";
 

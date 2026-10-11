@@ -14,6 +14,13 @@ public interface IForegroundTracker
     int GetForegroundPid();
 }
 
+/// <summary>How long the user has left the keyboard and mouse alone.</summary>
+public interface IUserIdleSource
+{
+    /// <summary>Time since the last input, or null when nobody can tell (no UI reporting to a session-0 engine).</summary>
+    TimeSpan? GetIdleTime();
+}
+
 /// <summary>
 /// Knows the foreground process even when the engine runs as a service. A service lives in session 0, where
 /// <c>GetForegroundWindow</c> only sees session 0's own (empty) desktop, so each user's UI reports its desktop's
@@ -23,8 +30,15 @@ public interface IForegroundTracker
 /// in the session attached to the physical console wins, then the most recent. With none, the engine falls back
 /// to asking Windows directly, which only works when it isn't running in session 0.
 /// </para>
+/// <para>
+/// The same reports carry the reporter's idle time (<c>GetLastInputInfo</c> is per session too, so a service can't
+/// read it itself). The machine counts as idle only while every desktop we know of is idle: the power plan is
+/// system-wide, so one active user is enough to keep it. A report is the idle time when it was sent; it is aged by
+/// the time since, so the engine needs no report while the user stays away, and the reporter sends one right away
+/// when they come back (see <c>ForegroundReporter</c>).
+/// </para>
 /// </summary>
-public sealed class ForegroundTracker : IForegroundTracker
+public sealed class ForegroundTracker : IForegroundTracker, IUserIdleSource
 {
     private const int UnknownSession = -1;
 
@@ -33,12 +47,16 @@ public sealed class ForegroundTracker : IForegroundTracker
     private readonly Func<int, int?> _sessionOfPid;
     private readonly Func<int> _activeConsoleSession;
     private readonly bool _canSeeDesktop;
+    private readonly Func<TimeSpan?> _localIdleTime;
+    private readonly Func<TimeSpan> _clock;
 
     private readonly object _sync = new();
     private readonly Dictionary<long, Reported> _reports = new();
     private long _sequence;
 
-    private sealed record Reported(int SessionId, int Pid, long Sequence);
+    /// <param name="Idle">Idle time the reporter saw, or null if it didn't say.</param>
+    /// <param name="ReceivedAt">Engine clock when the report arrived, to age <paramref name="Idle"/>.</param>
+    private sealed record Reported(int SessionId, int Pid, long Sequence, TimeSpan? Idle, TimeSpan ReceivedAt);
 
     public ForegroundTracker(ILogger<ForegroundTracker> logger)
         : this(logger, ReadLocalForegroundPid, SessionOf, ActiveConsoleSession, Process.GetCurrentProcess().SessionId != 0)
@@ -46,13 +64,15 @@ public sealed class ForegroundTracker : IForegroundTracker
     }
 
     internal ForegroundTracker(ILogger<ForegroundTracker>? logger, Func<int> localForegroundPid, Func<int, int?> sessionOfPid,
-        Func<int> activeConsoleSession, bool canSeeDesktop)
+        Func<int> activeConsoleSession, bool canSeeDesktop, Func<TimeSpan?>? localIdleTime = null, Func<TimeSpan>? clock = null)
     {
         _logger = logger ?? NullLogger<ForegroundTracker>.Instance;
         _localForegroundPid = localForegroundPid;
         _sessionOfPid = sessionOfPid;
         _activeConsoleSession = activeConsoleSession;
         _canSeeDesktop = canSeeDesktop;
+        _localIdleTime = localIdleTime ?? User32.GetIdleTime;
+        _clock = clock ?? (() => TimeSpan.FromMilliseconds(Environment.TickCount64));
     }
 
     /// <summary>True while at least one UI is reporting.</summary>
@@ -65,7 +85,7 @@ public sealed class ForegroundTracker : IForegroundTracker
     /// Records what a reporter in <paramref name="clientSessionId"/> sees. A reporter may only name a process in its
     /// own session (or 0 for "nothing"), so one user can't exempt or boost processes on someone else's desktop.
     /// </summary>
-    public bool Report(long connectionId, int clientSessionId, int pid)
+    public bool Report(long connectionId, int clientSessionId, int pid, TimeSpan? idle = null)
     {
         if (pid < 0) return false;
         if (pid != 0 && _sessionOfPid(pid) != clientSessionId)
@@ -74,7 +94,8 @@ public sealed class ForegroundTracker : IForegroundTracker
             return false;
         }
 
-        lock (_sync) _reports[connectionId] = new Reported(clientSessionId, pid, ++_sequence);
+        if (idle < TimeSpan.Zero) idle = null;
+        lock (_sync) _reports[connectionId] = new Reported(clientSessionId, pid, ++_sequence, idle, _clock());
         return true;
     }
 
@@ -100,6 +121,24 @@ public sealed class ForegroundTracker : IForegroundTracker
             }
         }
         return _canSeeDesktop ? _localForegroundPid() : 0;
+    }
+
+    public TimeSpan? GetIdleTime()
+    {
+        TimeSpan? least = null;
+        lock (_sync)
+        {
+            var now = _clock();
+            foreach (var r in _reports.Values)
+            {
+                if (r.Idle is not { } idle) continue;
+                var aged = idle + (now - r.ReceivedAt);
+                if (least == null || aged < least) least = aged;
+            }
+        }
+        // An engine started on a user's desktop (not as a service) can read its own session's input as well.
+        if (_canSeeDesktop && _localIdleTime() is { } local && (least == null || local < least)) least = local;
+        return least;
     }
 
     private static bool Prefer(Reported candidate, Reported current, int consoleSession)

@@ -13,10 +13,26 @@ public class AppSettings
     public double ResponsivenessGuardCpuThreshold { get; set; } = 25.0;
     public double ResponsivenessGuardRecoveryThreshold { get; set; } = 10.0;
     
-    // MemoryTrim
+    // MemoryTrim. Defaults are another process manager's [MemoryManagement] ones (otherpm.ini key in brackets).
     public bool MemoryTrimEnabled { get; set; } = false;
-    public int MemoryTrimIntervalSeconds { get; set; } = 300;
-    public long MemoryTrimMemoryThresholdMB { get; set; } = 1024;
+    /// <summary>[MemoryTrimIntervalMins] 15.</summary>
+    public int MemoryTrimIntervalSeconds { get; set; } = 900;
+    /// <summary>[MinimumProcessWSSInMb] Only processes with at least this working set are trimmed.</summary>
+    public long MemoryTrimMemoryThresholdMB { get; set; } = 196;
+    /// <summary>[MemoryTrimAutoMinimumRAMLoad] Periodic trims only run while memory load is at least this percent.</summary>
+    public int MemoryTrimMinimumRamLoadPercent { get; set; } = 65;
+    /// <summary>Process names MemoryTrim never trims, separated by commas, semicolons or new lines.</summary>
+    public string? MemoryTrimExclusions { get; set; }
+    /// <summary>Also log the passes that find nothing to do.</summary>
+    public bool MemoryTrimLogNoAction { get; set; } = false;
+    /// <summary>Purge the standby list when free RAM drops below <see cref="StandbyPurgeFreeRamThresholdMB"/>.</summary>
+    public bool StandbyPurgeEnabled { get; set; } = false;
+    /// <summary>[ClearStandbyFreeRAMThresholdMB] 1024.</summary>
+    public long StandbyPurgeFreeRamThresholdMB { get; set; } = 1024;
+    /// <summary>Only purge automatically while Performance Mode is on (another process manager's default).</summary>
+    public bool StandbyPurgeOnlyInPerformanceMode { get; set; } = true;
+    /// <summary>Also flush the system file cache when free RAM is low, and on "Purge now".</summary>
+    public bool FileCachePurgeEnabled { get; set; } = false;
     
     // AwayMode
     public bool AwayModeEnabled { get; set; } = false;

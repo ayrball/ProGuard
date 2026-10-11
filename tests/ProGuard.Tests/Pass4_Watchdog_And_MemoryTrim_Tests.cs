@@ -47,8 +47,8 @@ public class Pass4_Watchdog_And_MemoryTrim_Tests
 
         using var memory trim = new MemoryTrimService(mockLogger.Object, mockMonitor.Object);
 
-        // Default should be 500 MB
-        Assert.Equal(1024L * 1024L * 500L, memory trim.ThresholdBytes);
+        // Default is another process manager's MinimumProcessWSSInMb, 196 MB
+        Assert.Equal(1024L * 1024L * 196L, memory trim.ThresholdBytes);
 
         // Configure to 1 GB
         memory trim.ThresholdBytes = 1024L * 1024L * 1024L;

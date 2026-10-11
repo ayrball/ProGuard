@@ -92,6 +92,15 @@ public class Program
                 services.AddSingleton<SettingsApplier>();
 
                 services.AddSingleton<ForegroundBoostService>();
+
+                // What the thin client asks for over the command pipe.
+                services.AddSingleton<ActivityLog>();
+                services.AddSingleton<ActivityFeed>();
+                services.AddSingleton<IProcessDetailsReader, Win32ProcessDetailsReader>();
+                services.AddSingleton<SnapshotBuilder>();
+                services.AddSingleton<ProcessActionService>();
+                services.AddSingleton<RuleService>();
+                services.AddSingleton<ThinClientCommands>();
                 services.AddSingleton<IpcDispatcher>();
                 services.AddSingleton<PipeServer>();
                 services.AddSingleton<ForegroundPipeServer>();

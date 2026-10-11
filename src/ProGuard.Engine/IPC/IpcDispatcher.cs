@@ -31,6 +31,7 @@ public class IpcDispatcher
     private readonly IProcessController _processController;
     private readonly IProcessMonitor _processMonitor;
     private readonly WatchdogEventLog? _watchdogEvents;
+    private readonly ThinClientCommands? _thinClient;
     private readonly Stopwatch _uptime = Stopwatch.StartNew();
 
     // Settings commands read-modify-write the stored settings; concurrent clients must not lose each other's changes.
@@ -46,7 +47,8 @@ public class IpcDispatcher
         ICpuLimiter cpuLimiter,
         IProcessController processController,
         IProcessMonitor processMonitor,
-        WatchdogEventLog? watchdogEvents = null)
+        WatchdogEventLog? watchdogEvents = null,
+        ThinClientCommands? thinClient = null)
     {
         _logger = logger;
         _ruleStore = ruleStore;
@@ -58,6 +60,7 @@ public class IpcDispatcher
         _processController = processController;
         _processMonitor = processMonitor;
         _watchdogEvents = watchdogEvents;
+        _thinClient = thinClient;
     }
 
     /// <summary>Handles a request from code inside the engine, which needs no authorization.</summary>
@@ -122,43 +125,59 @@ public class IpcDispatcher
         switch (cmd.CommandType)
         {
             case CommandTypes.SetPriority:
-                _processController.SetPriority(RequirePid(cmd), ParsePriority(cmd.Argument));
+                var priorityPid = RequirePid(cmd);
+                var priority = ParsePriority(cmd.Argument);
+                _processController.SetPriority(priorityPid, priority);
+                _thinClient?.Record(priorityPid, $"Set priority to {priority}.");
                 return CommandResult.Ok();
 
             case CommandTypes.SetAffinity:
-                _processController.SetAffinity(RequirePid(cmd), ParseMask(cmd.Argument));
+                var affinityPid = RequirePid(cmd);
+                var mask = ParseMask(cmd.Argument);
+                _processController.SetAffinity(affinityPid, mask);
+                _thinClient?.Record(affinityPid, $"Set affinity to 0x{mask:X}.");
                 return CommandResult.Ok();
 
             case CommandTypes.SetCpuLimit:
                 var percent = ParseDouble(cmd.Argument);
                 if (percent <= 0 || percent > 100) return CommandResult.Fail("CPU limit must be in (0, 100]");
-                _cpuLimiter.AddLimit(RequirePid(cmd), percent);
+                var limitPid = RequirePid(cmd);
+                _cpuLimiter.AddLimit(limitPid, percent);
+                _thinClient?.Record(limitPid, $"Capped CPU use at {percent:0.#}%.");
                 return CommandResult.Ok();
 
             case CommandTypes.RemoveCpuLimit:
-                _cpuLimiter.RemoveLimit(RequirePid(cmd));
+                var unlimitPid = RequirePid(cmd);
+                _cpuLimiter.RemoveLimit(unlimitPid);
+                _thinClient?.Record(unlimitPid, "Removed the CPU cap.");
                 return CommandResult.Ok();
 
             case CommandTypes.TerminateProcess:
-                _processController.Terminate(RequireForeignPid(cmd));
+                var terminatePid = RequireForeignPid(cmd);
+                var terminateName = _processMonitor.GetProcess(terminatePid)?.Name; // gone once it has ended
+                _processController.Terminate(terminatePid);
+                _thinClient?.Record(terminatePid, "Ended the process.", terminateName);
                 return CommandResult.Ok();
 
             case CommandTypes.SuspendProcess:
-                _processController.Suspend(RequireForeignPid(cmd));
+                var suspendPid = RequireForeignPid(cmd);
+                _processController.Suspend(suspendPid);
+                _thinClient?.Record(suspendPid, "Suspended the process.");
                 return CommandResult.Ok();
 
             case CommandTypes.ResumeProcess:
-                _processController.Resume(RequirePid(cmd));
+                var resumePid = RequirePid(cmd);
+                _processController.Resume(resumePid);
+                _thinClient?.Record(resumePid, "Resumed the process.");
                 return CommandResult.Ok();
 
             case CommandTypes.TrimWorkingSet:
-                if (cmd.TargetPid is int trimPid) _smartTrim.TrimProcess(trimPid);
-                else _smartTrim.TrimMemory();
-                return CommandResult.Ok();
+                return Trim(cmd);
 
             case CommandTypes.PurgeMemory:
                 var report = _smartTrim.PurgeNow() ?? new MemoryPurgeReport();
-                var data = JsonSerializer.Serialize(report);
+                var data = JsonSerializer.Serialize(ToDto(report));
+                _thinClient?.RecordMemory(null, report.Summary() + ".");
                 // Partial success (e.g. trimmed, but the standby purge lacked a privilege) is a success; the report says what failed.
                 return report.Errors.Count > 0 && !report.AnyAction
                     ? new CommandResult { Success = false, Error = report.Summary(), Data = data }
@@ -202,10 +221,83 @@ public class IpcDispatcher
                 _powerManager.EnablePerformanceMode(false);
                 return CommandResult.Ok();
 
+            case CommandTypes.GetSettings:
+                return CommandResult.Ok(JsonSerializer.Serialize(DtoMapper.Map<AppSettings, EngineSettingsDto>(_ruleStore.GetSettings())));
+
+            case CommandTypes.SaveSettings:
+                return SaveSettings(ParseArgument<EngineSettingsDto>(cmd.Argument));
+
             default:
+                if (_thinClient != null && _thinClient.TryExecute(cmd, caller, out var thinResult)) return thinResult;
                 return CommandResult.Fail($"Unknown command '{cmd.CommandType}'");
         }
     }
+
+    /// <summary>
+    /// Trims one process or every eligible one. Data = bytes reclaimed. A single process Windows wouldn't let go of is a
+    /// failure with its reason; "trim all" succeeds with whatever it managed.
+    /// </summary>
+    private CommandResult Trim(CommandMessage cmd)
+    {
+        var single = cmd.TargetPid is int;
+        var report = (cmd.TargetPid is int pid ? _smartTrim.TrimProcess(pid) : _smartTrim.TrimMemory()) ?? new MemoryPurgeReport();
+        if (single && report.ProcessesTrimmed == 0 && report.Errors.Count > 0)
+            return CommandResult.Fail($"Could not trim process {cmd.TargetPid}: {report.Errors[0]}");
+
+        _thinClient?.RecordMemory(cmd.TargetPid, single
+            ? $"Trimmed the working set ({MemoryPurgeReport.FormatMb(report.WorkingSetBytesReclaimed)} reclaimed)."
+            : report.Summary() + ".");
+        return CommandResult.Ok(report.WorkingSetBytesReclaimed.ToString(CultureInfo.InvariantCulture));
+    }
+
+    private static MemoryPurgeResultDto ToDto(MemoryPurgeReport report)
+    {
+        var dto = DtoMapper.Map<MemoryPurgeReport, MemoryPurgeResultDto>(report);
+        dto.Errors = report.Errors.ToList();
+        dto.Summary = report.Summary();
+        return dto;
+    }
+
+    /// <summary>
+    /// Stores the settings the client sent over the stored ones (keeping the stored row's Id) and applies them. The DTO
+    /// carries every setting, so it replaces them all; clients send back a copy of what GetSettings gave them.
+    /// </summary>
+    private CommandResult SaveSettings(EngineSettingsDto dto)
+    {
+        if (ValidateSettings(dto) is { } invalid) return CommandResult.Fail(invalid);
+
+        AppSettings stored;
+        lock (_settingsSync)
+        {
+            var settings = _ruleStore.GetSettings().Clone();
+            DtoMapper.CopyTo(dto, settings); // never touches Id: the DTO has none
+            _ruleStore.UpdateSettings(settings);
+            _settingsApplier.Apply(settings);
+            stored = settings;
+        }
+        _thinClient?.Record(0, "Saved the settings.", string.Empty);
+        return CommandResult.Ok(JsonSerializer.Serialize(DtoMapper.Map<AppSettings, EngineSettingsDto>(stored)));
+    }
+
+    private static string? ValidateSettings(EngineSettingsDto d)
+    {
+        if (d.ProBalanceSensitivity < 1 || d.ProBalanceSensitivity > 10) return "Sensitivity must be between 1 and 10";
+        if (!Percent(d.ProBalanceCpuThreshold) || !Percent(d.ProBalanceRecoveryThreshold)) return "ProBalance thresholds must be between 0% and 100%";
+        if (d.ProBalanceDisableIfSysIdleMs < 0) return "The ProBalance idle time can't be negative";
+        if (d.PollingIntervalMs < (int)ProcessMonitor.MinPollingInterval.TotalMilliseconds || d.PollingIntervalMs > (int)ProcessMonitor.MaxPollingInterval.TotalMilliseconds)
+            return "The refresh interval must be between 0.25 and 60 seconds";
+        if (d.SmartTrimIntervalSeconds < 1 || d.SmartTrimMemoryThresholdMB < 0 || d.StandbyPurgeFreeRamThresholdMB < 0) return "Invalid SmartTrim setting";
+        if (d.SmartTrimMinimumRamLoadPercent < 0 || d.SmartTrimMinimumRamLoadPercent > 100) return "The SmartTrim memory load must be between 0% and 100%";
+        if (d.IdleTimeoutMinutes < 1) return "The idle timeout must be at least 1 minute";
+        if (!Percent(d.LoadSwitcherLowThreshold) || !Percent(d.LoadSwitcherHighThreshold)) return "Load switcher thresholds must be between 0% and 100%";
+        if (d.LoadSwitcherAveragingWindowSamples < 1 || d.LoadSwitcherMinimumTimeInPlanMs < 0) return "Invalid load switcher setting";
+        if (string.IsNullOrWhiteSpace(d.Theme)) return "The theme can't be empty";
+        foreach (var guid in new[] { d.IdlePowerPlanGuid, d.PerformanceModePlanGuid, d.LoadSwitcherLowPlanGuid, d.LoadSwitcherHighPlanGuid, d.StartWithPowerPlanGuid })
+            if (!string.IsNullOrEmpty(guid) && !Guid.TryParse(guid, out _)) return "Invalid power plan GUID";
+        return null;
+    }
+
+    private static bool Percent(double value) => value >= 0 && value <= 100;
 
     /// <summary>Saves a changed copy of the stored settings, then applies it to the services.</summary>
     private CommandResult UpdateSettings(Action<AppSettings> change)

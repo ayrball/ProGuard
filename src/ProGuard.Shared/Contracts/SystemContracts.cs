@@ -26,7 +26,7 @@ public sealed class EngineSettingsDto
     public int ProBalanceDisableIfSysIdleMs { get; set; } = 30000;
 
     /// <summary>Raise the foreground process from Normal to Above Normal while it has focus.</summary>
-    public bool ForegroundBoostEnabled { get; set; } = true;
+    public bool ForegroundBoostEnabled { get; set; } = false;
 
     // SmartTrim
     public bool SmartTrimEnabled { get; set; }

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
+using ProGuard.Core.Helpers;
 using ProGuard.Core.Native;
 using ProGuard.Shared.Messages;
 
@@ -28,6 +30,23 @@ namespace ProGuard.Engine.IPC;
 /// <item>"Purge now" (<see cref="CommandTypes.PurgeMemory"/>) is administrator-only: purging the standby list and the
 /// file cache throws away every user's cached data machine-wide, and Windows itself requires
 /// SeProfileSingleProcessPrivilege / SeIncreaseQuotaPrivilege for it, which standard users lack.</item>
+/// <item>The thin client's reads are open to any user: the snapshot (<see cref="CommandTypes.GetSnapshot"/>, where
+/// <c>SnapshotBuilder</c> blanks the file path of every process the caller couldn't open themselves), the process and
+/// Watchdog rules, the settings, the power state, the activity feed and the CPU Sets. They hold machine-wide
+/// preferences and the process list any user can see anyway.</item>
+/// <item>SaveSettings and SetPowerPlan are open to any user, like SetSetting and Performance Mode: they are the same
+/// machine-wide preferences, and a power plan the user picks is what Windows would let them pick in Power Options.
+/// A plan chosen this way wins over Performance Mode or IdleSaver (see <c>IPowerManager.SetActivePlan</c>).</item>
+/// <item>Anyone may save and delete process and Watchdog rules, as the unelevated UI must. The dispatcher then checks the
+/// rule itself (<see cref="RuleAuthorization"/>: no system processes, Realtime, Watchdog Launch, or ending processes the
+/// caller couldn't end), since that needs the stored rule and the running processes. A rule may be changed or deleted
+/// only by someone who could have created it. The legacy SetRule request stays administrator-only.</item>
+/// <item>SetEfficiencyMode, SetIoPriority and SetMemoryPriority need the same right as SetPriority. Setting I/O priority
+/// High (3) is administrator-only, like Realtime: Windows needs SeIncreaseBasePriorityPrivilege for it.</item>
+/// <item>TerminateProcessTree needs the right to end the target; the dispatcher then ends only the descendants the
+/// caller could end too, and never the System process or the engine.</item>
+/// <item>Clearing the action log (<see cref="CommandTypes.ClearActionLog"/>) is administrator-only: it is the record of
+/// what the engine did to every user's processes.</item>
 /// <item>Anything else is refused. A new command stays administrator-only until it is added here.</item>
 /// </list>
 /// </summary>
@@ -42,6 +61,25 @@ public static class IpcAuthorization
         CommandTypes.ConfigureSmartTrim,
         CommandTypes.EnablePerformanceMode,
         CommandTypes.DisablePerformanceMode,
+        CommandTypes.SaveSettings,
+        CommandTypes.SetPowerPlan,
+        // Reads.
+        CommandTypes.GetSnapshot,
+        CommandTypes.GetProcessRules,
+        CommandTypes.GetWatchdogRules,
+        CommandTypes.GetSettings,
+        CommandTypes.GetPower,
+        CommandTypes.GetActivity,
+        CommandTypes.GetCpuSets,
+    };
+
+    /// <summary>Allowed here; <see cref="IpcDispatcher"/> checks the rule's contents with <see cref="RuleAuthorization"/>.</summary>
+    internal static readonly IReadOnlySet<string> RuleCommands = new HashSet<string>(StringComparer.Ordinal)
+    {
+        CommandTypes.SaveProcessRule,
+        CommandTypes.DeleteProcessRule,
+        CommandTypes.SaveWatchdogRule,
+        CommandTypes.DeleteWatchdogRule,
     };
 
     /// <summary>The access each process command needs, i.e. what the caller would need to do it without ProGuard.</summary>
@@ -53,6 +91,11 @@ public static class IpcAuthorization
         [CommandTypes.SetCpuLimit] = ProcessAccessFlags.SetQuota | ProcessAccessFlags.Terminate,
         [CommandTypes.RemoveCpuLimit] = ProcessAccessFlags.SetQuota | ProcessAccessFlags.Terminate,
         [CommandTypes.TerminateProcess] = ProcessAccessFlags.Terminate,
+        [CommandTypes.SetEfficiencyMode] = ProcessAccessFlags.SetInformation,
+        [CommandTypes.SetIoPriority] = ProcessAccessFlags.SetInformation,
+        [CommandTypes.SetMemoryPriority] = ProcessAccessFlags.SetInformation,
+        // The target itself; the descendants are checked one by one when the tree is walked.
+        [CommandTypes.TerminateProcessTree] = ProcessAccessFlags.Terminate,
         [CommandTypes.SuspendProcess] = ProcessAccessFlags.SuspendResume,
         [CommandTypes.ResumeProcess] = ProcessAccessFlags.SuspendResume,
         // EmptyWorkingSet.
@@ -63,6 +106,7 @@ public static class IpcAuthorization
     internal static readonly IReadOnlySet<string> AdministratorOnlyCommands = new HashSet<string>(StringComparer.Ordinal)
     {
         CommandTypes.PurgeMemory,
+        CommandTypes.ClearActionLog,
     };
 
     /// <summary>Returns null when <paramref name="caller"/> may make <paramref name="request"/>, otherwise the error to reply with.</summary>
@@ -88,7 +132,7 @@ public static class IpcAuthorization
     private static CommandResult? CheckCommand(CommandMessage cmd, IIpcCaller caller)
     {
         if (AdministratorOnlyCommands.Contains(cmd.CommandType)) return Deny(caller, $"run {cmd.CommandType}");
-        if (UnrestrictedCommands.Contains(cmd.CommandType)) return null;
+        if (UnrestrictedCommands.Contains(cmd.CommandType) || RuleCommands.Contains(cmd.CommandType)) return null;
         if (cmd.CommandType == CommandTypes.TrimWorkingSet && cmd.TargetPid == null) return null;
 
         if (!ProcessCommandAccess.TryGetValue(cmd.CommandType, out var access))
@@ -102,11 +146,16 @@ public static class IpcAuthorization
             && priority == ProcessPriorityClass.RealTime)
             return Deny(caller, "set Realtime priority");
 
+        if (cmd.CommandType == CommandTypes.SetIoPriority
+            && int.TryParse(cmd.Argument, NumberStyles.Integer, CultureInfo.InvariantCulture, out var io)
+            && io == WatchdogArguments.IoHigh)
+            return Deny(caller, "set High I/O priority");
+
         return caller.CanOpenProcess(pid, access)
             ? null
             : Deny(caller, $"{cmd.CommandType} process {pid}: it belongs to another user, is elevated or protected, or is not running");
     }
 
-    private static CommandResult Deny(IIpcCaller caller, string what) =>
+    internal static CommandResult Deny(IIpcCaller caller, string what) =>
         CommandResult.Fail($"Access denied: {caller.Name} may not {what}. Run ProGuard as administrator to do this.");
 }

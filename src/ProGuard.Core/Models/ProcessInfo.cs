@@ -18,7 +18,10 @@ public class ProcessInfo
     public ProcessPriorityClass? PriorityClass { get; set; }
     public long AffinityMask { get; set; }
     public int? ParentPid { get; set; }
+    /// <summary>When the process was created, in UTC; <see cref="DateTime.MinValue"/> when Windows won't say.</summary>
     public DateTime StartTime { get; set; }
+    /// <summary>Terminal Services session (0 = services and the OS itself).</summary>
+    public int SessionId { get; set; }
     public string? UserName { get; set; }
     public bool IsForeground { get; set; }
     public ProcessStatus Status { get; set; }

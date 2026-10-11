@@ -111,6 +111,9 @@ public static class CommandTypes
 
     /// <summary>No args. Data = List&lt;<see cref="Contracts.CpuSetDto"/>&gt;.</summary>
     public const string GetCpuSets = "GetCpuSets";
+
+    /// <summary>No args. Administrators only. Deletes the logged ProBalance, CPU Limiter and power-plan actions the activity feed shows.</summary>
+    public const string ClearActionLog = "ClearActionLog";
 }
 
 public class IdleSaverArgument

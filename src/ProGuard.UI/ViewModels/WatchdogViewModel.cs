@@ -46,7 +46,7 @@ public partial class WatchdogViewModel : ViewModelBase
         try
         {
             using var db = new ProGuardDbContext();
-            db.Database.EnsureCreated();
+            db.EnsureSchema();
 
             var rules = db.WatchdogRules.ToList();
 
@@ -67,7 +67,7 @@ public partial class WatchdogViewModel : ViewModelBase
         try
         {
             using var db = new ProGuardDbContext();
-            db.Database.EnsureCreated();
+            db.EnsureSchema();
             var lastAction = db.ProBalanceActions.OrderByDescending(a => a.Timestamp).FirstOrDefault();
             if (lastAction != null)
             {
@@ -153,7 +153,7 @@ public partial class WatchdogViewModel : ViewModelBase
         try
         {
             using var db = new ProGuardDbContext();
-            db.Database.EnsureCreated();
+            db.EnsureSchema();
 
             var entity = new WatchdogRule
             {
@@ -193,7 +193,7 @@ public partial class WatchdogViewModel : ViewModelBase
         try
         {
             using var db = new ProGuardDbContext();
-            db.Database.EnsureCreated();
+            db.EnsureSchema();
 
             var entity = db.WatchdogRules.FirstOrDefault(r => r.Id == item.Id);
             if (entity != null)

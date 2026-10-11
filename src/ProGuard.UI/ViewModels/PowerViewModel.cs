@@ -173,7 +173,7 @@ public partial class PowerViewModel : ViewModelBase
         try
         {
             using var db = new ProGuardDbContext();
-            db.Database.EnsureCreated();
+            db.EnsureSchema();
             var s = db.Settings.FirstOrDefault();
             if (s != null)
             {
@@ -200,7 +200,7 @@ public partial class PowerViewModel : ViewModelBase
         try
         {
             using var db = new ProGuardDbContext();
-            db.Database.EnsureCreated();
+            db.EnsureSchema();
             var s = db.Settings.FirstOrDefault();
             if (s != null)
             {

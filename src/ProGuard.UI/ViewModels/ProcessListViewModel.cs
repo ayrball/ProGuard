@@ -983,7 +983,7 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
         try
         {
             using var db = new ProGuardDbContext();
-            db.Database.EnsureCreated();
+            db.EnsureSchema();
 
             int? priorityVal = null;
             if (Enum.TryParse<ProcessPriorityClass>(SelectedProcess.Priority, out var pc))
@@ -1018,7 +1018,7 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
         try
         {
             using var db = new ProGuardDbContext();
-            db.Database.EnsureCreated();
+            db.EnsureSchema();
 
             var rule = new ProcessRule
             {

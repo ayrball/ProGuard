@@ -5,6 +5,9 @@ namespace ProGuard.Core.Models;
 
 public class ProBalanceAction
 {
+    /// <summary><see cref="ProcessName"/> of the entries that record a power plan change (Pid 0, no priorities).</summary>
+    public const string PowerPlanEntryName = "Power plan";
+
     [Key]
     public int Id { get; set; }
     public DateTime Timestamp { get; set; }

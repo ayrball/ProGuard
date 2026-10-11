@@ -39,6 +39,27 @@ public class AppSettings
     public int IdleTimeoutMinutes { get; set; } = 15;
     public string? IdlePowerPlanGuid { get; set; }
     
+    // Performance Mode (Process Lasso's [GamingMode])
+    /// <summary>Plan Performance Mode switches to (TargetPowerPlan); null = High Performance.</summary>
+    public string? PerformanceModePlanGuid { get; set; }
+
+    // Load-based power switcher ([LoadBasedPowerSwitcher])
+    public bool LoadSwitcherEnabled { get; set; } = false;
+    public double LoadSwitcherLowThreshold { get; set; } = 10.0;
+    public double LoadSwitcherHighThreshold { get; set; } = 50.0;
+    public int LoadSwitcherAveragingWindowSamples { get; set; } = 5;
+    public int LoadSwitcherMinimumTimeInPlanMs { get; set; } = 5000;
+    /// <summary>null = Balanced.</summary>
+    public string? LoadSwitcherLowPlanGuid { get; set; }
+    /// <summary>null = High Performance.</summary>
+    public string? LoadSwitcherHighPlanGuid { get; set; }
+    /// <summary>At low load, go back to the plan from before instead of switching to the low plan.</summary>
+    public bool LoadSwitcherDeferLowPlan { get; set; } = true;
+
+    // [PowerManagement]
+    /// <summary>Plan to switch to when the engine starts (StartWithPowerPlan); null = leave it.</summary>
+    public string? StartWithPowerPlanGuid { get; set; }
+
     // General
     public bool StartWithWindows { get; set; } = true;
     public bool MinimizeToTray { get; set; } = true;

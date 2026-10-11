@@ -80,6 +80,15 @@ public class SettingsApplier
                     Math.Max(1, settings.IdleTimeoutMinutes),
                     Guid.TryParse(settings.IdlePowerPlanGuid, out var plan) ? plan : Powrprof.PowerSaver));
 
+            if (all || previous!.PerformanceModePlanGuid != settings.PerformanceModePlanGuid)
+                TryApply("Performance Mode", () => _powerManager.ConfigurePerformanceMode(ParsePlan(settings.PerformanceModePlanGuid)));
+
+            if (all || LoadSwitcherOptions.FromSettings(previous!) != LoadSwitcherOptions.FromSettings(settings))
+                TryApply("load switcher", () => _powerManager.ConfigureLoadSwitcher(LoadSwitcherOptions.FromSettings(settings)));
+
+            if (all || previous!.StartWithPowerPlanGuid != settings.StartWithPowerPlanGuid)
+                TryApply("startup power plan", () => _powerManager.ConfigureStartupPlan(ParsePlan(settings.StartWithPowerPlanGuid)));
+
             if (all || previous!.ProBalanceEnabled != settings.ProBalanceEnabled
                     || previous.ProBalanceSensitivity != settings.ProBalanceSensitivity
                     || previous.ProBalanceCpuThreshold != settings.ProBalanceCpuThreshold
@@ -115,6 +124,8 @@ public class SettingsApplier
 
     internal static string[] SplitProcessList(string? list) =>
         (list ?? "").Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private static Guid ParsePlan(string? plan) => Guid.TryParse(plan, out var id) ? id : Guid.Empty;
 
     // One failing service must not stop the others from getting their settings.
     private void TryApply(string what, Action apply)

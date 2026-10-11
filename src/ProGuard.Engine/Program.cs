@@ -43,6 +43,7 @@ public class Program
 
                 services.AddSingleton<CpuLimiter>();
                 services.AddSingleton<ICpuLimiter>(sp => sp.GetRequiredService<CpuLimiter>());
+                services.AddSingleton<CpuAffinityLimiter>();
 
                 services.AddSingleton<SmartTrimService>();
                 services.AddSingleton<ISmartTrimService>(sp => sp.GetRequiredService<SmartTrimService>());

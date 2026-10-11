@@ -54,6 +54,13 @@ public class Program
                 services.AddSingleton<WatchdogService>();
                 services.AddSingleton<IWatchdogService>(sp => sp.GetRequiredService<WatchdogService>());
 
+                // Per-rule features the orchestrator drives as matching processes start and exit.
+                services.AddSingleton<IRuleProcessAccess, Win32RuleProcessAccess>();
+                services.AddSingleton(TimeProvider.System);
+                services.AddSingleton<InstanceLimiter>();
+                services.AddSingleton<InstanceSpread>();
+                services.AddSingleton<StartupBoostService>();
+
                 services.AddSingleton<ProcessOrchestrator>();
                 services.AddSingleton<IProcessOrchestrator>(sp => sp.GetRequiredService<ProcessOrchestrator>());
                 

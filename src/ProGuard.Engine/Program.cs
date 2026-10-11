@@ -32,6 +32,8 @@ public class Program
 
                 services.AddSingleton<ForegroundTracker>();
                 services.AddSingleton<IForegroundTracker>(sp => sp.GetRequiredService<ForegroundTracker>());
+                // The UI's foreground reports also carry the user's idle time, which a session-0 service can't read.
+                services.AddSingleton<IUserIdleSource>(sp => sp.GetRequiredService<ForegroundTracker>());
 
                 services.AddSingleton<ProcessMonitor>();
                 services.AddSingleton<IProcessMonitor>(sp => sp.GetRequiredService<ProcessMonitor>());

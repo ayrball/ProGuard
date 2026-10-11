@@ -13,6 +13,11 @@ namespace ProGuard.Tests;
 /// The engine checks each request by impersonating the pipe client. Whatever it does afterwards (later requests,
 /// timers a request creates, await continuations) must run as the engine again: on the installed service a leaked
 /// client identity made "Purge now" fail to open SYSTEM's token and SmartTrim timers set up over IPC run as the user.
+/// <para>
+/// Limitation: here the test runner is both server and client, as the same user and not as a service, and in that
+/// setup the leak doesn't show even with PipeCaller's RunAsClient wrapper removed. These tests guard the paths
+/// against obvious regressions; the leak itself was found and verified on the installed service.
+/// </para>
 /// </summary>
 public class ImpersonationLeakTests
 {
@@ -23,7 +28,19 @@ public class ImpersonationLeakTests
     }
 
     [Fact]
-    public async Task CheckingTheCaller_LeavesNoClientIdentityBehind()
+    public Task CheckingTheCaller_LeavesNoClientIdentityBehind() =>
+        AssertNoLeakAfter(caller => Assert.True(caller.CanOpenProcess(Environment.ProcessId, ProcessAccessFlags.QueryLimitedInformation)));
+
+    /// <summary>The snapshot's per-caller path filter impersonates on every request from a standard user.</summary>
+    [Fact]
+    public Task FilteringTheSnapshotForTheCaller_LeavesNoClientIdentityBehind() =>
+        AssertNoLeakAfter(caller =>
+        {
+            var self = (Environment.ProcessId, System.Diagnostics.Process.GetCurrentProcess().StartTime.ToUniversalTime());
+            Assert.Contains(Environment.ProcessId, caller.FilterOpenable(new[] { self }, ProcessAccessFlags.QueryLimitedInformation));
+        });
+
+    private static async Task AssertNoLeakAfter(Action<PipeCaller> check)
     {
         var name = "ProGuardTest_" + Guid.NewGuid().ToString("N");
         using var server = new NamedPipeServerStream(name, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
@@ -43,7 +60,7 @@ public class ImpersonationLeakTests
 
             var caller = PipeCaller.Identify(server);
             Assert.NotNull(caller);
-            Assert.True(caller!.CanOpenProcess(Environment.ProcessId, ProcessAccessFlags.QueryLimitedInformation));
+            check(caller!);
 
             Assert.Equal(TokenImpersonationLevel.None, CurrentLevel());
             Assert.Equal(TokenImpersonationLevel.None, await Task.Run(CurrentLevel));

@@ -116,12 +116,14 @@ internal sealed class PipeCaller : IIpcCaller
 
             if (unknown.Count > 0)
             {
-                // One impersonation for every check: it costs far more than the OpenProcess calls inside it.
+                // One impersonation for every check: it costs far more than the OpenProcess calls inside it. Through
+                // RunAsClient below, never _pipe.RunAsClient directly: this runs on every snapshot request, and would
+                // otherwise leave the client's identity in the connection's ExecutionContext for later engine work.
                 var results = new bool[unknown.Count];
                 var ran = false;
                 try
                 {
-                    _pipe.RunAsClient(() =>
+                    RunAsClient(_pipe, () =>
                     {
                         ran = true;
                         for (var i = 0; i < unknown.Count; i++)

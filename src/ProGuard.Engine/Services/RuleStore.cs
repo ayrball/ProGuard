@@ -296,4 +296,23 @@ public class RuleStore : IRuleStore
             _logger.LogError(ex, "Failed to log ProBalance action");
         }
     }
+
+    public IReadOnlyList<ProBalanceAction> GetRecentActions(int count)
+    {
+        if (count <= 0) return Array.Empty<ProBalanceAction>();
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+            // Ids only grow, so the highest are the newest (and the primary key needs no index of its own).
+            var actions = db.ProBalanceActions.AsNoTracking().OrderByDescending(a => a.Id).Take(count).ToList();
+            foreach (var action in actions) action.Timestamp = DateTime.SpecifyKind(action.Timestamp, DateTimeKind.Utc);
+            return actions;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to read the action log");
+            return Array.Empty<ProBalanceAction>();
+        }
+    }
 }

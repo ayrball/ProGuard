@@ -60,6 +60,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     private readonly ConcurrentDictionary<string, byte> _exclusions = new();
     private volatile bool _enabled = true;
     private volatile bool _pausedForIdle;
+    private int _totalRestraints;
 
     /// <summary>A setting a restraint changed: what to put back, and what we set (to notice someone else changing it).</summary>
     private sealed record Change<T>(T Original, T Applied);
@@ -147,6 +148,9 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
 
     public bool IsEngaged => !_restrained.IsEmpty;
     public int ActiveInterventions => _restrained.Count;
+    public bool IsEnabled => _enabled;
+    public int TotalRestraints => Volatile.Read(ref _totalRestraints);
+    public IReadOnlyCollection<int> RestrainedPids => _restrained.Keys.ToList();
 
     public ProBalanceEngine(
         ILogger<ProBalanceEngine> logger,
@@ -410,6 +414,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         if (!r.HoldsAnything) return;
 
         _restrained[p.Pid] = r;
+        Interlocked.Increment(ref _totalRestraints);
         var actions = Describe(r);
         LogAction(p.Name, p.Pid, original.Value, r.Priority?.Applied ?? original.Value,
             $"High CPU usage ({p.CpuPercent:F1}%): {actions}", restored: false);

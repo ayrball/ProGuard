@@ -20,6 +20,7 @@ public class SettingsApplier
     private readonly IPowerManager _powerManager;
     private readonly IProBalanceEngine _proBalance;
     private readonly IAutoPerformanceMode? _autoPerformanceMode;
+    private readonly ForegroundBoostService? _foregroundBoost;
 
     private readonly object _sync = new();
     private AppSettings? _applied;
@@ -30,7 +31,8 @@ public class SettingsApplier
         ISmartTrimService smartTrim,
         IPowerManager powerManager,
         IProBalanceEngine proBalance,
-        IAutoPerformanceMode? autoPerformanceMode = null)
+        IAutoPerformanceMode? autoPerformanceMode = null,
+        ForegroundBoostService? foregroundBoost = null)
     {
         _logger = logger;
         _processMonitor = processMonitor;
@@ -38,6 +40,7 @@ public class SettingsApplier
         _powerManager = powerManager;
         _proBalance = proBalance;
         _autoPerformanceMode = autoPerformanceMode;
+        _foregroundBoost = foregroundBoost;
     }
 
     /// <summary>The settings most recently applied, or null before the first <see cref="Apply"/>.</summary>
@@ -57,6 +60,9 @@ public class SettingsApplier
 
             if (all || previous!.PollingIntervalMs != settings.PollingIntervalMs)
                 TryApply("polling interval", () => _processMonitor.SetPollingInterval(TimeSpan.FromMilliseconds(settings.PollingIntervalMs)));
+
+            if (_foregroundBoost != null && (all || previous!.ForegroundBoostEnabled != settings.ForegroundBoostEnabled))
+                TryApply("Foreground Boost", () => _foregroundBoost.IsEnabled = settings.ForegroundBoostEnabled);
 
             if (all || previous!.SmartTrimEnabled != settings.SmartTrimEnabled
                     || previous.SmartTrimIntervalSeconds != settings.SmartTrimIntervalSeconds

@@ -12,12 +12,15 @@ public interface ISmartTrimService
 {
     /// <summary>
     /// Trim every eligible process above the configured working-set threshold now, whatever the memory load.
-    /// Exclusions, the protected list and the foreground skip still apply.
+    /// Exclusions, the protected list and the foreground skip still apply. Returns what was trimmed.
     /// </summary>
-    void TrimMemory();
+    MemoryPurgeReport TrimMemory();
 
-    /// <summary>Trim a specific process by PID.</summary>
-    void TrimProcess(int pid);
+    /// <summary>
+    /// Trim a specific process by PID. The report says how much it gave back; when Windows refused, its
+    /// <see cref="MemoryPurgeReport.Errors"/> say why.
+    /// </summary>
+    MemoryPurgeReport TrimProcess(int pid);
 
     /// <summary>Memory threshold in bytes. Processes at or above this get trimmed.</summary>
     long ThresholdBytes { get; set; }

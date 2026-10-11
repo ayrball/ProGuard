@@ -8,7 +8,7 @@
         <Border Margin="0,0,16,24" Padding="14,10" Background="{StaticResource VoltBrush}" VerticalAlignment="Top"
                 Visibility="{Binding IsElevated, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}">
             <TextBlock Foreground="{StaticResource InkBrush}" FontWeight="SemiBold" TextWrapping="Wrap" FontSize="13"
-                       Text="You are running ProGuard without administrator rights, so you can only change processes you own. Rules can't touch system programs or programs you couldn't end yourself, and Purge now, clearing the log, Realtime priority and High I/O priority need administrator rights. Restart ProGuard as administrator to lift these limits."/>
+                       Text="You are running ProGuard without administrator rights, so you can only change processes you own. Rules can't touch system programs or programs you couldn't change yourself, and Purge now, clearing the log, Realtime priority and High I/O priority need administrator rights. Restart ProGuard as administrator to lift these limits."/>
         </Border>
     <Grid Margin="0,0,16,0">
         <Grid.RowDefinitions>

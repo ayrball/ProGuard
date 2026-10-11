@@ -98,6 +98,9 @@ public class SettingsApplier
             if (all || previous!.PerformanceModePlanGuid != settings.PerformanceModePlanGuid)
                 TryApply("Performance Mode", () => _powerManager.ConfigurePerformanceMode(ParsePlan(settings.PerformanceModePlanGuid)));
 
+            if (all || previous!.PerformanceModeSetBestPerformance != settings.PerformanceModeSetBestPerformance)
+                TryApply("Performance Mode power mode", () => _powerManager.ConfigurePerformanceModePowerMode(settings.PerformanceModeSetBestPerformance));
+
             if (_autoPerformanceMode != null
                 && (all || !AutoPerformanceModeOptions.FromSettings(previous!).Equals(AutoPerformanceModeOptions.FromSettings(settings))))
                 TryApply("automatic Performance Mode", () => _autoPerformanceMode.Configure(AutoPerformanceModeOptions.FromSettings(settings)));

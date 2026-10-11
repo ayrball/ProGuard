@@ -48,7 +48,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
         nameof(SmartTrimEnabled), nameof(TrimLogNoAction), nameof(StandbyPurgeEnabled), nameof(StandbyOnlyInPerformanceMode),
         nameof(FileCachePurgeEnabled),
         nameof(IdleSaverEnabled),
-        nameof(DetectGames), nameof(EngageForSteam),
+        nameof(DetectGames), nameof(EngageForSteam), nameof(PerformanceSetsBestMode),
         nameof(LoadSwitcherEnabled), nameof(DeferLowPlan),
         nameof(StartWithWindows), nameof(MinimizeToTray),
     };
@@ -72,6 +72,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     public ObservableCollection<PowerPlanRow> Plans { get; } = new();
     public ObservableCollection<CoreToggle> RestraintCores { get; } = new();
     public ObservableCollection<ChoiceOption<int>> TimerOptions { get; } = new();
+    public ObservableCollection<ChoiceOption<Guid>> PowerModes { get; } = new();
 
     // ProBalance. ProBalanceCpuThreshold/RecoveryThreshold have no control: the engine's ProBalance follows Process
     // Lasso's timing (set through the sensitivity) and ignores them, so they go back exactly as stored.
@@ -139,6 +140,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     [ObservableProperty] private bool performanceModeAutomatic;
     [ObservableProperty] private bool detectGames;
     [ObservableProperty] private bool engageForSteam;
+    [ObservableProperty] private bool performanceSetsBestMode;
 
     // Load switcher
     [ObservableProperty] private bool loadSwitcherEnabled;
@@ -147,6 +149,8 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
 
     // Power
     [ObservableProperty] private string planOwnerText = "—";
+    [ObservableProperty] private bool powerModeSupported;
+    [ObservableProperty] private string powerModeNote = string.Empty;
 
     // Timer resolution
     private TimerResolutionDto? _timer;
@@ -268,6 +272,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
                 AutoExclusions.Load(settings.AutoPerformanceModeExclusions);
                 DetectGames = settings.AutoPerformanceModeDetectGames;
                 EngageForSteam = settings.PerformanceModeEngageForSteam;
+                PerformanceSetsBestMode = settings.PerformanceModeSetBestPerformance;
 
                 LoadSwitcherEnabled = settings.LoadSwitcherEnabled;
                 LowLoad.Load(settings.LoadSwitcherLowThreshold);
@@ -307,6 +312,18 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
         PerformanceMode = power.PerformanceMode;
         PerformanceModeAutomatic = power.PerformanceMode && power.PerformanceModeAutomatic;
         PlanOwnerText = Fmt.PlanOwner(power.Owner);
+
+        PowerModeSupported = power.PowerModeSupported;
+        PowerModes.Clear();
+        foreach (var mode in power.PowerModes)
+            PowerModes.Add(new ChoiceOption<Guid>(mode.Name.ToUpperInvariant(), mode.Id, power.PowerModeSupported && mode.Id == power.PowerModeId));
+        // A mode the slider no longer offers (Windows 10's "Better performance") is shown rather than hidden.
+        if (power.PowerModeSupported && power.PowerModes.All(m => m.Id != power.PowerModeId))
+            PowerModes.Add(new ChoiceOption<Guid>("OTHER · " + power.PowerModeId.ToString()[..8].ToUpperInvariant(), power.PowerModeId, true));
+        var active = power.Plans.FirstOrDefault(p => p.Id == power.ActivePlanId);
+        PowerModeNote = active == null || active.Id == BalancedPlan
+            ? "Windows tunes the Balanced plan with this, as its own power mode setting does."
+            : $"Windows applies the power mode only under the Balanced plan; {active.Name} is active now.";
 
         foreach (var picker in new[] { IdlePlan, PerformancePlan, LowPlan, HighPlan, StartWithPlan }) picker.SetPlans(power.Plans);
     }
@@ -543,6 +560,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
         s.AutoPerformanceModeExclusions = AutoExclusions.ToStored();
         s.AutoPerformanceModeDetectGames = DetectGames;
         s.PerformanceModeEngageForSteam = EngageForSteam;
+        s.PerformanceModeSetBestPerformance = PerformanceSetsBestMode;
 
         s.LoadSwitcherEnabled = LoadSwitcherEnabled;
         var (low, high) = EffectiveThresholds();
@@ -652,6 +670,17 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
         // Success shows the new plan; failure puts the switch back where the engine says it is.
         await RefreshPowerAsync();
         if (!ok) _shell.Hub.RefreshNow();
+    }
+
+    private static readonly Guid BalancedPlan = Guid.Parse("381b4222-f694-41f0-9685-ff5bb260df2e");
+
+    [RelayCommand]
+    private async Task PickPowerModeAsync(ChoiceOption<Guid> mode)
+    {
+        if (mode.IsOn) return;
+        if (await _hub.RunAsync(CommandTypes.SetPowerMode, argument: mode.Value, success: $"POWER MODE · {mode.Label}"))
+            foreach (var m in PowerModes) m.IsOn = ReferenceEquals(m, mode);
+        else await RefreshPowerAsync();
     }
 
     [RelayCommand]

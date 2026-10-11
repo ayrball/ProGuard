@@ -56,6 +56,8 @@ public sealed class EngineSettingsDto
     public string? AutoPerformanceModeExclusions { get; set; }
     public bool AutoPerformanceModeDetectGames { get; set; }
     public bool PerformanceModeEngageForSteam { get; set; }
+    /// <summary>Also set the Windows power mode to Best performance while Performance Mode is on.</summary>
+    public bool PerformanceModeSetBestPerformance { get; set; }
 
     // Load-based power switcher
     public bool LoadSwitcherEnabled { get; set; }
@@ -126,6 +128,24 @@ public sealed class PowerStateDto
 
     /// <summary>Who set the active plan: "User", "PerformanceMode", "IdleSaver", "LoadSwitcher", "StartWith".</summary>
     public string Owner { get; set; } = string.Empty;
+
+    /// <summary>Windows has a power-mode slider (Windows 10 1709 and later).</summary>
+    public bool PowerModeSupported { get; set; }
+
+    /// <summary>
+    /// The power mode in force: one of <see cref="PowerModeDto"/>'s ids (Guid.Empty is Balanced). Meaningful only while
+    /// <see cref="PowerModeSupported"/>.
+    /// </summary>
+    public Guid PowerModeId { get; set; }
+
+    /// <summary>The modes Windows 11's slider offers, from the most frugal to the fastest.</summary>
+    public List<PowerModeDto> PowerModes { get; set; } = new();
+}
+
+public sealed class PowerModeDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
 }
 
 /// <summary>One CPU Set, for picking the IDs a <see cref="ProcessRuleDto.CpuSetIds"/> rule names.</summary>

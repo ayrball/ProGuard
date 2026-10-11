@@ -41,6 +41,8 @@ public sealed class StandInMachine
     private bool _performanceMode;
     private int _foreground = StandInData.ForegroundPid;
     private bool _timerGlobalRequests;
+    private Guid _powerMode = Guid.Empty;   // the slider's Balanced
+    private Guid _powerModeBeforePerformanceMode;
     private int _tick;
 
     public StandInMachine(bool callerIsAdministrator = true, bool readOnly = false)
@@ -298,6 +300,13 @@ public sealed class StandInMachine
                 Log(ActivityKind.System, null, "Settings saved.");
                 return Data(_readOnly ? _settings : settings);
             }
+            case CommandTypes.SetPowerMode:
+            {
+                if (!Guid.TryParse(cmd.Argument, out var mode) || StandInData.PowerModes().All(m => m.Id != mode)) return CommandResult.Fail("Invalid power mode");
+                Mutate(() => _powerMode = mode);
+                Log(ActivityKind.Power, null, $"Power mode changed to {StandInData.PowerModes().First(m => m.Id == mode).Name}.");
+                return CommandResult.Ok();
+            }
             case CommandTypes.SetPowerPlan:
             {
                 if (!Guid.TryParse(cmd.Argument, out var id) || _plans.All(p => p.Id != id)) return CommandResult.Fail("That power plan isn't installed.");
@@ -445,6 +454,9 @@ public sealed class StandInMachine
         PerformanceMode = _performanceMode,
         PerformanceModeAutomatic = false,
         Owner = _planOwner,
+        PowerModeSupported = true,
+        PowerModeId = _powerMode,
+        PowerModes = StandInData.PowerModes(),
     };
 
     /// <summary>A typical machine: 0.5-15.625 ms, with a browser holding 1 ms unless the engine asks for finer.</summary>
@@ -472,12 +484,15 @@ public sealed class StandInMachine
         {
             _planBeforePerformanceMode = _activePlan;
             _activePlan = Guid.TryParse(_settings.PerformanceModePlanGuid, out var plan) ? plan : StandInData.HighPerformance;
+            _powerModeBeforePerformanceMode = _powerMode;
+            if (_settings.PerformanceModeSetBestPerformance) _powerMode = StandInData.BestPerformanceMode;
             _planOwner = "PerformanceMode";
             Log(ActivityKind.Power, null, "Power plan changed to the Performance Mode plan.");
         }
         else
         {
             _activePlan = _planBeforePerformanceMode;
+            if (_settings.PerformanceModeSetBestPerformance && _powerMode == StandInData.BestPerformanceMode) _powerMode = _powerModeBeforePerformanceMode;
             _planOwner = "User";
             Log(ActivityKind.Power, null, "Performance Mode ended; power plan restored.");
         }

@@ -38,6 +38,8 @@ namespace ProGuard.Engine.IPC;
 /// <item>SaveSettings and SetPowerPlan are open to any user, like SetSetting and Performance Mode: they are the same
 /// machine-wide preferences, and a power plan the user picks is what Windows would let them pick in Power Options.
 /// A plan chosen this way wins over Performance Mode or IdleSaver (see <c>IPowerManager.SetActivePlan</c>).</item>
+/// <item>SetPowerMode is open to any user too: it is the Windows power-mode slider, which every user may move in Windows'
+/// own settings.</item>
 /// <item>Anyone may save and delete process and Watchdog rules, as the unelevated UI must. The dispatcher then checks the
 /// rule itself (<see cref="RuleAuthorization"/>: no system processes, Realtime, Watchdog Launch, or ending processes the
 /// caller couldn't end), since that needs the stored rule and the running processes. A rule may be changed or deleted
@@ -72,6 +74,7 @@ public static class IpcAuthorization
         CommandTypes.DisablePerformanceMode,
         CommandTypes.SaveSettings,
         CommandTypes.SetPowerPlan,
+        CommandTypes.SetPowerMode,
         // Reads.
         CommandTypes.GetSnapshot,
         CommandTypes.GetProcessRules,

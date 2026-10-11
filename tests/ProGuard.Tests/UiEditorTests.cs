@@ -955,12 +955,13 @@ public class UiEditorTests
             try
             {
                 var app = System.Windows.Application.Current ?? new System.Windows.Application();
+                // Other UI tests set up the same app-wide resources in the same process, so add only what's missing.
                 if (!app.Resources.Contains("VoltBrush"))
-                {
                     app.Resources.MergedDictionaries.Add(new System.Windows.ResourceDictionary { Source = new Uri("pack://application:,,,/ProGuard.UI;component/Theme/Volt.xaml") });
+                if (!app.Resources.Contains("VisibleWhen"))
                     app.Resources.Add("VisibleWhen", new ProGuard.UI.Converters.VisibleWhen());
+                if (!app.Resources.Contains("EqualsParameter"))
                     app.Resources.Add("EqualsParameter", new ProGuard.UI.Converters.EqualsParameter());
-                }
 
                 var shell = NewShell();
                 shell.Hub.Snapshot = new EngineSnapshot { LogicalProcessors = 16, CallerIsAdministrator = false };

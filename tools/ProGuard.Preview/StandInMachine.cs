@@ -195,6 +195,14 @@ public sealed class StandInMachine
                 Log(ActivityKind.Manual, p, "Working set trimmed.");
                 return Data(reclaimed);
             }
+            case CommandTypes.ClearActionLog:
+            {
+                if (!_admin) return Deny($"run {cmd.CommandType}");
+                // Like the engine: only the database action log goes. Watchdog events, manual actions and engine
+                // messages live elsewhere and stay.
+                Mutate(() => _activity.RemoveAll(a => a.Kind is not (ActivityKind.Watchdog or ActivityKind.Manual or ActivityKind.System)));
+                return CommandResult.Ok();
+            }
             case CommandTypes.PurgeMemory:
             {
                 if (!_admin) return Deny($"run {cmd.CommandType}");

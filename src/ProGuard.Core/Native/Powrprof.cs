@@ -23,6 +23,29 @@ public static class Powrprof
     [DllImport("powrprof.dll", CharSet = CharSet.Unicode)]
     public static extern uint PowerEnumerate(IntPtr RootPowerKey, IntPtr SchemeGuid, IntPtr SubGroupOfPowerSettingsGuid, uint AccessFlags, uint Index, ref Guid Buffer, ref uint BufferSize);
 
+    /// <summary>The power mode (slider position) in force. Exported by powrprof since Windows 10 1709; not in the SDK headers.</summary>
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerGetActualOverlayScheme(out Guid ActualOverlayGuid);
+
+    /// <summary>Sets the power mode, as the Windows settings slider does.</summary>
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerSetActiveOverlayScheme(Guid OverlaySchemeGuid);
+
+    /// <summary>GUID_PROCESSOR_SETTINGS_SUBGROUP: the processor power management settings of a plan.</summary>
+    public static readonly Guid ProcessorSettingsSubgroup = new Guid("54533251-82be-4824-96c1-47b60b740d00");
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerReadACValueIndex(IntPtr RootPowerKey, ref Guid SchemeGuid, ref Guid SubGroupOfPowerSettingsGuid, ref Guid PowerSettingGuid, out uint AcValueIndex);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerReadDCValueIndex(IntPtr RootPowerKey, ref Guid SchemeGuid, ref Guid SubGroupOfPowerSettingsGuid, ref Guid PowerSettingGuid, out uint DcValueIndex);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerWriteACValueIndex(IntPtr RootPowerKey, ref Guid SchemeGuid, ref Guid SubGroupOfPowerSettingsGuid, ref Guid PowerSettingGuid, uint AcValueIndex);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerWriteDCValueIndex(IntPtr RootPowerKey, ref Guid SchemeGuid, ref Guid SubGroupOfPowerSettingsGuid, ref Guid PowerSettingGuid, uint DcValueIndex);
+
     [DllImport("powrprof.dll", CharSet = CharSet.Unicode)]
     public static extern uint PowerReadFriendlyName(IntPtr RootPowerKey, ref Guid SchemeGuid, IntPtr SubGroupOfPowerSettingsGuid, IntPtr PowerSettingGuid, IntPtr Buffer, ref uint BufferSize);
 }

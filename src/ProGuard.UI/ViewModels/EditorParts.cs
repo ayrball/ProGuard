@@ -48,6 +48,18 @@ internal static class RuleText
         return Fmt.Exe(trimmed);
     }
 
+    /// <summary>
+    /// A name Windows can look up in Image File Execution Options: a file name, without wildcards or a path. The engine
+    /// checks the same (<c>LaunchPriorityService.ImageName</c>).
+    /// </summary>
+    public static bool IsPlainProgramName(string name)
+    {
+        var trimmed = name.Trim();
+        return trimmed.Length > 0 && trimmed is not ("." or "..")
+               && trimmed.IndexOfAny(new[] { '*', '?', '\\', '/', ':' }) < 0
+               && trimmed.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) < 0;
+    }
+
     /// <summary>30s, 90s, 5m, 1m 30s... Minutes only from two minutes up, so "60s" stays "60s".</summary>
     public static string Duration(int seconds)
     {

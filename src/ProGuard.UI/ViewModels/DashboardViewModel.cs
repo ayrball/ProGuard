@@ -121,7 +121,7 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
                     s_dbInitialized = true;
                 }
                 _cachedRulesCount = db.ProcessRules.Count();
-                _cachedProBalanceCount = db.ProBalanceActions.Count();
+                _cachedProBalanceCount = db.ProBalanceActions.Count(a => !a.IsRestored);
             }
             catch { }
         }

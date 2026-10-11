@@ -348,7 +348,10 @@ public class Review_Regression_Tests
             !exited && pid == victim.Id ? new ProcessInfo { Pid = pid, Name = "powershell" } : null);
 
         var store = new Mock<IRuleStore>();
-        var engine = new ProBalanceEngine(NullLogger<ProBalanceEngine>.Instance, monitor.Object, store.Object, () => 99.0);
+        var engine = new ProBalanceEngine(NullLogger<ProBalanceEngine>.Instance, monitor.Object, store.Object, () => 99.0)
+        {
+            TimeOverQuotaBeforeRestraint = 0 // restrain on the first over-quota sample
+        };
         return (engine, victim, () => exited = true);
     }
 
@@ -408,7 +411,10 @@ public class Review_Regression_Tests
                 new ProcessInfo { Pid = victim.Id, Name = reportedName, CpuPercent = 90 }
             });
             using var engine = new ProBalanceEngine(NullLogger<ProBalanceEngine>.Instance,
-                monitor.Object, new Mock<IRuleStore>().Object, () => 99.0);
+                monitor.Object, new Mock<IRuleStore>().Object, () => 99.0)
+            {
+                TimeOverQuotaBeforeRestraint = 0
+            };
 
             engine.Evaluate(null);
 

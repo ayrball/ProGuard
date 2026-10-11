@@ -4,12 +4,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using ProGuard.Core.Native;
+using ProGuard.Core.Services;
 
 namespace ProGuard.Engine.Services;
 
 public class ForegroundBoostService : IDisposable
 {
     private readonly ILogger<ForegroundBoostService> _logger;
+    private readonly IProBalanceEngine _proBalance;
     private Timer? _timer;
     private int _lastBoostedPid;
     private ProcessPriorityClass _lastOriginalPriority = ProcessPriorityClass.Normal;
@@ -28,9 +30,10 @@ public class ForegroundBoostService : IDisposable
         }
     }
 
-    public ForegroundBoostService(ILogger<ForegroundBoostService> logger)
+    public ForegroundBoostService(ILogger<ForegroundBoostService> logger, IProBalanceEngine proBalance)
     {
         _logger = logger;
+        _proBalance = proBalance;
     }
 
     public void Start()
@@ -72,6 +75,10 @@ public class ForegroundBoostService : IDisposable
                 {
                     return;
                 }
+
+                // ProBalance may be holding it at BelowNormal: end that first so we boost from its real priority
+                // and ProBalance doesn't later mistake our boost for a user change.
+                if (_proBalance.ReleaseRestraint(currentPid)) p.Refresh();
 
                 var currentPriority = p.PriorityClass;
                 if (currentPriority == ProcessPriorityClass.Normal)

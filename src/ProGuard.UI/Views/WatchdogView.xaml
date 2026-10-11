@@ -1,6 +1,9 @@
 <UserControl x:Class="ProGuard.UI.Views.WatchdogView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <ResourceDictionary Source="Editors.xaml"/>
+    </UserControl.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
@@ -42,7 +45,7 @@
                                     <Button Style="{StaticResource Btn.Ghost}" Content="&#xE74D;" FontFamily="{StaticResource Glyphs}" FontWeight="Normal" ToolTip="Delete"
                                             Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
                                 </StackPanel>
-                                <WrapPanel VerticalAlignment="Center">
+                                <WrapPanel VerticalAlignment="Center" ToolTip="{Binding Sentence}">
                                     <TextBlock Text="WHEN " Style="{StaticResource Text.H2}" Opacity="0.4"/>
                                     <TextBlock Text="{Binding Name}" Style="{StaticResource Text.H2}"/>
                                     <TextBlock Text=" · " Style="{StaticResource Text.H2}" Opacity="0.4"/>
@@ -53,6 +56,8 @@
                                     <Border Background="{StaticResource VoltBrush}" Padding="10,0" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Response}" Style="{StaticResource Text.H2}" Foreground="{StaticResource InkBrush}"/>
                                     </Border>
+                                    <TextBlock Text="  ·  " Style="{StaticResource Text.H2}" Opacity="0.4"/>
+                                    <TextBlock Text="{Binding Cooldown}" Style="{StaticResource Text.H2}" Opacity="0.6"/>
                                 </WrapPanel>
                             </DockPanel>
                         </Border>
@@ -83,16 +88,22 @@
         </StackPanel>
 
         <!-- ============================================================ sentence builder -->
-        <Border Grid.Column="1" Grid.Row="1" Width="400" Margin="32,0,0,0" BorderBrush="{StaticResource VoltBrush}" BorderThickness="2"
+        <Border Grid.Column="1" Grid.Row="1" Width="470" Margin="32,0,0,0" BorderBrush="{StaticResource VoltBrush}" BorderThickness="2"
                 Visibility="{Binding Editor, Converter={StaticResource VisibleWhen}}">
             <DockPanel DataContext="{Binding Editor}">
                 <Border DockPanel.Dock="Top" Background="{StaticResource VoltBrush}" Padding="20,14">
                     <TextBlock Text="{Binding Heading}" Foreground="{StaticResource InkBrush}" FontWeight="Bold" FontStretch="Condensed" FontSize="26"/>
                 </Border>
+                <Border DockPanel.Dock="Top" Style="{StaticResource Ed.Hint}" Visibility="{Binding IsRestricted, Converter={StaticResource VisibleWhen}}">
+                    <TextBlock Text="{Binding RestrictionHint}" Style="{StaticResource Text.Label}" FontSize="10.5" Opacity="0.8" TextWrapping="Wrap"/>
+                </Border>
                 <UniformGrid DockPanel.Dock="Bottom" Columns="2" Margin="20,0,20,20">
                     <Button Style="{StaticResource Btn.Ghost}" Content="CANCEL" Command="{Binding DataContext.CancelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                     <Button Style="{StaticResource Btn.Solid}" Content="SAVE WATCH" Command="{Binding DataContext.SaveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                 </UniformGrid>
+                <Border DockPanel.Dock="Bottom" Style="{StaticResource Ed.Hint}" BorderThickness="0,2,0,0" Margin="0,0,0,12">
+                    <TextBlock Text="{Binding Preview}" FontFamily="{StaticResource Mono}" FontSize="11" FontWeight="Bold" TextWrapping="Wrap"/>
+                </Border>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="20,18,20,18">
                         <TextBlock Text="WHEN" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4"/>
@@ -101,19 +112,64 @@
                         <TextBlock Text="IS" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4" Margin="0,16,0,6"/>
                         <ListBox Style="{StaticResource Choices}" ItemsSource="{Binding Triggers}" SelectedItem="{Binding Trigger}"/>
 
-                        <DockPanel Margin="0,6,0,0">
+                        <ListBox Style="{StaticResource Choices}" ItemsSource="{Binding Metrics}" SelectedItem="{Binding Metric}" Margin="0,2,0,0"
+                                 Visibility="{Binding IsMemory, Converter={StaticResource VisibleWhen}}"/>
+
+                        <DockPanel Margin="0,6,0,0" Visibility="{Binding IsNumber, Converter={StaticResource VisibleWhen}}">
                             <TextBlock DockPanel.Dock="Right" Text="{Binding Unit}" Style="{StaticResource Text.H2}" VerticalAlignment="Center" Margin="10,0,0,0"/>
                             <TextBox Style="{StaticResource Field}" Text="{Binding Threshold, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Mono}"
                                      FontSize="24" FontWeight="Bold"/>
                         </DockPanel>
+                        <ContentControl Content="{Binding RunTime}" Margin="0,6,0,0" Visibility="{Binding IsRunTime, Converter={StaticResource VisibleWhen}}"/>
 
-                        <TextBlock Text="HOW LONG" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4" Margin="0,16,0,6"/>
-                        <ListBox Style="{StaticResource Choices}" ItemsSource="{Binding Sustains}" SelectedItem="{Binding Sustain}"/>
+                        <TextBlock Text="HOW LONG" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4" Margin="0,18,0,6"/>
+                        <ContentControl Content="{Binding Sustain}"/>
+                        <TextBlock Style="{StaticResource Ed.Note}" Text="It has to hold this long without a break before anything happens."/>
 
-                        <TextBlock Text="THEN" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4" Margin="0,10,0,6"/>
-                        <ListBox Style="{StaticResource Choices}" ItemsSource="{Binding Responses}" SelectedItem="{Binding Response}"/>
+                        <TextBlock Text="THEN" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4" Margin="0,18,0,6"/>
+                        <ListBox Style="{StaticResource Choices.Gated}" ItemsSource="{Binding Responses}" SelectedItem="{Binding Response}"/>
 
-                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding Enabled}" Margin="0,16,0,0">
+                        <StackPanel Visibility="{Binding IsPriorityAction, Converter={StaticResource VisibleWhen}}">
+                            <TextBlock Text="TO PRIORITY" Style="{StaticResource Ed.Label}"/>
+                            <ListBox Style="{StaticResource Choices.Gated}" ItemsSource="{Binding PriorityChoices}" SelectedItem="{Binding PriorityArg}"/>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsIoAction, Converter={StaticResource VisibleWhen}}">
+                            <TextBlock Text="TO I/O PRIORITY" Style="{StaticResource Ed.Label}"/>
+                            <ListBox Style="{StaticResource Choices}" ItemsSource="{Binding IoChoices}" SelectedItem="{Binding IoArg}"/>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsAffinityAction, Converter={StaticResource VisibleWhen}}">
+                            <TextBlock Text="ONLY THESE CORES" Style="{StaticResource Ed.Label}"/>
+                            <ContentControl Content="{Binding CorePicker}"/>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsLaunch, Converter={StaticResource VisibleWhen}}">
+                            <TextBlock Text="COMMAND LINE" Style="{StaticResource Ed.Label}"/>
+                            <TextBox Style="{StaticResource Field}" Tag="&quot;C:\Tools\app.exe&quot; -quiet" Text="{Binding CommandLine, UpdateSourceTrigger=PropertyChanged}"
+                                     FontFamily="{StaticResource Mono}" FontSize="13"/>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsNotify, Converter={StaticResource VisibleWhen}}">
+                            <TextBlock Text="MESSAGE (OPTIONAL)" Style="{StaticResource Ed.Label}"/>
+                            <TextBox Style="{StaticResource Field}" Tag="shown in the notification" Text="{Binding Message, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsTrim, Converter={StaticResource VisibleWhen}}">
+                            <TextBlock Text="TRIM" Style="{StaticResource Ed.Label}"/>
+                            <ListBox Style="{StaticResource Choices}" ItemsSource="{Binding TrimChoices}" SelectedItem="{Binding Trim}"/>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding TakesRestore, Converter={StaticResource VisibleWhen}}">
+                            <TextBlock Text="THEN PUT IT BACK AFTER" Style="{StaticResource Ed.Label}"/>
+                            <ContentControl Content="{Binding Restore}"/>
+                        </StackPanel>
+
+                        <TextBlock Text="DON'T REPEAT FOR" Style="{StaticResource Ed.Label}" Margin="0,22,0,6"/>
+                        <ContentControl Content="{Binding Cooldown}"/>
+                        <TextBlock Style="{StaticResource Ed.Note}" Text="Per program. Once it has fired, it fires again only after this long or once the condition has cleared."/>
+
+                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding Enabled}" Margin="0,18,0,0">
                             <TextBlock Text="ARMED" FontWeight="Bold" FontSize="14"/>
                         </CheckBox>
                     </StackPanel>

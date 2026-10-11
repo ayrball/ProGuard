@@ -96,7 +96,9 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
             var targetInstance = (ManagementBaseObject)e.NewEvent["TargetInstance"];
             var pid = Convert.ToInt32(targetInstance["ProcessId"]);
             using var p = Process.GetProcessById(pid);
-            var info = CreateProcessInfo(p);
+            var probed = ProcessProbe.TryQuery(pid, includeImagePath: true, out var probe);
+            var info = CreateProcessInfo(p, probed, probe);
+            UpdateDynamic(info, p, probed, probe, _foreground.GetForegroundPid(), 0);
             _processes[pid] = info;
             ProcessStarted?.Invoke(this, info);
         }
@@ -134,28 +136,42 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
         var currentProcesses = Process.GetProcesses();
         var foregroundPid = _foreground.GetForegroundPid();
 
-        var currentPids = new HashSet<int>();
+        var currentPids = new HashSet<int>(currentProcesses.Length);
 
         foreach (var p in currentProcesses)
         {
-            currentPids.Add(p.Id);
+            var pid = p.Id;
+            currentPids.Add(pid);
             try
             {
-                var cpuUsage = _cpuTracker.GetCpuUsage(p);
-                if (_processes.TryGetValue(p.Id, out var info))
+                _processes.TryGetValue(pid, out var info);
+
+                // One limited-rights handle yields CPU time, priority and affinity (and, for a process we haven't seen,
+                // its parent, start time and path) without the access-denied exceptions Process throws for most system
+                // and service processes.
+                var probed = ProcessProbe.TryQuery(pid, includeImagePath: info == null, out var probe);
+                var cpuUsage = probed ? _cpuTracker.GetCpuUsage(pid, probe.CpuTime) : 0;
+
+                // The id now belongs to a different process: the old one exited between two polls.
+                if (info != null && probed && IsRecycled(info, probe))
                 {
-                    info.CpuPercent = cpuUsage;
-                    info.WorkingSetBytes = p.WorkingSet64;
-                    info.IsForeground = (p.Id == foregroundPid);
-                    try { info.PriorityClass = p.PriorityClass; } catch { }
-                    try { info.AffinityMask = p.ProcessorAffinity.ToInt64(); } catch { }
+                    _processes.TryRemove(pid, out _);
+                    _cpuTracker.RemoveProcess(pid);
+                    ProcessExited?.Invoke(this, pid);
+                    info = null;
+                    probed = ProcessProbe.TryQuery(pid, includeImagePath: true, out probe);
+                    cpuUsage = 0;
+                }
+
+                if (info != null)
+                {
+                    UpdateDynamic(info, p, probed, probe, foregroundPid, cpuUsage);
                 }
                 else
                 {
-                    var newInfo = CreateProcessInfo(p);
-                    newInfo.CpuPercent = cpuUsage;
-                    newInfo.IsForeground = (p.Id == foregroundPid);
-                    _processes[p.Id] = newInfo;
+                    var newInfo = CreateProcessInfo(p, probed, probe);
+                    UpdateDynamic(newInfo, p, probed, probe, foregroundPid, cpuUsage);
+                    _processes[pid] = newInfo;
                     ProcessStarted?.Invoke(this, newInfo);
                 }
             }
@@ -178,7 +194,54 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
         }
     }
 
-    private ProcessInfo CreateProcessInfo(Process p)
+    private static bool IsRecycled(ProcessInfo known, in ProcessProbeResult probe) =>
+        known.StartTime != DateTime.MinValue && probe.StartTimeUtc != DateTime.MinValue && known.StartTime != probe.StartTimeUtc;
+
+    /// <summary>What changes from poll to poll. Priority and affinity keep their last value when they can't be read this time.</summary>
+    private static void UpdateDynamic(ProcessInfo info, Process p, bool probed, in ProcessProbeResult probe, int foregroundPid, double cpuUsage)
+    {
+        info.CpuPercent = cpuUsage;
+        info.WorkingSetBytes = p.WorkingSet64;
+        info.PrivateBytes = p.PrivateMemorySize64;
+        info.HandleCount = p.HandleCount;
+        info.IsForeground = p.Id == foregroundPid;
+        if (probed)
+        {
+            if (probe.Priority is { } priority) info.PriorityClass = priority;
+            if (probe.AffinityMask is { } mask) info.AffinityMask = mask;
+        }
+
+        var (threads, suspended) = ReadThreads(p);
+        info.ThreadCount = threads;
+        info.Status = suspended ? ProcessStatus.Suspended : ProcessStatus.Running;
+    }
+
+    /// <summary>
+    /// Thread count, and whether every thread is waiting with reason Suspended (what NtSuspendProcess, and Windows
+    /// freezing a background app, leave behind). The thread states are in the data <see cref="Process.GetProcesses()"/>
+    /// already fetched, so this opens nothing.
+    /// </summary>
+    private static (int Threads, bool Suspended) ReadThreads(Process p)
+    {
+        try
+        {
+            var threads = p.Threads;
+            var count = threads.Count;
+            if (count == 0) return (0, false);
+            foreach (ProcessThread thread in threads)
+            {
+                if (thread.ThreadState != System.Diagnostics.ThreadState.Wait || thread.WaitReason != ThreadWaitReason.Suspended)
+                    return (count, false);
+            }
+            return (count, true);
+        }
+        catch (Exception)
+        {
+            return (0, false);
+        }
+    }
+
+    private static ProcessInfo CreateProcessInfo(Process p, bool probed, in ProcessProbeResult probe)
     {
         var info = new ProcessInfo
         {
@@ -187,12 +250,17 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
             WorkingSetBytes = p.WorkingSet64,
             Status = ProcessStatus.Running
         };
+        try { info.SessionId = p.SessionId; } catch { /* the process is gone */ }
 
-        // Independent attempts: reading MainModule is denied for many protected processes, and that must not
-        // also hide a priority/affinity that is perfectly readable.
-        try { info.FilePath = p.MainModule?.FileName ?? ""; } catch { /* access denied */ }
-        try { info.PriorityClass = p.PriorityClass; } catch { /* access denied */ }
-        try { info.AffinityMask = p.ProcessorAffinity.ToInt64(); } catch { /* access denied */ }
+        // Whatever the process wouldn't tell us stays unknown (null / MinValue) rather than failing the lot.
+        if (probed)
+        {
+            info.FilePath = probe.ImagePath;
+            info.ParentPid = probe.ParentPid > 0 ? probe.ParentPid : null;
+            info.StartTime = probe.StartTimeUtc;
+            info.PriorityClass = probe.Priority;
+            if (probe.AffinityMask is { } mask) info.AffinityMask = mask;
+        }
 
         return info;
     }

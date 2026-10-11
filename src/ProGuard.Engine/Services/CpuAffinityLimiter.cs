@@ -90,6 +90,12 @@ public sealed class CpuAffinityLimiter : IDisposable
 
     public int ActiveConstraints { get { lock (_gate) return _constrained.Count; } }
 
+    /// <summary>The processes whose affinity this limiter has reduced right now.</summary>
+    public IReadOnlyCollection<int> GetConstrainedPids()
+    {
+        lock (_gate) return _constrained.Keys.ToList();
+    }
+
     public CpuAffinityLimiter(
         ILogger<CpuAffinityLimiter> logger,
         IProcessMonitor processMonitor,

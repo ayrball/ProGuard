@@ -252,25 +252,34 @@ public class MemoryTrimService : IMemoryTrimService, IDisposable
     }
 
     /// <inheritdoc/>
-    public void TrimMemory()
+    public MemoryPurgeReport TrimMemory()
     {
         lock (_passSync)
         {
             var report = new MemoryPurgeReport();
             TrimEligible(report);
-            Finish("MemoryTrim", "requested", report);
+            return Finish("MemoryTrim", "requested", report);
         }
     }
 
     /// <inheritdoc/>
-    public void TrimProcess(int pid)
+    public MemoryPurgeReport TrimProcess(int pid)
     {
         var result = _native.TrimWorkingSet(pid);
         var name = _processMonitor.GetProcess(pid)?.Name ?? "process";
+        var report = new MemoryPurgeReport();
         if (result.Success)
+        {
+            report.ProcessesTrimmed = 1;
+            report.WorkingSetBytesReclaimed = result.BytesReclaimed;
             _logger.LogInformation("MemoryTrim: trimmed {ProcessName} ({Pid}), reclaimed {Reclaimed}", name, pid, MemoryPurgeReport.FormatMb(result.BytesReclaimed));
+        }
         else
+        {
+            report.Errors.Add(result.Error ?? "the working set could not be trimmed");
             _logger.LogDebug("MemoryTrim: could not trim {ProcessName} ({Pid}): {Error}", name, pid, result.Error);
+        }
+        return report;
     }
 
     /// <summary>Processes a trim pass would touch: at least the threshold, not foreground, not protected or excluded.</summary>

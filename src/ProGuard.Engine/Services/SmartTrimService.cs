@@ -196,8 +196,10 @@ public class SmartTrimService : ISmartTrimService, IDisposable
     /// <summary>The periodic working-set trim: only acts while memory load is at least the policy's minimum.</summary>
     internal MemoryPurgeReport RunTrimPass()
     {
+        _logger.LogDebug("SmartTrim pass due");
         lock (_passSync)
         {
+            _logger.LogDebug("SmartTrim pass running");
             var minimum = Policy.MinimumRamLoadPercent;
             var load = _memory.GetMemoryLoadPercent();
             if (load is not int percent)
@@ -214,8 +216,10 @@ public class SmartTrimService : ISmartTrimService, IDisposable
     /// <summary>The periodic standby / file cache purge: only acts while free RAM is below the policy's threshold.</summary>
     internal MemoryPurgeReport RunLowMemoryCheck()
     {
+        _logger.LogDebug("Low-memory check due");
         lock (_passSync)
         {
+            _logger.LogDebug("Low-memory check running");
             var policy = Policy;
             if (!policy.StandbyPurgeEnabled && !policy.FileCachePurgeEnabled)
                 return new MemoryPurgeReport();
@@ -311,6 +315,7 @@ public class SmartTrimService : ISmartTrimService, IDisposable
     {
         foreach (var p in EligibleProcesses())
         {
+            _logger.LogDebug("SmartTrim: trimming {ProcessName} ({Pid})", p.Name, p.Pid);
             var result = _native.TrimWorkingSet(p.Pid);
             if (!result.Success)
             {
@@ -335,6 +340,7 @@ public class SmartTrimService : ISmartTrimService, IDisposable
         if (standby)
         {
             var before = _memory.GetFreeRamBytes();
+            _logger.LogDebug("Memory purge: purging the standby list");
             var error = _native.PurgeStandbyList();
             if (error != null) Fail(report, error);
             else
@@ -348,6 +354,7 @@ public class SmartTrimService : ISmartTrimService, IDisposable
         if (fileCache)
         {
             var before = _memory.GetFileCacheBytes();
+            _logger.LogDebug("Memory purge: purging the file cache");
             var error = _native.PurgeFileCache();
             if (error != null) Fail(report, error);
             else

@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Security.Principal;
 using ProGuard.Core.Native;
 
 namespace ProGuard.Engine.Services;
@@ -106,7 +107,7 @@ public sealed class Win32MemoryOperations : IMemoryOperations
     public string? EnablePrivilege(string privilege)
     {
         if (!MemoryApi.OpenProcessToken(MemoryApi.GetCurrentProcess(), MemoryApi.TOKEN_ADJUST_PRIVILEGES | MemoryApi.TOKEN_QUERY, out var token))
-            return $"{privilege}: OpenProcessToken failed ({Win32Message(Marshal.GetLastWin32Error())})";
+            return $"{privilege}: OpenProcessToken failed ({Win32Message(Marshal.GetLastWin32Error())}){ImpersonationNote()}";
         try
         {
             if (!MemoryApi.LookupPrivilegeValue(null, privilege, out var luid))
@@ -175,4 +176,21 @@ public sealed class Win32MemoryOperations : IMemoryOperations
     };
 
     private static string Win32Message(int error) => $"{new Win32Exception(error).Message}, error {error}";
+
+    /// <summary>
+    /// " (the thread is impersonating X)" when it is: then Windows checks the client's token, not the engine's, and
+    /// SYSTEM's own token and privileges are out of reach.
+    /// </summary>
+    private static string ImpersonationNote()
+    {
+        try
+        {
+            using var identity = WindowsIdentity.GetCurrent(TokenAccessLevels.Query);
+            return identity.ImpersonationLevel == TokenImpersonationLevel.None ? "" : $" (the thread is impersonating {identity.Name})";
+        }
+        catch (Exception)
+        {
+            return "";
+        }
+    }
 }

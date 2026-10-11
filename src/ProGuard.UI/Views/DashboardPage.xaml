@@ -13,7 +13,7 @@
         </Grid.RowDefinitions>
 
         <!-- Stats Cards -->
-        <UniformGrid Grid.Row="0" Columns="4" Margin="0,0,0,16">
+        <UniformGrid Grid.Row="0" Columns="5" Margin="0,0,0,16">
             <ui:CardControl Margin="0,0,8,0">
                 <ui:CardControl.Header>
                     <StackPanel>
@@ -32,6 +32,18 @@
                     </StackPanel>
                 </ui:CardControl.Header>
                 <ui:SymbolIcon Symbol="DeveloperBoard24" FontSize="32" Foreground="{DynamicResource SystemFillColorSuccessBrush}"/>
+            </ui:CardControl>
+
+            <ui:CardControl Margin="8,0,8,0"
+                            ToolTip="How readily a thread gets a CPU, from the processor queue length (threads waiting for a CPU): 100% with none waiting, 0% at two waiting per CPU. Averaged over 5 s.">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="Responsiveness" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"/>
+                        <TextBlock Text="{Binding ResponsivenessText}" FontSize="24" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                        <TextBlock Text="{Binding QueueLengthText}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="11"/>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:SymbolIcon Symbol="Gauge24" FontSize="32" Foreground="{DynamicResource SystemFillColorAttentionBrush}"/>
             </ui:CardControl>
 
             <ui:CardControl Margin="8,0,8,0">
@@ -62,7 +74,23 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <TextBlock Text="System CPU %" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <DockPanel Margin="0,0,0,8">
+                    <!-- Per-core % Processor Time, one thin bar per logical CPU. -->
+                    <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding CoreLoads}" VerticalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <ProgressBar Orientation="Vertical" Width="6" Height="28" Margin="1,0" Minimum="0" Maximum="100"
+                                             Value="{Binding Percent, Mode=OneWay}" ToolTip="{Binding ToolTip}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="System CPU % (as Task Manager shows it)" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </DockPanel>
                 <lvc:CartesianChart Grid.Row="1" Series="{Binding CpuSeries}" XAxes="{Binding XAxes}" YAxes="{Binding YAxes}" />
             </Grid>
         </ui:CardControl>

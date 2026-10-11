@@ -32,6 +32,13 @@ namespace ProGuard.Engine.Services;
 /// <see cref="DisableProBalanceIfSysIdleThisManyMS"/>.</item>
 /// </list>
 /// Property names mirror the <c>[OutOfControlProcessRestraint]</c> keys in prolasso.ini.
+/// <para>
+/// <b>Decision input.</b> System load is <see cref="Core.Helpers.SystemInfo.GetProcessorTimePercent"/>: busy time
+/// from <c>GetSystemTimes</c>, the same measure as each process's <see cref="ProcessInfo.CpuPercent"/> (CPU time over
+/// wall time, all cores), so the system gate and the per-process thresholds compare like with like. It is not the
+/// frequency-scaled <c>% Processor Utility</c> the dashboard shows to match Task Manager, which reads lower while
+/// the CPU is clocked down and can pass 100 % under turbo.
+/// </para>
 /// </summary>
 public class ProBalanceEngine : IProBalanceEngine, IDisposable
 {
@@ -153,7 +160,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         _logger = logger;
         _processMonitor = processMonitor;
         _ruleStore = ruleStore;
-        _systemCpuPercent = systemCpuPercent ?? Core.Helpers.SystemInfo.GetOverallCpuPercent;
+        _systemCpuPercent = systemCpuPercent ?? Core.Helpers.SystemInfo.GetProcessorTimePercent;
         _access = processAccess ?? new Win32ProcessPriorityAccess();
         _nowMs = clockMs ?? (() => Environment.TickCount64);
         _idleSource = idleSource;

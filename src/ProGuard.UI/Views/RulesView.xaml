@@ -99,7 +99,7 @@
                         <!-- Basics -->
                         <Expander Style="{StaticResource Section}" Header="BASICS" Tag="{Binding BasicsSummary}" IsExpanded="True">
                             <StackPanel>
-                                <TextBlock Text="PROGRAM, PATTERN OR FULL PATH" Style="{StaticResource Ed.Label}" Margin="0,8,0,0"/>
+                                <TextBlock Text="PROGRAM" Style="{StaticResource Ed.Label}" Margin="0,8,0,0"/>
                                 <TextBox Style="{StaticResource Field}" AutomationProperties.Name="PROGRAM" Tag="e.g. chrome.exe" Text="{Binding ProcessName, UpdateSourceTrigger=PropertyChanged}" FontSize="20" FontWeight="Bold"/>
 
                                 <TextBlock Text="PRIORITY" Style="{StaticResource Ed.Label}"/>

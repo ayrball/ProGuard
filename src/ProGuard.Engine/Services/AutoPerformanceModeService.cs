@@ -97,11 +97,13 @@ public sealed class AutoPerformanceModeService : IAutoPerformanceMode, IDisposab
         {
             string? reason = null;
             int? pid = null;
+            bool engagedStillRuns = false;
             if (_options.AnyEnabled)
             {
                 var processes = _processMonitor.GetAllProcesses().ToList();
                 // Keep crediting the process that engaged it while it runs, so the reason doesn't flip between games.
                 var engaged = _engagedPid is { } p ? processes.FirstOrDefault(x => x.Pid == p) : null;
+                engagedStillRuns = engaged != null;
                 if (engaged != null && _detector.Match(engaged, _options) is { } still)
                 {
                     reason = still;
@@ -127,7 +129,10 @@ public sealed class AutoPerformanceModeService : IAutoPerformanceMode, IDisposab
                 _powerManager.SetAutomaticPerformanceMode(true, reason);
             else
                 _powerManager.SetAutomaticPerformanceMode(false,
-                    _options.AnyEnabled ? released?.Replace(" is running", " exited") : "automatic Performance Mode turned off");
+                    !_options.AnyEnabled ? "automatic Performance Mode turned off"
+                    // Still running, so the settings changed (a game detector or the list switched off).
+                    : engagedStillRuns ? released?.Replace(" is running", " no longer turns it on")
+                    : released?.Replace(" is running", " exited"));
         }
     }
 

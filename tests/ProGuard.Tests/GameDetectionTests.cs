@@ -318,6 +318,25 @@ public class GameDetectionTests
         }, h.Calls);
     }
 
+    // Seen live: switching game detection off while a game ran logged "WardogsClient-Win64-Shipping.exe exited".
+    [Fact]
+    public void Service_ReleasedBecauseTheSettingsChanged_DoesNotSayTheProcessExited()
+    {
+        var h = new Harness();
+        h.Processes.Add(Process(@"C:\Tools\render.exe", pid: 1));
+        h.Processes.Add(Process(@"C:\Tools\other.exe", pid: 2));
+        h.Service.Configure(new AutoPerformanceModeOptions { Processes = new[] { "render.exe", "other.exe" } });
+        h.Service.Configure(new AutoPerformanceModeOptions { Processes = new[] { "other.exe" } });
+        h.Service.Configure(new AutoPerformanceModeOptions { Processes = new[] { "nothing.exe" } });
+
+        Assert.Equal(new (bool, string?)[]
+        {
+            (true, "render.exe is running (listed)"),
+            (true, "other.exe is running (listed)"),
+            (false, "other.exe no longer turns it on (listed)"),
+        }, h.Calls);
+    }
+
     [Fact]
     public void Service_ReadsTheSteamLibrariesOnlyWhenNeeded_AndRereadsThemNowAndThen()
     {

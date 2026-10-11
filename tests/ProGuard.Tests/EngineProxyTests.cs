@@ -50,7 +50,8 @@ public class EngineProxyTests
             var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, Monitor.Object, MemoryTrim.Object, Power.Object, ResponsivenessGuard.Object);
             var dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, RuleStore.Object, applier, ResponsivenessGuard.Object,
                 Power.Object, MemoryTrim.Object, CpuLimiter.Object, Processes.Object, Monitor.Object);
-            _server = new PipeServer(NullLogger<PipeServer>.Instance, dispatcher) { PipeName = PipeName };
+            // These tests are about routing, so the client is trusted; CommandPipeSecurityTests covers authorization.
+            _server = new PipeServer(NullLogger<PipeServer>.Instance, dispatcher) { PipeName = PipeName, IdentifyCaller = _ => IpcCaller.InProcess };
             _server.Start();
         }
 

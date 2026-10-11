@@ -24,6 +24,8 @@ public sealed class EngineSettingsDto
     public bool ResponsivenessGuardDoNotLowerPriorityClass { get; set; }
     public bool ResponsivenessGuardDisableWhenSysIdle { get; set; }
     public int ResponsivenessGuardDisableIfSysIdleMs { get; set; } = 30000;
+    /// <summary>Unpark every core while ResponsivenessGuard restrains anything (OocDisableCoreParkingWhileIn). Administrators only.</summary>
+    public bool ResponsivenessGuardDisableCoreParking { get; set; }
 
     /// <summary>Raise the foreground process from Normal to Above Normal while it has focus.</summary>
     public bool ForegroundBoostEnabled { get; set; } = false;

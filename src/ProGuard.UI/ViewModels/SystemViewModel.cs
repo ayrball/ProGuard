@@ -43,6 +43,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     {
         nameof(ResponsivenessGuardEnabled), nameof(SensitivityLevel), nameof(RestrainByAffinity), nameof(DropOneRandomCore),
         nameof(LowerIoPriority), nameof(UseEfficiencyMode), nameof(DoNotLowerPriorityClass), nameof(PauseWhenIdle),
+        nameof(UnparkCoresWhileRestraining),
         nameof(ForegroundBoostEnabled),
         nameof(MemoryTrimEnabled), nameof(TrimLogNoAction), nameof(StandbyPurgeEnabled), nameof(StandbyOnlyInPerformanceMode),
         nameof(FileCachePurgeEnabled),
@@ -116,6 +117,8 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     [ObservableProperty] private bool useEfficiencyMode;
     [ObservableProperty] private bool doNotLowerPriorityClass;
     [ObservableProperty] private bool pauseWhenIdle;
+    /// <summary>OocDisableCoreParkingWhileIn. Administrators only: the engine refuses a standard user's change.</summary>
+    [ObservableProperty] private bool unparkCoresWhileRestraining;
     [ObservableProperty] private string restraintCoresSummary = string.Empty;
 
     [ObservableProperty] private bool foregroundBoostEnabled;
@@ -240,6 +243,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
                 UseEfficiencyMode = settings.ResponsivenessGuardUseEfficiencyMode;
                 DoNotLowerPriorityClass = settings.ResponsivenessGuardDoNotLowerPriorityClass;
                 PauseWhenIdle = settings.ResponsivenessGuardDisableWhenSysIdle;
+                UnparkCoresWhileRestraining = settings.ResponsivenessGuardDisableCoreParking;
                 IdlePauseMs.Load(settings.ResponsivenessGuardDisableIfSysIdleMs);
 
                 ForegroundBoostEnabled = settings.ForegroundBoostEnabled;
@@ -514,6 +518,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
         s.ResponsivenessGuardUseEfficiencyMode = UseEfficiencyMode;
         s.ResponsivenessGuardDoNotLowerPriorityClass = DoNotLowerPriorityClass;
         s.ResponsivenessGuardDisableWhenSysIdle = PauseWhenIdle;
+        s.ResponsivenessGuardDisableCoreParking = UnparkCoresWhileRestraining;
         s.ResponsivenessGuardDisableIfSysIdleMs = IdlePauseMs.ToStored(s.ResponsivenessGuardDisableIfSysIdleMs);
 
         s.ForegroundBoostEnabled = ForegroundBoostEnabled;

@@ -29,6 +29,11 @@ public class AppSettings
     public bool ResponsivenessGuardDisableWhenSysIdle { get; set; } = false;
     /// <summary>[DisableResponsivenessGuardIfSysIdleThisManyMS] 30000.</summary>
     public int ResponsivenessGuardDisableIfSysIdleMs { get; set; } = 30000;
+    /// <summary>
+    /// [OocDisableCoreParkingWhileIn] While any process is restrained, set the active plan's core parking minimum to
+    /// 100 % (no parked cores), and put it back afterwards. Administrators only: it edits a machine-wide power plan.
+    /// </summary>
+    public bool ResponsivenessGuardDisableCoreParking { get; set; } = false;
     
     /// <summary>Raise the foreground process from Normal to Above Normal while it has focus (ForegroundBoostService). Off by default, as in another process manager.</summary>
     public bool ForegroundBoostEnabled { get; set; } = false;

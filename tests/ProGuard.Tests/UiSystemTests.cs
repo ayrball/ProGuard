@@ -154,6 +154,7 @@ public class UiSystemTests
         ResponsivenessGuardRestrainByAffinity = true, ResponsivenessGuardRestraintAffinity = 0x0AB0_0000_0000_00F0L,
         ResponsivenessGuardDropOneRandomCore = true, ResponsivenessGuardLowerIoPriority = true, ResponsivenessGuardUseEfficiencyMode = true,
         ResponsivenessGuardDoNotLowerPriorityClass = true, ResponsivenessGuardDisableWhenSysIdle = true, ResponsivenessGuardDisableIfSysIdleMs = 12345,
+        ResponsivenessGuardDisableCoreParking = true,
         ForegroundBoostEnabled = false,
         MemoryTrimEnabled = true, MemoryTrimIntervalSeconds = 95, MemoryTrimMemoryThresholdMB = 197, MemoryTrimMinimumRamLoadPercent = 71,
         MemoryTrimExclusions = "chrome.exe, code.exe;obs64.exe", MemoryTrimLogNoAction = true,
@@ -249,6 +250,7 @@ public class UiSystemTests
         vm.UseEfficiencyMode = false;
         vm.DoNotLowerPriorityClass = false;
         vm.PauseWhenIdle = false;
+        vm.UnparkCoresWhileRestraining = false;
         vm.IdlePauseMs.Text = "60000";
         vm.ForegroundBoostEnabled = true;
 
@@ -296,6 +298,7 @@ public class UiSystemTests
         Assert.False(s.ResponsivenessGuardRestrainByAffinity);
         Assert.Equal(0x0AB0_0000_0000_00F1L, s.ResponsivenessGuardRestraintAffinity); // bits for cores that aren't shown survive
         Assert.False(s.ResponsivenessGuardDropOneRandomCore || s.ResponsivenessGuardLowerIoPriority || s.ResponsivenessGuardUseEfficiencyMode || s.ResponsivenessGuardDoNotLowerPriorityClass || s.ResponsivenessGuardDisableWhenSysIdle);
+        Assert.False(s.ResponsivenessGuardDisableCoreParking);
         Assert.Equal(60000, s.ResponsivenessGuardDisableIfSysIdleMs);
         Assert.True(s.ForegroundBoostEnabled);
 

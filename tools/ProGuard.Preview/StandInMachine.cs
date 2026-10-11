@@ -290,6 +290,8 @@ public sealed class StandInMachine
                 var settings = Argument<EngineSettingsDto>(cmd);
                 if (!_admin && settings.SetTimerResolutionAtStartup != _settings.SetTimerResolutionAtStartup)
                     return Deny("change the system timer resolution");
+                if (!_admin && settings.ResponsivenessGuardDisableCoreParking != _settings.ResponsivenessGuardDisableCoreParking)
+                    return Deny("change whether ResponsivenessGuard unparks cores (it edits the power plan)");
                 if (settings.ResponsivenessGuardSensitivity is < 1 or > 10) return CommandResult.Fail("Sensitivity must be between 1 and 10");
                 if (settings.PollingIntervalMs < 100) return CommandResult.Fail("The polling interval must be at least 100 ms.");
                 Mutate(() => _settings = settings);

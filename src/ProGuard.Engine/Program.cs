@@ -93,6 +93,7 @@ public class Program
                 services.AddSingleton<IProcessController>(sp => sp.GetRequiredService<ProcessController>());
 
                 services.AddSingleton(sp => new TimerResolutionService(sp.GetRequiredService<ILogger<TimerResolutionService>>()));
+                services.AddSingleton(sp => new CoreParkingService(sp.GetRequiredService<ILogger<CoreParkingService>>(), sp.GetRequiredService<IRuleStore>()));
                 services.AddSingleton<SettingsApplier>();
 
                 services.AddSingleton<ForegroundBoostService>();

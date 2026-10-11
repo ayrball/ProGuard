@@ -18,6 +18,7 @@ using CommunityToolkit.Mvvm.Input;
 using ProGuard.Core.Data;
 using ProGuard.Core.Helpers;
 using ProGuard.Core.Models;
+using ProGuard.UI.IPC;
 using ProGuard.Core.Native;
 using ProGuard.Core.Services;
 using ProGuard.UI.Controls;
@@ -103,8 +104,13 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
 
     public ObservableCollection<ProcessDisplayItem> Processes { get; set; } = new BulkCollection();
 
-    public ProcessListViewModel()
+    private readonly ConfigWriter _config;
+
+    public ProcessListViewModel() : this(new ConfigWriter(new EngineProxy())) { }
+
+    public ProcessListViewModel(ConfigWriter config)
     {
+        _config = config;
         _ = Task.Run(PollProcessesAsync);
 
         _timer = new System.Timers.Timer(1500);
@@ -977,14 +983,11 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private void CreateRule()
+    private async Task CreateRuleAsync()
     {
         if (SelectedProcess == null) return;
         try
         {
-            using var db = new ProGuardDbContext();
-            db.EnsureSchema();
-
             int? priorityVal = null;
             if (Enum.TryParse<ProcessPriorityClass>(SelectedProcess.Priority, out var pc))
             {
@@ -1000,10 +1003,14 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
                 DisallowExecution = false
             };
 
-            db.ProcessRules.Add(rule);
-            db.SaveChanges();
+            var result = await _config.SaveProcessRuleAsync(rule);
+            if (!result.Success)
+            {
+                MessageBox.Show($"Rule not saved: {result.Error}", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
 
-            MessageBox.Show($"Persistent rule created for '{SelectedProcess.Name}'!", "ProGuard Rule Created", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show($"Persistent rule created for '{rule.ProcessName}'!", "ProGuard Rule Created", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
@@ -1012,25 +1019,25 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private void DisallowProcess()
+    private async Task DisallowProcessAsync()
     {
         if (SelectedProcess == null) return;
         try
         {
-            using var db = new ProGuardDbContext();
-            db.EnsureSchema();
-
-            var rule = new ProcessRule
+            var name = SelectedProcess.Name;
+            var result = await _config.UpdateProcessRuleAsync(name, rule =>
             {
-                ProcessName = SelectedProcess.Name,
-                DisallowExecution = true
-            };
-
-            db.ProcessRules.Add(rule);
-            db.SaveChanges();
+                rule.DisallowExecution = true;
+                return true;
+            });
+            if (!result.Success)
+            {
+                MessageBox.Show($"Not disallowed: {result.Error}", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
 
             TerminateProcess();
-            MessageBox.Show($"Process '{SelectedProcess.Name}' disallowed and terminated!", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show($"Process '{name}' disallowed and terminated!", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {

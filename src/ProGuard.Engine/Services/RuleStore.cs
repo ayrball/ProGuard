@@ -311,4 +311,11 @@ public class RuleStore : IRuleStore
             _logger.LogError(ex, "Failed to log ProBalance action");
         }
     }
+
+    public void ClearProBalanceActions()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+        db.ProBalanceActions.ExecuteDelete();
+    }
 }

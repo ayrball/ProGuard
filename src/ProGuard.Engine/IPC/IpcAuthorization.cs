@@ -28,6 +28,10 @@ namespace ProGuard.Engine.IPC;
 /// <item>"Purge now" (<see cref="CommandTypes.PurgeMemory"/>) is administrator-only: purging the standby list and the
 /// file cache throws away every user's cached data machine-wide, and Windows itself requires
 /// SeProfileSingleProcessPrivilege / SeIncreaseQuotaPrivilege for it, which standard users lack.</item>
+/// <item>Anyone may save and delete process and Watchdog rules, as the unelevated UI must. The dispatcher then checks the
+/// rule itself (<see cref="RuleAuthorization"/>), since that needs the stored rule and the running processes.</item>
+/// <item>Clearing the action log is administrator-only: it is the record of what the engine did to every user's
+/// processes.</item>
 /// <item>Anything else is refused. A new command stays administrator-only until it is added here.</item>
 /// </list>
 /// </summary>
@@ -42,6 +46,15 @@ public static class IpcAuthorization
         CommandTypes.ConfigureSmartTrim,
         CommandTypes.EnablePerformanceMode,
         CommandTypes.DisablePerformanceMode,
+    };
+
+    /// <summary>Allowed here; <see cref="IpcDispatcher"/> checks the rule's contents with <see cref="RuleAuthorization"/>.</summary>
+    internal static readonly IReadOnlySet<string> RuleCommands = new HashSet<string>(StringComparer.Ordinal)
+    {
+        CommandTypes.SaveProcessRule,
+        CommandTypes.DeleteProcessRule,
+        CommandTypes.SaveWatchdogRule,
+        CommandTypes.DeleteWatchdogRule,
     };
 
     /// <summary>The access each process command needs, i.e. what the caller would need to do it without ProGuard.</summary>
@@ -63,6 +76,7 @@ public static class IpcAuthorization
     internal static readonly IReadOnlySet<string> AdministratorOnlyCommands = new HashSet<string>(StringComparer.Ordinal)
     {
         CommandTypes.PurgeMemory,
+        CommandTypes.ClearActionLog,
     };
 
     /// <summary>Returns null when <paramref name="caller"/> may make <paramref name="request"/>, otherwise the error to reply with.</summary>
@@ -88,7 +102,7 @@ public static class IpcAuthorization
     private static CommandResult? CheckCommand(CommandMessage cmd, IIpcCaller caller)
     {
         if (AdministratorOnlyCommands.Contains(cmd.CommandType)) return Deny(caller, $"run {cmd.CommandType}");
-        if (UnrestrictedCommands.Contains(cmd.CommandType)) return null;
+        if (UnrestrictedCommands.Contains(cmd.CommandType) || RuleCommands.Contains(cmd.CommandType)) return null;
         if (cmd.CommandType == CommandTypes.TrimWorkingSet && cmd.TargetPid == null) return null;
 
         if (!ProcessCommandAccess.TryGetValue(cmd.CommandType, out var access))
@@ -107,6 +121,6 @@ public static class IpcAuthorization
             : Deny(caller, $"{cmd.CommandType} process {pid}: it belongs to another user, is elevated or protected, or is not running");
     }
 
-    private static CommandResult Deny(IIpcCaller caller, string what) =>
+    internal static CommandResult Deny(IIpcCaller caller, string what) =>
         CommandResult.Fail($"Access denied: {caller.Name} may not {what}. Run ProGuard as administrator to do this.");
 }

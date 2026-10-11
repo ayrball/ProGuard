@@ -7,13 +7,25 @@ using ProGuard.Core.Data;
 using ProGuard.Core.Models;
 using ProGuard.Shared.Messages;
 using ProGuard.UI.IPC;
+using ProGuard.UI.Services;
 
 namespace ProGuard.UI.ViewModels;
 
 public partial class SettingsViewModel : ViewModelBase
 {
     private readonly EngineProxy _engine;
+    private readonly ConfigWriter _config;
     private bool _loading;
+
+    /// <summary>Why the last change wasn't saved; empty once a save succeeds.</summary>
+    [ObservableProperty]
+    private string saveError = string.Empty;
+
+    /// <summary>The most recent save; tests await it.</summary>
+    public Task SaveTask { get; private set; } = Task.CompletedTask;
+
+    [ObservableProperty]
+    private bool isForegroundBoostEnabled;
 
     [ObservableProperty]
     private bool isProBalanceEnabled = true;
@@ -77,9 +89,12 @@ public partial class SettingsViewModel : ViewModelBase
 
     public SettingsViewModel() : this(new EngineProxy()) { }
 
-    public SettingsViewModel(EngineProxy engine)
+    public SettingsViewModel(EngineProxy engine) : this(engine, new ConfigWriter(engine)) { }
+
+    public SettingsViewModel(EngineProxy engine, ConfigWriter config)
     {
         _engine = engine;
+        _config = config;
         LoadSettings();
     }
 
@@ -110,15 +125,11 @@ public partial class SettingsViewModel : ViewModelBase
         {
             using var db = new ProGuardDbContext();
             db.EnsureSchema();
-            var s = db.Settings.FirstOrDefault();
-            if (s == null)
-            {
-                s = new AppSettings { Id = 1 };
-                db.Settings.Add(s);
-                db.SaveChanges();
-            }
+            // The engine seeds the row; the UI may not be able to write the database, so it just shows the defaults.
+            var s = db.Settings.FirstOrDefault() ?? new AppSettings { Id = 1 };
 
             IsProBalanceEnabled = s.ProBalanceEnabled;
+            IsForegroundBoostEnabled = s.ForegroundBoostEnabled;
             Sensitivity = s.ProBalanceSensitivity;
             CpuThreshold = (int)s.ProBalanceCpuThreshold;
             IsSmartTrimEnabled = s.SmartTrimEnabled;
@@ -151,43 +162,43 @@ public partial class SettingsViewModel : ViewModelBase
     private void SaveSettings()
     {
         if (_loading) return;
+        SaveTask = SaveAsync();
+    }
 
-        try
+    // The engine owns the database, so this goes over its pipe (see ConfigWriter); only the values that differ from the
+    // stored ones are sent.
+    private async Task SaveAsync()
+    {
+        var result = await _config.UpdateSettingsAsync(s =>
         {
-            using var db = new ProGuardDbContext();
-            db.EnsureSchema();
-            var s = db.Settings.FirstOrDefault();
-            if (s != null)
+            s.ProBalanceEnabled = IsProBalanceEnabled;
+            s.ForegroundBoostEnabled = IsForegroundBoostEnabled;
+            s.ProBalanceSensitivity = Sensitivity;
+            s.ProBalanceCpuThreshold = CpuThreshold;
+            s.SmartTrimEnabled = IsSmartTrimEnabled;
+            s.SmartTrimIntervalSeconds = SmartTrimIntervalSeconds;
+            s.SmartTrimMemoryThresholdMB = SmartTrimThresholdMb;
+            s.SmartTrimMinimumRamLoadPercent = Math.Clamp(SmartTrimMinimumRamLoadPercent, 0, 100);
+            s.SmartTrimExclusions = string.IsNullOrWhiteSpace(SmartTrimExclusions) ? null : SmartTrimExclusions.Trim();
+            s.SmartTrimLogNoAction = SmartTrimLogNoAction;
+            s.StandbyPurgeEnabled = IsStandbyPurgeEnabled;
+            s.StandbyPurgeFreeRamThresholdMB = Math.Max(0, StandbyPurgeFreeRamThresholdMb);
+            s.StandbyPurgeOnlyInPerformanceMode = StandbyPurgeOnlyInPerformanceMode;
+            s.FileCachePurgeEnabled = IsFileCachePurgeEnabled;
+            s.StartWithWindows = StartWithWindows;
+            s.MinimizeToTray = MinimizeToTray;
+            s.Theme = SelectedThemeIndex switch
             {
-                s.ProBalanceEnabled = IsProBalanceEnabled;
-                s.ProBalanceSensitivity = Sensitivity;
-                s.ProBalanceCpuThreshold = CpuThreshold;
-                s.SmartTrimEnabled = IsSmartTrimEnabled;
-                s.SmartTrimIntervalSeconds = SmartTrimIntervalSeconds;
-                s.SmartTrimMemoryThresholdMB = SmartTrimThresholdMb;
-                s.SmartTrimMinimumRamLoadPercent = Math.Clamp(SmartTrimMinimumRamLoadPercent, 0, 100);
-                s.SmartTrimExclusions = string.IsNullOrWhiteSpace(SmartTrimExclusions) ? null : SmartTrimExclusions.Trim();
-                s.SmartTrimLogNoAction = SmartTrimLogNoAction;
-                s.StandbyPurgeEnabled = IsStandbyPurgeEnabled;
-                s.StandbyPurgeFreeRamThresholdMB = Math.Max(0, StandbyPurgeFreeRamThresholdMb);
-                s.StandbyPurgeOnlyInPerformanceMode = StandbyPurgeOnlyInPerformanceMode;
-                s.FileCachePurgeEnabled = IsFileCachePurgeEnabled;
-                s.StartWithWindows = StartWithWindows;
-                s.MinimizeToTray = MinimizeToTray;
-                s.Theme = SelectedThemeIndex switch
-                {
-                    1 => "Light",
-                    2 => "System",
-                    _ => "Dark"
-                };
-
-                db.SaveChanges();
-            }
-        }
-        catch { }
+                1 => "Light",
+                2 => "System",
+                _ => "Dark"
+            };
+        });
+        SaveError = result.Success ? string.Empty : "Settings not saved: " + result.Error;
     }
 
     partial void OnIsProBalanceEnabledChanged(bool value) => SaveSettings();
+    partial void OnIsForegroundBoostEnabledChanged(bool value) => SaveSettings();
     partial void OnSensitivityChanged(int value) => SaveSettings();
     partial void OnCpuThresholdChanged(int value) => SaveSettings();
     partial void OnIsSmartTrimEnabledChanged(bool value) => SaveSettings();

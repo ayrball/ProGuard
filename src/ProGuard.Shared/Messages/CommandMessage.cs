@@ -62,6 +62,23 @@ public static class CommandTypes
     /// <summary>Argument = "true"/"false" (defaults to true). Not persisted: it is a runtime toggle.</summary>
     public const string EnablePerformanceMode = "EnablePerformanceMode";
     public const string DisablePerformanceMode = "DisablePerformanceMode";
+
+    // Rule edits. On an installed system only the engine (SYSTEM) and administrators can write the database, so the UI
+    // saves rules through these. Standard users may send them; the engine refuses rule contents that need an
+    // administrator (see the engine's RuleAuthorization).
+    /// <summary>
+    /// Argument = serialized ProGuard.Core.Models.ProcessRule, replacing the rule with its Id or, failing that, its
+    /// process name; otherwise it is added. The result's Data is the rule's Id.
+    /// </summary>
+    public const string SaveProcessRule = "SaveProcessRule";
+    /// <summary>Argument = the process rule's Id.</summary>
+    public const string DeleteProcessRule = "DeleteProcessRule";
+    /// <summary>Argument = serialized ProGuard.Core.Models.WatchdogRule; Id 0 adds it. The result's Data is the rule's Id.</summary>
+    public const string SaveWatchdogRule = "SaveWatchdogRule";
+    /// <summary>Argument = the Watchdog rule's Id.</summary>
+    public const string DeleteWatchdogRule = "DeleteWatchdogRule";
+    /// <summary>Deletes the action log (ProBalance and power plan entries). Administrators only.</summary>
+    public const string ClearActionLog = "ClearActionLog";
 }
 
 public class IdleSaverArgument

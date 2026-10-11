@@ -40,6 +40,8 @@ public partial class App : Application
             services.AddSingleton<WatchdogViewModel>();
             
             services.AddSingleton<EngineProxy>();
+            // Settings and rule edits go through the engine, which owns the database (see ConfigWriter).
+            services.AddSingleton<ConfigWriter>();
 
             services.AddSingleton<PowerPage>();
             services.AddSingleton<PowerViewModel>();

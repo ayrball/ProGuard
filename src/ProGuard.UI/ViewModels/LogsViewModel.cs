@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ProGuard.Core.Data;
 using ProGuard.Core.Models;
+using ProGuard.UI.IPC;
+using ProGuard.UI.Services;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -23,8 +26,13 @@ public partial class LogsViewModel : ViewModelBase
 
     public ObservableCollection<LogEntryItem> LogEntries { get; set; } = new();
 
-    public LogsViewModel()
+    private readonly ConfigWriter _config;
+
+    public LogsViewModel() : this(new ConfigWriter(new EngineProxy())) { }
+
+    public LogsViewModel(ConfigWriter config)
     {
+        _config = config;
         LoadLogs();
     }
 
@@ -100,16 +108,15 @@ public partial class LogsViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void ClearLogs()
+    private async Task ClearLogsAsync()
     {
-        try
+        // The log records what the engine did to every user's processes, so the engine only lets administrators clear it.
+        var result = await _config.ClearActionLogAsync();
+        if (!result.Success)
         {
-            using var db = new ProGuardDbContext();
-            db.EnsureSchema();
-            db.ProBalanceActions.RemoveRange(db.ProBalanceActions);
-            db.SaveChanges();
+            MessageBox.Show($"Log not cleared: {result.Error}", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
         }
-        catch { }
 
         _allLogs.Clear();
         LogEntries.Clear();

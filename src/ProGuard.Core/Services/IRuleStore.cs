@@ -36,4 +36,6 @@ public interface IRuleStore
 
     // Logging
     Task LogProBalanceActionAsync(ProBalanceAction action);
+    /// <summary>Deletes every logged action.</summary>
+    void ClearProBalanceActions();
 }

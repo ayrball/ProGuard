@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -10,6 +11,8 @@ using ProGuard.Core.Data;
 using ProGuard.Core.Helpers;
 using ProGuard.Core.Models;
 using ProGuard.UI.Controls;
+using ProGuard.UI.IPC;
+using ProGuard.UI.Services;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -102,8 +105,13 @@ public partial class RulesViewModel : ViewModelBase
 
     public ObservableCollection<RuleDisplayItem> Rules { get; set; } = new();
 
-    public RulesViewModel()
+    private readonly ConfigWriter _config;
+
+    public RulesViewModel() : this(new ConfigWriter(new EngineProxy())) { }
+
+    public RulesViewModel(ConfigWriter config)
     {
+        _config = config;
         LoadRules();
     }
 
@@ -154,7 +162,7 @@ public partial class RulesViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void SaveNewRule()
+    private async Task SaveNewRuleAsync()
     {
         if (string.IsNullOrWhiteSpace(NewProcessName))
         {
@@ -170,9 +178,6 @@ public partial class RulesViewModel : ViewModelBase
 
         try
         {
-            using var db = new ProGuardDbContext();
-            db.EnsureSchema();
-
             int? prioVal = null;
             if (Enum.TryParse<ProcessPriorityClass>(NewPriority, out var pc))
             {
@@ -216,23 +221,15 @@ public partial class RulesViewModel : ViewModelBase
                 return;
             }
 
-            db.ProcessRules.Add(entity);
-            db.SaveChanges();
-
-            Rules.Add(new RuleDisplayItem
+            var result = await _config.SaveProcessRuleAsync(entity);
+            if (!result.Success)
             {
-                Id = entity.Id,
-                ProcessName = entity.ProcessName,
-                Priority = NewPriority,
-                Affinity = "All",
-                CpuLimit = cpuLimitVal.HasValue ? $"{cpuLimitVal}%" : "None",
-                CpuAffinityLimit = FormatCpuAffinityLimit(entity),
-                MaxInstances = FormatMaxInstances(entity),
-                InstanceBalancer = FormatBalancer(entity),
-                StartupBoost = FormatStartupBoost(entity),
-                IsDisallowed = entity.DisallowExecution,
-                Defaults = DescribeDefaults(entity)
-            });
+                MessageBox.Show($"Rule not saved: {result.Error}", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Saving replaces any rule for the same process, so reload rather than append.
+            LoadRules();
 
             NewProcessName = string.Empty;
             NewCpuLimitThreshold = string.Empty;
@@ -374,7 +371,7 @@ public partial class RulesViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void DeleteRule()
+    private async Task DeleteRuleAsync()
     {
         if (SelectedRule == null)
         {
@@ -384,17 +381,15 @@ public partial class RulesViewModel : ViewModelBase
 
         try
         {
-            using var db = new ProGuardDbContext();
-            db.EnsureSchema();
-
-            var entity = db.ProcessRules.FirstOrDefault(r => r.Id == SelectedRule.Id || r.ProcessName == SelectedRule.ProcessName);
-            if (entity != null)
+            var selected = SelectedRule;
+            var result = await _config.DeleteProcessRuleAsync(selected.Id);
+            if (!result.Success)
             {
-                db.ProcessRules.Remove(entity);
-                db.SaveChanges();
+                MessageBox.Show($"Rule not deleted: {result.Error}", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
 
-            Rules.Remove(SelectedRule);
+            Rules.Remove(selected);
         }
         catch (Exception ex)
         {

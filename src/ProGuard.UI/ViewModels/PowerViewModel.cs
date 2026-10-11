@@ -14,6 +14,7 @@ using ProGuard.Core.Native;
 using ProGuard.Core.Services;
 using ProGuard.Shared.Messages;
 using ProGuard.UI.IPC;
+using ProGuard.UI.Services;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -103,6 +104,7 @@ public partial class PowerViewModel : ViewModelBase
 
     private readonly EngineProxy _engine;
     private readonly Action<bool> _applyPerformanceModeLocally;
+    private readonly ConfigWriter _config;
 
     /// <summary>The most recent Performance Mode change; tests await it.</summary>
     public Task PerformanceModeChange { get; private set; } = Task.CompletedTask;
@@ -113,9 +115,11 @@ public partial class PowerViewModel : ViewModelBase
     /// What to do when the engine can't be reached; defaults to switching the power plan from this process.
     /// </param>
     /// <param name="plans">The installed plans; defaults to asking Windows.</param>
-    public PowerViewModel(EngineProxy engine, Action<bool>? applyPerformanceModeLocally = null, IReadOnlyList<PowerPlanInfo>? plans = null)
+    public PowerViewModel(EngineProxy engine, Action<bool>? applyPerformanceModeLocally = null, IReadOnlyList<PowerPlanInfo>? plans = null,
+        ConfigWriter? config = null)
     {
         _engine = engine;
+        _config = config ?? new ConfigWriter(engine);
         _applyPerformanceModeLocally = applyPerformanceModeLocally ?? SetPerformancePlanLocally;
         _loading = true;
         try
@@ -327,49 +331,55 @@ public partial class PowerViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Why the last change wasn't saved; empty once a save succeeds.</summary>
+    [ObservableProperty]
+    private string saveError = string.Empty;
+
+    /// <summary>The most recent save; tests await it.</summary>
+    public Task SaveTask { get; private set; } = Task.CompletedTask;
+
     private void SaveSettings()
     {
         // Shown at once, even while loading, so a bad saved combination is flagged when the page opens.
         LoadSwitcherError = IsLoadSwitcherEnabled ? LoadSwitcherOptions.Validate() : null;
         if (_loading) return;
+        SaveTask = SaveAsync();
+    }
 
-        try
+    // The engine owns the database, so this goes over its pipe (see ConfigWriter); only changed values are sent.
+    private async Task SaveAsync()
+    {
+        var loadSwitcherValid = LoadSwitcherError == null;
+        var result = await _config.UpdateSettingsAsync(s =>
         {
-            using var db = new ProGuardDbContext();
-            db.EnsureSchema();
-            var s = db.Settings.FirstOrDefault();
-            if (s != null)
+            s.IdleSaverEnabled = IsIdleSaverEnabled;
+            s.IdleTimeoutMinutes = Math.Max(1, IdleTimeout / 60);
+            // The engine reads the plan from the database; without this the idle plan choice never reached it.
+            if (SelectedIdlePlanIndex >= 0 && SelectedIdlePlanIndex < PowerPlans.Count)
+                s.IdlePowerPlanGuid = PowerPlans[SelectedIdlePlanIndex].Guid.ToString();
+
+            s.PerformanceModePlanGuid = PlanGuidAt(PerformanceModePlanIndex, s.PerformanceModePlanGuid);
+            s.AutoPerformanceModeProcesses = JoinList(AutoPerformanceModeProcesses);
+            s.AutoPerformanceModeExclusions = JoinList(AutoPerformanceModeExclusions);
+            s.AutoPerformanceModeDetectGames = DetectGames;
+            s.PerformanceModeEngageForSteam = EngageForSteam;
+
+            // Settings the engine would refuse stay unsaved (the last good ones keep running) until they're fixed.
+            if (loadSwitcherValid)
             {
-                s.IdleSaverEnabled = IsIdleSaverEnabled;
-                s.IdleTimeoutMinutes = Math.Max(1, IdleTimeout / 60);
-                // The engine reads the plan from the database; without this the idle plan choice never reached it.
-                if (SelectedIdlePlanIndex >= 0 && SelectedIdlePlanIndex < PowerPlans.Count)
-                    s.IdlePowerPlanGuid = PowerPlans[SelectedIdlePlanIndex].Guid.ToString();
-
-                s.PerformanceModePlanGuid = PlanGuidAt(PerformanceModePlanIndex, s.PerformanceModePlanGuid);
-                s.AutoPerformanceModeProcesses = JoinList(AutoPerformanceModeProcesses);
-                s.AutoPerformanceModeExclusions = JoinList(AutoPerformanceModeExclusions);
-                s.AutoPerformanceModeDetectGames = DetectGames;
-                s.PerformanceModeEngageForSteam = EngageForSteam;
-
-                // Settings the engine would refuse stay unsaved (the last good ones keep running) until they're fixed.
-                if (LoadSwitcherError == null)
-                {
-                    s.LoadSwitcherEnabled = IsLoadSwitcherEnabled;
-                    s.LoadSwitcherLowThreshold = LoadSwitcherLowThreshold;
-                    s.LoadSwitcherHighThreshold = LoadSwitcherHighThreshold;
-                    s.LoadSwitcherAveragingWindowSamples = LoadSwitcherAveragingSamples;
-                    s.LoadSwitcherMinimumTimeInPlanMs = LoadSwitcherMinimumTimeInPlanMs;
-                    s.LoadSwitcherLowPlanGuid = PlanGuidAt(LoadSwitcherLowPlanIndex, s.LoadSwitcherLowPlanGuid);
-                    s.LoadSwitcherHighPlanGuid = PlanGuidAt(LoadSwitcherHighPlanIndex, s.LoadSwitcherHighPlanGuid);
-                    s.LoadSwitcherDeferLowPlan = LoadSwitcherDeferLowPlan;
-                }
-
-                s.StartWithPowerPlanGuid = StartupPlanIndex <= 0 ? null : PlanGuidAt(StartupPlanIndex - 1, s.StartWithPowerPlanGuid);
-                db.SaveChanges();
+                s.LoadSwitcherEnabled = IsLoadSwitcherEnabled;
+                s.LoadSwitcherLowThreshold = LoadSwitcherLowThreshold;
+                s.LoadSwitcherHighThreshold = LoadSwitcherHighThreshold;
+                s.LoadSwitcherAveragingWindowSamples = LoadSwitcherAveragingSamples;
+                s.LoadSwitcherMinimumTimeInPlanMs = LoadSwitcherMinimumTimeInPlanMs;
+                s.LoadSwitcherLowPlanGuid = PlanGuidAt(LoadSwitcherLowPlanIndex, s.LoadSwitcherLowPlanGuid);
+                s.LoadSwitcherHighPlanGuid = PlanGuidAt(LoadSwitcherHighPlanIndex, s.LoadSwitcherHighPlanGuid);
+                s.LoadSwitcherDeferLowPlan = LoadSwitcherDeferLowPlan;
             }
-        }
-        catch { }
+
+            s.StartWithPowerPlanGuid = StartupPlanIndex <= 0 ? null : PlanGuidAt(StartupPlanIndex - 1, s.StartWithPowerPlanGuid);
+        });
+        SaveError = result.Success ? string.Empty : "Power settings not saved: " + result.Error;
     }
 
     private static string[] SplitList(string? text) =>

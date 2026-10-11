@@ -53,6 +53,27 @@ public class PipeClient : IDisposable
 
     public bool IsConnected => _pipe?.IsConnected == true;
 
+    /// <summary>
+    /// Whether a server has created the pipe, without connecting to it. Connecting to a pipe that doesn't exist waits
+    /// for the whole <see cref="ConnectTimeout"/>; this answers at once.
+    /// </summary>
+    public bool ServerExists()
+    {
+        if (IsConnected) return true;
+        try
+        {
+            foreach (var path in Directory.EnumerateFiles(@"\\.\pipe\"))
+            {
+                if (string.Equals(Path.GetFileName(path), PipeName, StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return true; // can't tell: let the connection attempt decide
+        }
+    }
+
     /// <summary>Raised with the new state whenever the connection to the engine opens or is lost.</summary>
     public event EventHandler<bool>? ConnectionChanged;
 

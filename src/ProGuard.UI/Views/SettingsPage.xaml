@@ -6,6 +6,18 @@
 
     <ScrollViewer Margin="16">
         <StackPanel>
+            <TextBlock Text="{Binding SaveError}" Foreground="{DynamicResource SystemFillColorCriticalBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Style.Triggers>
+                            <Trigger Property="Text" Value="">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
             <TextBlock Text="ProBalance Settings" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,8"/>
             <ui:CardControl Margin="0,0,0,16">
                 <StackPanel>
@@ -23,6 +35,16 @@
 
                     <TextBlock Text="CPU Threshold (%):" Margin="0,0,0,4"/>
                     <ui:NumberBox Value="{Binding CpuThreshold, Mode=TwoWay}" Margin="0,0,0,16" Minimum="10" Maximum="95"/>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Boost the foreground process to Above Normal" VerticalAlignment="Center"
+                                   ToolTip="Process Lasso's foreground boosting. Off by default: it rarely helps."/>
+                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding IsForegroundBoostEnabled, Mode=TwoWay}" Content="Enabled"/>
+                    </Grid>
                 </StackPanel>
             </ui:CardControl>
 

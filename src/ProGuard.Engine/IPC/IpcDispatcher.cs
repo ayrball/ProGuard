@@ -1,7 +1,9 @@
 using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using ProGuard.Core.Helpers;
@@ -205,6 +207,22 @@ public class IpcDispatcher
                 _powerManager.EnablePerformanceMode(false);
                 return CommandResult.Ok();
 
+            case CommandTypes.SaveProcessRule:
+                return SaveProcessRule(ParseArgument<ProcessRule>(cmd.Argument), caller);
+
+            case CommandTypes.DeleteProcessRule:
+                return DeleteProcessRule(ParseInt(cmd.Argument), caller);
+
+            case CommandTypes.SaveWatchdogRule:
+                return SaveWatchdogRule(ParseArgument<WatchdogRule>(cmd.Argument), caller);
+
+            case CommandTypes.DeleteWatchdogRule:
+                return DeleteWatchdogRule(ParseInt(cmd.Argument), caller);
+
+            case CommandTypes.ClearActionLog:
+                _ruleStore.ClearProBalanceActions();
+                return CommandResult.Ok();
+
             default:
                 return CommandResult.Fail($"Unknown command '{cmd.CommandType}'");
         }
@@ -223,16 +241,113 @@ public class IpcDispatcher
         return CommandResult.Ok();
     }
 
+    /// <summary>
+    /// Applies a JSON object of <see cref="AppSettings"/> properties: only the properties it names change, so two UI
+    /// pages saving their own settings can't undo each other's changes. A whole serialized AppSettings works too.
+    /// </summary>
     private CommandResult ReplaceSettings(string payload)
     {
-        var incoming = ParseArgument<AppSettings>(payload);
+        if (string.IsNullOrWhiteSpace(payload)) throw new ArgumentException("Missing AppSettings argument");
+        using var document = JsonDocument.Parse(payload);
+        if (document.RootElement.ValueKind != JsonValueKind.Object) throw new ArgumentException("Settings must be a JSON object");
+
+        var changes = new List<(PropertyInfo Property, object? Value)>();
+        foreach (var element in document.RootElement.EnumerateObject())
+        {
+            var property = typeof(AppSettings).GetProperty(element.Name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+            if (property == null || !property.CanWrite || property.Name == nameof(AppSettings.Id)) continue; // the row keeps its key
+            changes.Add((property, element.Value.Deserialize(property.PropertyType, JsonOptions)));
+        }
+
         return UpdateSettings(s =>
         {
-            var id = s.Id;
-            foreach (var property in typeof(AppSettings).GetProperties().Where(p => p.CanWrite))
-                property.SetValue(s, property.GetValue(incoming));
-            s.Id = id; // the stored row keeps its key whatever the client sent
+            foreach (var (property, value) in changes) property.SetValue(s, value);
         });
+    }
+
+    private CommandResult SaveProcessRule(ProcessRule rule, IIpcCaller caller)
+    {
+        rule.ProcessName = rule.ProcessName?.Trim() ?? "";
+        if (rule.ProcessName.Length == 0) return CommandResult.Fail("A rule needs a process name");
+        var invalid = ValidateRuleOptions(rule.IoPriority, rule.MemoryPriority, rule.GpuPriority, rule.GpuPreference, rule.CpuSetIds);
+        if (invalid != null) return invalid;
+        if (rule.PriorityClass is int pc && !Enum.IsDefined(typeof(ProcessPriorityClass), pc)) return CommandResult.Fail("Invalid priority class");
+        if (rule.AffinityMask == 0) return CommandResult.Fail("Affinity mask must select at least one CPU");
+
+        // The rule this replaces must be one the caller could have made, or they could lift an administrator's rule.
+        var existing = (rule.Id != 0 ? _ruleStore.GetProcessRules().FirstOrDefault(r => r.Id == rule.Id) : null)
+                       ?? _ruleStore.GetProcessRule(rule.ProcessName);
+        var denied = Authorize(caller, RuleAuthorization.CheckProcessRule(rule, caller, _processMonitor))
+                     ?? (existing == null ? null : Authorize(caller, RuleAuthorization.CheckProcessRule(existing, caller, _processMonitor)));
+        if (denied != null) return denied;
+
+        _ruleStore.SaveProcessRule(rule);
+        _logger.LogInformation("Process rule {Name} ({Id}) saved by {Caller}", rule.ProcessName, rule.Id, caller.Name);
+        return CommandResult.Ok(rule.Id.ToString(CultureInfo.InvariantCulture));
+    }
+
+    private CommandResult DeleteProcessRule(int id, IIpcCaller caller)
+    {
+        var existing = _ruleStore.GetProcessRules().FirstOrDefault(r => r.Id == id);
+        if (existing == null) return CommandResult.Ok(); // already gone
+        var denied = Authorize(caller, RuleAuthorization.CheckProcessRule(existing, caller, _processMonitor));
+        if (denied != null) return denied;
+
+        _ruleStore.DeleteProcessRule(id);
+        _logger.LogInformation("Process rule {Name} ({Id}) deleted by {Caller}", existing.ProcessName, id, caller.Name);
+        return CommandResult.Ok();
+    }
+
+    private CommandResult SaveWatchdogRule(WatchdogRule rule, IIpcCaller caller)
+    {
+        rule.TargetProcessName = rule.TargetProcessName?.Trim() ?? "";
+        if (rule.TargetProcessName.Length == 0) return CommandResult.Fail("A rule needs a process name");
+        if (!Enum.IsDefined(rule.ConditionType) || !Enum.IsDefined(rule.ActionType) || !Enum.IsDefined(rule.MemoryMetric))
+            return CommandResult.Fail("Unknown Watchdog condition or action");
+
+        WatchdogRule? existing = null;
+        if (rule.Id != 0)
+        {
+            existing = _ruleStore.GetWatchdogRules().FirstOrDefault(r => r.Id == rule.Id);
+            if (existing == null) return CommandResult.Fail($"Watchdog rule {rule.Id} no longer exists");
+        }
+        var denied = Authorize(caller, RuleAuthorization.CheckWatchdogRule(rule, caller, _processMonitor))
+                     ?? (existing == null ? null : Authorize(caller, RuleAuthorization.CheckWatchdogRule(existing, caller, _processMonitor)));
+        if (denied != null) return denied;
+
+        if (existing == null) _ruleStore.AddWatchdogRule(rule);
+        else _ruleStore.UpdateWatchdogRule(rule);
+        _logger.LogInformation("Watchdog rule {Id} for {Name} saved by {Caller}", rule.Id, rule.TargetProcessName, caller.Name);
+        return CommandResult.Ok(rule.Id.ToString(CultureInfo.InvariantCulture));
+    }
+
+    private CommandResult DeleteWatchdogRule(int id, IIpcCaller caller)
+    {
+        var existing = _ruleStore.GetWatchdogRules().FirstOrDefault(r => r.Id == id);
+        if (existing == null) return CommandResult.Ok();
+        var denied = Authorize(caller, RuleAuthorization.CheckWatchdogRule(existing, caller, _processMonitor));
+        if (denied != null) return denied;
+
+        _ruleStore.DeleteWatchdogRule(id);
+        _logger.LogInformation("Watchdog rule {Id} for {Name} deleted by {Caller}", id, existing.TargetProcessName, caller.Name);
+        return CommandResult.Ok();
+    }
+
+    private CommandResult? Authorize(IIpcCaller caller, string? refusal)
+    {
+        if (refusal == null) return null;
+        _logger.LogWarning("Refused a rule change from {Caller}: may not {What}", caller.Name, refusal);
+        return IpcAuthorization.Deny(caller, refusal);
+    }
+
+    private static CommandResult? ValidateRuleOptions(int? io, int? memory, int? gpu, int? gpuPreference, string? cpuSetIds)
+    {
+        if (io is int i && !ProcessRuleOptions.IsValid(ProcessRuleOptions.IoPriorities, i)) return CommandResult.Fail("Invalid I/O priority");
+        if (memory is int m && !ProcessRuleOptions.IsValid(ProcessRuleOptions.MemoryPriorities, m, ProcessRuleOptions.MinMemoryPriority)) return CommandResult.Fail("Invalid memory priority");
+        if (gpu is int g && !ProcessRuleOptions.IsValid(ProcessRuleOptions.GpuPriorities, g)) return CommandResult.Fail("Invalid GPU priority");
+        if (gpuPreference is int p && !ProcessRuleOptions.IsValid(ProcessRuleOptions.GpuPreferences, p)) return CommandResult.Fail("Invalid GPU preference");
+        if (cpuSetIds != null && !CpuSets.TryParseIds(cpuSetIds, out _)) return CommandResult.Fail("Invalid CPU Set IDs");
+        return null;
     }
 
     /// <summary>
@@ -244,11 +359,8 @@ public class IpcDispatcher
     {
         var dto = ParseArgument<RuleDto>(payload);
         if (string.IsNullOrWhiteSpace(dto.Name)) return CommandResult.Fail("A rule needs a process name");
-        if (dto.IoPriority is int io && !ProcessRuleOptions.IsValid(ProcessRuleOptions.IoPriorities, io)) return CommandResult.Fail("Invalid I/O priority");
-        if (dto.MemoryPriority is int mem && !ProcessRuleOptions.IsValid(ProcessRuleOptions.MemoryPriorities, mem, ProcessRuleOptions.MinMemoryPriority)) return CommandResult.Fail("Invalid memory priority");
-        if (dto.GpuPriority is int gpu && !ProcessRuleOptions.IsValid(ProcessRuleOptions.GpuPriorities, gpu)) return CommandResult.Fail("Invalid GPU priority");
-        if (dto.GpuPreference is int pref && !ProcessRuleOptions.IsValid(ProcessRuleOptions.GpuPreferences, pref)) return CommandResult.Fail("Invalid GPU preference");
-        if (dto.CpuSetIds != null && !CpuSets.TryParseIds(dto.CpuSetIds, out _)) return CommandResult.Fail("Invalid CPU Set IDs");
+        var invalid = ValidateRuleOptions(dto.IoPriority, dto.MemoryPriority, dto.GpuPriority, dto.GpuPreference, dto.CpuSetIds);
+        if (invalid != null) return invalid;
 
         // Copy rather than mutate the cached rule: other threads are reading it.
         var rule = new ProcessRule();

@@ -928,14 +928,15 @@ public class WatchdogTests
     }
 
     [Fact]
-    public void ViewModel_KeepRunning_SetsAndClearsTheProcessRuleFlag()
+    public async Task ViewModel_KeepRunning_SetsAndClearsTheProcessRuleFlag()
     {
         var name = $"keeprun{Guid.NewGuid():N}.exe";
-        WatchdogViewModel.SetKeepRunning(name, true);
         var vm = new WatchdogViewModel();
+        Assert.True((await vm.SetKeepRunningAsync(name, true)).Success);
+        vm.LoadKeepRunning();
         Assert.Contains(name, vm.KeepRunningProcesses);
 
-        WatchdogViewModel.SetKeepRunning(name, false);
+        Assert.True((await vm.SetKeepRunningAsync(name, false)).Success);
         vm.LoadKeepRunning();
         Assert.DoesNotContain(name, vm.KeepRunningProcesses);
     }

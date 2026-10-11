@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -11,6 +12,7 @@ using ProGuard.Core.Data;
 using ProGuard.Core.Helpers;
 using ProGuard.Core.Models;
 using ProGuard.Shared.Contracts;
+using ProGuard.UI.IPC;
 using ProGuard.UI.Services;
 
 namespace ProGuard.UI.ViewModels;
@@ -109,14 +111,19 @@ public partial class WatchdogViewModel : ViewModelBase
     private WatchdogCondition SelectedCondition => Lookup(ConditionOptions, ConditionValues, NewCondition, WatchdogCondition.CpuAbove);
     private WatchdogAction SelectedAction => Lookup(ActionOptions, ActionValues, NewAction, WatchdogAction.Terminate);
 
-    public WatchdogViewModel()
+    private readonly ConfigWriter _config;
+
+    public WatchdogViewModel() : this(new ConfigWriter(new EngineProxy())) { }
+
+    public WatchdogViewModel(ConfigWriter config)
     {
+        _config = config;
         LoadRules();
         LoadKeepRunning();
         LoadRecentTriggers();
     }
 
-    public WatchdogViewModel(WatchdogNotificationListener listener) : this()
+    public WatchdogViewModel(WatchdogNotificationListener listener, ConfigWriter config) : this(config)
     {
         if (listener.LatestEvent != null) ShowRecent(new[] { listener.LatestEvent });
         listener.EventsReceived += (_, events) =>
@@ -189,22 +196,13 @@ public partial class WatchdogViewModel : ViewModelBase
             IsEnabled = r.IsEnabled
         };
 
-        item.PropertyChanged += (s, e) =>
+        item.PropertyChanged += async (s, e) =>
         {
-            if (e.PropertyName == nameof(WatchdogRuleDisplayItem.IsEnabled))
-            {
-                try
-                {
-                    using var db = new ProGuardDbContext();
-                    var entity = db.WatchdogRules.FirstOrDefault(w => w.Id == item.Id);
-                    if (entity != null)
-                    {
-                        entity.IsEnabled = item.IsEnabled;
-                        db.SaveChanges();
-                    }
-                }
-                catch { }
-            }
+            if (e.PropertyName != nameof(WatchdogRuleDisplayItem.IsEnabled)) return;
+            r.IsEnabled = item.IsEnabled;
+            var result = await _config.SaveWatchdogRuleAsync(r);
+            if (!result.Success)
+                MessageBox.Show($"Watchdog rule not saved: {result.Error}", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
         };
 
         return item;
@@ -296,7 +294,7 @@ public partial class WatchdogViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void SaveNewRule()
+    private async Task SaveNewRuleAsync()
     {
         var error = TryBuildRule(out var entity);
         if (error != null)
@@ -307,11 +305,13 @@ public partial class WatchdogViewModel : ViewModelBase
 
         try
         {
-            using var db = new ProGuardDbContext();
-            db.EnsureSchema();
-
-            db.WatchdogRules.Add(entity);
-            db.SaveChanges();
+            var result = await _config.SaveWatchdogRuleAsync(entity);
+            if (!result.Success)
+            {
+                MessageBox.Show($"Watchdog rule not saved: {result.Error}", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            if (result.Id is int id) entity.Id = id;
 
             WatchdogRules.Add(CreateDisplayItem(entity));
 
@@ -333,19 +333,16 @@ public partial class WatchdogViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void DeleteRule(WatchdogRuleDisplayItem item)
+    private async Task DeleteRuleAsync(WatchdogRuleDisplayItem item)
     {
         if (item == null) return;
         try
         {
-            using var db = new ProGuardDbContext();
-            db.EnsureSchema();
-
-            var entity = db.WatchdogRules.FirstOrDefault(r => r.Id == item.Id);
-            if (entity != null)
+            var result = await _config.DeleteWatchdogRuleAsync(item.Id);
+            if (!result.Success)
             {
-                db.WatchdogRules.Remove(entity);
-                db.SaveChanges();
+                MessageBox.Show($"Watchdog rule not deleted: {result.Error}", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
 
             WatchdogRules.Remove(item);
@@ -358,13 +355,18 @@ public partial class WatchdogViewModel : ViewModelBase
 
     /// <summary>Sets Keep Running on the process's rule, creating the rule if it has none.</summary>
     [RelayCommand]
-    private void AddKeepRunning()
+    private async Task AddKeepRunningAsync()
     {
         if (string.IsNullOrWhiteSpace(NewKeepRunningName)) return;
         var name = NormalizeExeName(NewKeepRunningName);
         try
         {
-            SetKeepRunning(name, true);
+            var result = await SetKeepRunningAsync(name, true);
+            if (!result.Success)
+            {
+                MessageBox.Show($"Keep Running not saved: {result.Error}", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             NewKeepRunningName = string.Empty;
             LoadKeepRunning();
         }
@@ -376,12 +378,17 @@ public partial class WatchdogViewModel : ViewModelBase
 
     /// <summary>Clears Keep Running. The process rule stays, since it may carry other settings.</summary>
     [RelayCommand]
-    private void RemoveKeepRunning(string? name)
+    private async Task RemoveKeepRunningAsync(string? name)
     {
         if (string.IsNullOrWhiteSpace(name)) return;
         try
         {
-            SetKeepRunning(name, false);
+            var result = await SetKeepRunningAsync(name, false);
+            if (!result.Success)
+            {
+                MessageBox.Show($"Keep Running not removed: {result.Error}", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             LoadKeepRunning();
         }
         catch (Exception ex)
@@ -390,20 +397,14 @@ public partial class WatchdogViewModel : ViewModelBase
         }
     }
 
-    internal static void SetKeepRunning(string processName, bool keepRunning)
-    {
-        using var db = new ProGuardDbContext();
-        db.EnsureSchema();
-        var key = ProcessExtensions.NormalizeName(processName);
-        var rules = db.ProcessRules.ToList().Where(r => ProcessExtensions.NormalizeName(r.ProcessName) == key).ToList();
-        if (rules.Count == 0)
+    /// <summary>Sets Keep Running on the process's rule, creating the rule if it has none (and Keep Running is wanted).</summary>
+    internal Task<SaveResult> SetKeepRunningAsync(string processName, bool keepRunning) =>
+        _config.UpdateProcessRuleAsync(processName, rule =>
         {
-            if (!keepRunning) return;
-            db.ProcessRules.Add(new ProcessRule { ProcessName = processName, KeepRunning = true });
-        }
-        foreach (var rule in rules) rule.KeepRunning = keepRunning;
-        db.SaveChanges();
-    }
+            if (rule.Id == 0 && !keepRunning) return false; // no rule, nothing to clear
+            rule.KeepRunning = keepRunning;
+            return true;
+        });
 
     private static string NormalizeExeName(string name)
     {

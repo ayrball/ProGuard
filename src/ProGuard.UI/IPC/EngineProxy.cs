@@ -36,6 +36,9 @@ public class EngineProxy : IDisposable
 
     public bool IsConnected => _pipeClient.IsConnected;
 
+    /// <summary>False when no engine has created its pipe, so a request would only time out.</summary>
+    public bool IsEngineListening => _pipeClient.ServerExists();
+
     public Task<bool> InitializeAsync(CancellationToken cancellationToken = default) => _pipeClient.ConnectAsync(cancellationToken);
 
     public async Task<bool> PingAsync(CancellationToken cancellationToken = default)
@@ -119,6 +122,38 @@ public class EngineProxy : IDisposable
 
     public Task<CommandResult?> ConfigureSmartTrimAsync(SmartTrimArgument argument, CancellationToken cancellationToken = default) =>
         SendCommandAsync(CommandTypes.ConfigureSmartTrim, null, JsonSerializer.Serialize(argument), cancellationToken);
+
+    // ---------- Settings and rules (the engine owns the database) ----------
+
+    /// <summary>
+    /// Changes the stored settings named in <paramref name="changesJson"/>, a JSON object of
+    /// <see cref="AppSettings"/> property names and values; the others keep their stored values.
+    /// </summary>
+    public async Task<CommandResult?> UpdateSettingsAsync(string changesJson, CancellationToken cancellationToken = default)
+    {
+        var reply = await _pipeClient.SendAsync(new IpcMessage { Type = MessageType.SetSetting, Payload = changesJson }, cancellationToken).ConfigureAwait(false);
+        if (reply == null) return null;
+        if (reply.Type != MessageType.CommandResult) return CommandResult.Fail($"Unexpected reply {reply.Type} to {MessageType.SetSetting}");
+        return Deserialize<CommandResult>(reply.Payload) ?? CommandResult.Fail($"Empty reply to {MessageType.SetSetting}");
+    }
+
+    /// <summary>Adds or replaces a process rule (matched by Id, then by name). The result's Data is the rule's Id.</summary>
+    public Task<CommandResult?> SaveProcessRuleAsync(ProcessRule rule, CancellationToken cancellationToken = default) =>
+        SendCommandAsync(CommandTypes.SaveProcessRule, null, JsonSerializer.Serialize(rule), cancellationToken);
+
+    public Task<CommandResult?> DeleteProcessRuleAsync(int id, CancellationToken cancellationToken = default) =>
+        SendCommandAsync(CommandTypes.DeleteProcessRule, null, id.ToString(CultureInfo.InvariantCulture), cancellationToken);
+
+    /// <summary>Adds (Id 0) or replaces a Watchdog rule. The result's Data is the rule's Id.</summary>
+    public Task<CommandResult?> SaveWatchdogRuleAsync(WatchdogRule rule, CancellationToken cancellationToken = default) =>
+        SendCommandAsync(CommandTypes.SaveWatchdogRule, null, JsonSerializer.Serialize(rule), cancellationToken);
+
+    public Task<CommandResult?> DeleteWatchdogRuleAsync(int id, CancellationToken cancellationToken = default) =>
+        SendCommandAsync(CommandTypes.DeleteWatchdogRule, null, id.ToString(CultureInfo.InvariantCulture), cancellationToken);
+
+    /// <summary>Deletes the action log (administrators only).</summary>
+    public Task<CommandResult?> ClearActionLogAsync(CancellationToken cancellationToken = default) =>
+        SendCommandAsync(CommandTypes.ClearActionLog, null, null, cancellationToken);
 
     // ---------- Runtime toggles ----------
 

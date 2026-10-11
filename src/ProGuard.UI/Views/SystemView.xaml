@@ -334,7 +334,7 @@
                     <DockPanel>
                         <Border DockPanel.Dock="Right" Style="{StaticResource Tag}" VerticalAlignment="Center"
                                 Visibility="{Binding PerformanceModeAutomatic, Converter={StaticResource VisibleWhen}}">
-                            <TextBlock Text="ON AUTOMATICALLY — A GAME IS RUNNING" Style="{StaticResource Tag.Text}"/>
+                            <TextBlock Text="ON AUTOMATICALLY — A LISTED PROGRAM OR A GAME IS RUNNING" Style="{StaticResource Tag.Text}"/>
                         </Border>
                         <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding PerformanceMode}" HorizontalAlignment="Left">
                             <TextBlock Text="PERFORMANCE MODE" FontWeight="Bold" FontSize="15"/>
@@ -409,7 +409,8 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Button Command="{Binding DataContext.ActivatePlanCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                        CommandParameter="{Binding}" Margin="0,0,8,8" MinWidth="170" Padding="16,14" HorizontalContentAlignment="Left">
+                                        CommandParameter="{Binding}" Margin="0,0,8,8" MinWidth="170" Padding="16,14" HorizontalContentAlignment="Left"
+                                        AutomationProperties.Name="{Binding Name}">
                                     <Button.Style>
                                         <Style TargetType="Button" BasedOn="{StaticResource Btn.Outline}">
                                             <Setter Property="BorderBrush" Value="{StaticResource VoltLineBrush}"/>
@@ -460,7 +461,7 @@
                     <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding StartWithWindows}">
                         <TextBlock Text="START WITH WINDOWS" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>
-                    <TextBlock Style="{StaticResource Note}" Text="Opens this window when you sign in. The engine runs on its own either way."/>
+                    <TextBlock Style="{StaticResource Note}" Text="Starts ProGuard in the tray when you sign in. The engine runs on its own either way."/>
                     <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding MinimizeToTray}" Margin="0,22,0,0">
                         <TextBlock Text="KEEP RUNNING IN THE TRAY" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>

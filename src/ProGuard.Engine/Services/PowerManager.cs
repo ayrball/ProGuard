@@ -44,6 +44,12 @@ public sealed record PowerPlanChange(DateTime Time, Guid From, Guid To, PowerPla
 /// service in session 0, where <c>GetLastInputInfo</c> never sees the user's input, so the UI on each desktop reports
 /// it. Unknown idle time (no UI reporting) counts as "not idle": IdleSaver never acts on a guess.
 /// </para>
+/// <para>
+/// <b>Crash recovery.</b> While a feature holds a plan other than the baseline, the baseline is also kept in
+/// <see cref="IPowerPlanRecoveryStore"/>, written before the switch away from it and cleared once it is restored (or the
+/// user's own change makes it moot). If the engine dies in between, the next start restores it, unless a start-with
+/// plan is configured or the plan was changed since (Process Lasso's IdleSaverRecoveryGUID).
+/// </para>
 /// <para>Every switch is logged with its reason, to the engine log and to the Logs page (through
 /// <see cref="IRuleStore"/>), and kept in <see cref="RecentChanges"/>.</para>
 /// </summary>
@@ -61,6 +67,7 @@ public class PowerManager : IPowerManager
     private readonly Func<TimeSpan> _clock;
     private readonly Func<Guid, string> _describePlan;
     private readonly IRuleStore? _ruleStore;
+    private readonly IPowerPlanRecoveryStore _recovery;
     private readonly object _sync = new();
     private readonly LinkedList<PowerPlanChange> _recentChanges = new();
 
@@ -74,6 +81,7 @@ public class PowerManager : IPowerManager
     private Guid _baseline;
     private bool _userOverrode;
     private (PowerPlanOwner Owner, Guid Plan)? _failedSwitch;   // not retried until the decision changes
+    private PendingPlanRestore? _recorded;   // what the recovery store holds, as far as this run knows
 
     // Performance Mode
     private Guid _performancePlan = Powrprof.HighPerformance;
@@ -98,11 +106,12 @@ public class PowerManager : IPowerManager
     {
     }
 
-    /// <summary>Tests replace the power-plan API, the CPU load and the clock, so they can run the state machine
-    /// without touching the machine or waiting.</summary>
+    /// <summary>Tests replace the power-plan API, the CPU load, the clock and the recovery store, so they can run the
+    /// state machine without touching the machine or the disk, or waiting.</summary>
     internal PowerManager(ILogger<PowerManager>? logger, IUserIdleSource idleSource,
         Func<Guid>? readActivePlan, Func<Guid, bool>? writeActivePlan,
-        Func<double>? systemCpuPercent = null, Func<TimeSpan>? clock = null, IRuleStore? ruleStore = null)
+        Func<double>? systemCpuPercent = null, Func<TimeSpan>? clock = null, IRuleStore? ruleStore = null,
+        IPowerPlanRecoveryStore? recoveryStore = null)
     {
         _logger = logger ?? NullLogger<PowerManager>.Instance;
         _idleSource = idleSource;
@@ -113,6 +122,10 @@ public class PowerManager : IPowerManager
         _ruleStore = ruleStore;
         // Reading names goes to powrprof; with a faked plan API, keep the log free of real lookups.
         _describePlan = readActivePlan == null ? PowerPlans.Describe : id => PowerPlans.WellKnownName(id) ?? id.ToString();
+        // Likewise, a faked plan API never leaves a record on the real disk.
+        _recovery = recoveryStore ?? (readActivePlan == null
+            ? new FilePowerPlanRecoveryStore(_logger)
+            : new MemoryPowerPlanRecoveryStore());
     }
 
     /// <summary>The plan changes made since the engine started, oldest first.</summary>
@@ -143,6 +156,9 @@ public class PowerManager : IPowerManager
         lock (_sync)
         {
             _stopped = false;
+            // Settings are applied before this, but nothing asks for a plan until the loop and the command pipe start,
+            // so no switch in this run can have replaced the last run's record yet.
+            RecoverFromLastRun();
             if (_startupPlan != Guid.Empty)
             {
                 var current = _readActivePlan();
@@ -169,6 +185,50 @@ public class PowerManager : IPowerManager
         {
             _stopped = true;
             Arbitrate("engine stopping");
+        }
+    }
+
+    /// <summary>
+    /// Restores the plan a previous run switched away from and never got to restore (it crashed or was killed), if
+    /// that switch is still in effect. A configured start-with plan takes priority. Caller holds the lock.
+    /// </summary>
+    private void RecoverFromLastRun()
+    {
+        if (_recovery.Load() is not { } pending) return;
+        _recorded = pending;
+        _logger.LogWarning("The engine last stopped while {Applied} was on in place of the user's plan {Plan}",
+            _describePlan(pending.Applied), _describePlan(pending.Restore));
+
+        if (_startupPlan != Guid.Empty)
+        {
+            _logger.LogInformation("Not restoring it: the start-with plan {Plan} applies instead", _describePlan(_startupPlan));
+            SetRecord(null);
+            return;
+        }
+
+        var current = _readActivePlan();
+        // As in Arbitrate, an unreadable plan is assumed unchanged.
+        if (current != pending.Applied && current != Guid.Empty)
+        {
+            _logger.LogInformation("Not restoring it: the power plan was changed to {Plan} since", _describePlan(current));
+            SetRecord(null);
+            return;
+        }
+        if (current == pending.Restore)
+        {
+            SetRecord(null);
+            return;
+        }
+        if (_writeActivePlan(pending.Restore))
+        {
+            Record(current, pending.Restore, PowerPlanOwner.None,
+                "engine started; restored the plan from before the engine last stopped unexpectedly");
+            SetRecord(null);
+        }
+        else
+        {
+            // Kept for the next start, and as the baseline if a feature takes over meanwhile (see Arbitrate).
+            _logger.LogError("Failed to restore power plan {Plan} left over from the last run", _describePlan(pending.Restore));
         }
     }
 
@@ -253,6 +313,7 @@ public class PowerManager : IPowerManager
             _baseline = current;
             _logger.LogInformation("Power plan was changed to {Plan} while {Owner} held it; leaving the user's choice",
                 _describePlan(current), _owner);
+            UpdateRecord();
         }
 
         if (owner == _owner)
@@ -271,11 +332,21 @@ public class PowerManager : IPowerManager
             _owner = PowerPlanOwner.None;
             _userOverrode = false;
             _failedSwitch = null;
-            if (overridden || _baseline == Guid.Empty || _baseline == current) return;
+            if (overridden || _baseline == Guid.Empty || _baseline == current)
+            {
+                UpdateRecord();
+                return;
+            }
             if (_writeActivePlan(_baseline))
+            {
                 Record(current, _baseline, previous, $"{reason}; restored the plan from before {Describe(previous)}");
+                UpdateRecord();
+            }
             else
+            {
+                // The record stays, so the next start (or the next feature to take over) still knows the user's plan.
                 _logger.LogError("Failed to restore power plan {Plan} after {Owner} ended", _describePlan(_baseline), previous);
+            }
             return;
         }
 
@@ -288,7 +359,8 @@ public class PowerManager : IPowerManager
                 _logger.LogWarning("{Owner}: can't read the active power plan, so not switching (it couldn't be restored)", owner);
                 return;
             }
-            _baseline = current;
+            // A restore still owed (it failed, in this run or the last) means this is a feature's plan, not the user's.
+            _baseline = _recorded is { } owed && owed.Applied == current ? owed.Restore : current;
         }
         _owner = owner;
         _userOverrode = false;
@@ -299,6 +371,8 @@ public class PowerManager : IPowerManager
     private void Switch(Guid current, PowerPlanOwner owner, Guid plan, string reason)
     {
         _applied = plan;
+        // Recorded before the switch, so there is no moment the engine could die on the new plan with no record of it.
+        UpdateRecord();
         if (plan == current) return;
         if (_writeActivePlan(plan))
         {
@@ -311,7 +385,27 @@ public class PowerManager : IPowerManager
             _applied = current;
             _failedSwitch = (owner, plan);
             _logger.LogError("{Owner}: failed to switch power plan to {Plan}", owner, _describePlan(plan));
+            UpdateRecord();
         }
+    }
+
+    /// <summary>
+    /// Brings the recovery record in line with the state: a restore is owed while a feature holds a plan other than the
+    /// baseline and the user hasn't overridden it. Caller holds the lock.
+    /// </summary>
+    private void UpdateRecord() =>
+        SetRecord(_owner != PowerPlanOwner.None && !_userOverrode && _applied != _baseline
+                  && _applied != Guid.Empty && _baseline != Guid.Empty
+            ? new PendingPlanRestore(_applied, _baseline)
+            : null);
+
+    /// <summary>Writes the record only when it changes, since <see cref="Arbitrate"/> runs every second.</summary>
+    private void SetRecord(PendingPlanRestore? pending)
+    {
+        if (pending == _recorded) return;
+        if (pending is { } p) _recovery.Save(p);
+        else _recovery.Clear();
+        _recorded = pending;
     }
 
     private void Record(Guid from, Guid to, PowerPlanOwner owner, string reason)
@@ -361,6 +455,7 @@ public class PowerManager : IPowerManager
             {
                 _userOverrode = true;
                 _baseline = planId;
+                UpdateRecord();
             }
         }
     }

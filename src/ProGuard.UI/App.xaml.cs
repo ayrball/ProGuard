@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ProGuard.UI.IPC;
 using ProGuard.UI.Services;
 using ProGuard.UI.ViewModels;
 using ProGuard.UI.Views;
@@ -37,6 +38,8 @@ public partial class App : Application
             services.AddSingleton<WatchdogPage>();
             services.AddSingleton<WatchdogViewModel>();
             
+            services.AddSingleton<EngineProxy>();
+
             services.AddSingleton<PowerPage>();
             services.AddSingleton<PowerViewModel>();
             

@@ -1,12 +1,16 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ProGuard.Core.Data;
 using ProGuard.Core.Models;
 using ProGuard.Core.Native;
+using ProGuard.Shared.Messages;
+using ProGuard.UI.IPC;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -34,8 +38,21 @@ public partial class PowerViewModel : ViewModelBase
 
     public ObservableCollection<PowerPlanItem> PowerPlans { get; set; } = new();
 
-    public PowerViewModel()
+    private readonly EngineProxy _engine;
+    private readonly Action<bool> _applyPerformanceModeLocally;
+
+    /// <summary>The most recent Performance Mode change; tests await it.</summary>
+    public Task PerformanceModeChange { get; private set; } = Task.CompletedTask;
+
+    public PowerViewModel() : this(new EngineProxy()) { }
+
+    /// <param name="applyPerformanceModeLocally">
+    /// What to do when the engine can't be reached; defaults to switching the power plan from this process.
+    /// </param>
+    public PowerViewModel(EngineProxy engine, Action<bool>? applyPerformanceModeLocally = null)
     {
+        _engine = engine;
+        _applyPerformanceModeLocally = applyPerformanceModeLocally ?? SetPerformancePlanLocally;
         InitializePowerPlans();
         LoadSettings();
     }
@@ -106,18 +123,42 @@ public partial class PowerViewModel : ViewModelBase
 
     partial void OnIsPerformanceModeEnabledChanged(bool value)
     {
-        if (value)
+        PerformanceModeChange = ApplyPerformanceModeAsync(PerformanceModeChange, value);
+    }
+
+    private async Task ApplyPerformanceModeAsync(Task previous, bool enable)
+    {
+        // Rapid toggles must reach the engine in order.
+        await previous;
+
+        // The engine owns Performance Mode: it runs with the service's privileges and remembers the plan to restore.
+        CommandResult? result = null;
+        try
         {
-            var highPerf = Powrprof.HighPerformance;
-            Powrprof.PowerSetActiveScheme(IntPtr.Zero, ref highPerf);
+            result = await _engine.EnablePerformanceModeAsync(enable);
         }
-        else
+        catch (Exception ex)
         {
-            var balanced = Powrprof.Balanced;
-            Powrprof.PowerSetActiveScheme(IntPtr.Zero, ref balanced);
+            Debug.WriteLine($"Performance Mode command failed: {ex.Message}");
         }
+
+        if (result == null)
+        {
+            try { _applyPerformanceModeLocally(enable); }
+            catch (Exception ex) { Debug.WriteLine($"Local Performance Mode switch failed: {ex.Message}"); }
+        }
+        else if (!result.Success)
+        {
+            Debug.WriteLine($"Engine refused Performance Mode change: {result.Error}");
+        }
+
         RefreshActivePlan();
-        SaveSettings();
+    }
+
+    private static void SetPerformancePlanLocally(bool enable)
+    {
+        var plan = enable ? Powrprof.HighPerformance : Powrprof.Balanced;
+        Powrprof.PowerSetActiveScheme(IntPtr.Zero, ref plan);
     }
 
     partial void OnIsIdleSaverEnabledChanged(bool value) => SaveSettings();

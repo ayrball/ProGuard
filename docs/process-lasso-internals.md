@@ -148,7 +148,7 @@ PL's design point: low thresholds and per-process hysteresis. It restrains early
 | Feature | ProGuard status | To match PL |
 |---|---|---|
 | CPU Limiter | Job-object hard cap (`CpuLimiter.cs`) | PL uses dynamic **affinity reduction** (threshold → drop N cores for T ms). The job cap is arguably stronger; keep it as "hard throttle" and add the affinity mode |
-| Persistent priority/affinity | Applied on start (`ProcessGovernor.cs:87-97`) | Add re-apply-if-changed, and optionally IFEO `PerfOptions` for zero-lag priority |
+| Persistent priority/affinity | Applied on start, re-applied if changed when the rule asks. Optional per-rule "set at launch" (`ApplyPrioritiesAtCreation`) writes the rule's priority class, I/O priority and memory priority to IFEO `PerfOptions` (`CpuPriorityClass`, `IoPriority`, `PagePriority`), so Windows applies them at process creation (`LaunchPriorityRegistry.cs`). Plain exe names only; entries are marked `ProGuardManaged` and removed when the rule is deleted, renamed or the option cleared (also for changes made while the engine was stopped). Administrators only (`RuleAuthorization`) | — |
 | IO / memory priority, efficiency mode | UI-only manual actions | Move into rules in the engine |
 | CPU Sets, GPU priority, GPU preference, thread boost | missing | `SetProcessDefaultCpuSets`, `D3DKMTSetProcessSchedulingPriorityClass`, `UserGpuPreferences` registry, `SetProcessPriorityBoost` |
 | Instance limits / keep running / instance balancer | `MaxInstances` field unused; no keep-running | |

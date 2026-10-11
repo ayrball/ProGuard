@@ -10,6 +10,7 @@ using ProGuard.Core.Native;
 using ProGuard.Core.Services;
 using ProGuard.Engine.IPC;
 using ProGuard.Engine.Services;
+using ProGuard.Engine.Services.ProcessRules;
 using ProGuard.Shared.Messages;
 
 namespace ProGuard.Tests;
@@ -77,6 +78,7 @@ internal sealed class ThinHarness
     public FakeDetails Details { get; } = new();
     public ActivityLog Manual { get; } = new();
     public WatchdogEventLog WatchdogEvents { get; } = new();
+    public FakeLaunchRegistry LaunchRegistry { get; } = new();
     public ForegroundBoostService ForegroundBoost { get; }
     public SnapshotBuilder Snapshots { get; }
     public IpcDispatcher Dispatcher { get; }
@@ -139,7 +141,7 @@ internal sealed class ThinHarness
 
         var actions = new ProcessActionService(NullLogger<ProcessActionService>.Instance, Tuning, Monitor, Controller.Object);
         var rules = new RuleService(NullLogger<RuleService>.Instance, Store.Object, Monitor, CpuLimiter.Object, ProBalance.Object,
-            Access.Object, Manual);
+            Access.Object, Manual, launchPriorities: new LaunchPriorityService(registry: LaunchRegistry));
         var feed = new ActivityFeed(Store.Object, Manual, WatchdogEvents);
         var thin = new ThinClientCommands(NullLogger<ThinClientCommands>.Instance, Snapshots, actions, rules, feed, Manual,
             Store.Object, Power.Object, Monitor, Tuning);

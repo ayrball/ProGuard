@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ProGuard.Engine.IPC;
 using ProGuard.Engine.Services;
+using ProGuard.Engine.Services.ProcessRules;
 
 namespace ProGuard.Engine;
 
@@ -28,6 +29,7 @@ public class EngineWorker : BackgroundService
     private readonly RuleStore _ruleStore;
     private readonly SettingsApplier _settingsApplier;
     private readonly AutoPerformanceModeService _autoPerformanceMode;
+    private readonly LaunchPriorityService? _launchPriorities;
 
     private static readonly TimeSpan RuleReloadInterval = TimeSpan.FromSeconds(2);
 
@@ -46,7 +48,8 @@ public class EngineWorker : BackgroundService
         RuleStore ruleStore,
         SettingsApplier settingsApplier,
         CpuAffinityLimiter cpuAffinityLimiter,
-        AutoPerformanceModeService autoPerformanceMode)
+        AutoPerformanceModeService autoPerformanceMode,
+        LaunchPriorityService? launchPriorities = null)
     {
         _logger = logger;
         _processMonitor = processMonitor;
@@ -63,6 +66,7 @@ public class EngineWorker : BackgroundService
         _settingsApplier = settingsApplier;
         _cpuAffinityLimiter = cpuAffinityLimiter;
         _autoPerformanceMode = autoPerformanceMode;
+        _launchPriorities = launchPriorities;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -71,6 +75,8 @@ public class EngineWorker : BackgroundService
 
         // Before the services start, so they come up with the user's settings rather than their defaults.
         _settingsApplier.Apply(_ruleStore.GetSettings());
+        // Catches up on rules changed while the engine was stopped (forced: the registry may have changed too).
+        _launchPriorities?.Sync(_ruleStore.GetProcessRules(), force: true);
 
         // Before anything asks for the foreground process, so a UI that's already running can reconnect.
         _foregroundPipeServer.Start();
@@ -96,7 +102,10 @@ public class EngineWorker : BackgroundService
                 try
                 {
                     if (_ruleStore.ReloadIfChanged())
+                    {
                         _settingsApplier.Apply(_ruleStore.GetSettings());
+                        _launchPriorities?.Sync(_ruleStore.GetProcessRules());
+                    }
                 }
                 catch (Exception ex) { _logger.LogError(ex, "Failed to reload rules"); }
             }

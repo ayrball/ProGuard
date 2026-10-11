@@ -162,7 +162,7 @@ public static class StandInData
         new()
         {
             Id = 3, ProcessName = "SearchIndexer.exe", PriorityClass = (int)ProcessPriorityClass.Idle, IoPriority = 0, MemoryPriority = 1,
-            EfficiencyMode = true,
+            EfficiencyMode = true, ApplyPrioritiesAtCreation = true,
         },
         new()
         {

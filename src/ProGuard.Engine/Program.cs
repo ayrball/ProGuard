@@ -84,6 +84,8 @@ public class Program
                     sp.GetRequiredService<IProcessMonitor>(),
                     sp.GetRequiredService<IRuleStore>()));
 
+                services.AddSingleton(sp => new LaunchPriorityService(sp.GetRequiredService<ILogger<LaunchPriorityService>>()));
+
                 services.AddSingleton<ProcessGovernor>();
                 services.AddSingleton<IProcessGovernor>(sp => sp.GetRequiredService<ProcessGovernor>());
                 

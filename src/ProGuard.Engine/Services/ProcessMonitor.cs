@@ -34,9 +34,12 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
     public event EventHandler<ProcessInfo>? ProcessStarted;
     public event EventHandler<int>? ProcessExited;
 
-    public ProcessMonitor(ILogger<ProcessMonitor> logger)
+    private readonly IForegroundTracker _foreground;
+
+    public ProcessMonitor(ILogger<ProcessMonitor> logger, IForegroundTracker? foreground = null)
     {
         _logger = logger;
+        _foreground = foreground ?? new ForegroundTracker(Microsoft.Extensions.Logging.Abstractions.NullLogger<ForegroundTracker>.Instance);
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -129,12 +132,7 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
     private void RefreshProcesses()
     {
         var currentProcesses = Process.GetProcesses();
-        var foregroundHwnd = User32.GetForegroundWindow();
-        uint foregroundPid = 0;
-        if (foregroundHwnd != IntPtr.Zero)
-        {
-            User32.GetWindowThreadProcessId(foregroundHwnd, out foregroundPid);
-        }
+        var foregroundPid = _foreground.GetForegroundPid();
 
         var currentPids = new HashSet<int>();
 
@@ -212,13 +210,7 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
     public ProcessInfo? GetProcess(int pid) => _processes.TryGetValue(pid, out var p) ? p : null;
 
     /// <inheritdoc/>
-    public int GetForegroundPid()
-    {
-        var hwnd = User32.GetForegroundWindow();
-        if (hwnd == IntPtr.Zero) return 0;
-        User32.GetWindowThreadProcessId(hwnd, out var pid);
-        return (int)pid;
-    }
+    public int GetForegroundPid() => _foreground.GetForegroundPid();
 
     /// <inheritdoc/>
     public TimeSpan PollingInterval => _pollingInterval;

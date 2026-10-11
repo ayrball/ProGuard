@@ -47,6 +47,12 @@ public static class CommandTypes
     /// <summary>Argument = serialized <see cref="SmartTrimArgument"/>.</summary>
     public const string ConfigureSmartTrim = "ConfigureSmartTrim";
 
+    /// <summary>
+    /// TargetPid = process owning the foreground window, 0 if none. Sent by the UI on
+    /// <see cref="PipeNames.Foreground"/> only: the engine runs as a service in session 0 and can't see the desktop.
+    /// </summary>
+    public const string ReportForeground = "ReportForeground";
+
     /// <summary>Argument = "true"/"false" (defaults to true). Not persisted: it is a runtime toggle.</summary>
     public const string EnablePerformanceMode = "EnablePerformanceMode";
     public const string DisablePerformanceMode = "DisablePerformanceMode";

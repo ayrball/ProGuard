@@ -30,6 +30,9 @@ public class Program
                 services.AddSingleton<RuleStore>();
                 services.AddSingleton<IRuleStore>(sp => sp.GetRequiredService<RuleStore>());
 
+                services.AddSingleton<ForegroundTracker>();
+                services.AddSingleton<IForegroundTracker>(sp => sp.GetRequiredService<ForegroundTracker>());
+
                 services.AddSingleton<ProcessMonitor>();
                 services.AddSingleton<IProcessMonitor>(sp => sp.GetRequiredService<ProcessMonitor>());
 
@@ -59,6 +62,7 @@ public class Program
                 services.AddSingleton<ForegroundBoostService>();
                 services.AddSingleton<IpcDispatcher>();
                 services.AddSingleton<PipeServer>();
+                services.AddSingleton<ForegroundPipeServer>();
                 
                 services.AddHostedService<EngineWorker>();
             })

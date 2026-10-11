@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using ProGuard.Core.Native;
 using ProGuard.Core.Services;
 
 namespace ProGuard.Engine.Services;
@@ -12,6 +11,7 @@ public class ForegroundBoostService : IDisposable
 {
     private readonly ILogger<ForegroundBoostService> _logger;
     private readonly IProBalanceEngine _proBalance;
+    private readonly IForegroundTracker _foreground;
     private Timer? _timer;
     private int _lastBoostedPid;
     private ProcessPriorityClass _lastOriginalPriority = ProcessPriorityClass.Normal;
@@ -30,10 +30,11 @@ public class ForegroundBoostService : IDisposable
         }
     }
 
-    public ForegroundBoostService(ILogger<ForegroundBoostService> logger, IProBalanceEngine proBalance)
+    public ForegroundBoostService(ILogger<ForegroundBoostService> logger, IProBalanceEngine proBalance, IForegroundTracker foreground)
     {
         _logger = logger;
         _proBalance = proBalance;
+        _foreground = foreground;
     }
 
     public void Start()
@@ -53,11 +54,8 @@ public class ForegroundBoostService : IDisposable
 
         try
         {
-            var hwnd = User32.GetForegroundWindow();
-            if (hwnd == IntPtr.Zero) return;
-
-            User32.GetWindowThreadProcessId(hwnd, out uint pidUint);
-            int currentPid = (int)pidUint;
+            // Not GetForegroundWindow: as a service the engine is in session 0 and can't see the user's desktop.
+            int currentPid = _foreground.GetForegroundPid();
 
             if (currentPid <= 4 || currentPid == _lastBoostedPid) return;
 

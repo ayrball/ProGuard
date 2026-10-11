@@ -21,6 +21,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="ProGuard.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\ProGuard.Core\ProGuard.Core.csproj" />
     <ProjectReference Include="..\ProGuard.Shared\ProGuard.Shared.csproj" />
   </ItemGroup>

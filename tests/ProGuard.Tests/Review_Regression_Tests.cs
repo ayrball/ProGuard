@@ -37,6 +37,25 @@ public class Review_Regression_Tests
         return Process.Start(psi)!;
     }
 
+    /// <summary>
+    /// A process that uses next to no CPU, even while starting, for tests whose CPU figures come from a mocked
+    /// monitor. A spinner, or PowerShell's ~1 s of startup CPU, gets restrained by any ProBalance-like tool running on
+    /// the machine (Process Lasso does exactly that) and breaks the test.
+    /// </summary>
+    private static Process StartIdleProcess()
+    {
+        var psi = new ProcessStartInfo("ping.exe", "-n 121 127.0.0.1")
+        {
+            CreateNoWindow = true,
+            UseShellExecute = false,
+            WindowStyle = ProcessWindowStyle.Hidden
+        };
+        var p = Process.Start(psi)!;
+        // A child inherits BelowNormal/Idle from its parent, and that tool may have restrained this busy test host.
+        p.PriorityClass = ProcessPriorityClass.Normal;
+        return p;
+    }
+
     private static void KillQuietly(Process p)
     {
         try { if (!p.HasExited) p.Kill(true); } catch { }
@@ -333,10 +352,10 @@ public class Review_Regression_Tests
 
     // ---------- ProBalance ----------
 
-    /// <summary>Spins up a hog and a ProBalance whose monitor reports it at 50% CPU on a machine pinned at 99%.</summary>
+    /// <summary>Starts a stand-in hog and a ProBalance whose monitor reports it at 50% CPU on a machine pinned at 99%.</summary>
     private static (ProBalanceEngine Engine, Process Victim, Action MarkExited) MakeEngagedProBalance()
     {
-        var victim = StartSpinner();
+        var victim = StartIdleProcess();
         Thread.Sleep(1000);
         bool exited = false;
 
@@ -401,7 +420,7 @@ public class Review_Regression_Tests
     public void ProBalance_NeverRestrainsProtectedSystemProcesses(string reportedName)
     {
         // A harmless stand-in process is reported under a protected name; it must be left alone.
-        var victim = StartSpinner();
+        var victim = StartIdleProcess();
         try
         {
             Thread.Sleep(500);

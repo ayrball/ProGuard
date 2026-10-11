@@ -14,6 +14,9 @@ namespace ProGuard.Engine.Services;
 public class ProcessGovernor : IProcessGovernor
 {
     private readonly ILogger<ProcessGovernor> _logger;
+    private readonly InstanceLimiter? _instanceLimiter;
+    private readonly InstanceBalancer? _instanceBalancer;
+    private readonly StartupBoostService? _startupBoost;
     private bool _isRunning;
 
     public IProcessMonitor Monitor { get; }
@@ -33,7 +36,10 @@ public class ProcessGovernor : IProcessGovernor
         ISmartTrimService smartTrim,
         IPowerManager powerManager,
         IWatchdogService watchdog,
-        IRuleStore ruleStore)
+        IRuleStore ruleStore,
+        InstanceLimiter? instanceLimiter = null,
+        InstanceBalancer? instanceBalancer = null,
+        StartupBoostService? startupBoost = null)
     {
         _logger = logger;
         Monitor = processMonitor;
@@ -43,6 +49,9 @@ public class ProcessGovernor : IProcessGovernor
         PowerManager = powerManager;
         Watchdog = watchdog;
         RuleStore = ruleStore;
+        _instanceLimiter = instanceLimiter;
+        _instanceBalancer = instanceBalancer;
+        _startupBoost = startupBoost;
 
         Monitor.ProcessStarted += OnProcessStarted;
         Monitor.ProcessExited += OnProcessExited;
@@ -51,6 +60,8 @@ public class ProcessGovernor : IProcessGovernor
     public void Start()
     {
         _isRunning = true;
+        _startupBoost?.Start();
+        _instanceBalancer?.Start();
         _logger.LogInformation("Process Governor started");
     }
 
@@ -59,11 +70,19 @@ public class ProcessGovernor : IProcessGovernor
         _isRunning = false;
         Monitor.ProcessStarted -= OnProcessStarted;
         Monitor.ProcessExited -= OnProcessExited;
+        _startupBoost?.Stop();
+        _instanceBalancer?.Stop();
         _logger.LogInformation("Process Governor stopped");
     }
 
     // Release the per-process job object (and its handle) once the limited process is gone.
-    private void OnProcessExited(object? sender, int pid) => CpuLimiter.RemoveLimit(pid);
+    private void OnProcessExited(object? sender, int pid)
+    {
+        CpuLimiter.RemoveLimit(pid);
+        _instanceLimiter?.OnProcessExited(pid);
+        _startupBoost?.OnProcessExited(pid);
+        _instanceBalancer?.OnProcessExited(pid); // re-splits the cores among the remaining instances
+    }
 
     public Task StartAsync(CancellationToken cancellationToken) { Start(); return Task.CompletedTask; }
     public Task StopAsync(CancellationToken cancellationToken) { Stop(); return Task.CompletedTask; }
@@ -84,6 +103,9 @@ public class ProcessGovernor : IProcessGovernor
                 return;
             }
 
+            // Before anything else is applied: this may be an instance over the limit.
+            if (_instanceLimiter?.Enforce(e, rule) == true) return;
+
             if (rule.PriorityClass.HasValue)
             {
                 p.PriorityClass = (ProcessPriorityClass)rule.PriorityClass.Value;
@@ -102,5 +124,10 @@ public class ProcessGovernor : IProcessGovernor
             }
         }
         catch (Exception ex) { _logger.LogDebug(ex, "Failed to apply rule to {Name} ({Pid})", e.Name, e.Pid); }
+
+        if (rule.DisallowExecution) return;
+        // After the rule's priority and affinity, so those are what the boost and the balancer restore.
+        _startupBoost?.TryBoost(e, rule);
+        _instanceBalancer?.OnProcessStarted(e, rule);
     }
 }

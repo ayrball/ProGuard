@@ -7,7 +7,7 @@ namespace ProGuard.Core.Native;
 [Flags]
 public enum ProcessAccessFlags : uint
 {
-    All = 0x001F0FFF,
+    All = 0x001FFFFF, // PROCESS_ALL_ACCESS (Vista+)
     Terminate = 0x00000001,
     CreateThread = 0x00000002,
     VirtualMemoryOperation = 0x00000008,

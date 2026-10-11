@@ -152,7 +152,7 @@ PL's design point: low thresholds and per-process hysteresis. It restrains early
 | CPU Sets, GPU priority, GPU preference, thread boost | missing | `SetProcessDefaultCpuSets`, `D3DKMTSetProcessSchedulingPriorityClass`, `UserGpuPreferences` registry, `SetProcessPriorityBoost` |
 | Instance limits / keep running / instance balancer | `MaxInstances` field unused; no keep-running | |
 | Startup boost | missing | |
-| SmartTrim | `EmptyWorkingSet` > 500 MB every 5 min, not gated on RAM load | Gate on memory load; add standby purge (`NtSetSystemInformation` 80/4) and file cache purge (81), with privileges |
+| SmartTrim | Done (`SmartTrimService.cs`): trims WS ≥ 196 MB every 15 min while load ≥ 65 %; standby purge (80/4) below 1024 MB free, optionally only in Performance Mode; optional file cache purge (`SetSystemFileCacheSize(-1,-1,0)`); privileges enabled via `AdjustTokenPrivileges`; admin-only "Purge now" IPC command | — |
 | Performance Mode / IdleSaver / load switcher | Plan switch exists but is never invoked; no idle detection; hardcoded 3 plans | `GetLastInputInfo`, `PowerEnumerate`, moving-average switcher, overlay schemes |
 | Watchdog | Duration ignored; Restart/SetAffinity no-ops; SetPriority ignores argument | Implement "for Y seconds" and the remaining actions |
 | Timer resolution, group extender | missing | Low priority |

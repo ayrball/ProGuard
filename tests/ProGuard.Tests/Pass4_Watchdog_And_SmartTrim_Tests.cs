@@ -47,8 +47,8 @@ public class Pass4_Watchdog_And_SmartTrim_Tests
 
         using var smartTrim = new SmartTrimService(mockLogger.Object, mockMonitor.Object);
 
-        // Default should be 500 MB
-        Assert.Equal(1024L * 1024L * 500L, smartTrim.ThresholdBytes);
+        // Default is Process Lasso's MinimumProcessWSSInMb, 196 MB
+        Assert.Equal(1024L * 1024L * 196L, smartTrim.ThresholdBytes);
 
         // Configure to 1 GB
         smartTrim.ThresholdBytes = 1024L * 1024L * 1024L;

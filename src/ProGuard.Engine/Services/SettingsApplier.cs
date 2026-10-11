@@ -63,6 +63,15 @@ public class SettingsApplier
                     TimeSpan.FromSeconds(settings.SmartTrimIntervalSeconds),
                     settings.SmartTrimMemoryThresholdMB * 1024L * 1024L));
 
+            if (all || previous!.SmartTrimMinimumRamLoadPercent != settings.SmartTrimMinimumRamLoadPercent
+                    || previous.SmartTrimExclusions != settings.SmartTrimExclusions
+                    || previous.SmartTrimLogNoAction != settings.SmartTrimLogNoAction
+                    || previous.StandbyPurgeEnabled != settings.StandbyPurgeEnabled
+                    || previous.StandbyPurgeFreeRamThresholdMB != settings.StandbyPurgeFreeRamThresholdMB
+                    || previous.StandbyPurgeOnlyInPerformanceMode != settings.StandbyPurgeOnlyInPerformanceMode
+                    || previous.FileCachePurgeEnabled != settings.FileCachePurgeEnabled)
+                TryApply("SmartTrim policy", () => _smartTrim.ConfigurePolicy(ToSmartTrimPolicy(settings)));
+
             if (all || previous!.IdleSaverEnabled != settings.IdleSaverEnabled
                     || previous.IdleTimeoutMinutes != settings.IdleTimeoutMinutes
                     || previous.IdlePowerPlanGuid != settings.IdlePowerPlanGuid)
@@ -92,6 +101,20 @@ public class SettingsApplier
         _proBalance.SetEnabled(settings.ProBalanceEnabled);
         _proBalance.SetSensitivity(settings.ProBalanceSensitivity);
     }
+
+    internal static SmartTrimPolicy ToSmartTrimPolicy(AppSettings settings) => new()
+    {
+        MinimumRamLoadPercent = settings.SmartTrimMinimumRamLoadPercent,
+        Exclusions = SplitProcessList(settings.SmartTrimExclusions),
+        LogNoAction = settings.SmartTrimLogNoAction,
+        StandbyPurgeEnabled = settings.StandbyPurgeEnabled,
+        StandbyFreeRamThresholdBytes = Math.Max(0, settings.StandbyPurgeFreeRamThresholdMB) * 1024L * 1024L,
+        StandbyOnlyInPerformanceMode = settings.StandbyPurgeOnlyInPerformanceMode,
+        FileCachePurgeEnabled = settings.FileCachePurgeEnabled,
+    };
+
+    internal static string[] SplitProcessList(string? list) =>
+        (list ?? "").Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     // One failing service must not stop the others from getting their settings.
     private void TryApply(string what, Action apply)

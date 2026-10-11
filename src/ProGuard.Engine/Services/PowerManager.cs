@@ -227,6 +227,12 @@ public class PowerManager : IPowerManager
         return false;
     }
 
+    /// <summary>Whether Performance Mode is on. SmartTrim reads it to gate its standby list purge.</summary>
+    public bool IsPerformanceModeActive
+    {
+        get { lock (_sync) return _performanceModeActive; }
+    }
+
     /// <inheritdoc/>
     public void EnablePerformanceMode(bool enable)
     {

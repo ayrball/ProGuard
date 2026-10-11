@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using ProGuard.Core.Models;
 using ProGuard.Core.Services;
+using ProGuard.Engine.Services.ProcessRules;
 
 namespace ProGuard.Engine.Services;
 
@@ -26,6 +27,8 @@ public class ProcessOrchestrator : IProcessOrchestrator
     public IPowerManager PowerManager { get; }
     public IWatchdogService Watchdog { get; }
     public IRuleStore RuleStore { get; }
+    /// <summary>I/O, memory, EcoQoS, boost, CPU Sets and GPU settings from the rule; null when not wired up.</summary>
+    public PersistentRuleService? PersistentRules { get; }
     public bool IsRunning => _isRunning;
 
     public ProcessOrchestrator(
@@ -39,7 +42,8 @@ public class ProcessOrchestrator : IProcessOrchestrator
         IRuleStore ruleStore,
         InstanceLimiter? instanceLimiter = null,
         InstanceSpread? instance spread = null,
-        StartupBoostService? startupBoost = null)
+        StartupBoostService? startupBoost = null,
+        PersistentRuleService? persistentRules = null)
     {
         _logger = logger;
         Monitor = processMonitor;
@@ -53,6 +57,8 @@ public class ProcessOrchestrator : IProcessOrchestrator
         _instance spread = instance spread;
         _startupBoost = startupBoost;
 
+        PersistentRules = persistentRules;
+
         Monitor.ProcessStarted += OnProcessStarted;
         Monitor.ProcessExited += OnProcessExited;
     }
@@ -62,12 +68,15 @@ public class ProcessOrchestrator : IProcessOrchestrator
         _isRunning = true;
         _startupBoost?.Start();
         _instance spread?.Start();
+
+        PersistentRules?.Start();
         _logger.LogInformation("Process Orchestrator started");
     }
 
     public void Stop()
     {
         _isRunning = false;
+        PersistentRules?.Stop();
         Monitor.ProcessStarted -= OnProcessStarted;
         Monitor.ProcessExited -= OnProcessExited;
         _startupBoost?.Stop();
@@ -82,6 +91,8 @@ public class ProcessOrchestrator : IProcessOrchestrator
         _instanceLimiter?.OnProcessExited(pid);
         _startupBoost?.OnProcessExited(pid);
         _instance spread?.OnProcessExited(pid); // re-splits the cores among the remaining instances
+
+        PersistentRules?.Forget(pid);
     }
 
     public Task StartAsync(CancellationToken cancellationToken) { Start(); return Task.CompletedTask; }
@@ -126,6 +137,10 @@ public class ProcessOrchestrator : IProcessOrchestrator
         catch (Exception ex) { _logger.LogDebug(ex, "Failed to apply rule to {Name} ({Pid})", e.Name, e.Pid); }
 
         if (rule.DisallowExecution) return;
+
+        // Separate from the block above so a priority/affinity failure doesn't skip these. Logs and never throws.
+        PersistentRules?.Apply(rule, new ProcessTarget(e.Pid, e.Name, e.FilePath));
+
         // After the rule's priority and affinity, so those are what the boost and the balancer restore.
         _startupBoost?.TryBoost(e, rule);
         _instance spread?.OnProcessStarted(e, rule);

@@ -466,7 +466,7 @@ public class PersistentRuleServiceTests
         var self = Environment.ProcessId;
         _rules.Setup(r => r.GetProcessRule("testhost")).Returns(new ProcessRule { ProcessName = "testhost.exe", IoPriority = 1, GpuPriority = 1 });
         var governor = new ProcessGovernor(NullLogger<ProcessGovernor>.Instance, _monitor.Object, Mock.Of<IProBalanceEngine>(), Mock.Of<ICpuLimiter>(),
-            Mock.Of<ISmartTrimService>(), Mock.Of<IPowerManager>(), Mock.Of<IWatchdogService>(), _rules.Object, Create());
+            Mock.Of<ISmartTrimService>(), Mock.Of<IPowerManager>(), Mock.Of<IWatchdogService>(), _rules.Object, persistentRules: Create());
 
         _monitor.Raise(m => m.ProcessStarted += null, _monitor.Object, new ProcessInfo { Pid = self, Name = "testhost" });
 
@@ -480,7 +480,7 @@ public class PersistentRuleServiceTests
     {
         _rules.Setup(r => r.GetProcessRule("ghost")).Returns(new ProcessRule { IoPriority = 1, DisallowExecution = true });
         var governor = new ProcessGovernor(NullLogger<ProcessGovernor>.Instance, _monitor.Object, Mock.Of<IProBalanceEngine>(), Mock.Of<ICpuLimiter>(),
-            Mock.Of<ISmartTrimService>(), Mock.Of<IPowerManager>(), Mock.Of<IWatchdogService>(), _rules.Object, Create());
+            Mock.Of<ISmartTrimService>(), Mock.Of<IPowerManager>(), Mock.Of<IWatchdogService>(), _rules.Object, persistentRules: Create());
 
         _monitor.Raise(m => m.ProcessStarted += null, _monitor.Object, new ProcessInfo { Pid = int.MaxValue - 1, Name = "ghost" });
 

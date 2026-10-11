@@ -34,7 +34,12 @@ public class Review_Regression_Tests
             UseShellExecute = false,
             WindowStyle = ProcessWindowStyle.Hidden
         };
-        return Process.Start(psi)!;
+        var p = Process.Start(psi)!;
+        // Above the test host's threads, so "running free" means the cap is gone rather than "won the CPU": on a 2-CPU
+        // CI runner the rest of the suite kept a Normal spinner at a few percent with no cap at all. A job's hard CPU
+        // cap holds whatever the priority, so the capped measurements are unaffected.
+        p.PriorityClass = ProcessPriorityClass.AboveNormal;
+        return p;
     }
 
     /// <summary>

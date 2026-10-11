@@ -469,6 +469,16 @@ public sealed class StandInMachine
         if (rule.PowerProfileGuid != null && !Guid.TryParse(rule.PowerProfileGuid, out _)) return "Invalid power plan GUID";
         if (!string.IsNullOrWhiteSpace(rule.CpuSetIds) && rule.CpuSetIds.Split(',').Any(id => !int.TryParse(id.Trim(), out _))) return "Invalid CPU Set IDs";
         if (rule.MaxInstances is int max && max < 1) return "Invalid instance limit";
+        if (rule.ApplyPrioritiesAtCreation)
+        {
+            var name = rule.ProcessName.Trim();
+            if (name.IndexOfAny(new[] { '*', '?', '\\', '/', ':' }) >= 0)
+                return "Priorities at launch need a plain program name such as game.exe: Windows can't match a wildcard or a path there";
+            if (rule.PriorityClass == (int)ProcessPriorityClass.RealTime)
+                return "Windows doesn't apply Realtime priority at launch; pick another priority or switch off priorities at launch";
+            if (rule.PriorityClass == null && rule.IoPriority == null && rule.MemoryPriority == null)
+                return "Priorities at launch need a priority, I/O priority or memory priority to apply";
+        }
         return null;
     }
 
@@ -577,6 +587,7 @@ public sealed class StandInMachine
         if (CriticalNames.Contains(Bare(rule.ProcessName))) return $"change rules for {rule.ProcessName}, a system process";
         if (rule.PriorityClass == (int)ProcessPriorityClass.RealTime || rule.StartupBoostPriorityClass == (int)ProcessPriorityClass.RealTime)
             return "set Realtime priority";
+        if (rule.ApplyPrioritiesAtCreation) return "apply priorities at launch: they are written to the machine-wide Image File Execution Options";
         if ((rule.DisallowExecution || rule.MaxInstances != null) && HasInstanceCallerCantEnd(rule.ProcessName))
             return $"make a rule that ends {rule.ProcessName}: some of its instances belong to Windows or another user";
         return null;

@@ -13,10 +13,26 @@ public class AppSettings
     public double ProBalanceCpuThreshold { get; set; } = 25.0;
     public double ProBalanceRecoveryThreshold { get; set; } = 10.0;
     
-    // SmartTrim
+    // SmartTrim. Defaults are Process Lasso's [MemoryManagement] ones (prolasso.ini key in brackets).
     public bool SmartTrimEnabled { get; set; } = false;
-    public int SmartTrimIntervalSeconds { get; set; } = 300;
-    public long SmartTrimMemoryThresholdMB { get; set; } = 1024;
+    /// <summary>[SmartTrimIntervalMins] 15.</summary>
+    public int SmartTrimIntervalSeconds { get; set; } = 900;
+    /// <summary>[MinimumProcessWSSInMb] Only processes with at least this working set are trimmed.</summary>
+    public long SmartTrimMemoryThresholdMB { get; set; } = 196;
+    /// <summary>[SmartTrimAutoMinimumRAMLoad] Periodic trims only run while memory load is at least this percent.</summary>
+    public int SmartTrimMinimumRamLoadPercent { get; set; } = 65;
+    /// <summary>Process names SmartTrim never trims, separated by commas, semicolons or new lines.</summary>
+    public string? SmartTrimExclusions { get; set; }
+    /// <summary>Also log the passes that find nothing to do.</summary>
+    public bool SmartTrimLogNoAction { get; set; } = false;
+    /// <summary>Purge the standby list when free RAM drops below <see cref="StandbyPurgeFreeRamThresholdMB"/>.</summary>
+    public bool StandbyPurgeEnabled { get; set; } = false;
+    /// <summary>[ClearStandbyFreeRAMThresholdMB] 1024.</summary>
+    public long StandbyPurgeFreeRamThresholdMB { get; set; } = 1024;
+    /// <summary>Only purge automatically while Performance Mode is on (Process Lasso's default).</summary>
+    public bool StandbyPurgeOnlyInPerformanceMode { get; set; } = true;
+    /// <summary>Also flush the system file cache when free RAM is low, and on "Purge now".</summary>
+    public bool FileCachePurgeEnabled { get; set; } = false;
     
     // IdleSaver
     public bool IdleSaverEnabled { get; set; } = false;

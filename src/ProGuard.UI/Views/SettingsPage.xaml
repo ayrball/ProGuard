@@ -37,6 +37,68 @@
                         <TextBlock Text="Enable SmartTrim Working Set Optimization" VerticalAlignment="Center"/>
                         <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding IsSmartTrimEnabled, Mode=TwoWay}" Content="Enabled"/>
                     </Grid>
+
+                    <TextBlock Text="Trim every (minutes):" Margin="0,0,0,4"/>
+                    <ui:NumberBox Value="{Binding SmartTrimIntervalMinutes, Mode=TwoWay}" Margin="0,0,0,12" Minimum="1" Maximum="1440"/>
+
+                    <TextBlock Text="Only when memory load is at least (%):" Margin="0,0,0,4"/>
+                    <ui:NumberBox Value="{Binding SmartTrimMinimumRamLoadPercent, Mode=TwoWay}" Margin="0,0,0,12" Minimum="0" Maximum="100"/>
+
+                    <TextBlock Text="Only processes using at least (MB):" Margin="0,0,0,4"/>
+                    <ui:NumberBox Value="{Binding SmartTrimThresholdMb, Mode=TwoWay}" Margin="0,0,0,12" Minimum="1" Maximum="65536"/>
+
+                    <TextBlock Text="Never trim these processes (comma separated):" Margin="0,0,0,4"/>
+                    <ui:TextBox Text="{Binding SmartTrimExclusions, Mode=TwoWay}" PlaceholderText="e.g. obs64.exe, game.exe" Margin="0,0,0,16"/>
+
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Purge standby list when free RAM is low" VerticalAlignment="Center"/>
+                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding IsStandbyPurgeEnabled, Mode=TwoWay}" Content="Enabled"/>
+                    </Grid>
+
+                    <TextBlock Text="Free RAM threshold (MB):" Margin="0,0,0,4"/>
+                    <ui:NumberBox Value="{Binding StandbyPurgeFreeRamThresholdMb, Mode=TwoWay}" Margin="0,0,0,12" Minimum="64" Maximum="65536"/>
+
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Only purge automatically while Performance Mode is on" VerticalAlignment="Center"/>
+                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding StandbyPurgeOnlyInPerformanceMode, Mode=TwoWay}" Content="Enabled"/>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Also purge the system file cache" VerticalAlignment="Center"/>
+                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding IsFileCachePurgeEnabled, Mode=TwoWay}" Content="Enabled"/>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Log passes that take no action" VerticalAlignment="Center"/>
+                        <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding SmartTrimLogNoAction, Mode=TwoWay}" Content="Enabled"/>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <ui:Button Content="Purge now" Command="{Binding PurgeNowCommand}"
+                                   ToolTip="Trim working sets and purge the standby list now (requires administrator)"/>
+                        <TextBlock Grid.Column="1" Text="{Binding PurgeResultText}" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    </Grid>
                 </StackPanel>
             </ui:CardControl>
 

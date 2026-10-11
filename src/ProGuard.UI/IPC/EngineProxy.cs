@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ProGuard.Core.Models;
 using ProGuard.Shared.Contracts;
 using ProGuard.Shared.Messages;
 
@@ -76,6 +77,22 @@ public class EngineProxy : IDisposable
     /// <summary>Trims one process, or with no pid every process above the SmartTrim threshold.</summary>
     public Task<CommandResult?> TrimWorkingSetAsync(int? pid = null, CancellationToken cancellationToken = default) =>
         SendCommandAsync(CommandTypes.TrimWorkingSet, pid, null, cancellationToken);
+
+    /// <summary>
+    /// SmartTrim's "Purge now" (administrators only). The report is null when the engine couldn't be reached or refused
+    /// the request; the result's Error then says why.
+    /// </summary>
+    public async Task<(CommandResult? Result, MemoryPurgeReport? Report)> PurgeMemoryAsync(CancellationToken cancellationToken = default)
+    {
+        var result = await SendCommandAsync(CommandTypes.PurgeMemory, null, null, cancellationToken).ConfigureAwait(false);
+        MemoryPurgeReport? report = null;
+        if (!string.IsNullOrEmpty(result?.Data))
+        {
+            try { report = JsonSerializer.Deserialize<MemoryPurgeReport>(result.Data); }
+            catch (JsonException) { }
+        }
+        return (result, report);
+    }
 
     // ---------- Settings commands (the engine persists these) ----------
 

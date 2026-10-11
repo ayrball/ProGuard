@@ -81,11 +81,13 @@ public class SchemaUpgraderTests : IDisposable
             var settings = db.Settings.Single();
             Assert.Equal(1, settings.Id);
             Assert.False(settings.ProBalanceEnabled); // existing value untouched
-            Assert.Equal(5, settings.ProBalanceSensitivity);
-            Assert.Equal(25.0, settings.ProBalanceCpuThreshold);
-            Assert.Equal(300, settings.SmartTrimIntervalSeconds);
-            Assert.Equal(1024, settings.SmartTrimMemoryThresholdMB);
-            Assert.True(settings.MinimizeToTray);
+            // Added columns take whatever a new AppSettings defaults to, so feature branches can change defaults.
+            var defaults = new AppSettings();
+            Assert.Equal(defaults.ProBalanceSensitivity, settings.ProBalanceSensitivity);
+            Assert.Equal(defaults.ProBalanceCpuThreshold, settings.ProBalanceCpuThreshold);
+            Assert.Equal(defaults.SmartTrimIntervalSeconds, settings.SmartTrimIntervalSeconds);
+            Assert.Equal(defaults.SmartTrimMemoryThresholdMB, settings.SmartTrimMemoryThresholdMB);
+            Assert.Equal(defaults.MinimizeToTray, settings.MinimizeToTray);
             Assert.Equal("System", settings.Theme);
             Assert.Null(settings.IdlePowerPlanGuid);
 

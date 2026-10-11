@@ -45,7 +45,12 @@ public class Program
                 services.AddSingleton<ICpuLimiter>(sp => sp.GetRequiredService<CpuLimiter>());
                 services.AddSingleton<CpuAffinityLimiter>();
 
-                services.AddSingleton<SmartTrimService>();
+                services.AddSingleton<SmartTrimService>(sp => new SmartTrimService(
+                    sp.GetRequiredService<ILogger<SmartTrimService>>(), sp.GetRequiredService<IProcessMonitor>())
+                {
+                    // PowerManager owns the Performance Mode state; resolved lazily, at the first check.
+                    IsPerformanceModeActive = () => sp.GetRequiredService<PowerManager>().IsPerformanceModeActive
+                });
                 services.AddSingleton<ISmartTrimService>(sp => sp.GetRequiredService<SmartTrimService>());
 
                 services.AddSingleton<PowerManager>();

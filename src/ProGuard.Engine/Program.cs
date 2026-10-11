@@ -60,6 +60,10 @@ public class Program
                 services.AddSingleton<AutoPerformanceModeService>();
                 services.AddSingleton<IAutoPerformanceMode>(sp => sp.GetRequiredService<AutoPerformanceModeService>());
 
+                services.AddSingleton<IProcessActions, Win32ProcessActions>();
+                services.AddSingleton<IUserSessionLauncher, UserSessionLauncher>();
+                services.AddSingleton<WatchdogEventLog>();
+                services.AddSingleton<KeepRunningService>();
                 services.AddSingleton<WatchdogService>();
                 services.AddSingleton<IWatchdogService>(sp => sp.GetRequiredService<WatchdogService>());
 

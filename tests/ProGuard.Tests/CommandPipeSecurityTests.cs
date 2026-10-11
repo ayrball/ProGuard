@@ -414,6 +414,13 @@ public class CommandPipeSecurityTests
         }
     }
 
+    /// <summary>
+    /// Bounds the wait for the engine, not a race against it: nothing below depends on how the engine's hang-up
+    /// interleaves with the client's write and read. Generous, because a loaded test run can be slow to schedule
+    /// the server loop.
+    /// </summary>
+    private static readonly TimeSpan OverlongRequestTimeout = TimeSpan.FromSeconds(30);
+
     [Fact]
     public async Task OverlongRequest_DropsTheConnection()
     {
@@ -421,26 +428,50 @@ public class CommandPipeSecurityTests
         var server = StartServer(h, out var pipeName);
         try
         {
+            using var cts = new CancellationTokenSource(OverlongRequestTimeout);
             using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            await client.ConnectAsync(cts.Token);
-            using var reader = new StreamReader(client);
-            using var writer = new StreamWriter(client) { AutoFlush = true };
-
             try
             {
-                await writer.WriteLineAsync(new string('x', PipeServer.MaxLineLength + 1).AsMemory(), cts.Token);
-                Assert.Null(await reader.ReadLineAsync(cts.Token));
+                await client.ConnectAsync(cts.Token);
+
+                // Raw bytes, not a StreamWriter: once the engine hangs up the pipe is broken, and a writer's flush on
+                // dispose would throw or not depending on whether the hang-up came during the write or after it.
+                // No newline either, so only the length limit can end the request.
+                var request = new byte[PipeServer.MaxLineLength + 1];
+                Array.Fill(request, (byte)'x');
+                try
+                {
+                    await client.WriteAsync(request, cts.Token);
+                }
+                catch (IOException)
+                {
+                    // The engine hung up while the request was still being written: just as good.
+                }
+
+                Assert.True(await WaitForHangUpAsync(client, cts.Token), "The engine replied to an overlong request instead of dropping it");
             }
-            catch (IOException)
+            catch (OperationCanceledException) when (cts.IsCancellationRequested)
             {
-                // The engine hung up while the request was still being written: just as good.
+                Assert.Fail($"The engine did not drop the connection within {OverlongRequestTimeout.TotalSeconds:0} s of an overlong request");
             }
-            Assert.False(cts.IsCancellationRequested);
         }
         finally
         {
             server.Stop();
+        }
+    }
+
+    /// <summary>True once the other end has closed the pipe; false if it sent anything instead.</summary>
+    private static async Task<bool> WaitForHangUpAsync(PipeStream pipe, CancellationToken token)
+    {
+        var buffer = new byte[256];
+        try
+        {
+            return await pipe.ReadAsync(buffer, token) == 0;
+        }
+        catch (IOException)
+        {
+            return true; // broken pipe: closed while the read was being issued
         }
     }
 }

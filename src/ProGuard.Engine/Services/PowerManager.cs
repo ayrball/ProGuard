@@ -117,7 +117,7 @@ public class PowerManager : IPowerManager
         _idleSource = idleSource;
         _readActivePlan = readActivePlan ?? ReadActiveScheme;
         _writeActivePlan = writeActivePlan ?? WriteActiveScheme;
-        _systemCpuPercent = systemCpuPercent ?? SystemInfo.GetOverallCpuPercent;
+        _systemCpuPercent = systemCpuPercent ?? SystemInfo.GetProcessorTimePercent;
         _clock = clock ?? (() => TimeSpan.FromMilliseconds(Environment.TickCount64));
         _ruleStore = ruleStore;
         // Reading names goes to powrprof; with a faked plan API, keep the log free of real lookups.

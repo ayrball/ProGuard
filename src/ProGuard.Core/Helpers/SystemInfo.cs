@@ -6,6 +6,16 @@ using ProGuard.Core.Native;
 
 namespace ProGuard.Core.Helpers;
 
+/// <summary>
+/// System-wide figures. CPU load comes in two measures:
+/// <list type="bullet">
+/// <item><see cref="GetOverallCpuPercent"/>: what Task Manager shows (PDH <c>% Processor Utility</c>, which scales busy
+/// time by the current clock speed). For display: dashboard, status bar, tray, engine status.</item>
+/// <item><see cref="GetProcessorTimePercent"/>: busy time from <c>GetSystemTimes</c>, the same measure as per-process
+/// CPU % (CPU time over wall time). The engine's decisions (ProBalance, load switcher) use this, so a system
+/// threshold and per-process thresholds compare like with like.</item>
+/// </list>
+/// </summary>
 public static class SystemInfo
 {
     private static readonly object _syncLock = new();
@@ -23,6 +33,13 @@ public static class SystemInfo
     /// engine's 500 ms sampling period.
     /// </summary>
     private const long MinSampleIntervalMs = 250;
+
+    // PDH counters, shared by every caller and collected at most every MinSampleIntervalMs for the same reason.
+    private static readonly object _countersLock = new();
+    private static ProcessorCounters? _counters;
+    private static bool _countersOpened;
+    private static long _lastCountersTick;
+    private static ProcessorSample _lastSample = ProcessorSample.Empty;
     private static string? _cachedCpuName;
 
     public static int LogicalProcessorCount => Environment.ProcessorCount;
@@ -198,7 +215,51 @@ public static class SystemInfo
         }
     }
 
-    public static double GetOverallCpuPercent()
+    /// <summary>
+    /// System CPU % as Task Manager shows it: PDH <c>\Processor Information(_Total)\% Processor Utility</c>, capped
+    /// at 100. Falls back to <see cref="GetProcessorTimePercent"/> when that counter can't be read.
+    /// </summary>
+    public static double GetOverallCpuPercent() =>
+        TaskManagerCpuPercent(GetProcessorSample().UtilityPercent) ?? GetProcessorTimePercent();
+
+    /// <summary>The display figure for an uncapped <c>% Processor Utility</c> reading, or null if there is none.</summary>
+    public static double? TaskManagerCpuPercent(double? utility) =>
+        utility is { } u && double.IsFinite(u) ? Math.Clamp(Math.Round(u, 1), 0.0, 100.0) : null;
+
+    /// <summary>
+    /// The latest reading of the PDH processor counters (utility, per-core % Processor Time, processor queue length).
+    /// Empty if PDH is unavailable, and without CPU figures until a second collection.
+    /// </summary>
+    public static ProcessorSample GetProcessorSample()
+    {
+        lock (_countersLock)
+        {
+            if (!_countersOpened)
+            {
+                _countersOpened = true;
+                _counters = ProcessorCounters.TryOpen();
+                _lastCountersTick = Environment.TickCount64;
+                return _lastSample;
+            }
+            if (_counters == null || Environment.TickCount64 - _lastCountersTick < MinSampleIntervalMs) return _lastSample;
+
+            _lastSample = _counters.Collect();
+            _lastCountersTick = Environment.TickCount64;
+            return _lastSample;
+        }
+    }
+
+    /// <summary>Per-logical-CPU <c>% Processor Time</c>, in CPU order; empty if PDH is unavailable.</summary>
+    public static IReadOnlyList<double> GetPerCoreCpuPercent() => GetProcessorSample().PerCorePercent;
+
+    /// <summary>Threads waiting for a CPU (<c>\System\Processor Queue Length</c>), or null if unavailable.</summary>
+    public static double? GetProcessorQueueLength() => GetProcessorSample().QueueLength;
+
+    /// <summary>
+    /// Busy share of all CPUs' time since the previous sample, from <c>GetSystemTimes</c>: the engine's decision input
+    /// (see the class summary). Not frequency-scaled, so it can differ from Task Manager.
+    /// </summary>
+    public static double GetProcessorTimePercent()
     {
         lock (_syncLock)
         {

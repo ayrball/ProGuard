@@ -102,6 +102,9 @@ public class SettingsApplier
                     || previous.ProBalanceRecoveryThreshold != settings.ProBalanceRecoveryThreshold)
                 TryApply("ProBalance", () => ApplyProBalanceSettings(settings));
 
+            if (all || ProBalanceRestraintOptions.FromSettings(previous!) != ProBalanceRestraintOptions.FromSettings(settings))
+                TryApply("ProBalance restraint actions", () => _proBalance.ConfigureRestraint(ProBalanceRestraintOptions.FromSettings(settings)));
+
             _applied = settings.Clone();
         }
     }

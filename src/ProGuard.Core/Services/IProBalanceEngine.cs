@@ -6,6 +6,8 @@ public interface IProBalanceEngine
     int ActiveInterventions { get; }
     void SetEnabled(bool enabled);
     void SetSensitivity(int level);
+    /// <summary>Optional restraint actions and the idle pause. Restraints already in place keep what they applied.</summary>
+    void ConfigureRestraint(ProBalanceRestraintOptions options);
     void ExcludeProcess(string name);
     void RemoveExclusion(string name);
 

@@ -18,6 +18,8 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
 {
     [ObservableProperty] private string cpuUsageText = "0%";
     [ObservableProperty] private string ramUsageText = "0%";
+    [ObservableProperty] private string responsivenessText = "n/a";
+    [ObservableProperty] private string queueLengthText = string.Empty;
     [ObservableProperty] private string proBalanceCount = "0";
     [ObservableProperty] private string activeRulesCount = "0";
     [ObservableProperty] private bool isActive = true;
@@ -37,9 +39,13 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
 
     public ObservableCollection<TopConsumerItem> TopConsumers { get; set; } = new();
 
+    /// <summary>Per-logical-CPU <c>% Processor Time</c>, in CPU order.</summary>
+    public ObservableCollection<CoreLoadItem> CoreLoads { get; } = new();
+
     private readonly ObservableCollection<ObservableValue> _cpuValues = new();
     private readonly ObservableCollection<ObservableValue> _ramValues = new();
     private readonly CpuUsageTracker _cpuTracker = new();
+    private readonly ResponsivenessMeter _responsiveness = new(Environment.ProcessorCount);
     private readonly System.Timers.Timer _timer;
     private static bool s_dbInitialized;
     private int _dbCheckCounter;
@@ -107,8 +113,14 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
 
     private void UpdateDashboardMetrics()
     {
-        double cpu = SystemInfo.GetOverallCpuPercent();
+        // Task Manager's figure (PDH % Processor Utility) for display; ProBalance decides on processor time instead.
+        var sample = SystemInfo.GetProcessorSample();
+        double cpu = SystemInfo.TaskManagerCpuPercent(sample.UtilityPercent) ?? SystemInfo.GetProcessorTimePercent();
         double ram = SystemInfo.GetMemoryLoadPercent();
+        var cores = sample.PerCorePercent;
+        if (sample.QueueLength is { } queue) _responsiveness.Add(queue);
+        var responsiveness = _responsiveness.Percent;
+        var averageQueue = _responsiveness.AverageQueueLength;
 
         if (!s_dbInitialized || (_dbCheckCounter++ % 10 == 0))
         {
@@ -135,6 +147,9 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
         {
             CpuUsageText = $"{cpu:0}%";
             RamUsageText = $"{ram:0}%";
+            ResponsivenessText = responsiveness is { } r ? $"{r:0}%" : "n/a";
+            QueueLengthText = averageQueue is { } q ? $"{q:0.#} threads waiting" : string.Empty;
+            UpdateCoreLoads(cores);
             ActiveRulesCount = rulesCount.ToString();
             ProBalanceCount = proBalanceCount.ToString();
 
@@ -163,6 +178,16 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
         {
             ApplyUpdate();
         }
+    }
+
+    private void UpdateCoreLoads(IReadOnlyList<double> cores)
+    {
+        if (CoreLoads.Count != cores.Count)
+        {
+            CoreLoads.Clear();
+            for (int i = 0; i < cores.Count; i++) CoreLoads.Add(new CoreLoadItem(i));
+        }
+        for (int i = 0; i < cores.Count; i++) CoreLoads[i].Percent = cores[i];
     }
 
     private List<TopConsumerItem> SampleTopConsumers()
@@ -216,6 +241,19 @@ public partial class DashboardViewModel : ViewModelBase, IDisposable
             _timer?.Dispose();
         }
     }
+}
+
+public partial class CoreLoadItem : ObservableObject
+{
+    public CoreLoadItem(int index) => Index = index;
+
+    public int Index { get; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ToolTip))]
+    private double percent;
+
+    public string ToolTip => $"CPU {Index}: {Percent:0}%";
 }
 
 public class TopConsumerItem

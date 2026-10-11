@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Media;
 using ProGuard.Core.Data;
 using ProGuard.Core.Models;
+using ProGuard.Core.Services;
 using ProGuard.UI.Converters;
 using ProGuard.UI.ViewModels;
 
@@ -183,6 +184,53 @@ public class Pass1_UI_NavigationAndViewModels_Tests
         var vm = new SettingsViewModel();
         Assert.True(vm.CpuThreshold >= 10 && vm.CpuThreshold <= 95);
         Assert.True(vm.Sensitivity >= 1 && vm.Sensitivity <= 10);
+    }
+
+    [Fact]
+    public void SettingsViewModel_PersistsProBalanceRestraintActions()
+    {
+        var vm = new SettingsViewModel();
+        try
+        {
+            vm.ProBalanceRestrainByAffinity = true;
+            vm.ProBalanceRestraintAffinity = 0x3;
+            vm.ProBalanceDropOneRandomCore = true;
+            vm.ProBalanceLowerIoPriority = true;
+            vm.ProBalanceUseEfficiencyMode = true;
+            vm.ProBalanceDoNotLowerPriorityClass = true;
+            vm.ProBalanceDisableWhenSysIdle = true;
+            vm.ProBalanceDisableIfSysIdleSeconds = 45;
+
+            var reloaded = new SettingsViewModel();
+            Assert.True(reloaded.ProBalanceRestrainByAffinity);
+            Assert.Equal(0x3, reloaded.ProBalanceRestraintAffinity);
+            Assert.True(reloaded.ProBalanceDropOneRandomCore);
+            Assert.True(reloaded.ProBalanceLowerIoPriority);
+            Assert.True(reloaded.ProBalanceUseEfficiencyMode);
+            Assert.True(reloaded.ProBalanceDoNotLowerPriorityClass);
+            Assert.True(reloaded.ProBalanceDisableWhenSysIdle);
+            Assert.Equal(45000, reloaded.ProBalanceDisableIfSysIdleMs);
+
+            using var db = new ProGuardDbContext();
+            var stored = db.Settings.Single();
+            Assert.Equal(new ProBalanceRestraintOptions
+            {
+                RestrainByAffinity = true, RestraintAffinity = 0x3, ProBalanceDropOneRandomCore = true,
+                LowerIOPriorityDuringRestraint = true, UseEfficiencyMode = true, DoNotLowerPriorityClass = true,
+                DisableProBalanceWhenSysIdle = true, DisableProBalanceIfSysIdleThisManyMS = 45000
+            }, ProBalanceRestraintOptions.FromSettings(stored));
+        }
+        finally
+        {
+            vm.ProBalanceRestrainByAffinity = false;
+            vm.ProBalanceRestraintAffinity = 0;
+            vm.ProBalanceDropOneRandomCore = false;
+            vm.ProBalanceLowerIoPriority = false;
+            vm.ProBalanceUseEfficiencyMode = false;
+            vm.ProBalanceDoNotLowerPriorityClass = false;
+            vm.ProBalanceDisableWhenSysIdle = false;
+            vm.ProBalanceDisableIfSysIdleMs = 30000;
+        }
     }
 
     [Fact]

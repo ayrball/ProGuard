@@ -9,10 +9,19 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel>
-            <TextBlock Text="ACTIVITY" Style="{StaticResource Text.Title}"/>
-            <TextBlock Text="EVERYTHING PROGUARD — AND YOU — DID, NEWEST FIRST" Style="{StaticResource Text.Label}" Margin="0,6,0,0"/>
-        </StackPanel>
+        <DockPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="0,0,0,6">
+                <Border Style="{StaticResource Tag}" Margin="0,0,10,0" Visibility="{Binding IsAdministrator, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}">
+                    <TextBlock Text="ADMIN" Style="{StaticResource Tag.Text}"/>
+                </Border>
+                <Button Style="{StaticResource Btn.Outline}" Content="CLEAR LOG" Command="{Binding ClearLogCommand}" IsEnabled="{Binding IsAdministrator}"
+                        ToolTip="Deletes the recorded ProBalance and power-plan actions (administrators only)"/>
+            </StackPanel>
+            <StackPanel>
+                <TextBlock Text="ACTIVITY" Style="{StaticResource Text.Title}"/>
+                <TextBlock Text="EVERYTHING PROGUARD — AND YOU — DID, NEWEST FIRST" Style="{StaticResource Text.Label}" Margin="0,6,0,0"/>
+            </StackPanel>
+        </DockPanel>
 
         <ListBox Grid.Row="1" Style="{StaticResource Choices}" ItemsSource="{Binding Kinds}" SelectedItem="{Binding Kind}" Margin="0,22,0,10"/>
 

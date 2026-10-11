@@ -45,6 +45,28 @@
                 <MenuItem Header="Idle" Command="{Binding SetPriorityCommand}" CommandParameter="Idle"
                           IsChecked="{Binding Selected.Priority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=Idle}"/>
             </MenuItem>
+            <MenuItem Header="I/O priority">
+                <MenuItem Header="High (administrator)" Command="{Binding SetIoPriorityCommand}" CommandParameter="3"
+                          IsChecked="{Binding Selected.IoPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=3}"/>
+                <MenuItem Header="Normal" Command="{Binding SetIoPriorityCommand}" CommandParameter="2"
+                          IsChecked="{Binding Selected.IoPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=2}"/>
+                <MenuItem Header="Low" Command="{Binding SetIoPriorityCommand}" CommandParameter="1"
+                          IsChecked="{Binding Selected.IoPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=1}"/>
+                <MenuItem Header="Very low" Command="{Binding SetIoPriorityCommand}" CommandParameter="0"
+                          IsChecked="{Binding Selected.IoPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=0}"/>
+            </MenuItem>
+            <MenuItem Header="Memory priority">
+                <MenuItem Header="Normal" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="5"
+                          IsChecked="{Binding Selected.MemoryPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=5}"/>
+                <MenuItem Header="Below normal" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="4"
+                          IsChecked="{Binding Selected.MemoryPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=4}"/>
+                <MenuItem Header="Medium" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="3"
+                          IsChecked="{Binding Selected.MemoryPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=3}"/>
+                <MenuItem Header="Low" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="2"
+                          IsChecked="{Binding Selected.MemoryPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=2}"/>
+                <MenuItem Header="Very low" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="1"
+                          IsChecked="{Binding Selected.MemoryPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=1}"/>
+            </MenuItem>
             <MenuItem Header="CPU cap…" Command="{Binding EditCpuLimitCommand}"/>
             <MenuItem Header="Cores…" Command="{Binding EditAffinityCommand}"/>
             <MenuItem Header="Efficiency mode" Command="{Binding ToggleEfficiencyCommand}" IsChecked="{Binding Selected.IsEfficiencyMode, Mode=OneWay}"/>
@@ -104,6 +126,10 @@
                         </Border>
                         <Border Style="{StaticResource Tag}" Visibility="{Binding IsRestrained, Converter={StaticResource VisibleWhen}}">
                             <TextBlock Text="BALANCED" Style="{StaticResource Tag.Text}"/>
+                        </Border>
+                        <Border Style="{StaticResource Tag}" Visibility="{Binding IsAffinityLimited, Converter={StaticResource VisibleWhen}}"
+                                ToolTip="The CPU Limiter has taken cores away from this process for now">
+                            <TextBlock Text="CORES LIMITED" Style="{StaticResource Tag.Text}"/>
                         </Border>
                         <Border Style="{StaticResource Tag}" Visibility="{Binding HasRule, Converter={StaticResource VisibleWhen}}">
                             <TextBlock Text="RULE" Style="{StaticResource Tag.Text}"/>
@@ -261,6 +287,12 @@
                                 <RowDefinition/>
                                 <RowDefinition/>
                                 <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
                             </Grid.RowDefinitions>
                             <TextBlock Text="STARTED" Style="{StaticResource Text.Label}" Margin="0,3,16,3"/>
                             <TextBlock Grid.Column="1" Text="{Binding Selected.StartedText}" FontFamily="{StaticResource Mono}" FontSize="12" Margin="0,3"/>
@@ -268,6 +300,19 @@
                             <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Selected.ParentPid}" FontFamily="{StaticResource Mono}" FontSize="12" Margin="0,3"/>
                             <TextBlock Grid.Row="2" Text="CORES" Style="{StaticResource Text.Label}" Margin="0,3,16,3"/>
                             <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Selected.AffinityText}" FontFamily="{StaticResource Mono}" FontSize="12" Margin="0,3"/>
+                            <TextBlock Grid.Row="3" Text="USER" Style="{StaticResource Text.Label}" Margin="0,3,16,3"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Selected.UserText}" FontFamily="{StaticResource Mono}" FontSize="12" Margin="0,3"
+                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding Selected.UserText}"/>
+                            <TextBlock Grid.Row="4" Text="SESSION" Style="{StaticResource Text.Label}" Margin="0,3,16,3"/>
+                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Selected.SessionId}" FontFamily="{StaticResource Mono}" FontSize="12" Margin="0,3"/>
+                            <TextBlock Grid.Row="5" Text="PRIVATE" Style="{StaticResource Text.Label}" Margin="0,3,16,3"/>
+                            <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Selected.PrivateText}" FontFamily="{StaticResource Mono}" FontSize="12" Margin="0,3"/>
+                            <TextBlock Grid.Row="6" Text="THREADS" Style="{StaticResource Text.Label}" Margin="0,3,16,3"/>
+                            <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Selected.ThreadCount}" FontFamily="{StaticResource Mono}" FontSize="12" Margin="0,3"/>
+                            <TextBlock Grid.Row="7" Text="I/O PRIORITY" Style="{StaticResource Text.Label}" Margin="0,3,16,3"/>
+                            <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Selected.IoPriorityText}" FontFamily="{StaticResource Mono}" FontSize="12" Margin="0,3"/>
+                            <TextBlock Grid.Row="8" Text="MEMORY PRI." Style="{StaticResource Text.Label}" Margin="0,3,16,3"/>
+                            <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Selected.MemoryPriorityText}" FontFamily="{StaticResource Mono}" FontSize="12" Margin="0,3"/>
                         </Grid>
 
                         <TextBlock Text="PRIORITY" Style="{StaticResource Text.Label}" Margin="0,22,0,8"/>
@@ -282,6 +327,36 @@
                                     ui:Seg.IsOn="{Binding Selected.Priority, Converter={StaticResource EqualsParameter}, ConverterParameter=AboveNormal, Mode=OneWay}"/>
                             <Button Style="{StaticResource Seg}" Content="HIGH" Command="{Binding SetPriorityCommand}" CommandParameter="High"
                                     ui:Seg.IsOn="{Binding Selected.Priority, Converter={StaticResource EqualsParameter}, ConverterParameter=High, Mode=OneWay}"/>
+                        </UniformGrid>
+
+                        <DockPanel Margin="0,22,0,8">
+                            <TextBlock DockPanel.Dock="Right" Text="HIGH NEEDS ADMIN" FontFamily="{StaticResource Mono}" FontSize="9.5" Opacity="0.5"
+                                       Visibility="{Binding IsAdministrator, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}"/>
+                            <TextBlock Text="I/O PRIORITY" Style="{StaticResource Text.Label}"/>
+                        </DockPanel>
+                        <UniformGrid Columns="4">
+                            <Button Style="{StaticResource Seg}" Content="V.LOW" Command="{Binding SetIoPriorityCommand}" CommandParameter="0"
+                                    ui:Seg.IsOn="{Binding Selected.IoPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=0, Mode=OneWay}"/>
+                            <Button Style="{StaticResource Seg}" Content="LOW" Command="{Binding SetIoPriorityCommand}" CommandParameter="1"
+                                    ui:Seg.IsOn="{Binding Selected.IoPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=1, Mode=OneWay}"/>
+                            <Button Style="{StaticResource Seg}" Content="NORM" Command="{Binding SetIoPriorityCommand}" CommandParameter="2"
+                                    ui:Seg.IsOn="{Binding Selected.IoPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=2, Mode=OneWay}"/>
+                            <Button Style="{StaticResource Seg}" Content="HIGH" Command="{Binding SetIoPriorityCommand}" CommandParameter="3"
+                                    ui:Seg.IsOn="{Binding Selected.IoPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=3, Mode=OneWay}"/>
+                        </UniformGrid>
+
+                        <TextBlock Text="MEMORY PRIORITY" Style="{StaticResource Text.Label}" Margin="0,22,0,8"/>
+                        <UniformGrid Columns="5">
+                            <Button Style="{StaticResource Seg}" Content="V.LOW" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="1"
+                                    ui:Seg.IsOn="{Binding Selected.MemoryPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=1, Mode=OneWay}"/>
+                            <Button Style="{StaticResource Seg}" Content="LOW" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="2"
+                                    ui:Seg.IsOn="{Binding Selected.MemoryPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=2, Mode=OneWay}"/>
+                            <Button Style="{StaticResource Seg}" Content="MED" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="3"
+                                    ui:Seg.IsOn="{Binding Selected.MemoryPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=3, Mode=OneWay}"/>
+                            <Button Style="{StaticResource Seg}" Content="BELOW" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="4"
+                                    ui:Seg.IsOn="{Binding Selected.MemoryPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=4, Mode=OneWay}"/>
+                            <Button Style="{StaticResource Seg}" Content="NORM" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="5"
+                                    ui:Seg.IsOn="{Binding Selected.MemoryPriority, Converter={StaticResource EqualsParameter}, ConverterParameter=5, Mode=OneWay}"/>
                         </UniformGrid>
 
                         <TextBlock Text="CONTROL" Style="{StaticResource Text.Label}" Margin="0,22,0,8"/>

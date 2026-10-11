@@ -54,6 +54,46 @@ internal static class Fmt
         return allowed == 0 || allowed >= logical ? "ALL" : $"{allowed}/{logical}";
     }
 
+    /// <summary>The engine's one-line summary of a purge, plus the first thing that went wrong, if anything did.</summary>
+    public static string PurgeSummary(ProGuard.Shared.Contracts.MemoryPurgeResultDto result)
+    {
+        var text = string.IsNullOrWhiteSpace(result.Summary) ? "Memory purged." : result.Summary.Trim();
+        return result.Errors.Count == 0
+            ? text
+            : $"{text} ({result.Errors.Count} problem{(result.Errors.Count == 1 ? "" : "s")}: {result.Errors[0]})";
+    }
+
+    /// <summary>Who set the active power plan, as the engine names it, in words.</summary>
+    public static string PlanOwner(string? owner) => owner switch
+    {
+        "User" => "SET BY YOU",
+        "PerformanceMode" => "SET BY PERFORMANCE MODE",
+        "IdleSaver" => "SET BY IDLESAVER",
+        "LoadSwitcher" => "SET BY THE LOAD SWITCHER",
+        "StartWith" => "SET WHEN THE ENGINE STARTED",
+        null or "" => "—",
+        _ => $"SET BY {owner.ToUpperInvariant()}"
+    };
+
+    public static string IoPriority(int? hint) => hint switch
+    {
+        0 => "VERY LOW",
+        1 => "LOW",
+        2 => "NORMAL",
+        3 => "HIGH",
+        _ => "—"
+    };
+
+    public static string MemoryPriority(int? level) => level switch
+    {
+        1 => "VERY LOW",
+        2 => "LOW",
+        3 => "MEDIUM",
+        4 => "BELOW NORMAL",
+        5 => "NORMAL",
+        _ => "—"
+    };
+
     public static string Exe(string name) =>
         name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? name : name + ".exe";
 }

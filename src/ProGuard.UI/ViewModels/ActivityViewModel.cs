@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using ProGuard.Shared.Contracts;
 using ProGuard.Shared.Messages;
 using ProGuard.UI.Services;
@@ -25,6 +26,8 @@ public sealed class ActivityRow
             ActivityKind.Restored => "RESTORED",
             ActivityKind.Rule => "RULE",
             ActivityKind.Watchdog => "WATCHDOG",
+            ActivityKind.Power => "POWER",
+            ActivityKind.Memory => "MEMORY",
             ActivityKind.Manual => "YOU",
             _ => "ENGINE"
         };
@@ -36,6 +39,7 @@ public sealed class ActivityRow
 public sealed partial class ActivityViewModel : ObservableObject, IPage
 {
     private readonly EngineHub _hub;
+    private readonly ShellViewModel? _shell;
     private readonly DispatcherTimer _timer;
     private List<ActivityEntry> _all = new();
 
@@ -46,6 +50,8 @@ public sealed partial class ActivityViewModel : ObservableObject, IPage
         new("RESTORED", ActivityKind.Restored),
         new("RULES", ActivityKind.Rule),
         new("WATCHDOG", ActivityKind.Watchdog),
+        new("POWER", ActivityKind.Power),
+        new("MEMORY", ActivityKind.Memory),
         new("YOU", ActivityKind.Manual),
         new("ENGINE", ActivityKind.System),
     };
@@ -55,9 +61,20 @@ public sealed partial class ActivityViewModel : ObservableObject, IPage
     [ObservableProperty] private Choice<ActivityKind?> kind;
     [ObservableProperty] private bool isEmpty = true;
 
-    public ActivityViewModel(EngineHub hub)
+    /// <summary>The engine only lets administrators clear the log.</summary>
+    [ObservableProperty] private bool isAdministrator = true;
+
+    /// <summary>
+    /// Mirrors CommandTypes.ClearActionLog (no arguments, administrators only), which is added to the shared contract
+    /// on the engine branch; sent by name until that arrives here.
+    /// </summary>
+    internal const string ClearActionLog = "ClearActionLog";
+
+    public ActivityViewModel(EngineHub hub, ShellViewModel? shell = null)
     {
         _hub = hub;
+        _shell = shell;
+        hub.SnapshotApplied += s => IsAdministrator = s.CallerIsAdministrator;
         kind = Kinds[0];
         _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(2) };
         _timer.Tick += async (_, _) => await LoadAsync();
@@ -72,6 +89,23 @@ public sealed partial class ActivityViewModel : ObservableObject, IPage
     }
 
     public void OnHidden() => _timer.Stop();
+
+    [RelayCommand]
+    private void ClearLog()
+    {
+        if (_shell == null) return;
+        _shell.Confirm("CLEAR THE LOG?",
+            "Deletes the recorded ProBalance and power-plan actions from the engine. This can't be undone.", "CLEAR LOG",
+            async () =>
+            {
+                if (await _hub.RunAsync(ClearActionLog, success: "ACTIVITY LOG CLEARED"))
+                {
+                    _all = new List<ActivityEntry>();
+                    Rebuild();
+                    await LoadAsync();
+                }
+            });
+    }
 
     private async Task LoadAsync()
     {

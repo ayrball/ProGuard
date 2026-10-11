@@ -102,6 +102,9 @@ public class SettingsApplier
                     || previous.ResponsivenessGuardRecoveryThreshold != settings.ResponsivenessGuardRecoveryThreshold)
                 TryApply("ResponsivenessGuard", () => ApplyResponsivenessGuardSettings(settings));
 
+            if (all || ResponsivenessGuardRestraintOptions.FromSettings(previous!) != ResponsivenessGuardRestraintOptions.FromSettings(settings))
+                TryApply("ResponsivenessGuard restraint actions", () => _responsiveness guard.ConfigureRestraint(ResponsivenessGuardRestraintOptions.FromSettings(settings)));
+
             _applied = settings.Clone();
         }
     }

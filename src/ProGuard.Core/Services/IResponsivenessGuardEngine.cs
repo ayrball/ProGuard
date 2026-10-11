@@ -6,6 +6,8 @@ public interface IResponsivenessGuardEngine
     int ActiveInterventions { get; }
     void SetEnabled(bool enabled);
     void SetSensitivity(int level);
+    /// <summary>Optional restraint actions and the idle pause. Restraints already in place keep what they applied.</summary>
+    void ConfigureRestraint(ResponsivenessGuardRestraintOptions options);
     void ExcludeProcess(string name);
     void RemoveExclusion(string name);
 

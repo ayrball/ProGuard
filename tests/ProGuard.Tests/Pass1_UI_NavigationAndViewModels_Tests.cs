@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Media;
 using ProGuard.Core.Data;
 using ProGuard.Core.Models;
+using ProGuard.Core.Services;
 using ProGuard.UI.Converters;
 using ProGuard.UI.ViewModels;
 
@@ -183,6 +184,53 @@ public class Pass1_UI_NavigationAndViewModels_Tests
         var vm = new SettingsViewModel();
         Assert.True(vm.CpuThreshold >= 10 && vm.CpuThreshold <= 95);
         Assert.True(vm.Sensitivity >= 1 && vm.Sensitivity <= 10);
+    }
+
+    [Fact]
+    public void SettingsViewModel_PersistsResponsivenessGuardRestraintActions()
+    {
+        var vm = new SettingsViewModel();
+        try
+        {
+            vm.ResponsivenessGuardRestrainByAffinity = true;
+            vm.ResponsivenessGuardRestraintAffinity = 0x3;
+            vm.ResponsivenessGuardDropOneRandomCore = true;
+            vm.ResponsivenessGuardLowerIoPriority = true;
+            vm.ResponsivenessGuardUseEfficiencyMode = true;
+            vm.ResponsivenessGuardDoNotLowerPriorityClass = true;
+            vm.ResponsivenessGuardDisableWhenSysIdle = true;
+            vm.ResponsivenessGuardDisableIfSysIdleSeconds = 45;
+
+            var reloaded = new SettingsViewModel();
+            Assert.True(reloaded.ResponsivenessGuardRestrainByAffinity);
+            Assert.Equal(0x3, reloaded.ResponsivenessGuardRestraintAffinity);
+            Assert.True(reloaded.ResponsivenessGuardDropOneRandomCore);
+            Assert.True(reloaded.ResponsivenessGuardLowerIoPriority);
+            Assert.True(reloaded.ResponsivenessGuardUseEfficiencyMode);
+            Assert.True(reloaded.ResponsivenessGuardDoNotLowerPriorityClass);
+            Assert.True(reloaded.ResponsivenessGuardDisableWhenSysIdle);
+            Assert.Equal(45000, reloaded.ResponsivenessGuardDisableIfSysIdleMs);
+
+            using var db = new ProGuardDbContext();
+            var stored = db.Settings.Single();
+            Assert.Equal(new ResponsivenessGuardRestraintOptions
+            {
+                RestrainByAffinity = true, RestraintAffinity = 0x3, ResponsivenessGuardDropOneRandomCore = true,
+                LowerIOPriorityDuringRestraint = true, UseEfficiencyMode = true, DoNotLowerPriorityClass = true,
+                DisableResponsivenessGuardWhenSysIdle = true, DisableResponsivenessGuardIfSysIdleThisManyMS = 45000
+            }, ResponsivenessGuardRestraintOptions.FromSettings(stored));
+        }
+        finally
+        {
+            vm.ResponsivenessGuardRestrainByAffinity = false;
+            vm.ResponsivenessGuardRestraintAffinity = 0;
+            vm.ResponsivenessGuardDropOneRandomCore = false;
+            vm.ResponsivenessGuardLowerIoPriority = false;
+            vm.ResponsivenessGuardUseEfficiencyMode = false;
+            vm.ResponsivenessGuardDoNotLowerPriorityClass = false;
+            vm.ResponsivenessGuardDisableWhenSysIdle = false;
+            vm.ResponsivenessGuardDisableIfSysIdleMs = 30000;
+        }
     }
 
     [Fact]

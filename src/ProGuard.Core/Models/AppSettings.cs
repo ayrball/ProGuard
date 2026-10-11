@@ -12,6 +12,12 @@ public class AppSettings
     public int ProBalanceSensitivity { get; set; } = 5;
     public double ProBalanceCpuThreshold { get; set; } = 25.0;
     public double ProBalanceRecoveryThreshold { get; set; } = 10.0;
+
+    /// <summary>
+    /// Raise the foreground process from Normal to Above Normal while it is in front ([ForegroundBoosting]). Off by
+    /// default, as in Process Lasso, which notes it rarely helps.
+    /// </summary>
+    public bool ForegroundBoostEnabled { get; set; } = false;
     
     // SmartTrim. Defaults are Process Lasso's [MemoryManagement] ones (prolasso.ini key in brackets).
     public bool SmartTrimEnabled { get; set; } = false;

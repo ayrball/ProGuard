@@ -20,6 +20,7 @@ public class SettingsApplier
     private readonly IPowerManager _powerManager;
     private readonly IProBalanceEngine _proBalance;
     private readonly IAutoPerformanceMode? _autoPerformanceMode;
+    private readonly ForegroundBoostService? _foregroundBoost;
 
     private readonly object _sync = new();
     private AppSettings? _applied;
@@ -30,7 +31,8 @@ public class SettingsApplier
         ISmartTrimService smartTrim,
         IPowerManager powerManager,
         IProBalanceEngine proBalance,
-        IAutoPerformanceMode? autoPerformanceMode = null)
+        IAutoPerformanceMode? autoPerformanceMode = null,
+        ForegroundBoostService? foregroundBoost = null)
     {
         _logger = logger;
         _processMonitor = processMonitor;
@@ -38,6 +40,7 @@ public class SettingsApplier
         _powerManager = powerManager;
         _proBalance = proBalance;
         _autoPerformanceMode = autoPerformanceMode;
+        _foregroundBoost = foregroundBoost;
     }
 
     /// <summary>The settings most recently applied, or null before the first <see cref="Apply"/>.</summary>
@@ -101,6 +104,9 @@ public class SettingsApplier
                     || previous.ProBalanceCpuThreshold != settings.ProBalanceCpuThreshold
                     || previous.ProBalanceRecoveryThreshold != settings.ProBalanceRecoveryThreshold)
                 TryApply("ProBalance", () => ApplyProBalanceSettings(settings));
+
+            if (_foregroundBoost != null && (all || previous!.ForegroundBoostEnabled != settings.ForegroundBoostEnabled))
+                TryApply("foreground boost", () => _foregroundBoost.IsEnabled = settings.ForegroundBoostEnabled);
 
             _applied = settings.Clone();
         }

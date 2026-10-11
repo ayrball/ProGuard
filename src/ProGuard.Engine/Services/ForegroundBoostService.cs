@@ -15,7 +15,8 @@ public class ForegroundBoostService : IDisposable
     private Timer? _timer;
     private int _lastBoostedPid;
     private ProcessPriorityClass _lastOriginalPriority = ProcessPriorityClass.Normal;
-    private bool _enabled = true;
+    // Off until the settings say otherwise (AppSettings.ForegroundBoostEnabled), as in Process Lasso.
+    private bool _enabled;
 
     public bool IsEnabled
     {

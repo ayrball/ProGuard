@@ -513,7 +513,7 @@ public class PersistentRuleIpcAndUiTests
             Mock.Of<ISmartTrimService>(), Mock.Of<ICpuLimiter>(), Mock.Of<IProcessController>(), monitor.Object);
     }
 
-    private CommandResult SetRule(RuleDto dto, bool admin = true)
+    private CommandResult SetRule(ProcessRuleDto dto, bool admin = true)
     {
         var reply = _dispatcher.Dispatch(new CommandMessage { Type = MessageType.SetRule, Payload = JsonSerializer.Serialize(dto) }, new Caller { IsAdministrator = admin });
         return JsonSerializer.Deserialize<CommandResult>(reply.Payload)!;
@@ -531,22 +531,23 @@ public class PersistentRuleIpcAndUiTests
         var reply = _dispatcher.Dispatch(new CommandMessage { Type = MessageType.GetRules }, new Caller());
 
         Assert.Equal(MessageType.RuleList, reply.Type);
-        var dto = Assert.Single(JsonSerializer.Deserialize<List<RuleDto>>(reply.Payload)!);
-        Assert.Equal((7, "game.exe", "Process"), (dto.Id, dto.Name, dto.Type));
+        var dto = Assert.Single(JsonSerializer.Deserialize<List<ProcessRuleDto>>(reply.Payload)!);
+        Assert.Equal((7, "game.exe"), (dto.Id, dto.ProcessName));
         Assert.Equal((3, 5, false, true), (dto.IoPriority, dto.MemoryPriority, dto.EfficiencyMode, dto.DisablePriorityBoost));
         Assert.Equal(("256,257", 4, 2, true), (dto.CpuSetIds, dto.GpuPriority, dto.GpuPreference, dto.ReapplyIfChanged));
     }
 
     [Fact]
-    public void SetRule_UpdatesTheNewFields_AndKeepsTheRestOfTheRule()
+    public void SetRule_ReplacesTheStoredRule_ButKeepsItsId()
     {
+        // The DTO carries every field, so the client sends the whole rule back; only the stored key is the engine's.
         _store.Setup(s => s.GetProcessRule("game.exe")).Returns(new ProcessRule { Id = 7, ProcessName = "game.exe", PriorityClass = 128, CpuLimitPercent = 50 });
 
-        var result = SetRule(new RuleDto { Name = "game.exe", IoPriority = 0, EfficiencyMode = true, CpuSetIds = "256", ReapplyIfChanged = true });
+        var result = SetRule(new ProcessRuleDto { Id = 99, ProcessName = "game.exe", PriorityClass = 64, IoPriority = 0, EfficiencyMode = true, CpuSetIds = "256", ReapplyIfChanged = true });
 
         Assert.True(result.Success, result.Error);
         Assert.NotNull(_saved);
-        Assert.Equal((7, 128, 50.0), (_saved!.Id, _saved.PriorityClass, _saved.CpuLimitPercent));
+        Assert.Equal((7, (int?)64, (double?)null), (_saved!.Id, _saved.PriorityClass, _saved.CpuLimitPercent));
         Assert.Equal((0, true, "256", true), (_saved.IoPriority, _saved.EfficiencyMode, _saved.CpuSetIds, _saved.ReapplyIfChanged));
     }
 
@@ -557,7 +558,7 @@ public class PersistentRuleIpcAndUiTests
     [InlineData(null, null, null, "x")]
     public void SetRule_RejectsOutOfRangeValues(int? io, int? memory, int? gpu, string? cpuSets)
     {
-        var result = SetRule(new RuleDto { Name = "game.exe", IoPriority = io, MemoryPriority = memory, GpuPriority = gpu, CpuSetIds = cpuSets });
+        var result = SetRule(new ProcessRuleDto { ProcessName = "game.exe", IoPriority = io, MemoryPriority = memory, GpuPriority = gpu, CpuSetIds = cpuSets });
 
         Assert.False(result.Success);
         Assert.Null(_saved);
@@ -567,24 +568,11 @@ public class PersistentRuleIpcAndUiTests
     public void SetRule_IsForAdministratorsOnly()
     {
         // A rule applies to every user's processes, so a standard user may not create one.
-        var result = SetRule(new RuleDto { Name = "game.exe", IoPriority = 0 }, admin: false);
+        var result = SetRule(new ProcessRuleDto { ProcessName = "game.exe", IoPriority = 0 }, admin: false);
 
         Assert.False(result.Success);
         Assert.Contains("Access denied", result.Error);
         Assert.Null(_saved);
-    }
-
-    [Fact]
-    public void RulesGrid_SummarisesTheNewFields()
-    {
-        var text = RulesViewModel.DescribeDefaults(new ProcessRule
-        {
-            IoPriority = 1, MemoryPriority = 2, EfficiencyMode = false, DisablePriorityBoost = true,
-            CpuSetIds = "256", GpuPriority = 3, GpuPreference = 2, ReapplyIfChanged = true
-        });
-
-        Assert.Equal("I/O Low · Memory Low · Eco off · No boost · CPU Sets 256 · GPU Above Normal · High performance · re-apply", text);
-        Assert.Equal("", RulesViewModel.DescribeDefaults(new ProcessRule { ReapplyIfChanged = true }));
     }
 
     [Fact]

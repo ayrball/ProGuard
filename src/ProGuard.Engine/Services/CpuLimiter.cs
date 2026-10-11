@@ -21,6 +21,8 @@ public class CpuLimiter : ICpuLimiter, IDisposable
     private readonly ILogger<CpuLimiter> _logger;
     private readonly object _gate = new();
     private readonly Dictionary<int, IntPtr> _activeJobs = new();
+    // The cap each job enforces, in percent of the whole machine (the job itself only holds it as a rate).
+    private readonly Dictionary<int, int> _activePercents = new();
 
     public CpuLimiter(ILogger<CpuLimiter> logger)
     {
@@ -59,7 +61,10 @@ public class CpuLimiter : ICpuLimiter, IDisposable
                 if (_activeJobs.TryGetValue(pid, out var existing))
                 {
                     if (SetCpuRate(existing, rate))
+                    {
+                        _activePercents[pid] = cpuLimitPercent;
                         _logger.LogInformation("Updated CPU limit for PID {Pid} to {Limit}%", pid, cpuLimitPercent);
+                    }
                     else
                         _logger.LogError("Failed to update CPU limit for PID {Pid}: {Error}", pid, LastError());
                     return;
@@ -90,6 +95,7 @@ public class CpuLimiter : ICpuLimiter, IDisposable
                 }
 
                 _activeJobs[pid] = hJob;
+                _activePercents[pid] = cpuLimitPercent;
                 _logger.LogInformation("Limited PID {Pid} to {Limit}% CPU", pid, cpuLimitPercent);
             }
             catch (Exception ex)
@@ -106,9 +112,21 @@ public class CpuLimiter : ICpuLimiter, IDisposable
         {
             if (_activeJobs.Remove(pid, out var hJob))
             {
+                _activePercents.Remove(pid);
                 Release(hJob);
                 _logger.LogInformation("Removed CPU limit for PID {Pid}", pid);
             }
+        }
+    }
+
+    /// <inheritdoc/>
+    public IReadOnlyDictionary<int, double> GetActiveLimits()
+    {
+        lock (_gate)
+        {
+            var limits = new Dictionary<int, double>(_activePercents.Count);
+            foreach (var (pid, percent) in _activePercents) limits[pid] = percent;
+            return limits;
         }
     }
 
@@ -120,6 +138,7 @@ public class CpuLimiter : ICpuLimiter, IDisposable
         {
             foreach (var job in _activeJobs.Values) Release(job);
             _activeJobs.Clear();
+            _activePercents.Clear();
         }
     }
 

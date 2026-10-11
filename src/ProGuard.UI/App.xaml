@@ -1,102 +1,15 @@
 <Application x:Class="ProGuard.UI.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-             xmlns:converters="clr-namespace:ProGuard.UI.Converters">
+             xmlns:conv="clr-namespace:ProGuard.UI.Converters"
+             ShutdownMode="OnMainWindowClose">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ui:ThemesDictionary Theme="Dark" />
-                <ui:ControlsDictionary />
+                <ResourceDictionary Source="Theme/Volt.xaml"/>
             </ResourceDictionary.MergedDictionaries>
-
-            <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-            <converters:BytesToReadableConverter x:Key="BytesToReadableConverter"/>
-            <converters:PriorityToColorConverter x:Key="PriorityToColorConverter"/>
-            <converters:CpuPercentToColorConverter x:Key="CpuPercentToColorConverter"/>
-
-            <!-- Ultra-Sharp ClearType Text Options and Layout Rounding -->
-            <Style TargetType="Window">
-                <Setter Property="UseLayoutRounding" Value="True"/>
-                <Setter Property="SnapsToDevicePixels" Value="True"/>
-                <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
-                <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
-                <Setter Property="RenderOptions.ClearTypeHint" Value="Enabled"/>
-            </Style>
-
-            <Style TargetType="Page">
-                <Setter Property="UseLayoutRounding" Value="True"/>
-                <Setter Property="SnapsToDevicePixels" Value="True"/>
-                <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
-                <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
-                <Setter Property="RenderOptions.ClearTypeHint" Value="Enabled"/>
-            </Style>
-
-            <!-- Modern Fluent DataGrid Styling -->
-            <Style x:Key="FluentDataGridTextStyle" TargetType="TextBlock">
-                <Setter Property="Padding" Value="12,0"/>
-                <Setter Property="VerticalAlignment" Value="Center"/>
-                <Setter Property="FontSize" Value="13"/>
-                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-                <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
-                <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
-                <Setter Property="RenderOptions.ClearTypeHint" Value="Enabled"/>
-            </Style>
-
-            <Style TargetType="DataGridColumnHeader">
-                <Setter Property="Padding" Value="12,10"/>
-                <Setter Property="FontWeight" Value="SemiBold"/>
-                <Setter Property="FontSize" Value="13"/>
-                <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
-                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
-                <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}"/>
-                <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                <Setter Property="VerticalContentAlignment" Value="Center"/>
-            </Style>
-
-            <Style TargetType="DataGridRow">
-                <Setter Property="MinHeight" Value="38"/>
-                <Setter Property="Height" Value="38"/>
-                <Setter Property="SnapsToDevicePixels" Value="True"/>
-                <Style.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
-                    </Trigger>
-                    <Trigger Property="IsSelected" Value="True">
-                        <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
-                        <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}"/>
-                    </Trigger>
-                </Style.Triggers>
-            </Style>
-
-            <Style TargetType="DataGridCell">
-                <Setter Property="Padding" Value="12,0"/>
-                <Setter Property="VerticalContentAlignment" Value="Center"/>
-                <Setter Property="BorderThickness" Value="0"/>
-                <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="DataGridCell">
-                            <Border Padding="{TemplateBinding Padding}" 
-                                    Background="{TemplateBinding Background}" 
-                                    BorderBrush="{TemplateBinding BorderBrush}" 
-                                    BorderThickness="{TemplateBinding BorderThickness}" 
-                                    SnapsToDevicePixels="True">
-                                <ContentPresenter VerticalAlignment="Center" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
-                            </Border>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <Style TargetType="ListViewItem">
-                <Setter Property="MinHeight" Value="36"/>
-                <Setter Property="VerticalContentAlignment" Value="Center"/>
-                <Setter Property="Padding" Value="10,4"/>
-                <Setter Property="UseLayoutRounding" Value="True"/>
-                <Setter Property="SnapsToDevicePixels" Value="True"/>
-            </Style>
+            <conv:VisibleWhen x:Key="VisibleWhen"/>
+            <conv:EqualsParameter x:Key="EqualsParameter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

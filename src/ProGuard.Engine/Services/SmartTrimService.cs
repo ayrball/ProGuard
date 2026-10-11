@@ -196,8 +196,10 @@ public class SmartTrimService : ISmartTrimService, IDisposable
     /// <summary>The periodic working-set trim: only acts while memory load is at least the policy's minimum.</summary>
     internal MemoryPurgeReport RunTrimPass()
     {
+        _logger.LogDebug("SmartTrim pass due");
         lock (_passSync)
         {
+            _logger.LogDebug("SmartTrim pass running");
             var minimum = Policy.MinimumRamLoadPercent;
             var load = _memory.GetMemoryLoadPercent();
             if (load is not int percent)
@@ -214,8 +216,10 @@ public class SmartTrimService : ISmartTrimService, IDisposable
     /// <summary>The periodic standby / file cache purge: only acts while free RAM is below the policy's threshold.</summary>
     internal MemoryPurgeReport RunLowMemoryCheck()
     {
+        _logger.LogDebug("Low-memory check due");
         lock (_passSync)
         {
+            _logger.LogDebug("Low-memory check running");
             var policy = Policy;
             if (!policy.StandbyPurgeEnabled && !policy.FileCachePurgeEnabled)
                 return new MemoryPurgeReport();
@@ -252,25 +256,34 @@ public class SmartTrimService : ISmartTrimService, IDisposable
     }
 
     /// <inheritdoc/>
-    public void TrimMemory()
+    public MemoryPurgeReport TrimMemory()
     {
         lock (_passSync)
         {
             var report = new MemoryPurgeReport();
             TrimEligible(report);
-            Finish("SmartTrim", "requested", report);
+            return Finish("SmartTrim", "requested", report);
         }
     }
 
     /// <inheritdoc/>
-    public void TrimProcess(int pid)
+    public MemoryPurgeReport TrimProcess(int pid)
     {
         var result = _native.TrimWorkingSet(pid);
         var name = _processMonitor.GetProcess(pid)?.Name ?? "process";
+        var report = new MemoryPurgeReport();
         if (result.Success)
+        {
+            report.ProcessesTrimmed = 1;
+            report.WorkingSetBytesReclaimed = result.BytesReclaimed;
             _logger.LogInformation("SmartTrim: trimmed {ProcessName} ({Pid}), reclaimed {Reclaimed}", name, pid, MemoryPurgeReport.FormatMb(result.BytesReclaimed));
+        }
         else
+        {
+            report.Errors.Add(result.Error ?? "the working set could not be trimmed");
             _logger.LogDebug("SmartTrim: could not trim {ProcessName} ({Pid}): {Error}", name, pid, result.Error);
+        }
+        return report;
     }
 
     /// <summary>Processes a trim pass would touch: at least the threshold, not foreground, not protected or excluded.</summary>
@@ -302,6 +315,7 @@ public class SmartTrimService : ISmartTrimService, IDisposable
     {
         foreach (var p in EligibleProcesses())
         {
+            _logger.LogDebug("SmartTrim: trimming {ProcessName} ({Pid})", p.Name, p.Pid);
             var result = _native.TrimWorkingSet(p.Pid);
             if (!result.Success)
             {
@@ -326,6 +340,7 @@ public class SmartTrimService : ISmartTrimService, IDisposable
         if (standby)
         {
             var before = _memory.GetFreeRamBytes();
+            _logger.LogDebug("Memory purge: purging the standby list");
             var error = _native.PurgeStandbyList();
             if (error != null) Fail(report, error);
             else
@@ -339,6 +354,7 @@ public class SmartTrimService : ISmartTrimService, IDisposable
         if (fileCache)
         {
             var before = _memory.GetFileCacheBytes();
+            _logger.LogDebug("Memory purge: purging the file cache");
             var error = _native.PurgeFileCache();
             if (error != null) Fail(report, error);
             else

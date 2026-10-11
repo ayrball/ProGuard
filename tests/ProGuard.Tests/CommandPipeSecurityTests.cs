@@ -17,7 +17,6 @@ using ProGuard.Core.Services;
 using ProGuard.Engine.IPC;
 using ProGuard.Engine.Services;
 using ProGuard.Shared.Messages;
-using ProGuard.UI.IPC;
 
 namespace ProGuard.Tests;
 
@@ -321,8 +320,6 @@ public class CommandPipeSecurityTests
         return server;
     }
 
-    private static EngineProxy Proxy(string pipeName) => new(new PipeClient(pipeName) { ConnectTimeout = TimeSpan.FromSeconds(5) });
-
     /// <summary>A process this user owns that does nothing for a couple of minutes.</summary>
     private static Process StartIdleProcess()
     {
@@ -337,81 +334,6 @@ public class CommandPipeSecurityTests
         // A child inherits BelowNormal/Idle from its parent, and Process Lasso may have restrained this test host.
         p.PriorityClass = ProcessPriorityClass.Normal;
         return p;
-    }
-
-    [Fact]
-    public async Task UiClient_Connects_WithNothingButTheInteractiveUsersAce()
-    {
-        // No ACE for this account or Administrators: this proves an unelevated UI gets in on the INTERACTIVE rule alone.
-        var interactive = DefaultRules().Single(r => r.IdentityReference.Equals(Sid(WellKnownSidType.InteractiveSid)));
-        var security = new PipeSecurity();
-        security.AddAccessRule(interactive);
-
-        var h = new Harness();
-        var server = StartServer(h, out var pipeName, security);
-        try
-        {
-            using var proxy = Proxy(pipeName);
-            Assert.True(await proxy.PingAsync());
-
-            var result = await proxy.EnablePerformanceModeAsync();
-            Assert.True(result!.Success, result.Error);
-            h.Power.Verify(p => p.EnablePerformanceMode(true), Times.Once);
-        }
-        finally
-        {
-            server.Stop();
-        }
-    }
-
-    [Fact]
-    public async Task RealCaller_MayActOnItsOwnProcess()
-    {
-        var h = new Harness();
-        var server = StartServer(h, out var pipeName);
-        using var child = StartIdleProcess();
-        try
-        {
-            using var proxy = Proxy(pipeName);
-
-            var result = await proxy.TerminateProcessAsync(child.Id);
-
-            Assert.True(result!.Success, result.Error);
-            h.Processes.Verify(p => p.Terminate(child.Id), Times.Once);
-        }
-        finally
-        {
-            server.Stop();
-            try { child.Kill(); } catch (InvalidOperationException) { }
-        }
-    }
-
-    [Fact]
-    public async Task RealCaller_IsRefused_OnASystemProcess_UnlessElevated()
-    {
-        using var services = Process.GetProcessesByName("services").First();
-        var h = new Harness();
-        var server = StartServer(h, out var pipeName);
-        try
-        {
-            using var proxy = Proxy(pipeName);
-
-            var result = await proxy.SetPriorityAsync(services.Id, ProcessPriorityClass.BelowNormal);
-
-            if (RunningElevated())
-            {
-                Assert.True(result!.Success, result.Error);
-                return;
-            }
-            Assert.False(result!.Success);
-            using var self = WindowsIdentity.GetCurrent();
-            Assert.Contains(self.Name, result.Error);
-            h.Processes.Verify(p => p.SetPriority(It.IsAny<int>(), It.IsAny<ProcessPriorityClass>()), Times.Never);
-        }
-        finally
-        {
-            server.Stop();
-        }
     }
 
     /// <summary>

@@ -34,11 +34,14 @@ public static class CommandTypes
     public const string SuspendProcess = "SuspendProcess";
     /// <summary>TargetPid.</summary>
     public const string ResumeProcess = "ResumeProcess";
-    /// <summary>TargetPid, or no pid to trim every process above the SmartTrim threshold.</summary>
+    /// <summary>
+    /// TargetPid, or no pid to trim every process above the SmartTrim threshold. Data = bytes reclaimed (a number),
+    /// when known.
+    /// </summary>
     public const string TrimWorkingSet = "TrimWorkingSet";
     /// <summary>
     /// SmartTrim's "Purge now": trims eligible working sets, purges the standby list and, if enabled, the file cache.
-    /// Administrators only. The result's Data is a serialized ProGuard.Core.Models.MemoryPurgeReport.
+    /// Administrators only. Data = <see cref="Contracts.MemoryPurgeResultDto"/>.
     /// </summary>
     public const string PurgeMemory = "PurgeMemory";
 
@@ -62,6 +65,78 @@ public static class CommandTypes
     /// <summary>Argument = "true"/"false" (defaults to true). Not persisted: it is a runtime toggle.</summary>
     public const string EnablePerformanceMode = "EnablePerformanceMode";
     public const string DisablePerformanceMode = "DisablePerformanceMode";
+
+    // --- Thin-client commands --------------------------------------------------------------------------------------
+    // The UI reads and changes everything through these; it never opens the database or calls Windows itself.
+    // "Argument" is JSON unless stated; the reply's CommandResult.Data is JSON of the stated type.
+
+    /// <summary>No args. Data = <see cref="Contracts.EngineSnapshot"/>, with file paths limited to what the caller may see.</summary>
+    public const string GetSnapshot = "GetSnapshot";
+
+    /// <summary>TargetPid; Argument = "true" (EcoQoS on) or "false" (explicitly off).</summary>
+    public const string SetEfficiencyMode = "SetEfficiencyMode";
+    /// <summary>TargetPid; Argument = IO_PRIORITY_HINT 0-3 (Very Low, Low, Normal, High).</summary>
+    public const string SetIoPriority = "SetIoPriority";
+    /// <summary>TargetPid; Argument = MEMORY_PRIORITY 1-5 (Very Low .. Normal).</summary>
+    public const string SetMemoryPriority = "SetMemoryPriority";
+    /// <summary>TargetPid; ends the process and every descendant the caller may end. Data = number of processes ended.</summary>
+    public const string TerminateProcessTree = "TerminateProcessTree";
+
+    /// <summary>No args. Data = List&lt;<see cref="Contracts.ProcessRuleDto"/>&gt;.</summary>
+    public const string GetProcessRules = "GetProcessRules";
+    /// <summary>Argument = <see cref="Contracts.ProcessRuleDto"/> (Id 0 = new). Data = the saved rule. Applied to running instances.</summary>
+    public const string SaveProcessRule = "SaveProcessRule";
+    /// <summary>Argument = rule Id.</summary>
+    public const string DeleteProcessRule = "DeleteProcessRule";
+
+    /// <summary>No args. Data = List&lt;<see cref="Contracts.WatchdogRuleDto"/>&gt;.</summary>
+    public const string GetWatchdogRules = "GetWatchdogRules";
+    /// <summary>Argument = <see cref="Contracts.WatchdogRuleDto"/> (Id 0 = new). Data = the saved rule.</summary>
+    public const string SaveWatchdogRule = "SaveWatchdogRule";
+    /// <summary>Argument = rule Id.</summary>
+    public const string DeleteWatchdogRule = "DeleteWatchdogRule";
+
+    /// <summary>No args. Data = <see cref="Contracts.EngineSettingsDto"/>.</summary>
+    public const string GetSettings = "GetSettings";
+    /// <summary>Argument = <see cref="Contracts.EngineSettingsDto"/>. Saved and applied; Data = the settings as stored.</summary>
+    public const string SaveSettings = "SaveSettings";
+
+    /// <summary>No args. Data = <see cref="Contracts.PowerStateDto"/>.</summary>
+    public const string GetPower = "GetPower";
+    /// <summary>Argument = power plan GUID (plain text).</summary>
+    public const string SetPowerPlan = "SetPowerPlan";
+
+    /// <summary>Argument = maximum number of entries (plain integer, default 200). Data = List&lt;<see cref="Contracts.ActivityEntry"/>&gt;, newest first.</summary>
+    public const string GetActivity = "GetActivity";
+
+    /// <summary>No args. Data = List&lt;<see cref="Contracts.CpuSetDto"/>&gt;.</summary>
+    public const string GetCpuSets = "GetCpuSets";
+
+    /// <summary>
+    /// What a command does, as words that read after "may not" ("end", "purge memory"). Access-denied replies are
+    /// shown to the user as-is, so they name the action rather than the command.
+    /// </summary>
+    public static string Describe(string commandType) => commandType switch
+    {
+        SetPriority => "change the priority of",
+        SetAffinity => "change the cores of",
+        SetCpuLimit => "cap the CPU of",
+        RemoveCpuLimit => "remove the CPU cap from",
+        TerminateProcess => "end",
+        TerminateProcessTree => "end the process tree of",
+        SuspendProcess => "pause",
+        ResumeProcess => "resume",
+        TrimWorkingSet => "trim the memory of",
+        SetEfficiencyMode => "change the efficiency mode of",
+        SetIoPriority => "change the I/O priority of",
+        SetMemoryPriority => "change the memory priority of",
+        PurgeMemory => "purge memory",
+        ClearActionLog => "clear the action log",
+        _ => "run " + System.Text.RegularExpressions.Regex.Replace(commandType, "(?<=[a-z])(?=[A-Z])", " ").ToLowerInvariant()
+    };
+
+    /// <summary>No args. Administrators only. Deletes the logged ProBalance, CPU Limiter and power-plan actions the activity feed shows.</summary>
+    public const string ClearActionLog = "ClearActionLog";
 }
 
 public class IdleSaverArgument

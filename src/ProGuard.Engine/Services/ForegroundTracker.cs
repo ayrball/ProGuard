@@ -99,10 +99,10 @@ public sealed class ForegroundTracker : IForegroundTracker, IUserIdleSource
         return true;
     }
 
-    /// <summary>The reporter went away; its last report no longer says anything about the desktop.</summary>
-    public void Disconnect(long connectionId)
+    /// <summary>The reporter went away; its last report no longer says anything about the desktop. False if it never reported.</summary>
+    public bool Disconnect(long connectionId)
     {
-        lock (_sync) _reports.Remove(connectionId);
+        lock (_sync) return _reports.Remove(connectionId);
     }
 
     public int GetForegroundPid()

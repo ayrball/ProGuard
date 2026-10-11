@@ -46,6 +46,15 @@ public class WatchdogEventLog
         }
     }
 
+    /// <summary>The newest <paramref name="count"/> events, newest first.</summary>
+    public IReadOnlyList<WatchdogEventDto> GetRecent(int count)
+    {
+        lock (_sync)
+        {
+            return _events.Reverse().Take(Math.Max(0, count)).ToList();
+        }
+    }
+
     /// <summary>
     /// Events newer than <paramref name="after"/>. A cursor ahead of the newest event comes from before an engine
     /// restart, so everything kept is new to that client.

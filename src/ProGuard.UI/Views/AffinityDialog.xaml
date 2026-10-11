@@ -1,0 +1,41 @@
+<UserControl x:Class="ProGuard.UI.Views.AffinityDialog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <ResourceDictionary Source="Dialogs.xaml"/>
+    </UserControl.Resources>
+    <StackPanel Width="560">
+        <TextBlock Text="CORES" Style="{StaticResource Dialog.Kicker}"/>
+        <TextBlock Text="{Binding Title}" Style="{StaticResource Dialog.Title}"/>
+        <TextBlock Text="Lit blocks are the logical processors this program may run on." Style="{StaticResource Text.Body}" Opacity="0.7" Margin="0,10,0,20"/>
+
+        <ItemsControl ItemsSource="{Binding Cores}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><UniformGrid Columns="8"/></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <ToggleButton Style="{StaticResource Chip}" IsChecked="{Binding IsOn}" Content="{Binding Label}" Height="52" Padding="0"
+                                  Margin="0,0,6,6" FontFamily="{StaticResource Mono}" FontSize="14"/>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <DockPanel Margin="0,10,0,0">
+            <TextBlock DockPanel.Dock="Right" Text="{Binding Summary}" FontFamily="{StaticResource Mono}" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal">
+                <Button Style="{StaticResource Btn.Ghost}" Content="ALL" Command="{Binding AllCommand}"/>
+                <Button Style="{StaticResource Btn.Ghost}" Content="FIRST HALF" Command="{Binding FirstHalfCommand}"/>
+                <Button Style="{StaticResource Btn.Ghost}" Content="SECOND HALF" Command="{Binding SecondHalfCommand}"/>
+                <Button Style="{StaticResource Btn.Ghost}" Content="ONE PER CORE" Command="{Binding EvenCommand}"
+                        ToolTip="Every other thread: on most CPUs that is one thread per physical core."/>
+            </StackPanel>
+        </DockPanel>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,28,0,0">
+            <Button Style="{StaticResource Btn.Ghost}" Content="CANCEL" Margin="0,0,10,0" Padding="20,12" IsCancel="True"
+                    Command="{Binding DataContext.CloseDialogCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+            <Button Style="{StaticResource Btn.Solid}" Content="APPLY" Command="{Binding ApplyCommand}" Padding="26,12" FontSize="14"/>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

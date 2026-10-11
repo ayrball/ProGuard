@@ -1,0 +1,472 @@
+<UserControl x:Class="ProGuard.UI.Views.SystemView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="clr-namespace:ProGuard.UI.Controls"
+             xmlns:vm="clr-namespace:ProGuard.UI.ViewModels">
+    <UserControl.Resources>
+        <!-- A section: big letter + name + blurb on the left, controls on the right. -->
+        <Style x:Key="Section" TargetType="HeaderedContentControl">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="HeaderedContentControl">
+                        <Border BorderBrush="{StaticResource VoltLineBrush}" BorderThickness="0,2,0,0" Padding="0,22,0,30">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="290"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <ContentPresenter ContentSource="Header" Margin="0,0,30,0"/>
+                                <ContentPresenter Grid.Column="1" ContentSource="Content"/>
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SectionNumber" TargetType="TextBlock" BasedOn="{StaticResource Text.Mono}">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Opacity" Value="0.45"/>
+        </Style>
+        <Style x:Key="SectionTitle" TargetType="TextBlock" BasedOn="{StaticResource Text.H2}">
+            <Setter Property="FontSize" Value="32"/>
+        </Style>
+        <Style x:Key="SectionBlurb" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+            <Setter Property="Opacity" Value="0.7"/>
+            <Setter Property="Margin" Value="0,8,0,0"/>
+        </Style>
+
+        <!-- A sub-heading inside a section. -->
+        <Style x:Key="Sub" TargetType="TextBlock" BasedOn="{StaticResource Text.Label}">
+            <Setter Property="Margin" Value="0,30,0,12"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+
+        <!-- A secondary on/off switch. -->
+        <Style x:Key="Sw" TargetType="CheckBox" BasedOn="{StaticResource Switch}">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="0,14,0,0"/>
+        </Style>
+
+        <Style x:Key="Note" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Opacity" Value="0.6"/>
+            <Setter Property="Margin" Value="0,8,0,0"/>
+        </Style>
+
+        <!-- A number box: inverts (ink on volt) while the text isn't acceptable. -->
+        <Style x:Key="NumberBox" TargetType="TextBox" BasedOn="{StaticResource Field}">
+            <Setter Property="FontFamily" Value="{StaticResource Mono}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="17"/>
+            <Setter Property="Width" Value="120"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsValid}" Value="False">
+                    <Setter Property="Background" Value="{StaticResource VoltBrush}"/>
+                    <Setter Property="Foreground" Value="{StaticResource InkBrush}"/>
+                    <Setter Property="CaretBrush" Value="{StaticResource InkBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ListEditor" TargetType="TextBox" BasedOn="{StaticResource Field}">
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+            <Setter Property="TextWrapping" Value="NoWrap"/>
+            <Setter Property="FontFamily" Value="{StaticResource Mono}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltLineBrush}"/>
+            <Setter Property="Height" Value="88"/>
+            <Setter Property="MaxWidth" Value="420"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="Tag" Value="ONE PER LINE"/>
+        </Style>
+
+        <!-- Field templates: a NumberField, a ListField and a PlanPicker draw themselves. -->
+        <DataTemplate DataType="{x:Type vm:NumberField}">
+            <StackPanel Margin="0,0,34,16" MinWidth="130">
+                <TextBlock Text="{Binding Label}" Style="{StaticResource Text.Label}" Margin="0,0,0,2"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBox Style="{StaticResource NumberBox}" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Text="{Binding Unit}" Style="{StaticResource Text.Label}" FontWeight="Bold" Margin="8,0,0,8" VerticalAlignment="Bottom"/>
+                </StackPanel>
+                <TextBlock Text="{Binding Range}" FontFamily="{StaticResource Mono}" FontSize="10" Margin="0,4,0,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Opacity" Value="0.4"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsValid}" Value="False">
+                                    <Setter Property="Opacity" Value="1"/>
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:ListField}">
+            <StackPanel Margin="0,0,0,16">
+                <TextBlock Text="{Binding Label}" Style="{StaticResource Text.Label}" Margin="0,0,0,6"/>
+                <TextBox Style="{StaticResource ListEditor}" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:PlanPicker}">
+            <StackPanel Margin="0,0,0,12">
+                <TextBlock Text="{Binding Label}" Style="{StaticResource Text.Label}" Margin="0,0,0,8"/>
+                <ItemsControl ItemsSource="{Binding Options}" Focusable="False">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Style="{StaticResource Opt}" Content="{Binding Label}"
+                                    Command="{Binding DataContext.PickCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                    CommandParameter="{Binding}"
+                                    ui:Seg.IsOn="{Binding IsOn, Mode=OneWay}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:CoreToggle}">
+            <ToggleButton Style="{StaticResource Chip}" Content="{Binding Label}" IsChecked="{Binding IsOn, Mode=TwoWay}"
+                          Width="44" Padding="0,6" Margin="0,0,4,4" FontFamily="{StaticResource Mono}"/>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="0,0,16,0">
+            <TextBlock Text="SYSTEM" Style="{StaticResource Text.Title}"/>
+            <TextBlock Text="HOW THE ENGINE BEHAVES. CHANGES APPLY THE MOMENT YOU MAKE THEM." Style="{StaticResource Text.Label}" Margin="0,6,0,28"/>
+
+            <!-- ============================================================ A · ProBalance -->
+            <HeaderedContentControl Style="{StaticResource Section}">
+                <HeaderedContentControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="A" Style="{StaticResource SectionNumber}"/>
+                        <TextBlock Text="PROBALANCE" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Style="{StaticResource SectionBlurb}"
+                                   Text="When the machine is overloaded, background hogs get their priority lowered so whatever you're using stays responsive. Restored the moment things calm down."/>
+                    </StackPanel>
+                </HeaderedContentControl.Header>
+                <StackPanel>
+                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ProBalanceEnabled}">
+                        <TextBlock Text="BALANCE AUTOMATICALLY" FontWeight="Bold" FontSize="15"/>
+                    </CheckBox>
+
+                    <StackPanel IsEnabled="{Binding ProBalanceEnabled}">
+                        <DockPanel Margin="0,26,0,10">
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding SensitivityLevel, StringFormat='{}{0} / 10'}" FontFamily="{StaticResource Mono}" FontWeight="Bold" FontSize="16"/>
+                            <TextBlock Text="SENSITIVITY" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
+                        </DockPanel>
+                        <!-- Ten blocks; click one to set the level. Everything up to it lights up. -->
+                        <ItemsControl ItemsSource="{Binding Sensitivity}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Command="{Binding DataContext.SetSensitivityCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding Level}" Height="44" Margin="0,0,4,0" ToolTip="{Binding Level}">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource Btn.Base}">
+                                                <Setter Property="Background" Value="Transparent"/>
+                                                <Setter Property="BorderBrush" Value="{StaticResource VoltLineBrush}"/>
+                                                <Setter Property="Padding" Value="0"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsLit}" Value="True">
+                                                        <Setter Property="Background" Value="{StaticResource VoltBrush}"/>
+                                                        <Setter Property="BorderBrush" Value="{StaticResource VoltBrush}"/>
+                                                    </DataTrigger>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="BorderBrush" Value="{StaticResource VoltBrush}"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding SensitivityDescription}" FontWeight="Bold" FontSize="13" Margin="0,10,0,0" Opacity="0.8"/>
+
+                        <TextBlock Text="WHAT RESTRAINT DOES" Style="{StaticResource Sub}"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding DoNotLowerPriorityClass}" Margin="0,0,0,0"
+                                  Content="LEAVE THE PRIORITY CLASS ALONE"
+                                  ToolTip="Restrain only through the extra actions below"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding LowerIoPriority}" Content="ALSO LOWER I/O PRIORITY"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding UseEfficiencyMode}" Content="ALSO USE EFFICIENCY MODE"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding DropOneRandomCore}" Content="DROP ONE RANDOM CORE"
+                                  ToolTip="Takes one core away from the process while it is restrained"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding RestrainByAffinity}" Content="CONFINE TO CHOSEN CORES"/>
+
+                        <StackPanel Margin="0,16,0,0" IsEnabled="{Binding RestrainByAffinity}">
+                            <DockPanel Margin="0,0,0,8">
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding RestraintCoresSummary}" FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.7" VerticalAlignment="Center"/>
+                                <TextBlock Text="CORES A RESTRAINED PROCESS MAY USE" Style="{StaticResource Text.Label}"/>
+                            </DockPanel>
+                            <ItemsControl ItemsSource="{Binding RestraintCores}" Focusable="False">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                            <WrapPanel Margin="0,6,0,0">
+                                <Button Style="{StaticResource Btn.Ghost}" Content="ALL" Command="{Binding CoresAllCommand}"/>
+                                <Button Style="{StaticResource Btn.Ghost}" Content="FIRST HALF" Command="{Binding CoresFirstHalfCommand}"/>
+                                <Button Style="{StaticResource Btn.Ghost}" Content="EVERY OTHER" Command="{Binding CoresEvenCommand}" ToolTip="On SMT machines, one thread per physical core"/>
+                                <Button Style="{StaticResource Btn.Ghost}" Content="NONE" Command="{Binding CoresNoneCommand}"/>
+                            </WrapPanel>
+                        </StackPanel>
+
+                        <TextBlock Text="WHILE YOU'RE AWAY" Style="{StaticResource Sub}"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding PauseWhenIdle}" Margin="0,0,0,16" Content="PAUSE PROBALANCE WHEN THE MACHINE IS IDLE"/>
+                        <ContentControl Content="{Binding IdlePauseMs}" IsEnabled="{Binding PauseWhenIdle}" Focusable="False"/>
+                    </StackPanel>
+                </StackPanel>
+            </HeaderedContentControl>
+
+            <!-- ============================================================ B · Focus boost -->
+            <HeaderedContentControl Style="{StaticResource Section}">
+                <HeaderedContentControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="B" Style="{StaticResource SectionNumber}"/>
+                        <TextBlock Text="FOCUS BOOST" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Style="{StaticResource SectionBlurb}"
+                                   Text="The window you're working in runs one step above normal priority, and drops back when you switch away."/>
+                    </StackPanel>
+                </HeaderedContentControl.Header>
+                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ForegroundBoostEnabled}" VerticalAlignment="Top">
+                    <TextBlock Text="BOOST THE FOCUSED APP" FontWeight="Bold" FontSize="15"/>
+                </CheckBox>
+            </HeaderedContentControl>
+
+            <!-- ============================================================ C · SmartTrim -->
+            <HeaderedContentControl Style="{StaticResource Section}">
+                <HeaderedContentControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="C" Style="{StaticResource SectionNumber}"/>
+                        <TextBlock Text="SMARTTRIM" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Style="{StaticResource SectionBlurb}"
+                                   Text="Every so often, background programs above the threshold give idle memory back to Windows. Useful on machines short of RAM; unnecessary on most."/>
+                    </StackPanel>
+                </HeaderedContentControl.Header>
+                <StackPanel>
+                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding SmartTrimEnabled}">
+                        <TextBlock Text="TRIM AUTOMATICALLY" FontWeight="Bold" FontSize="15"/>
+                    </CheckBox>
+
+                    <StackPanel IsEnabled="{Binding SmartTrimEnabled}" Margin="0,26,0,0">
+                        <WrapPanel>
+                            <ContentControl Content="{Binding TrimInterval}" Focusable="False"/>
+                            <ContentControl Content="{Binding TrimThresholdMb}" Focusable="False"/>
+                            <ContentControl Content="{Binding TrimMinRamLoad}" Focusable="False"/>
+                        </WrapPanel>
+                        <ContentControl Content="{Binding TrimExclusions}" Focusable="False"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding TrimLogNoAction}" Margin="0" Content="LOG PASSES THAT FIND NOTHING TO TRIM"/>
+                    </StackPanel>
+
+                    <TextBlock Text="STANDBY LIST" Style="{StaticResource Sub}"/>
+                    <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding StandbyPurgeEnabled}" Margin="0,0,0,16" Content="PURGE THE STANDBY LIST WHEN FREE RAM IS LOW"/>
+                    <StackPanel IsEnabled="{Binding StandbyPurgeEnabled}">
+                        <ContentControl Content="{Binding StandbyFreeRamMb}" Focusable="False"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding StandbyOnlyInPerformanceMode}" Margin="0" Content="ONLY WHILE PERFORMANCE MODE IS ON"/>
+                    </StackPanel>
+
+                    <TextBlock Text="FILE CACHE" Style="{StaticResource Sub}"/>
+                    <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding FileCachePurgeEnabled}" Margin="0" Content="ALSO FLUSH THE SYSTEM FILE CACHE"/>
+
+                    <TextBlock Text="RIGHT NOW" Style="{StaticResource Sub}"/>
+                    <WrapPanel>
+                        <Button Style="{StaticResource Btn.Solid}" Content="PURGE NOW" Command="{Binding PurgeNowCommand}" Margin="0,0,10,8"
+                                ToolTip="Trims working sets and purges the standby list (and the file cache, if switched on)"/>
+                        <Button Style="{StaticResource Btn.Outline}" Content="TRIM EVERYTHING NOW" Command="{Binding TrimAllCommand}" Margin="0,0,10,8"/>
+                        <Border Style="{StaticResource Tag}" Margin="4,0,0,8" Visibility="{Binding IsAdministrator, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}">
+                            <TextBlock Text="PURGE NEEDS ADMINISTRATOR RIGHTS" Style="{StaticResource Tag.Text}"/>
+                        </Border>
+                    </WrapPanel>
+                    <TextBlock Text="{Binding PurgeSummary}" FontWeight="SemiBold" FontSize="13.5" TextWrapping="Wrap" Margin="0,6,0,0"
+                               Visibility="{Binding PurgeSummary, Converter={StaticResource VisibleWhen}}"/>
+                </StackPanel>
+            </HeaderedContentControl>
+
+            <!-- ============================================================ D · IdleSaver -->
+            <HeaderedContentControl Style="{StaticResource Section}">
+                <HeaderedContentControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="D" Style="{StaticResource SectionNumber}"/>
+                        <TextBlock Text="IDLESAVER" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Style="{StaticResource SectionBlurb}"
+                                   Text="When you've left the keyboard and mouse alone for a while, switch to a lower-power plan. Your plan comes back the moment you return."/>
+                    </StackPanel>
+                </HeaderedContentControl.Header>
+                <StackPanel>
+                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding IdleSaverEnabled}">
+                        <TextBlock Text="SAVE POWER WHILE AWAY" FontWeight="Bold" FontSize="15"/>
+                    </CheckBox>
+                    <StackPanel IsEnabled="{Binding IdleSaverEnabled}" Margin="0,26,0,0">
+                        <ContentControl Content="{Binding IdleTimeout}" Focusable="False"/>
+                        <ContentControl Content="{Binding IdlePlan}" Focusable="False"/>
+                    </StackPanel>
+                </StackPanel>
+            </HeaderedContentControl>
+
+            <!-- ============================================================ E · Performance Mode -->
+            <HeaderedContentControl Style="{StaticResource Section}">
+                <HeaderedContentControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="E" Style="{StaticResource SectionNumber}"/>
+                        <TextBlock Text="PERFORMANCE MODE" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Style="{StaticResource SectionBlurb}"
+                                   Text="Jumps to a fast power plan and puts your previous plan back when you turn it off. It can switch itself on while a game runs."/>
+                    </StackPanel>
+                </HeaderedContentControl.Header>
+                <StackPanel>
+                    <DockPanel>
+                        <Border DockPanel.Dock="Right" Style="{StaticResource Tag}" VerticalAlignment="Center"
+                                Visibility="{Binding PerformanceModeAutomatic, Converter={StaticResource VisibleWhen}}">
+                            <TextBlock Text="ON AUTOMATICALLY — A GAME IS RUNNING" Style="{StaticResource Tag.Text}"/>
+                        </Border>
+                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding PerformanceMode}" HorizontalAlignment="Left">
+                            <TextBlock Text="PERFORMANCE MODE" FontWeight="Bold" FontSize="15"/>
+                        </CheckBox>
+                    </DockPanel>
+
+                    <TextBlock Text="WHAT IT DOES" Style="{StaticResource Sub}"/>
+                    <ContentControl Content="{Binding PerformancePlan}" Focusable="False"/>
+
+                    <TextBlock Text="TURNING ON BY ITSELF" Style="{StaticResource Sub}" Margin="0,18,0,12"/>
+                    <ContentControl Content="{Binding AutoProcesses}" Focusable="False"/>
+                    <TextBlock Style="{StaticResource Note}" Margin="0,-8,0,16"
+                               Text="Program names or full paths, with * as a wildcard. Performance Mode is on while any of them runs."/>
+                    <ContentControl Content="{Binding AutoExclusions}" Focusable="False"/>
+                    <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding DetectGames}" Margin="0" Content="DETECT GAMES FROM WHERE THEY'RE INSTALLED"/>
+                    <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding EngageForSteam}" Content="ENGAGE FOR STEAM GAMES"/>
+                </StackPanel>
+            </HeaderedContentControl>
+
+            <!-- ============================================================ F · Load switcher -->
+            <HeaderedContentControl Style="{StaticResource Section}">
+                <HeaderedContentControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="F" Style="{StaticResource SectionNumber}"/>
+                        <TextBlock Text="LOAD SWITCHER" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Style="{StaticResource SectionBlurb}"
+                                   Text="Follows the CPU's load: a fast plan while it's busy, a calmer one while it isn't."/>
+                    </StackPanel>
+                </HeaderedContentControl.Header>
+                <StackPanel>
+                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding LoadSwitcherEnabled}">
+                        <TextBlock Text="SWITCH PLANS WITH THE LOAD" FontWeight="Bold" FontSize="15"/>
+                    </CheckBox>
+                    <StackPanel IsEnabled="{Binding LoadSwitcherEnabled}" Margin="0,26,0,0">
+                        <WrapPanel>
+                            <ContentControl Content="{Binding LowLoad}" Focusable="False"/>
+                            <ContentControl Content="{Binding HighLoad}" Focusable="False"/>
+                            <ContentControl Content="{Binding AveragingSamples}" Focusable="False"/>
+                            <ContentControl Content="{Binding MinimumTimeInPlanMs}" Focusable="False"/>
+                        </WrapPanel>
+                        <Border Background="{StaticResource VoltBrush}" Padding="12,8" Margin="0,0,0,18" HorizontalAlignment="Left"
+                                Visibility="{Binding LoadSwitcherError, Converter={StaticResource VisibleWhen}}">
+                            <TextBlock Text="{Binding LoadSwitcherError}" Foreground="{StaticResource InkBrush}" FontWeight="Bold" FontSize="12.5" TextWrapping="Wrap"/>
+                        </Border>
+                        <ContentControl Content="{Binding LowPlan}" Focusable="False"/>
+                        <ContentControl Content="{Binding HighPlan}" Focusable="False"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding DeferLowPlan}" Content="AT LOW LOAD, GO BACK TO THE PLAN FROM BEFORE"
+                                  ToolTip="Instead of switching to the low-load plan, return to whatever plan was active before the switcher went high"/>
+                    </StackPanel>
+                </StackPanel>
+            </HeaderedContentControl>
+
+            <!-- ============================================================ G · Power -->
+            <HeaderedContentControl Style="{StaticResource Section}">
+                <HeaderedContentControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="G" Style="{StaticResource SectionNumber}"/>
+                        <TextBlock Text="POWER" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Style="{StaticResource SectionBlurb}"
+                                   Text="Switch Windows power plans by hand, and choose the one to start with."/>
+                    </StackPanel>
+                </HeaderedContentControl.Header>
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,8">
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding PlanOwnerText}" FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.7" VerticalAlignment="Center"/>
+                        <TextBlock Text="INSTALLED PLANS" Style="{StaticResource Text.Label}"/>
+                    </DockPanel>
+                    <ItemsControl ItemsSource="{Binding Plans}" Focusable="False">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Command="{Binding DataContext.ActivatePlanCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}" Margin="0,0,8,8" MinWidth="170" Padding="16,14" HorizontalContentAlignment="Left">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource Btn.Outline}">
+                                            <Setter Property="BorderBrush" Value="{StaticResource VoltLineBrush}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                    <Setter Property="Background" Value="{StaticResource VoltBrush}"/>
+                                                    <Setter Property="BorderBrush" Value="{StaticResource VoltBrush}"/>
+                                                    <Setter Property="Foreground" Value="{StaticResource InkBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                    <StackPanel>
+                                        <TextBlock FontSize="10" FontWeight="SemiBold" Opacity="0.7">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="SWITCH TO"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                            <Setter Property="Text" Value="ACTIVE"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding Name}" FontSize="17"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <ContentControl Content="{Binding StartWithPlan}" Focusable="False" Margin="0,22,0,0"/>
+                </StackPanel>
+            </HeaderedContentControl>
+
+            <!-- ============================================================ H · General -->
+            <HeaderedContentControl Style="{StaticResource Section}">
+                <HeaderedContentControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="H" Style="{StaticResource SectionNumber}"/>
+                        <TextBlock Text="GENERAL" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Style="{StaticResource SectionBlurb}"
+                                   Text="How ProGuard fits into your Windows session."/>
+                    </StackPanel>
+                </HeaderedContentControl.Header>
+                <StackPanel>
+                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding StartWithWindows}">
+                        <TextBlock Text="START WITH WINDOWS" FontWeight="Bold" FontSize="15"/>
+                    </CheckBox>
+                    <TextBlock Style="{StaticResource Note}" Text="Opens this window when you sign in. The engine runs on its own either way."/>
+                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding MinimizeToTray}" Margin="0,22,0,0">
+                        <TextBlock Text="KEEP RUNNING IN THE TRAY" FontWeight="Bold" FontSize="15"/>
+                    </CheckBox>
+                    <TextBlock Style="{StaticResource Note}" Text="Closing or minimising the window hides it to the tray instead. Quit from the tray menu."/>
+                    <ContentControl Content="{Binding PollingInterval}" Focusable="False" Margin="0,26,0,0"/>
+                </StackPanel>
+            </HeaderedContentControl>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

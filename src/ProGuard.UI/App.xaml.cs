@@ -1,112 +1,91 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using ProGuard.UI.IPC;
+using System.IO;
+using System.Windows;
+using System.Windows.Threading;
+using ProGuard.Shared.Client;
 using ProGuard.UI.Services;
 using ProGuard.UI.ViewModels;
-using ProGuard.UI.Views;
-using System.Windows;
-using Wpf.Ui;
 
 namespace ProGuard.UI;
 
 public partial class App : Application
 {
-    static App()
-    {
-        System.IO.Directory.SetCurrentDirectory(System.AppContext.BaseDirectory);
-    }
-    private static readonly IHost _host = Host
-        .CreateDefaultBuilder()
-        .ConfigureServices((context, services) =>
-        {
-            services.AddHostedService<ApplicationHostService>();
-            services.AddHostedService<ForegroundReporter>();
-            services.AddSingleton<INavigationService, NavigationService>();
-            services.AddSingleton<ISnackbarService, SnackbarService>();
-            
-            services.AddSingleton<MainWindow>();
-            services.AddSingleton<MainViewModel>();
-            
-            services.AddSingleton<DashboardPage>();
-            services.AddSingleton<DashboardViewModel>();
-            
-            services.AddSingleton<ProcessListPage>();
-            services.AddSingleton<ProcessListViewModel>();
-            
-            services.AddSingleton<RulesPage>();
-            services.AddSingleton<RulesViewModel>();
-            
-            services.AddSingleton<WatchdogPage>();
-            services.AddSingleton<WatchdogViewModel>();
-            
-            services.AddSingleton<EngineProxy>();
+    private EngineHub? _hub;
+    private TrayIconService? _tray;
+    private WatchdogNotificationFeed? _watchdogFeed;
 
-            services.AddSingleton<PowerPage>();
-            services.AddSingleton<PowerViewModel>();
-            
-            services.AddSingleton<LogsPage>();
-            services.AddSingleton<LogsViewModel>();
-            
-            services.AddSingleton<SettingsPage>();
-            services.AddSingleton<SettingsViewModel>();
-            
-            services.AddSingleton<TrayIconService>();
-            // Shows the engine's Watchdog notifications in the tray; the Watchdog page also reads its activity.
-            services.AddSingleton<WatchdogNotificationListener>();
-            services.AddHostedService(sp => sp.GetRequiredService<WatchdogNotificationListener>());
-        }).Build();
+    // The engine runs as a service in session 0 and can't see this desktop: ProBalance's foreground exemption,
+    // Foreground Boost and IdleSaver all depend on this UI reporting the foreground process and idle time.
+    private readonly ForegroundReporter _foregroundReporter = new();
 
-    public static T GetService<T>() where T : class
-    {
-        return (_host.Services.GetService(typeof(T)) as T)!;
-    }
-
-    protected override async void OnStartup(StartupEventArgs e)
+    protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        DispatcherUnhandledException += OnUnhandledException;
+        SessionEnding += (_, _) => { if (MainWindow is MainWindow w) w.IsQuitting = true; };
 
-        AppDomain.CurrentDomain.UnhandledException += (s, args) =>
-        {
-            System.IO.File.WriteAllText("crash.log", args.ExceptionObject?.ToString());
-        };
-        DispatcherUnhandledException += (s, args) =>
-        {
-            System.IO.File.WriteAllText("dispatcher_crash.log", args.Exception.ToString());
-            args.Handled = true;
-        };
+        var toaster = new Toaster(Dispatcher);
+        var client = new EngineClient();
+        _hub = new EngineHub(client, Dispatcher, toaster);
+        var shell = new ShellViewModel(_hub, toaster, new IconCache(Dispatcher));
+
+        var window = new MainWindow { DataContext = shell };
+        MainWindow = window;
 
         try
         {
-            ShutdownMode = ShutdownMode.OnExplicitShutdown;
-
-            await _host.StartAsync();
-
-            var mainWindow = GetService<MainWindow>();
-            MainWindow = mainWindow;
-            mainWindow.Show();
-
-            ShutdownMode = ShutdownMode.OnMainWindowClose;
-
-            try
-            {
-                var trayIcon = GetService<TrayIconService>();
-                trayIcon.Initialize();
-            }
-            catch (Exception ex)
-            {
-                System.IO.File.WriteAllText("tray_error.log", ex.ToString());
-            }
+            _tray = new TrayIconService(shell, Dispatcher, window.ToggleVisibility, window.BringToFront, Quit);
+            window.HasTray = true;
+            // Watchdog rules that ask to be notified: the engine can't reach this desktop, so poll for them.
+            _watchdogFeed = new WatchdogNotificationFeed(client, _tray.ShowWatchdogEvent);
+            _watchdogFeed.Start();
         }
         catch (Exception ex)
         {
-            System.IO.File.WriteAllText("startup_error.log", ex.ToString());
+            // No tray (a locked-down shell, say): the app still works, the window just behaves as an ordinary one.
+            LogError(ex);
         }
+
+        // Started at sign-in (see RunKeyStartup): go straight to the tray rather than opening a window.
+        bool toTray = window.HasTray && e.Args.Contains(RunKeyStartup.TrayArgument, StringComparer.OrdinalIgnoreCase);
+        if (!toTray) window.Show();
+
+        _hub.Start();
+        _foregroundReporter.StartAsync(CancellationToken.None);
     }
 
-    protected override async void OnExit(ExitEventArgs e)
+    private void Quit()
     {
-        await _host.StopAsync();
-        _host.Dispose();
+        if (MainWindow is MainWindow w) w.IsQuitting = true;
+        Shutdown();
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _watchdogFeed?.Dispose();
+        _tray?.Dispose();
+        _foregroundReporter.Dispose();
+        _hub?.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(1));
         base.OnExit(e);
+    }
+
+    private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        // Keep the app alive and tell the user, but leave a trace for diagnosis.
+        LogError(e.Exception);
+
+        (MainWindow?.DataContext as ShellViewModel)?.Toaster.Show($"Something went wrong: {e.Exception.Message}", isError: true);
+        e.Handled = true;
+    }
+
+    private static void LogError(Exception exception)
+    {
+        try
+        {
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ProGuard");
+            Directory.CreateDirectory(dir);
+            File.AppendAllText(Path.Combine(dir, "ui-errors.log"), $"{DateTime.Now:O} {exception}{Environment.NewLine}");
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 }

@@ -49,9 +49,9 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     private readonly Func<double> _systemCpuPercent;
     private readonly Func<long> _nowMs;
     private readonly IUserIdleSource? _idleSource;
-    private Timer? _timer;
+    private bool _started;
 
-    // Evaluate runs on a timer thread; SetEnabled, ReleaseRestraint and StopAsync come from other threads.
+    // Evaluate runs on the process monitor's refresh thread; SetEnabled, ReleaseRestraint and StopAsync come from other threads.
     private readonly object _gate = new();
     private readonly ConcurrentDictionary<int, Restraint> _restrained = new();
     // PID -> time (ms) the process was first seen over quota in the current unbroken run.
@@ -60,6 +60,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     private readonly ConcurrentDictionary<string, byte> _exclusions = new();
     private volatile bool _enabled = true;
     private volatile bool _pausedForIdle;
+    private int _totalRestraints;
 
     /// <summary>A setting a restraint changed: what to put back, and what we set (to notice someone else changing it).</summary>
     private sealed record Change<T>(T Original, T Applied);
@@ -115,9 +116,6 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     public bool ExcludeChildrenOfForeground { get; set; } = true;
     /// <summary>Processes in session 0 (services) are exempt.</summary>
     public bool ExcludeServices { get; set; } = true;
-    /// <summary>How often usage is evaluated (prolasso.ini: <c>UpdateSpeedCore</c>). Applies on the next start.</summary>
-    public int UpdateSpeedCore { get; set; } = 1000;
-
     // Optional restraint actions, all off by default (see ProBalanceRestraintOptions).
     /// <summary>Also restrict a restrained process to <see cref="RestraintAffinity"/>, intersected with its own
     /// affinity; skipped if that leaves nothing or changes nothing.</summary>
@@ -147,6 +145,9 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
 
     public bool IsEngaged => !_restrained.IsEmpty;
     public int ActiveInterventions => _restrained.Count;
+    public bool IsEnabled => _enabled;
+    public int TotalRestraints => Volatile.Read(ref _totalRestraints);
+    public IReadOnlyCollection<int> RestrainedPids => _restrained.Keys.ToList();
 
     public ProBalanceEngine(
         ILogger<ProBalanceEngine> logger,
@@ -169,14 +170,18 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting ProBalance Engine");
-        _timer = new Timer(Evaluate, null, TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(Math.Max(100, UpdateSpeedCore)));
+        // Evaluate right after each process refresh (prolasso.ini UpdateSpeedCore is the monitor's polling interval),
+        // as Process Lasso samples and decides in one loop. On a separate timer the usage it judged could be up to a
+        // whole interval old, which made restraints and restores about a second late.
+        if (!_started) _processMonitor.Refreshed += OnProcessesRefreshed;
+        _started = true;
         return Task.CompletedTask;
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Stopping ProBalance Engine");
-        _timer?.Change(Timeout.Infinite, 0);
+        Unsubscribe();
         RestoreAll("ProBalance stopped");
         return Task.CompletedTask;
     }
@@ -410,6 +415,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         if (!r.HoldsAnything) return;
 
         _restrained[p.Pid] = r;
+        Interlocked.Increment(ref _totalRestraints);
         var actions = Describe(r);
         LogAction(p.Name, p.Pid, original.Value, r.Priority?.Applied ?? original.Value,
             $"High CPU usage ({p.CpuPercent:F1}%): {actions}", restored: false);
@@ -564,5 +570,13 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         _ => 2
     };
 
-    public void Dispose() => _timer?.Dispose();
+    private void OnProcessesRefreshed(object? sender, EventArgs e) => Evaluate(null);
+
+    private void Unsubscribe()
+    {
+        if (_started) _processMonitor.Refreshed -= OnProcessesRefreshed;
+        _started = false;
+    }
+
+    public void Dispose() => Unsubscribe();
 }

@@ -26,9 +26,14 @@ public class RuleStore : IRuleStore
     // Replaced wholesale on reload so rules deleted by the UI disappear from the cache too.
     private volatile ConcurrentDictionary<string, ProcessRule> _processRules = new(StringComparer.Ordinal);
 
-    // The UI writes to the same database file directly; we notice by watching its write time.
+    // Other processes (the UI when the engine isn't reachable, admin tools) may write the database file directly; we
+    // notice by watching its files. In WAL mode a commit only touches "<db>-wal" until the next checkpoint, so the
+    // main file's write time alone misses most changes.
     private string? _dbFilePath;
-    private DateTime _lastLoadedWriteTimeUtc;
+    private DatabaseStamp _lastLoadedStamp;
+    private (int, int, int) _lastLoadedCounts = (-1, -1, -1);
+
+    internal readonly record struct DatabaseStamp(DateTime DbWriteTimeUtc, DateTime WalWriteTimeUtc, long WalLength);
 
     // The watchdog timer enumerates these while IPC/UI threads mutate them, so every access goes through _sync
     // and readers get snapshots.
@@ -52,12 +57,20 @@ public class RuleStore : IRuleStore
     {
         if (string.IsNullOrEmpty(_dbFilePath) || !File.Exists(_dbFilePath)) return false;
 
-        var writeTime = File.GetLastWriteTimeUtc(_dbFilePath);
-        if (writeTime <= _lastLoadedWriteTimeUtc) return false;
+        if (Stamp(_dbFilePath) == _lastLoadedStamp) return false;
 
-        _logger.LogInformation("Database changed on disk, reloading rules");
+        // The engine's own writes (e.g. the ProBalance log) land here too, so this is routine.
+        _logger.LogDebug("Database changed on disk, reloading rules");
         LoadRules();
         return true;
+    }
+
+    /// <summary>What changes when anyone commits to the database at <paramref name="dbPath"/>, in either journal mode.</summary>
+    internal static DatabaseStamp Stamp(string dbPath)
+    {
+        var wal = new FileInfo(dbPath + "-wal");
+        return new DatabaseStamp(File.GetLastWriteTimeUtc(dbPath),
+            wal.Exists ? wal.LastWriteTimeUtc : default, wal.Exists ? wal.Length : -1);
     }
 
     private void LoadRules()
@@ -71,7 +84,7 @@ public class RuleStore : IRuleStore
             // Take the timestamp before reading so a write that lands mid-load still triggers another reload.
             _dbFilePath = db.Database.GetDbConnection().DataSource;
             if (!string.IsNullOrEmpty(_dbFilePath) && File.Exists(_dbFilePath))
-                _lastLoadedWriteTimeUtc = File.GetLastWriteTimeUtc(_dbFilePath);
+                _lastLoadedStamp = Stamp(_dbFilePath);
 
             var processRules = new ConcurrentDictionary<string, ProcessRule>(StringComparer.Ordinal);
             foreach (var rule in db.ProcessRules.ToList())
@@ -91,8 +104,10 @@ public class RuleStore : IRuleStore
                 _settings = db.Settings.FirstOrDefault() ?? new AppSettings();
             }
 
-            _logger.LogInformation("Loaded {RuleCount} process rules, {WdCount} watchdog rules, {PpCount} power profiles",
-                _processRules.Count, _watchdogRules.Count, _powerProfiles.Count);
+            var counts = (_processRules.Count, _watchdogRules.Count, _powerProfiles.Count);
+            _logger.Log(counts == _lastLoadedCounts ? LogLevel.Debug : LogLevel.Information,
+                "Loaded {RuleCount} process rules, {WdCount} watchdog rules, {PpCount} power profiles", counts.Item1, counts.Item2, counts.Item3);
+            _lastLoadedCounts = counts;
         }
         catch (Exception ex)
         {
@@ -294,6 +309,32 @@ public class RuleStore : IRuleStore
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to log ProBalance action");
+        }
+    }
+
+    public void ClearProBalanceActions()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+        db.ProBalanceActions.ExecuteDelete();
+    }
+
+    public IReadOnlyList<ProBalanceAction> GetRecentActions(int count)
+    {
+        if (count <= 0) return Array.Empty<ProBalanceAction>();
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+            // Ids only grow, so the highest are the newest (and the primary key needs no index of its own).
+            var actions = db.ProBalanceActions.AsNoTracking().OrderByDescending(a => a.Id).Take(count).ToList();
+            foreach (var action in actions) action.Timestamp = DateTime.SpecifyKind(action.Timestamp, DateTimeKind.Utc);
+            return actions;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to read the action log");
+            return Array.Empty<ProBalanceAction>();
         }
     }
 }

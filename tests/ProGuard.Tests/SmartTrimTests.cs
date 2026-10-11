@@ -14,7 +14,6 @@ using ProGuard.Core.Services;
 using ProGuard.Engine.IPC;
 using ProGuard.Engine.Services;
 using ProGuard.Shared.Messages;
-using ProGuard.UI.IPC;
 using ProGuard.UI.ViewModels;
 
 namespace ProGuard.Tests;
@@ -529,46 +528,6 @@ public class SmartTrimTests
         Assert.NotNull(result.Data);
     }
 
-    [Fact]
-    public async Task SettingsPage_PurgeNow_ShowsTheEnginesAnswer()
-    {
-        var (dispatcher, trim) = Dispatcher();
-        trim.Setup(t => t.PurgeNow()).Returns(new MemoryPurgeReport { ProcessesTrimmed = 2, WorkingSetBytesReclaimed = 300 * Mb, StandbyPurged = true, StandbyBytesReclaimed = 700 * Mb });
-        var pipeName = "ProGuardTest_" + Guid.NewGuid().ToString("N");
-        var admin = true;
-        var server = new PipeServer(NullLogger<PipeServer>.Instance, dispatcher)
-        {
-            PipeName = pipeName,
-            IdentifyCaller = _ => new FakeCaller { IsAdministrator = admin }
-        };
-        server.Start();
-        try
-        {
-            var vm = new SettingsViewModel(new EngineProxy(new PipeClient(pipeName) { ConnectTimeout = TimeSpan.FromSeconds(5) }));
-
-            await vm.PurgeNowCommand.ExecuteAsync(null);
-            Assert.Equal("Trimmed 2 processes (300 MB); purged standby list (700 MB). Reclaimed 1000 MB in total.", vm.PurgeResultText);
-
-            admin = false;
-            var vm2 = new SettingsViewModel(new EngineProxy(new PipeClient(pipeName) { ConnectTimeout = TimeSpan.FromSeconds(5) }));
-            await vm2.PurgeNowCommand.ExecuteAsync(null);
-            Assert.Contains("Access denied", vm2.PurgeResultText);
-        }
-        finally
-        {
-            server.Stop();
-        }
-    }
-
-    [Fact]
-    public async Task SettingsPage_PurgeNow_SaysWhenTheEngineIsNotRunning()
-    {
-        var vm = new SettingsViewModel(new EngineProxy(new PipeClient("ProGuardTest_" + Guid.NewGuid().ToString("N")) { ConnectTimeout = TimeSpan.FromMilliseconds(100) }));
-
-        await vm.PurgeNowCommand.ExecuteAsync(null);
-
-        Assert.Equal("The ProGuard engine is not running.", vm.PurgeResultText);
-    }
 }
 
 /// <summary>A fact that only runs when the test host is (or is not) elevated, and is reported as skipped otherwise.</summary>

@@ -1,6 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.IO.Pipes;
 using System.Security.Principal;
+using System.Threading;
+using System.Threading.Tasks;
 using ProGuard.Core.Native;
 
 namespace ProGuard.Engine.IPC;
@@ -16,6 +20,20 @@ public interface IIpcCaller
 
     /// <summary>Whether the caller's own token could open process <paramref name="pid"/> with <paramref name="access"/>.</summary>
     bool CanOpenProcess(int pid, ProcessAccessFlags access);
+
+    /// <summary>
+    /// The ids among <paramref name="processes"/> that the caller's own token could open with <paramref name="access"/>.
+    /// Each process is named by id and start time, so an answer about a process is never applied to a different one
+    /// that took over its id. The default asks <see cref="CanOpenProcess"/> one by one; a pipe caller overrides it to
+    /// impersonate the client once for the whole list and to remember the answers for the life of the connection.
+    /// </summary>
+    IReadOnlySet<int> FilterOpenable(IReadOnlyList<(int Pid, DateTime StartTimeUtc)> processes, ProcessAccessFlags access)
+    {
+        var openable = new HashSet<int>();
+        foreach (var (pid, _) in processes)
+            if (CanOpenProcess(pid, access)) openable.Add(pid);
+        return openable;
+    }
 }
 
 public static class IpcCaller
@@ -28,6 +46,9 @@ public static class IpcCaller
         public string Name => "engine";
         public bool IsAdministrator => true;
         public bool CanOpenProcess(int pid, ProcessAccessFlags access) => true;
+
+        public IReadOnlySet<int> FilterOpenable(IReadOnlyList<(int Pid, DateTime StartTimeUtc)> processes, ProcessAccessFlags access) =>
+            processes.Select(p => p.Pid).ToHashSet();
     }
 }
 
@@ -39,6 +60,11 @@ public static class IpcCaller
 internal sealed class PipeCaller : IIpcCaller
 {
     private readonly NamedPipeServerStream _pipe;
+
+    // What FilterOpenable learned about each (process, start time, access), so a UI polling every second doesn't
+    // repeat the same few hundred checks. Rebuilt from each call's own list, so it never outgrows the process list.
+    private readonly object _cacheLock = new();
+    private Dictionary<(int Pid, long StartTicks, ProcessAccessFlags Access), bool> _openable = new();
 
     private PipeCaller(NamedPipeServerStream pipe, string name, bool isAdministrator)
     {
@@ -61,7 +87,7 @@ internal sealed class PipeCaller : IIpcCaller
         var isAdministrator = false;
         try
         {
-            pipe.RunAsClient(() =>
+            RunAsClient(pipe, () =>
             {
                 using var identity = WindowsIdentity.GetCurrent(TokenAccessLevels.Query);
                 name = identity.Name;
@@ -75,12 +101,60 @@ internal sealed class PipeCaller : IIpcCaller
         return name == null ? null : new PipeCaller(pipe, name, isAdministrator);
     }
 
+    public IReadOnlySet<int> FilterOpenable(IReadOnlyList<(int Pid, DateTime StartTimeUtc)> processes, ProcessAccessFlags access)
+    {
+        lock (_cacheLock)
+        {
+            var answers = new Dictionary<(int, long, ProcessAccessFlags), bool>(processes.Count);
+            var unknown = new List<(int Pid, long StartTicks)>();
+            foreach (var (pid, start) in processes)
+            {
+                var key = (pid, start.Ticks, access);
+                if (_openable.TryGetValue(key, out var known)) answers[key] = known;
+                else if (!answers.ContainsKey(key)) unknown.Add((pid, start.Ticks));
+            }
+
+            if (unknown.Count > 0)
+            {
+                // One impersonation for every check: it costs far more than the OpenProcess calls inside it. Through
+                // RunAsClient below, never _pipe.RunAsClient directly: this runs on every snapshot request, and would
+                // otherwise leave the client's identity in the connection's ExecutionContext for later engine work.
+                var results = new bool[unknown.Count];
+                var ran = false;
+                try
+                {
+                    RunAsClient(_pipe, () =>
+                    {
+                        ran = true;
+                        for (var i = 0; i < unknown.Count; i++)
+                        {
+                            var handle = Kernel32.OpenProcess(access, false, unknown[i].Pid);
+                            if (handle == IntPtr.Zero) continue;
+                            results[i] = true;
+                            Kernel32.CloseHandle(handle);
+                        }
+                    });
+                }
+                catch (Exception)
+                {
+                    // The client went away or can't be impersonated: refuse, and don't remember the refusal.
+                    if (!ran) return new HashSet<int>(processes.Where(p => answers.TryGetValue((p.Pid, p.StartTimeUtc.Ticks, access), out var ok) && ok).Select(p => p.Pid));
+                }
+                for (var i = 0; i < unknown.Count; i++)
+                    answers[(unknown[i].Pid, unknown[i].StartTicks, access)] = results[i];
+            }
+
+            _openable = answers;
+            return new HashSet<int>(processes.Where(p => answers[(p.Pid, p.StartTimeUtc.Ticks, access)]).Select(p => p.Pid));
+        }
+    }
+
     public bool CanOpenProcess(int pid, ProcessAccessFlags access)
     {
         var allowed = false;
         try
         {
-            _pipe.RunAsClient(() =>
+            RunAsClient(_pipe, () =>
             {
                 var handle = Kernel32.OpenProcess(access, false, pid);
                 if (handle == IntPtr.Zero) return;
@@ -93,5 +167,21 @@ internal sealed class PipeCaller : IIpcCaller
             return false;
         }
         return allowed;
+    }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> as the client. <see cref="NamedPipeServerStream.RunAsClient"/> reverts the thread's
+    /// token afterwards but leaves the client's identity in the current ExecutionContext, so every await continuation,
+    /// task and timer later started from this flow would run as the client. On the installed service that made "Purge
+    /// now" fail to open SYSTEM's own token, and SmartTrim timers set up over IPC ran as the user (purges failed, their
+    /// log lines were denied). Running it on a thread pool thread without flowing the context confines that to a
+    /// context that is thrown away.
+    /// </summary>
+    private static void RunAsClient(NamedPipeServerStream pipe, Action action)
+    {
+        Task task;
+        using (ExecutionContext.SuppressFlow())
+            task = Task.Run(() => pipe.RunAsClient(() => action()));
+        task.GetAwaiter().GetResult();
     }
 }

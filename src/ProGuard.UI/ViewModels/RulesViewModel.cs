@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
@@ -6,7 +7,9 @@ using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ProGuard.Core.Data;
+using ProGuard.Core.Helpers;
 using ProGuard.Core.Models;
+using ProGuard.UI.Controls;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -78,6 +81,25 @@ public partial class RulesViewModel : ViewModelBase
     [ObservableProperty]
     private string newStartupBoostSeconds = "10";
 
+    // Persistent per-process defaults. Index 0 of every option list is "(unchanged)", which stores null.
+    private const string Unchanged = "(unchanged)";
+    public IReadOnlyList<string> IoPriorityOptions { get; } = WithUnchanged(ProcessRuleOptions.IoPriorities);
+    /// <summary>The index is the stored MEMORY_PRIORITY value (1..5).</summary>
+    public IReadOnlyList<string> MemoryPriorityOptions { get; } = WithUnchanged(ProcessRuleOptions.MemoryPriorities.Skip(ProcessRuleOptions.MinMemoryPriority));
+    public IReadOnlyList<string> EfficiencyModeOptions { get; } = new[] { Unchanged, "On (EcoQoS)", "Off" };
+    public IReadOnlyList<string> PriorityBoostOptions { get; } = new[] { Unchanged, "Disable boost", "Allow boost" };
+    public IReadOnlyList<string> GpuPriorityOptions { get; } = WithUnchanged(ProcessRuleOptions.GpuPriorities);
+    public IReadOnlyList<string> GpuPreferenceOptions { get; } = WithUnchanged(ProcessRuleOptions.GpuPreferences);
+
+    [ObservableProperty] private int newIoPriorityIndex;
+    [ObservableProperty] private int newMemoryPriorityIndex;
+    [ObservableProperty] private int newEfficiencyModeIndex;
+    [ObservableProperty] private int newPriorityBoostIndex;
+    [ObservableProperty] private int newGpuPriorityIndex;
+    [ObservableProperty] private int newGpuPreferenceIndex;
+    [ObservableProperty] private string newCpuSetIds = string.Empty;
+    [ObservableProperty] private bool newReapplyIfChanged;
+
     public ObservableCollection<RuleDisplayItem> Rules { get; set; } = new();
 
     public RulesViewModel()
@@ -113,7 +135,8 @@ public partial class RulesViewModel : ViewModelBase
                     MaxInstances = maxInst,
                     InstanceBalancer = FormatBalancer(r),
                     StartupBoost = FormatStartupBoost(r),
-                    IsDisallowed = r.DisallowExecution
+                    IsDisallowed = r.DisallowExecution,
+                    Defaults = DescribeDefaults(r)
                 });
             }
         }
@@ -162,12 +185,27 @@ public partial class RulesViewModel : ViewModelBase
                 cpuLimitVal = parsedCpu;
             }
 
+            var cpuSetIds = string.IsNullOrWhiteSpace(NewCpuSetIds) ? null : NewCpuSetIds.Trim();
+            if (cpuSetIds != null && !CpuSets.TryParseIds(cpuSetIds, out _))
+            {
+                MessageBox.Show("CPU Sets must be a comma-separated list of CPU Set IDs (use Pick...).", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             var entity = new ProcessRule
             {
                 ProcessName = cleanName,
                 PriorityClass = prioVal,
                 CpuLimitPercent = cpuLimitVal,
-                DisallowExecution = NewIsDisallowed
+                DisallowExecution = NewIsDisallowed,
+                IoPriority = FromOptionIndex(NewIoPriorityIndex),
+                MemoryPriority = NewMemoryPriorityIndex > 0 ? NewMemoryPriorityIndex : null,
+                EfficiencyMode = FromTriState(NewEfficiencyModeIndex),
+                DisablePriorityBoost = FromTriState(NewPriorityBoostIndex),
+                CpuSetIds = cpuSetIds,
+                GpuPriority = FromOptionIndex(NewGpuPriorityIndex),
+                GpuPreference = FromOptionIndex(NewGpuPreferenceIndex),
+                ReapplyIfChanged = NewReapplyIfChanged
             };
             ApplyInstanceAndBoostFields(entity);
 
@@ -192,11 +230,13 @@ public partial class RulesViewModel : ViewModelBase
                 MaxInstances = FormatMaxInstances(entity),
                 InstanceBalancer = FormatBalancer(entity),
                 StartupBoost = FormatStartupBoost(entity),
-                IsDisallowed = entity.DisallowExecution
+                IsDisallowed = entity.DisallowExecution,
+                Defaults = DescribeDefaults(entity)
             });
 
             NewProcessName = string.Empty;
             NewCpuLimitThreshold = string.Empty;
+            ResetPersistentDefaults();
             IsAddPanelOpen = false;
         }
         catch (Exception ex)
@@ -286,6 +326,51 @@ public partial class RulesViewModel : ViewModelBase
     {
         IsAddPanelOpen = false;
         NewProcessName = string.Empty;
+        ResetPersistentDefaults();
+    }
+
+    [RelayCommand]
+    private void PickCpuSets()
+    {
+        try
+        {
+            var dialog = new CpuSetPickerDialog(NewCpuSetIds, string.IsNullOrWhiteSpace(NewProcessName) ? null : NewProcessName.Trim())
+            {
+                Owner = Application.Current?.MainWindow
+            };
+            if (dialog.ShowDialog() == true) NewCpuSetIds = dialog.SelectedIdsText;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to read the CPU Sets: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ResetPersistentDefaults()
+    {
+        NewIoPriorityIndex = NewMemoryPriorityIndex = NewEfficiencyModeIndex = NewPriorityBoostIndex = 0;
+        NewGpuPriorityIndex = NewGpuPreferenceIndex = 0;
+        NewCpuSetIds = string.Empty;
+        NewReapplyIfChanged = false;
+    }
+
+    private static IReadOnlyList<string> WithUnchanged(IEnumerable<string> options) => new[] { Unchanged }.Concat(options).ToArray();
+    private static int? FromOptionIndex(int index) => index > 0 ? index - 1 : null;
+    private static bool? FromTriState(int index) => index switch { 1 => true, 2 => false, _ => null };
+
+    /// <summary>One-line summary of a rule's persistent per-process defaults for the rules grid.</summary>
+    internal static string DescribeDefaults(ProcessRule r)
+    {
+        var parts = new List<string>();
+        if (r.IoPriority is int io) parts.Add("I/O " + ProcessRuleOptions.Label(ProcessRuleOptions.IoPriorities, io));
+        if (r.MemoryPriority is int mem) parts.Add("Memory " + ProcessRuleOptions.Label(ProcessRuleOptions.MemoryPriorities, mem));
+        if (r.EfficiencyMode is bool eco) parts.Add(eco ? "Eco on" : "Eco off");
+        if (r.DisablePriorityBoost is bool boost) parts.Add(boost ? "No boost" : "Boost");
+        if (r.CpuSetIds != null) parts.Add(r.CpuSetIds.Length == 0 ? "CPU Sets cleared" : "CPU Sets " + r.CpuSetIds);
+        if (r.GpuPriority is int gpu) parts.Add("GPU " + ProcessRuleOptions.Label(ProcessRuleOptions.GpuPriorities, gpu));
+        if (r.GpuPreference is int pref) parts.Add(ProcessRuleOptions.Label(ProcessRuleOptions.GpuPreferences, pref));
+        if (parts.Count > 0 && r.ReapplyIfChanged) parts.Add("re-apply");
+        return string.Join(" · ", parts);
     }
 
     [RelayCommand]
@@ -330,4 +415,6 @@ public class RuleDisplayItem
     public string InstanceBalancer { get; set; } = string.Empty;
     public string StartupBoost { get; set; } = string.Empty;
     public bool IsDisallowed { get; set; }
+    /// <summary>Summary of the persistent per-process defaults (I/O, memory, EcoQoS, boost, CPU Sets, GPU).</summary>
+    public string Defaults { get; set; } = string.Empty;
 }

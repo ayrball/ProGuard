@@ -48,4 +48,22 @@ public class ProcessRule
     public int? StartupBoostPriorityClass { get; set; }
     /// <summary>How long the boost lasts, 1-3600 seconds.</summary>
     public int? StartupBoostSeconds { get; set; }
+
+    // Persistent per-process defaults (Process Lasso's [ProcessDefaults]). Null leaves the process as Windows set it.
+    /// <summary>IO_PRIORITY_HINT: 0 Very Low, 1 Low, 2 Normal, 3 High.</summary>
+    public int? IoPriority { get; set; }
+    /// <summary>MEMORY_PRIORITY_*: 1 Very Low .. 5 Normal.</summary>
+    public int? MemoryPriority { get; set; }
+    /// <summary>True turns EcoQoS on; false explicitly turns it off (High QoS), which differs from null.</summary>
+    public bool? EfficiencyMode { get; set; }
+    /// <summary>True disables dynamic thread priority boosting; false re-enables it.</summary>
+    public bool? DisablePriorityBoost { get; set; }
+    /// <summary>Comma-separated CPU Set IDs from GetSystemCpuSetInformation; an empty string clears the process's CPU Sets.</summary>
+    public string? CpuSetIds { get; set; }
+    /// <summary>D3DKMT_SCHEDULINGPRIORITYCLASS: 0 Idle, 1 Below Normal, 2 Normal, 3 Above Normal, 4 High.</summary>
+    public int? GpuPriority { get; set; }
+    /// <summary>UserGpuPreferences: 0 let Windows decide, 1 power saving, 2 high performance. Takes effect on the next launch.</summary>
+    public int? GpuPreference { get; set; }
+    /// <summary>Re-check the settings above on every poll and put them back if something else changed them.</summary>
+    public bool ReapplyIfChanged { get; set; }
 }

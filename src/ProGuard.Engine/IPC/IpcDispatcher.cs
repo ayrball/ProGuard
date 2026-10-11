@@ -99,6 +99,8 @@ public class IpcDispatcher
                 MessageType.GetStatus => new IpcMessage { Type = MessageType.Status, Payload = JsonSerializer.Serialize(BuildStatus()) },
                 MessageType.SetSetting => Result(ReplaceSettings(request.Payload)),
                 MessageType.Command => Result(ExecuteCommand(request, caller)),
+                MessageType.GetRules => new IpcMessage { Type = MessageType.RuleList, Payload = JsonSerializer.Serialize(_ruleStore.GetProcessRules().Select(RuleDtoMapper.ToDto).ToList()) },
+                MessageType.SetRule => Result(SaveRule(request.Payload)),
                 _ => Result(CommandResult.Fail($"Unsupported message type {request.Type}"))
             };
         }
@@ -224,6 +226,34 @@ public class IpcDispatcher
                 property.SetValue(s, property.GetValue(incoming));
             s.Id = id; // the stored row keeps its key whatever the client sent
         });
+    }
+
+    /// <summary>
+    /// Creates or updates the process rule named in a <see cref="RuleDto"/>. Only the fields the DTO carries change;
+    /// the rest of an existing rule is kept. The engine applies it to processes as they start (or on the next
+    /// re-apply check).
+    /// </summary>
+    private CommandResult SaveRule(string payload)
+    {
+        var dto = ParseArgument<RuleDto>(payload);
+        if (string.IsNullOrWhiteSpace(dto.Name)) return CommandResult.Fail("A rule needs a process name");
+        if (dto.IoPriority is int io && !ProcessRuleOptions.IsValid(ProcessRuleOptions.IoPriorities, io)) return CommandResult.Fail("Invalid I/O priority");
+        if (dto.MemoryPriority is int mem && !ProcessRuleOptions.IsValid(ProcessRuleOptions.MemoryPriorities, mem, ProcessRuleOptions.MinMemoryPriority)) return CommandResult.Fail("Invalid memory priority");
+        if (dto.GpuPriority is int gpu && !ProcessRuleOptions.IsValid(ProcessRuleOptions.GpuPriorities, gpu)) return CommandResult.Fail("Invalid GPU priority");
+        if (dto.GpuPreference is int pref && !ProcessRuleOptions.IsValid(ProcessRuleOptions.GpuPreferences, pref)) return CommandResult.Fail("Invalid GPU preference");
+        if (dto.CpuSetIds != null && !CpuSets.TryParseIds(dto.CpuSetIds, out _)) return CommandResult.Fail("Invalid CPU Set IDs");
+
+        // Copy rather than mutate the cached rule: other threads are reading it.
+        var rule = new ProcessRule();
+        var existing = _ruleStore.GetProcessRule(dto.Name);
+        if (existing != null)
+        {
+            foreach (var property in typeof(ProcessRule).GetProperties().Where(p => p.CanWrite))
+                property.SetValue(rule, property.GetValue(existing));
+        }
+        RuleDtoMapper.CopyTo(dto, rule);
+        _ruleStore.SaveProcessRule(rule);
+        return CommandResult.Ok();
     }
 
     private EngineStatus BuildStatus() => new()

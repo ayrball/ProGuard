@@ -63,6 +63,53 @@
                         <CheckBox IsChecked="{Binding NewIsDisallowed}" Content="Disallow Execution" Margin="0,0,0,6"/>
                     </StackPanel>
 
+                    <!-- Persistent per-process defaults, applied by the engine when the process starts -->
+                    <StackPanel Margin="0,0,16,12">
+                        <TextBlock Text="I/O Priority:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,6"/>
+                        <ComboBox ItemsSource="{Binding IoPriorityOptions}" SelectedIndex="{Binding NewIoPriorityIndex}" Width="140"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,16,12">
+                        <TextBlock Text="Memory Priority:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,6"/>
+                        <ComboBox ItemsSource="{Binding MemoryPriorityOptions}" SelectedIndex="{Binding NewMemoryPriorityIndex}" Width="140"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,16,12">
+                        <TextBlock Text="Efficiency Mode:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,6"/>
+                        <ComboBox ItemsSource="{Binding EfficiencyModeOptions}" SelectedIndex="{Binding NewEfficiencyModeIndex}" Width="140"
+                                  ToolTip="On = EcoQoS. Off explicitly opts out (on hybrid CPUs it prefers P-cores)."/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,16,12">
+                        <TextBlock Text="Priority Boost:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,6"/>
+                        <ComboBox ItemsSource="{Binding PriorityBoostOptions}" SelectedIndex="{Binding NewPriorityBoostIndex}" Width="140"
+                                  ToolTip="Dynamic thread priority boosting (SetProcessPriorityBoost)"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,16,12">
+                        <TextBlock Text="CPU Sets:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,6"/>
+                        <StackPanel Orientation="Horizontal">
+                            <ui:TextBox Text="{Binding NewCpuSetIds, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="unchanged" Width="130" Margin="0,0,6,0"/>
+                            <ui:Button Content="Pick..." Command="{Binding PickCpuSetsCommand}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,16,12">
+                        <TextBlock Text="GPU Priority:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,6"/>
+                        <ComboBox ItemsSource="{Binding GpuPriorityOptions}" SelectedIndex="{Binding NewGpuPriorityIndex}" Width="140"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,16,12">
+                        <TextBlock Text="GPU Preference:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,6"/>
+                        <ComboBox ItemsSource="{Binding GpuPreferenceOptions}" SelectedIndex="{Binding NewGpuPreferenceIndex}" Width="160"
+                                  ToolTip="Per-user graphics preference for this exe. Takes effect the next time it starts."/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,20,12" VerticalAlignment="Bottom">
+                        <CheckBox IsChecked="{Binding NewReapplyIfChanged}" Content="Re-apply if changed" Margin="0,0,0,6"
+                                  ToolTip="Check these settings on every poll and put them back if something else changes them."/>
+                    </StackPanel>
+
                 </WrapPanel>
 
                 <!-- Instance limit, Instance Balancer and startup boost -->
@@ -148,6 +195,7 @@
                 <DataGridTextColumn Header="Instance Balancer" Binding="{Binding InstanceBalancer}" Width="140" ElementStyle="{StaticResource FluentDataGridTextStyle}"/>
                 <DataGridTextColumn Header="Startup Boost" Binding="{Binding StartupBoost}" Width="140" ElementStyle="{StaticResource FluentDataGridTextStyle}"/>
                 <DataGridCheckBoxColumn Header="Disallowed" Binding="{Binding IsDisallowed}" Width="110"/>
+                <DataGridTextColumn Header="Process Defaults" Binding="{Binding Defaults}" Width="2*" MinWidth="160" ElementStyle="{StaticResource FluentDataGridTextStyle}"/>
             </DataGrid.Columns>
         </DataGrid>
     </Grid>

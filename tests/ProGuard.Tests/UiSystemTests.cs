@@ -890,11 +890,10 @@ public class UiSystemTests
     {
         // Resource and binding-syntax mistakes in XAML only show when a view is created, so create every one.
         Exception? failure = null;
-        var thread = new Thread(() =>
+        UiTestApp.Run(() =>
         {
             try
             {
-                if (Application.Current == null) new ProGuard.UI.App().InitializeComponent();
 
                 var shell = NewShell();
                 shell.System.OnSnapshot(Snap());
@@ -927,9 +926,6 @@ public class UiSystemTests
                 failure = ex;
             }
         });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
 
         Assert.Null(failure);
     }

@@ -72,7 +72,9 @@ public class StandInEngineTests
         CommandTypes.DeleteWatchdogRule => (null, 1),
         CommandTypes.SaveSettings => (null, StandInData.Settings()),
         CommandTypes.SetPowerPlan => (null, StandInData.HighPerformance),
+        CommandTypes.SetPowerMode => (null, StandInData.BestPerformanceMode),
         CommandTypes.GetActivity => (null, 10),
+        CommandTypes.SetTimerResolution => (null, new TimerResolutionArgument { Resolution = 10000 }),
         _ => (null, null)
     };
 

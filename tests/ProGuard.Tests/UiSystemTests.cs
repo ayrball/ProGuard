@@ -154,6 +154,7 @@ public class UiSystemTests
         ProBalanceRestrainByAffinity = true, ProBalanceRestraintAffinity = 0x0AB0_0000_0000_00F0L,
         ProBalanceDropOneRandomCore = true, ProBalanceLowerIoPriority = true, ProBalanceUseEfficiencyMode = true,
         ProBalanceDoNotLowerPriorityClass = true, ProBalanceDisableWhenSysIdle = true, ProBalanceDisableIfSysIdleMs = 12345,
+        ProBalanceDisableCoreParking = true,
         ForegroundBoostEnabled = false,
         SmartTrimEnabled = true, SmartTrimIntervalSeconds = 95, SmartTrimMemoryThresholdMB = 197, SmartTrimMinimumRamLoadPercent = 71,
         SmartTrimExclusions = "chrome.exe, code.exe;obs64.exe", SmartTrimLogNoAction = true,
@@ -161,11 +162,12 @@ public class UiSystemTests
         IdleSaverEnabled = true, IdleTimeoutMinutes = 7, IdlePowerPlanGuid = PowerSaver.ToString().ToUpperInvariant(),
         PerformanceModePlanGuid = "11111111-2222-3333-4444-555555555555",
         AutoPerformanceModeProcesses = "game*.exe;C:\\Games\\a, b\\x.exe", AutoPerformanceModeExclusions = "launcher.exe",
-        AutoPerformanceModeDetectGames = true, PerformanceModeEngageForSteam = true,
+        AutoPerformanceModeDetectGames = true, PerformanceModeEngageForSteam = true, PerformanceModeSetBestPerformance = true,
         LoadSwitcherEnabled = true, LoadSwitcherLowThreshold = 12.5, LoadSwitcherHighThreshold = 61, LoadSwitcherAveragingWindowSamples = 9,
         LoadSwitcherMinimumTimeInPlanMs = 7777, LoadSwitcherLowPlanGuid = PowerSaver.ToString("N"), LoadSwitcherHighPlanGuid = HighPerformance.ToString("B"),
         LoadSwitcherDeferLowPlan = false,
         StartWithPowerPlanGuid = Balanced.ToString(),
+        SetTimerResolutionAtStartup = 7777,
         StartWithWindows = true, MinimizeToTray = false, Theme = "Dark", PollingIntervalMs = 1500
     };
 
@@ -210,7 +212,7 @@ public class UiSystemTests
         Assert.Equal("7", vm.IdleTimeout.Text);
         Assert.Equal("POWER SAVER", vm.IdlePlan.Options.Single(o => o.IsOn).Label);
 
-        Assert.True(vm.DetectGames && vm.EngageForSteam);
+        Assert.True(vm.DetectGames && vm.EngageForSteam && vm.PerformanceSetsBestMode);
         Assert.StartsWith("MISSING PLAN", vm.PerformancePlan.Options.Single(o => o.IsOn).Label); // a plan the machine no longer has stays listed
         Assert.Equal("game*.exe" + Environment.NewLine + "C:\\Games\\a, b\\x.exe", vm.AutoProcesses.Text); // a comma inside a path isn't a separator here
         Assert.Equal("launcher.exe", vm.AutoExclusions.Text);
@@ -248,6 +250,7 @@ public class UiSystemTests
         vm.UseEfficiencyMode = false;
         vm.DoNotLowerPriorityClass = false;
         vm.PauseWhenIdle = false;
+        vm.UnparkCoresWhileRestraining = false;
         vm.IdlePauseMs.Text = "60000";
         vm.ForegroundBoostEnabled = true;
 
@@ -271,6 +274,7 @@ public class UiSystemTests
         vm.AutoExclusions.Text = string.Empty;
         vm.DetectGames = false;
         vm.EngageForSteam = false;
+        vm.PerformanceSetsBestMode = false;
 
         vm.LoadSwitcherEnabled = false;
         vm.LowLoad.Text = "5";
@@ -295,6 +299,7 @@ public class UiSystemTests
         Assert.False(s.ProBalanceRestrainByAffinity);
         Assert.Equal(0x0AB0_0000_0000_00F1L, s.ProBalanceRestraintAffinity); // bits for cores that aren't shown survive
         Assert.False(s.ProBalanceDropOneRandomCore || s.ProBalanceLowerIoPriority || s.ProBalanceUseEfficiencyMode || s.ProBalanceDoNotLowerPriorityClass || s.ProBalanceDisableWhenSysIdle);
+        Assert.False(s.ProBalanceDisableCoreParking);
         Assert.Equal(60000, s.ProBalanceDisableIfSysIdleMs);
         Assert.True(s.ForegroundBoostEnabled);
 
@@ -318,6 +323,7 @@ public class UiSystemTests
         Assert.Null(s.AutoPerformanceModeExclusions);
         Assert.False(s.AutoPerformanceModeDetectGames);
         Assert.False(s.PerformanceModeEngageForSteam);
+        Assert.False(s.PerformanceModeSetBestPerformance);
 
         Assert.False(s.LoadSwitcherEnabled);
         Assert.Equal(5, s.LoadSwitcherLowThreshold);

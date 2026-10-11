@@ -24,6 +24,8 @@ public sealed class EngineSettingsDto
     public bool ProBalanceDoNotLowerPriorityClass { get; set; }
     public bool ProBalanceDisableWhenSysIdle { get; set; }
     public int ProBalanceDisableIfSysIdleMs { get; set; } = 30000;
+    /// <summary>Unpark every core while ProBalance restrains anything (OocDisableCoreParkingWhileIn). Administrators only.</summary>
+    public bool ProBalanceDisableCoreParking { get; set; }
 
     /// <summary>Raise the foreground process from Normal to Above Normal while it has focus.</summary>
     public bool ForegroundBoostEnabled { get; set; } = false;
@@ -54,6 +56,8 @@ public sealed class EngineSettingsDto
     public string? AutoPerformanceModeExclusions { get; set; }
     public bool AutoPerformanceModeDetectGames { get; set; }
     public bool PerformanceModeEngageForSteam { get; set; }
+    /// <summary>Also set the Windows power mode to Best performance while Performance Mode is on.</summary>
+    public bool PerformanceModeSetBestPerformance { get; set; }
 
     // Load-based power switcher
     public bool LoadSwitcherEnabled { get; set; }
@@ -70,11 +74,40 @@ public sealed class EngineSettingsDto
     /// <summary>Plan to switch to when the engine starts; null = leave it.</summary>
     public string? StartWithPowerPlanGuid { get; set; }
 
+    /// <summary>Timer resolution the engine holds, in 100-ns units; 0 = none. Administrators only.</summary>
+    public int SetTimerResolutionAtStartup { get; set; }
+
     // General
     public bool StartWithWindows { get; set; } = true;
     public bool MinimizeToTray { get; set; } = true;
     public string Theme { get; set; } = "System";
     public int PollingIntervalMs { get; set; } = 1000;
+}
+
+/// <summary>
+/// The system timer, for <see cref="Messages.CommandTypes.GetTimerResolution"/>. Every resolution is in 100-ns units
+/// (10000 = 1 ms). As Windows names them, <see cref="Minimum"/> is the coarsest interval the timer runs at and
+/// <see cref="Maximum"/> the finest it can be asked for.
+/// </summary>
+public sealed class TimerResolutionDto
+{
+    /// <summary>What the timer runs at now: the finest that any process has asked for.</summary>
+    public int Current { get; set; }
+    /// <summary>The coarsest interval (typically 156250 = 15.625 ms).</summary>
+    public int Minimum { get; set; }
+    /// <summary>The finest interval (typically 5000 = 0.5 ms).</summary>
+    public int Maximum { get; set; }
+    /// <summary>The setting (<see cref="EngineSettingsDto.SetTimerResolutionAtStartup"/>); 0 = none.</summary>
+    public int Requested { get; set; }
+    /// <summary>What the engine is asking Windows for right now; 0 = nothing.</summary>
+    public int Held { get; set; }
+    /// <summary>
+    /// Windows 11 and Server 2022 honour a process's request only for that process, unless the
+    /// GlobalTimerResolutionRequests switch is on. False on older Windows, where every request is global anyway.
+    /// </summary>
+    public bool GlobalRequestsSupported { get; set; }
+    /// <summary>The GlobalTimerResolutionRequests switch as stored. It takes effect after a restart.</summary>
+    public bool GlobalRequests { get; set; }
 }
 
 public sealed class PowerPlanDto
@@ -95,6 +128,24 @@ public sealed class PowerStateDto
 
     /// <summary>Who set the active plan: "User", "PerformanceMode", "IdleSaver", "LoadSwitcher", "StartWith".</summary>
     public string Owner { get; set; } = string.Empty;
+
+    /// <summary>Windows has a power-mode slider (Windows 10 1709 and later).</summary>
+    public bool PowerModeSupported { get; set; }
+
+    /// <summary>
+    /// The power mode in force: one of <see cref="PowerModeDto"/>'s ids (Guid.Empty is Balanced). Meaningful only while
+    /// <see cref="PowerModeSupported"/>.
+    /// </summary>
+    public Guid PowerModeId { get; set; }
+
+    /// <summary>The modes Windows 11's slider offers, from the most frugal to the fastest.</summary>
+    public List<PowerModeDto> PowerModes { get; set; } = new();
+}
+
+public sealed class PowerModeDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
 }
 
 /// <summary>One CPU Set, for picking the IDs a <see cref="ProcessRuleDto.CpuSetIds"/> rule names.</summary>

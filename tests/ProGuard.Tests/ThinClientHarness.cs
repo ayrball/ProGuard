@@ -10,6 +10,7 @@ using ProGuard.Core.Native;
 using ProGuard.Core.Services;
 using ProGuard.Engine.IPC;
 using ProGuard.Engine.Services;
+using ProGuard.Engine.Services.ProcessRules;
 using ProGuard.Shared.Messages;
 
 namespace ProGuard.Tests;
@@ -77,6 +78,9 @@ internal sealed class ThinHarness
     public FakeDetails Details { get; } = new();
     public ActivityLog Manual { get; } = new();
     public WatchdogEventLog WatchdogEvents { get; } = new();
+    public FakeLaunchRegistry LaunchRegistry { get; } = new();
+    public FakeTimerNative Timer { get; } = new();
+    public TimerResolutionService TimerResolution { get; }
     public ForegroundBoostService ForegroundBoost { get; }
     public SnapshotBuilder Snapshots { get; }
     public IpcDispatcher Dispatcher { get; }
@@ -131,20 +135,21 @@ internal sealed class ThinHarness
         Access.Setup(a => a.SetAffinityMask(It.IsAny<int>(), It.IsAny<long>())).Returns(true);
 
         ForegroundBoost = new ForegroundBoostService(NullLogger<ForegroundBoostService>.Instance, ProBalance.Object, new Mock<IForegroundTracker>().Object);
+        TimerResolution = new TimerResolutionService(native: Timer);
         var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, Monitor, SmartTrim.Object, Power.Object, ProBalance.Object,
-            foregroundBoost: ForegroundBoost);
+            foregroundBoost: ForegroundBoost, timerResolution: TimerResolution);
 
         Snapshots = new SnapshotBuilder(Monitor, ProBalance.Object, CpuLimiter.Object, Store.Object, Power.Object, Details,
             foregroundBoost: ForegroundBoost, metrics: () => { MetricsReads++; return Metrics; }, clockMs: () => NowMs, engineIsElevated: true);
 
         var actions = new ProcessActionService(NullLogger<ProcessActionService>.Instance, Tuning, Monitor, Controller.Object);
         var rules = new RuleService(NullLogger<RuleService>.Instance, Store.Object, Monitor, CpuLimiter.Object, ProBalance.Object,
-            Access.Object, Manual);
+            Access.Object, Manual, launchPriorities: new LaunchPriorityService(registry: LaunchRegistry));
         var feed = new ActivityFeed(Store.Object, Manual, WatchdogEvents);
         var thin = new ThinClientCommands(NullLogger<ThinClientCommands>.Instance, Snapshots, actions, rules, feed, Manual,
             Store.Object, Power.Object, Monitor, Tuning);
         Dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, Store.Object, applier, ProBalance.Object, Power.Object,
-            SmartTrim.Object, CpuLimiter.Object, Controller.Object, Monitor, WatchdogEvents, thin);
+            SmartTrim.Object, CpuLimiter.Object, Controller.Object, Monitor, WatchdogEvents, thin, timerResolution: TimerResolution);
     }
 
     public CommandResult Send(IIpcCaller caller, string command, int? pid = null, object? argument = null)

@@ -67,6 +67,14 @@ public class ProcessRule
     /// <summary>Re-check the settings above on every poll and put them back if something else changed them.</summary>
     public bool ReapplyIfChanged { get; set; }
 
+    /// <summary>
+    /// Also write <see cref="PriorityClass"/>, <see cref="IoPriority"/> and <see cref="MemoryPriority"/> to the
+    /// program's Image File Execution Options (<c>PerfOptions</c>), so Windows applies them as the process is created
+    /// instead of up to a poll later (Process Lasso's <c>ioPriorityEnforcedByRegistry</c>). Only for a plain exe name
+    /// (no wildcard or path), and administrators only: it is a machine-wide registry setting.
+    /// </summary>
+    public bool ApplyPrioritiesAtCreation { get; set; }
+
     /// <summary>Relaunch the process with its last command line whenever it exits.</summary>
     public bool KeepRunning { get; set; }
 }

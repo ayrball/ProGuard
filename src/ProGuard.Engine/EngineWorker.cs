@@ -24,6 +24,7 @@ public class EngineWorker : BackgroundService
     private readonly ForegroundBoostService _foregroundBoostService;
     private readonly PipeServer _pipeServer;
     private readonly RuleStore _ruleStore;
+    private readonly SettingsApplier _settingsApplier;
 
     private static readonly TimeSpan RuleReloadInterval = TimeSpan.FromSeconds(2);
 
@@ -38,7 +39,8 @@ public class EngineWorker : BackgroundService
         ProcessGovernor processGovernor,
         ForegroundBoostService foregroundBoostService,
         PipeServer pipeServer,
-        RuleStore ruleStore)
+        RuleStore ruleStore,
+        SettingsApplier settingsApplier)
     {
         _logger = logger;
         _processMonitor = processMonitor;
@@ -51,11 +53,15 @@ public class EngineWorker : BackgroundService
         _foregroundBoostService = foregroundBoostService;
         _pipeServer = pipeServer;
         _ruleStore = ruleStore;
+        _settingsApplier = settingsApplier;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("ProGuard.Engine started at: {time}", System.DateTimeOffset.Now);
+
+        // Before the services start, so they come up with the user's settings rather than their defaults.
+        _settingsApplier.Apply(_ruleStore.GetSettings());
 
         await _processMonitor.StartAsync(stoppingToken);
         await _proBalanceEngine.StartAsync(stoppingToken);
@@ -68,13 +74,17 @@ public class EngineWorker : BackgroundService
 
         _pipeServer.Start();
 
-        // Keep alive until cancellation, picking up rule changes the UI writes to the shared database.
+        // Keep alive until cancellation, picking up rule and settings changes the UI writes to the shared database.
         using var reloadTimer = new PeriodicTimer(RuleReloadInterval);
         try
         {
             while (await reloadTimer.WaitForNextTickAsync(stoppingToken))
             {
-                try { _ruleStore.ReloadIfChanged(); }
+                try
+                {
+                    if (_ruleStore.ReloadIfChanged())
+                        _settingsApplier.Apply(_ruleStore.GetSettings());
+                }
                 catch (Exception ex) { _logger.LogError(ex, "Failed to reload rules"); }
             }
         }

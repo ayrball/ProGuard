@@ -51,7 +51,13 @@ public class Program
                 services.AddSingleton<ProcessGovernor>();
                 services.AddSingleton<IProcessGovernor>(sp => sp.GetRequiredService<ProcessGovernor>());
                 
+                services.AddSingleton<ProcessController>();
+                services.AddSingleton<IProcessController>(sp => sp.GetRequiredService<ProcessController>());
+
+                services.AddSingleton<SettingsApplier>();
+
                 services.AddSingleton<ForegroundBoostService>();
+                services.AddSingleton<IpcDispatcher>();
                 services.AddSingleton<PipeServer>();
                 
                 services.AddHostedService<EngineWorker>();

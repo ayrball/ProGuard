@@ -28,4 +28,7 @@ public class AppSettings
     public bool MinimizeToTray { get; set; } = true;
     public string Theme { get; set; } = "System";
     public int PollingIntervalMs { get; set; } = 1000;
+
+    /// <summary>Shallow copy, so a caller can change settings without mutating the instance a store has cached.</summary>
+    public AppSettings Clone() => (AppSettings)MemberwiseClone();
 }

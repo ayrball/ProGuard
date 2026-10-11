@@ -27,4 +27,10 @@ public interface IProcessMonitor
 
     /// <summary>Gets the PID of the current foreground window process.</summary>
     int GetForegroundPid();
+
+    /// <summary>How often the process list is refreshed (AppSettings.PollingIntervalMs).</summary>
+    TimeSpan PollingInterval { get; }
+
+    /// <summary>Changes the refresh interval, taking effect immediately if monitoring has started.</summary>
+    void SetPollingInterval(TimeSpan interval);
 }

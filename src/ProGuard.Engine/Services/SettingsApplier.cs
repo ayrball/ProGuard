@@ -21,6 +21,7 @@ public class SettingsApplier
     private readonly IProBalanceEngine _proBalance;
     private readonly IAutoPerformanceMode? _autoPerformanceMode;
     private readonly ForegroundBoostService? _foregroundBoost;
+    private readonly TimerResolutionService? _timerResolution;
 
     private readonly object _sync = new();
     private AppSettings? _applied;
@@ -32,7 +33,8 @@ public class SettingsApplier
         IPowerManager powerManager,
         IProBalanceEngine proBalance,
         IAutoPerformanceMode? autoPerformanceMode = null,
-        ForegroundBoostService? foregroundBoost = null)
+        ForegroundBoostService? foregroundBoost = null,
+        TimerResolutionService? timerResolution = null)
     {
         _logger = logger;
         _processMonitor = processMonitor;
@@ -41,6 +43,7 @@ public class SettingsApplier
         _proBalance = proBalance;
         _autoPerformanceMode = autoPerformanceMode;
         _foregroundBoost = foregroundBoost;
+        _timerResolution = timerResolution;
     }
 
     /// <summary>The settings most recently applied, or null before the first <see cref="Apply"/>.</summary>
@@ -110,6 +113,9 @@ public class SettingsApplier
 
             if (all || ProBalanceRestraintOptions.FromSettings(previous!) != ProBalanceRestraintOptions.FromSettings(settings))
                 TryApply("ProBalance restraint actions", () => _proBalance.ConfigureRestraint(ProBalanceRestraintOptions.FromSettings(settings)));
+
+            if (_timerResolution != null && (all || previous!.SetTimerResolutionAtStartup != settings.SetTimerResolutionAtStartup))
+                TryApply("timer resolution", () => _timerResolution.Configure(settings.SetTimerResolutionAtStartup));
 
             _applied = settings.Clone();
         }

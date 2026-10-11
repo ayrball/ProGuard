@@ -30,6 +30,7 @@ public class EngineWorker : BackgroundService
     private readonly SettingsApplier _settingsApplier;
     private readonly AutoPerformanceModeService _autoPerformanceMode;
     private readonly LaunchPriorityService? _launchPriorities;
+    private readonly TimerResolutionService? _timerResolution;
 
     private static readonly TimeSpan RuleReloadInterval = TimeSpan.FromSeconds(2);
 
@@ -49,7 +50,8 @@ public class EngineWorker : BackgroundService
         SettingsApplier settingsApplier,
         CpuAffinityLimiter cpuAffinityLimiter,
         AutoPerformanceModeService autoPerformanceMode,
-        LaunchPriorityService? launchPriorities = null)
+        LaunchPriorityService? launchPriorities = null,
+        TimerResolutionService? timerResolution = null)
     {
         _logger = logger;
         _processMonitor = processMonitor;
@@ -67,6 +69,7 @@ public class EngineWorker : BackgroundService
         _cpuAffinityLimiter = cpuAffinityLimiter;
         _autoPerformanceMode = autoPerformanceMode;
         _launchPriorities = launchPriorities;
+        _timerResolution = timerResolution;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -127,5 +130,6 @@ public class EngineWorker : BackgroundService
         await _cpuLimiter.StopAsync(stoppingToken);
         await _proBalanceEngine.StopAsync(stoppingToken);
         await _processMonitor.StopAsync(stoppingToken);
+        _timerResolution?.Release();
     }
 }

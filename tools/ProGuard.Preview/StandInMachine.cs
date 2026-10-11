@@ -40,6 +40,7 @@ public sealed class StandInMachine
     private string _planOwner = "User";
     private bool _performanceMode;
     private int _foreground = StandInData.ForegroundPid;
+    private bool _timerGlobalRequests;
     private int _tick;
 
     public StandInMachine(bool callerIsAdministrator = true, bool readOnly = false)
@@ -85,6 +86,7 @@ public sealed class StandInMachine
             case CommandTypes.GetSettings: return Data(_settings);
             case CommandTypes.GetPower: return Data(PowerState());
             case CommandTypes.GetCpuSets: return Data(_cpuSets);
+            case CommandTypes.GetTimerResolution: return Data(TimerState());
             case CommandTypes.GetActivity:
             {
                 int max = int.TryParse(cmd.Argument, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n > 0 ? n : 200;
@@ -270,9 +272,24 @@ public sealed class StandInMachine
                 Mutate(() => SetPerformanceMode(on));
                 return CommandResult.Ok();
             }
+            case CommandTypes.SetTimerResolution:
+            {
+                if (!_admin) return Deny("change the system timer resolution");
+                var arg = Argument<TimerResolutionArgument>(cmd);
+                if (arg.Resolution is < 0 or > 1_000_000) return CommandResult.Fail("The timer resolution must be between 0 and 100 ms");
+                Mutate(() =>
+                {
+                    _settings.SetTimerResolutionAtStartup = arg.Resolution;
+                    if (arg.GlobalRequests is bool global) _timerGlobalRequests = global;
+                });
+                Log(ActivityKind.Manual, null, arg.Resolution == 0 ? "Stopped asking for a timer resolution." : $"Asked for a {arg.Resolution / 10000.0:0.###} ms timer resolution.");
+                return Data(TimerState());
+            }
             case CommandTypes.SaveSettings:
             {
                 var settings = Argument<EngineSettingsDto>(cmd);
+                if (!_admin && settings.SetTimerResolutionAtStartup != _settings.SetTimerResolutionAtStartup)
+                    return Deny("change the system timer resolution");
                 if (settings.ProBalanceSensitivity is < 1 or > 10) return CommandResult.Fail("Sensitivity must be between 1 and 10");
                 if (settings.PollingIntervalMs < 100) return CommandResult.Fail("The polling interval must be at least 100 ms.");
                 Mutate(() => _settings = settings);
@@ -427,6 +444,23 @@ public sealed class StandInMachine
         PerformanceModeAutomatic = false,
         Owner = _planOwner,
     };
+
+    /// <summary>A typical machine: 0.5-15.625 ms, with a browser holding 1 ms unless the engine asks for finer.</summary>
+    private TimerResolutionDto TimerState()
+    {
+        int requested = _settings.SetTimerResolutionAtStartup;
+        int held = requested == 0 ? 0 : Math.Clamp(requested, StandInData.TimerFinest, StandInData.TimerCoarsest);
+        return new TimerResolutionDto
+        {
+            Current = held == 0 ? 10000 : Math.Min(held, 10000),
+            Minimum = StandInData.TimerCoarsest,
+            Maximum = StandInData.TimerFinest,
+            Requested = requested,
+            Held = held,
+            GlobalRequestsSupported = true,
+            GlobalRequests = _timerGlobalRequests,
+        };
+    }
 
     private void SetPerformanceMode(bool on)
     {

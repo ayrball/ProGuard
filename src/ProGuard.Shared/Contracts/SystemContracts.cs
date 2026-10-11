@@ -70,11 +70,40 @@ public sealed class EngineSettingsDto
     /// <summary>Plan to switch to when the engine starts; null = leave it.</summary>
     public string? StartWithPowerPlanGuid { get; set; }
 
+    /// <summary>Timer resolution the engine holds, in 100-ns units; 0 = none. Administrators only.</summary>
+    public int SetTimerResolutionAtStartup { get; set; }
+
     // General
     public bool StartWithWindows { get; set; } = true;
     public bool MinimizeToTray { get; set; } = true;
     public string Theme { get; set; } = "System";
     public int PollingIntervalMs { get; set; } = 1000;
+}
+
+/// <summary>
+/// The system timer, for <see cref="Messages.CommandTypes.GetTimerResolution"/>. Every resolution is in 100-ns units
+/// (10000 = 1 ms). As Windows names them, <see cref="Minimum"/> is the coarsest interval the timer runs at and
+/// <see cref="Maximum"/> the finest it can be asked for.
+/// </summary>
+public sealed class TimerResolutionDto
+{
+    /// <summary>What the timer runs at now: the finest that any process has asked for.</summary>
+    public int Current { get; set; }
+    /// <summary>The coarsest interval (typically 156250 = 15.625 ms).</summary>
+    public int Minimum { get; set; }
+    /// <summary>The finest interval (typically 5000 = 0.5 ms).</summary>
+    public int Maximum { get; set; }
+    /// <summary>The setting (<see cref="EngineSettingsDto.SetTimerResolutionAtStartup"/>); 0 = none.</summary>
+    public int Requested { get; set; }
+    /// <summary>What the engine is asking Windows for right now; 0 = nothing.</summary>
+    public int Held { get; set; }
+    /// <summary>
+    /// Windows 11 and Server 2022 honour a process's request only for that process, unless the
+    /// GlobalTimerResolutionRequests switch is on. False on older Windows, where every request is global anyway.
+    /// </summary>
+    public bool GlobalRequestsSupported { get; set; }
+    /// <summary>The GlobalTimerResolutionRequests switch as stored. It takes effect after a restart.</summary>
+    public bool GlobalRequests { get; set; }
 }
 
 public sealed class PowerPlanDto

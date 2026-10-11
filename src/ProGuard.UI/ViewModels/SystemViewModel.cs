@@ -70,6 +70,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     public ObservableCollection<SensitivityStep> Sensitivity { get; } = new();
     public ObservableCollection<PowerPlanRow> Plans { get; } = new();
     public ObservableCollection<CoreToggle> RestraintCores { get; } = new();
+    public ObservableCollection<ChoiceOption<int>> TimerOptions { get; } = new();
 
     // ProBalance. ProBalanceCpuThreshold/RecoveryThreshold have no control: the engine's ProBalance follows Process
     // Lasso's timing (set through the sensitivity) and ignores them, so they go back exactly as stored.
@@ -144,6 +145,16 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     // Power
     [ObservableProperty] private string planOwnerText = "—";
 
+    // Timer resolution
+    private TimerResolutionDto? _timer;
+    [ObservableProperty] private bool timerLoaded;
+    [ObservableProperty] private string timerCurrentText = "—";
+    [ObservableProperty] private string timerMinimumText = "—";
+    [ObservableProperty] private string timerMaximumText = "—";
+    [ObservableProperty] private string timerStatusText = string.Empty;
+    [ObservableProperty] private bool timerGlobalSupported;
+    [ObservableProperty] private bool timerGlobalRequests;
+
     // General
     [ObservableProperty] private bool startWithWindows;
     [ObservableProperty] private bool minimizeToTray;
@@ -201,16 +212,18 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     {
         var settings = await _hub.QueryAsync<EngineSettingsDto>(CommandTypes.GetSettings, quiet: true);
         var power = await _hub.QueryAsync<PowerStateDto>(CommandTypes.GetPower, quiet: true);
-        Load(settings, power);
+        var timer = await _hub.QueryAsync<TimerResolutionDto>(CommandTypes.GetTimerResolution, quiet: true);
+        Load(settings, power, timer);
     }
 
-    /// <summary>Shows what the engine sent. Either may be null when it couldn't be fetched; the page keeps what it had for that part.</summary>
-    internal void Load(EngineSettingsDto? settings, PowerStateDto? power)
+    /// <summary>Shows what the engine sent. Any may be null when it couldn't be fetched; the page keeps what it had for that part.</summary>
+    internal void Load(EngineSettingsDto? settings, PowerStateDto? power, TimerResolutionDto? timer = null)
     {
         _loading = true;
         try
         {
             if (power != null) ApplyPower(power);
+            if (timer != null) ApplyTimer(timer);
 
             if (settings != null)
             {
@@ -547,6 +560,76 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
 
         // Theme has no control: the Volt look is the only look.
         return s;
+    }
+
+    // ------------------------------------------------------------------ timer resolution
+
+    /// <summary>The choices offered, in 100-ns units: off, the finest the timer can do, and the usual steps up to the coarsest.</summary>
+    internal static IEnumerable<int> TimerChoices(TimerResolutionDto t)
+    {
+        yield return 0;
+        if (t.Maximum <= 0 || t.Minimum <= 0) yield break;
+        var steps = new List<int> { t.Maximum };
+        foreach (var step in new[] { 5000, 10000, 20000, 50000 })
+            if (step > t.Maximum && step < t.Minimum) steps.Add(step);
+        foreach (var step in steps.Distinct()) yield return step;
+    }
+
+    internal static string TimerMs(int hundredNs) =>
+        hundredNs <= 0 ? "—" : (hundredNs / 10000.0).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) + " MS";
+
+    private void ApplyTimer(TimerResolutionDto t)
+    {
+        _timer = t;
+        TimerLoaded = true;
+        TimerCurrentText = TimerMs(t.Current);
+        TimerMinimumText = TimerMs(t.Minimum);
+        TimerMaximumText = TimerMs(t.Maximum);
+        TimerGlobalSupported = t.GlobalRequestsSupported;
+        TimerGlobalRequests = t.GlobalRequests;
+
+        TimerOptions.Clear();
+        var choices = TimerChoices(t).ToList();
+        foreach (var value in choices)
+            TimerOptions.Add(new ChoiceOption<int>(value == 0 ? "DON'T ASK" : value == t.Maximum ? $"FINEST · {TimerMs(value)}" : TimerMs(value), value, value == t.Requested));
+        // A stored value that isn't one of the steps stays shown, so it is never changed by accident.
+        if (!choices.Contains(t.Requested)) TimerOptions.Add(new ChoiceOption<int>($"SET · {TimerMs(t.Requested)}", t.Requested, true));
+
+        TimerStatusText = t.Requested == 0 ? "THE ENGINE ISN'T ASKING FOR A RESOLUTION"
+            : t.Held > 0 ? $"THE ENGINE HOLDS {TimerMs(t.Held)}"
+            : "WINDOWS DIDN'T GRANT THE REQUEST";
+    }
+
+    /// <summary>Asks the engine for a timer resolution (administrators only), saving it as the setting.</summary>
+    [RelayCommand]
+    private Task PickTimerAsync(ChoiceOption<int> option)
+    {
+        if (option.IsOn || !IsAdministrator) return Task.CompletedTask;
+        return SetTimerAsync(new TimerResolutionArgument { Resolution = option.Value },
+            option.Value == 0 ? "TIMER RESOLUTION · LEFT TO WINDOWS" : $"TIMER RESOLUTION · {TimerMs(option.Value)}");
+    }
+
+    partial void OnTimerGlobalRequestsChanged(bool value)
+    {
+        if (_loading || _timer == null) return;
+        _ = SetTimerAsync(new TimerResolutionArgument { Resolution = _timer.Requested, GlobalRequests = value },
+            value ? "TIMER REQUESTS GLOBAL AFTER RESTART" : "TIMER REQUESTS PER PROGRAM AFTER RESTART");
+    }
+
+    private async Task SetTimerAsync(TimerResolutionArgument argument, string success)
+    {
+        var state = await _hub.QueryAsync<TimerResolutionDto>(CommandTypes.SetTimerResolution, argument: argument);
+        if (state != null)
+        {
+            _shell.Toaster.Show(success);
+            // The setting changed outside a save: keep the copy saves start from in step, or the next save would undo it.
+            if (_settings != null) _settings.SetTimerResolutionAtStartup = state.Requested;
+        }
+        state ??= await _hub.QueryAsync<TimerResolutionDto>(CommandTypes.GetTimerResolution, quiet: true);
+        if (state == null) return;
+        _loading = true;
+        try { ApplyTimer(state); }
+        finally { _loading = false; }
     }
 
     // ------------------------------------------------------------------ power and memory

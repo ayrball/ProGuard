@@ -79,6 +79,8 @@ internal sealed class ThinHarness
     public ActivityLog Manual { get; } = new();
     public WatchdogEventLog WatchdogEvents { get; } = new();
     public FakeLaunchRegistry LaunchRegistry { get; } = new();
+    public FakeTimerNative Timer { get; } = new();
+    public TimerResolutionService TimerResolution { get; }
     public ForegroundBoostService ForegroundBoost { get; }
     public SnapshotBuilder Snapshots { get; }
     public IpcDispatcher Dispatcher { get; }
@@ -133,8 +135,9 @@ internal sealed class ThinHarness
         Access.Setup(a => a.SetAffinityMask(It.IsAny<int>(), It.IsAny<long>())).Returns(true);
 
         ForegroundBoost = new ForegroundBoostService(NullLogger<ForegroundBoostService>.Instance, ProBalance.Object, new Mock<IForegroundTracker>().Object);
+        TimerResolution = new TimerResolutionService(native: Timer);
         var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, Monitor, SmartTrim.Object, Power.Object, ProBalance.Object,
-            foregroundBoost: ForegroundBoost);
+            foregroundBoost: ForegroundBoost, timerResolution: TimerResolution);
 
         Snapshots = new SnapshotBuilder(Monitor, ProBalance.Object, CpuLimiter.Object, Store.Object, Power.Object, Details,
             foregroundBoost: ForegroundBoost, metrics: () => { MetricsReads++; return Metrics; }, clockMs: () => NowMs, engineIsElevated: true);
@@ -146,7 +149,7 @@ internal sealed class ThinHarness
         var thin = new ThinClientCommands(NullLogger<ThinClientCommands>.Instance, Snapshots, actions, rules, feed, Manual,
             Store.Object, Power.Object, Monitor, Tuning);
         Dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, Store.Object, applier, ProBalance.Object, Power.Object,
-            SmartTrim.Object, CpuLimiter.Object, Controller.Object, Monitor, WatchdogEvents, thin);
+            SmartTrim.Object, CpuLimiter.Object, Controller.Object, Monitor, WatchdogEvents, thin, timerResolution: TimerResolution);
     }
 
     public CommandResult Send(IIpcCaller caller, string command, int? pid = null, object? argument = null)

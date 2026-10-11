@@ -249,8 +249,13 @@ public static class StandInData
         },
     };
 
+    /// <summary>The timer's range in 100-ns units: 15.625 ms coarsest, 0.5 ms finest, as on most PCs.</summary>
+    public const int TimerCoarsest = 156250;
+    public const int TimerFinest = 5000;
+
     public static EngineSettingsDto Settings() => new()
     {
+        SetTimerResolutionAtStartup = 5000,
         ProBalanceEnabled = true,
         ProBalanceSensitivity = 6,
         ProBalanceCpuThreshold = 25,

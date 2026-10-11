@@ -112,6 +112,14 @@ public static class CommandTypes
     /// <summary>No args. Data = List&lt;<see cref="Contracts.CpuSetDto"/>&gt;.</summary>
     public const string GetCpuSets = "GetCpuSets";
 
+    /// <summary>No args. Data = <see cref="Contracts.TimerResolutionDto"/>.</summary>
+    public const string GetTimerResolution = "GetTimerResolution";
+    /// <summary>
+    /// Argument = <see cref="TimerResolutionArgument"/>. Administrators only. Saves and applies the timer resolution the
+    /// engine asks for, and optionally the GlobalTimerResolutionRequests switch. Data = <see cref="Contracts.TimerResolutionDto"/>.
+    /// </summary>
+    public const string SetTimerResolution = "SetTimerResolution";
+
     /// <summary>
     /// What a command does, as words that read after "may not" ("end", "purge memory"). Access-denied replies are
     /// shown to the user as-is, so they name the action rather than the command.
@@ -132,6 +140,7 @@ public static class CommandTypes
         SetMemoryPriority => "change the memory priority of",
         PurgeMemory => "purge memory",
         ClearActionLog => "clear the action log",
+        SetTimerResolution => "change the system timer resolution",
         _ => "run " + System.Text.RegularExpressions.Regex.Replace(commandType, "(?<=[a-z])(?=[A-Z])", " ").ToLowerInvariant()
     };
 
@@ -145,6 +154,14 @@ public class IdleSaverArgument
     public int TimeoutMinutes { get; set; } = 15;
     /// <summary>Power plan to switch to when idle; null keeps the current one.</summary>
     public string? PlanGuid { get; set; }
+}
+
+public class TimerResolutionArgument
+{
+    /// <summary>100-ns units (5000 = 0.5 ms); 0 withdraws the engine's request.</summary>
+    public int Resolution { get; set; }
+    /// <summary>Turns the GlobalTimerResolutionRequests switch on or off (after a restart); null leaves it.</summary>
+    public bool? GlobalRequests { get; set; }
 }
 
 public class SmartTrimArgument

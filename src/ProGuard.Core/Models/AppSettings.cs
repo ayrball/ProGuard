@@ -89,6 +89,13 @@ public class AppSettings
     /// <summary>Plan to switch to when the engine starts (StartWithPowerPlan); null = leave it.</summary>
     public string? StartWithPowerPlanGuid { get; set; }
 
+    // System timer ([Performance] SetTimerResolutionAtStartup)
+    /// <summary>
+    /// Timer resolution the engine asks Windows for while it runs, in 100-ns units (5000 = 0.5 ms); 0 = don't ask
+    /// (Process Lasso's default). Administrators only.
+    /// </summary>
+    public int SetTimerResolutionAtStartup { get; set; } = 0;
+
     // General
     public bool StartWithWindows { get; set; } = true;
     public bool MinimizeToTray { get; set; } = true;

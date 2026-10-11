@@ -122,6 +122,7 @@ public sealed class ForegroundPipeServer
                 return;
             }
 
+            _logger.LogInformation("Foreground reporter {Connection} connected from session {Session}", connectionId, session);
             using var reader = new StreamReader(pipe, Encoding.UTF8);
             while (pipe.IsConnected && !token.IsCancellationRequested)
             {
@@ -149,7 +150,8 @@ public sealed class ForegroundPipeServer
         }
         finally
         {
-            _tracker.Disconnect(connectionId);
+            if (_tracker.Disconnect(connectionId))
+                _logger.LogInformation("Foreground reporter {Connection} disconnected", connectionId);
             pipe.Dispose();
         }
     }

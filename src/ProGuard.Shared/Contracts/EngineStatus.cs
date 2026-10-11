@@ -10,4 +10,10 @@ public class EngineStatus
     public string Uptime { get; set; } = string.Empty;
     public int ActiveRuleCount { get; set; }
     public int ProcessCount { get; set; }
+
+    /// <summary>The foreground process the engine is acting on (reported by the UI on the user's desktop), 0 if unknown.</summary>
+    public int ForegroundPid { get; set; }
+    /// <summary>Seconds since the last keyboard/mouse input on the desktops reporting to the engine, null if none report it.</summary>
+    public double? UserIdleSeconds { get; set; }
+    public bool PerformanceModeActive { get; set; }
 }

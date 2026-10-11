@@ -1,0 +1,98 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using ProGuard.Core.Native;
+using ProGuard.Shared.Messages;
+
+namespace ProGuard.Engine.IPC;
+
+/// <summary>
+/// Decides which requests a command-pipe client may make. Every interactive user can open the pipe, because the UI
+/// runs unelevated. The engine runs as SYSTEM, so without this check any local user could use it to kill, freeze or
+/// re-prioritise other users' processes and system processes.
+/// <para>Policy:</para>
+/// <list type="bullet">
+/// <item>Administrators (an elevated token) and SYSTEM may send anything. The dispatcher's own guards (e.g. never
+/// terminating the System process or the engine) still apply.</item>
+/// <item>Anyone may Ping, GetStatus, change the engine settings (SetSetting and the ProBalance, SmartTrim and
+/// IdleSaver commands), toggle Performance Mode and trim all working sets. These are the machine-wide preferences the
+/// UI shows on every desktop, as Process Lasso's GUI does. None of them reads or changes another user's data, and
+/// trimming everything is what SmartTrim does anyway once it is enabled.</item>
+/// <item>A process action is allowed only when the caller could do it themselves: their own token must be able to open
+/// the target with the access that action needs. This rules out other users' processes, elevated processes and
+/// protected processes.</item>
+/// <item>Non-administrators may not set Realtime priority. Windows itself grants it only with
+/// SeIncreaseBasePriorityPrivilege, which standard users lack, and a realtime process can starve the machine.</item>
+/// <item>Anything else is refused. A new command stays administrator-only until it is added here.</item>
+/// </list>
+/// </summary>
+public static class IpcAuthorization
+{
+    private static readonly HashSet<string> UnrestrictedCommands = new(StringComparer.Ordinal)
+    {
+        CommandTypes.EnableProBalance,
+        CommandTypes.DisableProBalance,
+        CommandTypes.SetSensitivity,
+        CommandTypes.ConfigureIdleSaver,
+        CommandTypes.ConfigureSmartTrim,
+        CommandTypes.EnablePerformanceMode,
+        CommandTypes.DisablePerformanceMode,
+    };
+
+    /// <summary>The access each process command needs, i.e. what the caller would need to do it without ProGuard.</summary>
+    internal static readonly IReadOnlyDictionary<string, ProcessAccessFlags> ProcessCommandAccess = new Dictionary<string, ProcessAccessFlags>(StringComparer.Ordinal)
+    {
+        [CommandTypes.SetPriority] = ProcessAccessFlags.SetInformation,
+        [CommandTypes.SetAffinity] = ProcessAccessFlags.SetInformation,
+        // CPU limits put the process in a job object: AssignProcessToJobObject needs both of these.
+        [CommandTypes.SetCpuLimit] = ProcessAccessFlags.SetQuota | ProcessAccessFlags.Terminate,
+        [CommandTypes.RemoveCpuLimit] = ProcessAccessFlags.SetQuota | ProcessAccessFlags.Terminate,
+        [CommandTypes.TerminateProcess] = ProcessAccessFlags.Terminate,
+        [CommandTypes.SuspendProcess] = ProcessAccessFlags.SuspendResume,
+        [CommandTypes.ResumeProcess] = ProcessAccessFlags.SuspendResume,
+        // EmptyWorkingSet.
+        [CommandTypes.TrimWorkingSet] = ProcessAccessFlags.SetQuota | ProcessAccessFlags.QueryLimitedInformation,
+    };
+
+    /// <summary>Returns null when <paramref name="caller"/> may make <paramref name="request"/>, otherwise the error to reply with.</summary>
+    public static CommandResult? Check(CommandMessage request, IIpcCaller caller)
+    {
+        if (caller.IsAdministrator) return null;
+
+        switch (request.Type)
+        {
+            case MessageType.Ping:
+            case MessageType.GetStatus:
+            case MessageType.SetSetting:
+                return null;
+            case MessageType.Command:
+                return CheckCommand(request, caller);
+            default:
+                return Deny(caller, $"send {request.Type} requests");
+        }
+    }
+
+    private static CommandResult? CheckCommand(CommandMessage cmd, IIpcCaller caller)
+    {
+        if (UnrestrictedCommands.Contains(cmd.CommandType)) return null;
+        if (cmd.CommandType == CommandTypes.TrimWorkingSet && cmd.TargetPid == null) return null;
+
+        if (!ProcessCommandAccess.TryGetValue(cmd.CommandType, out var access))
+            return Deny(caller, $"run {cmd.CommandType}");
+
+        // A missing or invalid pid is the dispatcher's to report; there is nothing to act on.
+        if (cmd.TargetPid is not int pid || pid <= 0) return null;
+
+        if (cmd.CommandType == CommandTypes.SetPriority
+            && Enum.TryParse<ProcessPriorityClass>(cmd.Argument, ignoreCase: true, out var priority)
+            && priority == ProcessPriorityClass.RealTime)
+            return Deny(caller, "set Realtime priority");
+
+        return caller.CanOpenProcess(pid, access)
+            ? null
+            : Deny(caller, $"{cmd.CommandType} process {pid}: it belongs to another user, is elevated or protected, or is not running");
+    }
+
+    private static CommandResult Deny(IIpcCaller caller, string what) =>
+        CommandResult.Fail($"Access denied: {caller.Name} may not {what}. Run ProGuard as administrator to do this.");
+}

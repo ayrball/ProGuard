@@ -1,0 +1,19 @@
+# Build output
+bin/
+obj/
+
+# IDE
+.vs/
+*.user
+*.suo
+
+# Runtime SQLite database
+*.db
+*.db-shm
+*.db-wal
+
+# Test results
+TestResults/
+
+# Claude Code per-machine settings
+.claude/

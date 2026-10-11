@@ -1,0 +1,299 @@
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.IO;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using ProGuard.Core.Data;
+using ProGuard.Core.Helpers;
+using ProGuard.Core.Models;
+using ProGuard.Core.Services;
+
+namespace ProGuard.Engine.Services;
+
+/// <summary>
+/// SQLite-backed rule store with in-memory caching for fast lookups.
+/// Process rules are keyed by <see cref="ProcessExtensions.NormalizeName"/> so that a rule saved as
+/// "chrome.exe" is found for the running process "chrome".
+/// </summary>
+public class RuleStore : IRuleStore
+{
+    private readonly ILogger<RuleStore> _logger;
+    private readonly IServiceProvider _serviceProvider;
+    // Replaced wholesale on reload so rules deleted by the UI disappear from the cache too.
+    private volatile ConcurrentDictionary<string, ProcessRule> _processRules = new(StringComparer.Ordinal);
+
+    // The UI writes to the same database file directly; we notice by watching its write time.
+    private string? _dbFilePath;
+    private DateTime _lastLoadedWriteTimeUtc;
+
+    // The watchdog timer enumerates these while IPC/UI threads mutate them, so every access goes through _sync
+    // and readers get snapshots.
+    private readonly object _sync = new();
+    private readonly List<WatchdogRule> _watchdogRules = new();
+    private readonly List<PowerProfile> _powerProfiles = new();
+    private AppSettings _settings = new();
+
+    public RuleStore(ILogger<RuleStore> logger, IServiceProvider serviceProvider)
+    {
+        _logger = logger;
+        _serviceProvider = serviceProvider;
+        LoadRules();
+    }
+
+    /// <summary>
+    /// Reloads every cache from the database if the database file has been written since the last load,
+    /// e.g. because the UI added or removed a rule. Returns true when a reload happened.
+    /// </summary>
+    public bool ReloadIfChanged()
+    {
+        if (string.IsNullOrEmpty(_dbFilePath) || !File.Exists(_dbFilePath)) return false;
+
+        var writeTime = File.GetLastWriteTimeUtc(_dbFilePath);
+        if (writeTime <= _lastLoadedWriteTimeUtc) return false;
+
+        _logger.LogInformation("Database changed on disk, reloading rules");
+        LoadRules();
+        return true;
+    }
+
+    private void LoadRules()
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+            db.Database.EnsureCreated();
+
+            // Take the timestamp before reading so a write that lands mid-load still triggers another reload.
+            _dbFilePath = db.Database.GetDbConnection().DataSource;
+            if (!string.IsNullOrEmpty(_dbFilePath) && File.Exists(_dbFilePath))
+                _lastLoadedWriteTimeUtc = File.GetLastWriteTimeUtc(_dbFilePath);
+
+            var processRules = new ConcurrentDictionary<string, ProcessRule>(StringComparer.Ordinal);
+            foreach (var rule in db.ProcessRules.ToList())
+            {
+                processRules[ProcessExtensions.NormalizeName(rule.ProcessName)] = rule;
+            }
+            _processRules = processRules;
+
+            lock (_sync)
+            {
+                _watchdogRules.Clear();
+                _watchdogRules.AddRange(db.WatchdogRules.ToList());
+
+                _powerProfiles.Clear();
+                _powerProfiles.AddRange(db.PowerProfiles.ToList());
+
+                _settings = db.Settings.FirstOrDefault() ?? new AppSettings();
+            }
+
+            _logger.LogInformation("Loaded {RuleCount} process rules, {WdCount} watchdog rules, {PpCount} power profiles",
+                _processRules.Count, _watchdogRules.Count, _powerProfiles.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading rules from DB");
+        }
+    }
+
+    // === Process Rules ===
+
+    public ProcessRule? GetProcessRule(string processName)
+    {
+        return _processRules.TryGetValue(ProcessExtensions.NormalizeName(processName), out var rule) ? rule : null;
+    }
+
+    public IEnumerable<ProcessRule> GetProcessRules() => _processRules.Values.ToList();
+    public IEnumerable<ProcessRule> GetAllProcessRules() => _processRules.Values.ToList();
+
+    public void AddProcessRule(ProcessRule rule) => SaveProcessRule(rule);
+
+    public void SaveProcessRule(ProcessRule rule)
+    {
+        var key = ProcessExtensions.NormalizeName(rule.ProcessName);
+        string? previousKey = null;
+
+        using (var scope = _serviceProvider.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+
+            // Match by Id first (supports renames), then by name regardless of ".exe"/case.
+            var existing = rule.Id != 0 ? db.ProcessRules.Find(rule.Id) : null;
+            existing ??= db.ProcessRules.AsEnumerable()
+                .FirstOrDefault(r => ProcessExtensions.NormalizeName(r.ProcessName) == key);
+
+            if (existing != null)
+            {
+                previousKey = ProcessExtensions.NormalizeName(existing.ProcessName);
+                rule.Id = existing.Id; // the key can't be changed through SetValues
+                db.Entry(existing).CurrentValues.SetValues(rule);
+            }
+            else
+            {
+                db.ProcessRules.Add(rule);
+            }
+
+            db.SaveChanges();
+        }
+
+        // Only touch the cache once the DB write has succeeded so the two can't diverge.
+        if (previousKey != null && previousKey != key) _processRules.TryRemove(previousKey, out _);
+        _processRules[key] = rule;
+    }
+
+    public void UpdateProcessRule(ProcessRule rule) => SaveProcessRule(rule);
+
+    public void DeleteProcessRule(int id)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+        var rule = db.ProcessRules.Find(id);
+        if (rule != null)
+        {
+            db.ProcessRules.Remove(rule);
+            db.SaveChanges();
+            _processRules.TryRemove(ProcessExtensions.NormalizeName(rule.ProcessName), out _);
+        }
+    }
+
+    // === Watchdog Rules ===
+
+    public IEnumerable<WatchdogRule> GetWatchdogRules()
+    {
+        lock (_sync) return _watchdogRules.ToList();
+    }
+
+    public void AddWatchdogRule(WatchdogRule rule)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+        db.WatchdogRules.Add(rule);
+        db.SaveChanges();
+        lock (_sync) _watchdogRules.Add(rule);
+    }
+
+    public void UpdateWatchdogRule(WatchdogRule rule)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+        var existing = db.WatchdogRules.Find(rule.Id);
+        if (existing != null)
+        {
+            db.Entry(existing).CurrentValues.SetValues(rule);
+            db.SaveChanges();
+            lock (_sync)
+            {
+                var idx = _watchdogRules.FindIndex(r => r.Id == rule.Id);
+                if (idx >= 0) _watchdogRules[idx] = rule;
+            }
+        }
+    }
+
+    public void DeleteWatchdogRule(int id)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+        var rule = db.WatchdogRules.Find(id);
+        if (rule != null)
+        {
+            db.WatchdogRules.Remove(rule);
+            db.SaveChanges();
+            lock (_sync) _watchdogRules.RemoveAll(r => r.Id == id);
+        }
+    }
+
+    // === Power Profiles ===
+
+    public IEnumerable<PowerProfile> GetPowerProfiles()
+    {
+        lock (_sync) return _powerProfiles.ToList();
+    }
+
+    public void AddPowerProfile(PowerProfile profile)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+        db.PowerProfiles.Add(profile);
+        db.SaveChanges();
+        lock (_sync) _powerProfiles.Add(profile);
+    }
+
+    public void UpdatePowerProfile(PowerProfile profile)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+        var existing = db.PowerProfiles.Find(profile.Id);
+        if (existing != null)
+        {
+            db.Entry(existing).CurrentValues.SetValues(profile);
+            db.SaveChanges();
+            lock (_sync)
+            {
+                var idx = _powerProfiles.FindIndex(p => p.Id == profile.Id);
+                if (idx >= 0) _powerProfiles[idx] = profile;
+            }
+        }
+    }
+
+    public void DeletePowerProfile(int id)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+        var profile = db.PowerProfiles.Find(id);
+        if (profile != null)
+        {
+            db.PowerProfiles.Remove(profile);
+            db.SaveChanges();
+            lock (_sync) _powerProfiles.RemoveAll(p => p.Id == id);
+        }
+    }
+
+    // === Settings ===
+
+    public AppSettings GetSettings()
+    {
+        lock (_sync) return _settings;
+    }
+
+    public void UpdateSettings(AppSettings settings)
+    {
+        using (var scope = _serviceProvider.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+            var existing = db.Settings.FirstOrDefault();
+            if (existing != null)
+            {
+                settings.Id = existing.Id; // the key can't be changed through SetValues
+                db.Entry(existing).CurrentValues.SetValues(settings);
+            }
+            else
+            {
+                db.Settings.Add(settings);
+            }
+            db.SaveChanges();
+        }
+
+        lock (_sync) _settings = settings;
+    }
+
+    // === Logging ===
+
+    public async Task LogProBalanceActionAsync(ProBalanceAction action)
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+            db.ProBalanceActions.Add(action);
+            await db.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to log ProBalance action");
+        }
+    }
+}

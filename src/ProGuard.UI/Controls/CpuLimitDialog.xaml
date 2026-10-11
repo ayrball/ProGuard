@@ -1,0 +1,61 @@
+﻿<ui:FluentWindow x:Class="ProGuard.UI.Controls.CpuLimitDialog"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 Title="Set CPU Limit" Height="420" Width="440"
+                 WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+                 UseLayoutRounding="True" SnapsToDevicePixels="True"
+                 TextOptions.TextFormattingMode="Display"
+                 TextOptions.TextRenderingMode="ClearType"
+                 RenderOptions.ClearTypeHint="Enabled">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="CPU Rate Limiter (Hard Cap)" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,4"/>
+            <TextBlock x:Name="ProcessInfoText" Text="Target Process: ..." Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="13"/>
+        </StackPanel>
+
+        <!-- Description Card -->
+        <ui:CardControl Grid.Row="1" Margin="0,0,0,16" Padding="12">
+            <TextBlock Text="Uses Windows Job Objects to strictly enforce a CPU utilization ceiling. The process will be throttled if it exceeds this threshold." 
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" TextWrapping="Wrap"/>
+        </ui:CardControl>
+
+        <!-- Limit Controls -->
+        <StackPanel Grid.Row="2" VerticalAlignment="Center" Margin="0,0,0,16">
+            <Grid Margin="0,0,0,8">
+                <TextBlock Text="Maximum Allowed CPU %:" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <TextBlock x:Name="LimitValueText" Text="50%" HorizontalAlignment="Right" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource SystemFillColorCautionBrush}"/>
+            </Grid>
+
+            <Slider x:Name="LimitSlider" Minimum="5" Maximum="95" Value="50" TickFrequency="5" IsSnapToTickEnabled="True"
+                    ValueChanged="LimitSlider_ValueChanged" Margin="0,0,0,16"/>
+
+            <!-- Presets -->
+            <TextBlock Text="Quick Presets:" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,6"/>
+            <UniformGrid Columns="4" Margin="0,0,0,8">
+                <ui:Button Content="25%" Margin="0,0,4,0" Click="Preset25_Click"/>
+                <ui:Button Content="50%" Margin="2,0,2,0" Click="Preset50_Click"/>
+                <ui:Button Content="75%" Margin="2,0,2,0" Click="Preset75_Click"/>
+                <ui:Button Content="90%" Margin="4,0,0,0" Click="Preset90_Click"/>
+            </UniformGrid>
+        </StackPanel>
+
+        <!-- Action Buttons -->
+        <Grid Grid.Row="3">
+            <ui:Button Content="Remove Limit" Appearance="Danger" Click="RemoveLimit_Click"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <ui:Button Content="Cancel" Margin="0,0,8,0" Width="80" Click="Cancel_Click"/>
+                <ui:Button Content="Apply Limit" Appearance="Primary" Width="100" Click="Apply_Click"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</ui:FluentWindow>

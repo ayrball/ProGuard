@@ -39,4 +39,7 @@ public interface IRuleStore
 
     /// <summary>The newest <paramref name="count"/> logged actions (restraints, restores, CPU Limiter, power plan changes), newest first.</summary>
     IReadOnlyList<ProBalanceAction> GetRecentActions(int count);
+
+    /// <summary>Deletes every logged action.</summary>
+    void ClearProBalanceActions();
 }

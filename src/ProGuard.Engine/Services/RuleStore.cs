@@ -297,6 +297,13 @@ public class RuleStore : IRuleStore
         }
     }
 
+    public void ClearProBalanceActions()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+        db.ProBalanceActions.ExecuteDelete();
+    }
+
     public IReadOnlyList<ProBalanceAction> GetRecentActions(int count)
     {
         if (count <= 0) return Array.Empty<ProBalanceAction>();

@@ -30,8 +30,8 @@ public class AppSettings
     /// <summary>[DisableProBalanceIfSysIdleThisManyMS] 30000.</summary>
     public int ProBalanceDisableIfSysIdleMs { get; set; } = 30000;
     
-    /// <summary>Raise the foreground process from Normal to Above Normal while it has focus (ForegroundBoostService).</summary>
-    public bool ForegroundBoostEnabled { get; set; } = true;
+    /// <summary>Raise the foreground process from Normal to Above Normal while it has focus (ForegroundBoostService). Off by default, as in Process Lasso.</summary>
+    public bool ForegroundBoostEnabled { get; set; } = false;
 
     // SmartTrim. Defaults are Process Lasso's [MemoryManagement] ones (prolasso.ini key in brackets).
     public bool SmartTrimEnabled { get; set; } = false;

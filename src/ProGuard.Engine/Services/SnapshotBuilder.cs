@@ -201,7 +201,7 @@ public sealed class SnapshotBuilder
             ProBalancePaused = enabled && _proBalance.IsPausedForIdle,
             ProBalanceRestrained = restrained.Count,
             ProBalanceRestraintsTotal = _proBalance.TotalRestraints,
-            ForegroundBoostEnabled = _foregroundBoost?.IsEnabled ?? true,
+            ForegroundBoostEnabled = _foregroundBoost?.IsEnabled ?? false,
             ForegroundPid = foregroundPid,
             PerformanceModeActive = _power.IsPerformanceModeActive,
             PowerPlanOwner = string.IsNullOrEmpty(_power.PlanOwnerName) ? "User" : _power.PlanOwnerName,

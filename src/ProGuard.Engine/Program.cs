@@ -68,7 +68,13 @@ public class Program
                 services.AddSingleton<StartupBoostService>();
 
                 services.AddSingleton<IProcessTuningNative, Win32ProcessTuning>();
-                services.AddSingleton<PersistentRuleService>();
+                // Factory: both constructors are resolvable (IEnumerable<IProcessRuleApplier> resolves to empty),
+                // which the container rejects as ambiguous. The native one builds the real appliers.
+                services.AddSingleton(sp => new PersistentRuleService(
+                    sp.GetRequiredService<ILogger<PersistentRuleService>>(),
+                    sp.GetRequiredService<IProcessTuningNative>(),
+                    sp.GetRequiredService<IProcessMonitor>(),
+                    sp.GetRequiredService<IRuleStore>()));
 
                 services.AddSingleton<ProcessGovernor>();
                 services.AddSingleton<IProcessGovernor>(sp => sp.GetRequiredService<ProcessGovernor>());

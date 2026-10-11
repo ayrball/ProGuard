@@ -42,6 +42,9 @@ if ($Uninstall) {
     if (Test-Path $InstallDir) {
         Write-Host "Deleting $InstallDir..."
         Remove-Item -Recurse -Force $InstallDir
+        # The default location's "ProGuard" parent folder, once nothing else is in it.
+        $parent = Split-Path -Parent $InstallDir
+        if ((Split-Path -Leaf $parent) -eq "ProGuard" -and -not (Get-ChildItem -Force $parent)) { Remove-Item -Force $parent }
     }
     Write-Host "Uninstalled. The database and logs in $env:ProgramData\ProGuard were kept."
     exit 0

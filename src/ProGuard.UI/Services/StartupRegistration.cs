@@ -23,6 +23,9 @@ public sealed class RunKeyStartup : IStartupRegistration
     public const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     public const string ValueName = "ProGuard.UI";
 
+    /// <summary>Started at sign-in, ProGuard goes straight to the tray instead of opening its window.</summary>
+    public const string TrayArgument = "--tray";
+
     private readonly string _exePath;
 
     public RunKeyStartup(string? exePath = null)
@@ -30,8 +33,8 @@ public sealed class RunKeyStartup : IStartupRegistration
         _exePath = exePath ?? Environment.ProcessPath ?? throw new InvalidOperationException("The path of ProGuard.UI.exe is unknown.");
     }
 
-    /// <summary>The Run value's data: the executable path in quotes, so a path with spaces still launches.</summary>
-    public static string CommandFor(string exePath) => $"\"{exePath}\"";
+    /// <summary>The Run value's data: the executable path in quotes (so a path with spaces still launches) and the tray flag.</summary>
+    public static string CommandFor(string exePath) => $"\"{exePath}\" {TrayArgument}";
 
     public bool IsEnabled
     {

@@ -51,6 +51,17 @@ public class EngineProxy : IDisposable
         return reply?.Type == MessageType.Status ? Deserialize<EngineStatus>(reply.Payload) : null;
     }
 
+    /// <summary>
+    /// Watchdog and Keep Running events newer than <paramref name="after"/> (see <see cref="WatchdogEventQuery"/>), or
+    /// null when the engine can't be reached.
+    /// </summary>
+    public async Task<WatchdogEventList?> GetWatchdogEventsAsync(long? after, CancellationToken cancellationToken = default)
+    {
+        var request = new IpcMessage { Type = MessageType.GetLogs, Payload = JsonSerializer.Serialize(new WatchdogEventQuery { After = after }) };
+        var reply = await _pipeClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        return reply?.Type == MessageType.LogList ? Deserialize<WatchdogEventList>(reply.Payload) : null;
+    }
+
     // ---------- Process commands ----------
 
     public Task<CommandResult?> SetPriorityAsync(int pid, ProcessPriorityClass priority, CancellationToken cancellationToken = default) =>

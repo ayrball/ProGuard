@@ -30,6 +30,7 @@ public class IpcDispatcher
     private readonly ICpuLimiter _cpuLimiter;
     private readonly IProcessController _processController;
     private readonly IProcessMonitor _processMonitor;
+    private readonly WatchdogEventLog? _watchdogEvents;
     private readonly Stopwatch _uptime = Stopwatch.StartNew();
 
     // Settings commands read-modify-write the stored settings; concurrent clients must not lose each other's changes.
@@ -44,7 +45,8 @@ public class IpcDispatcher
         ISmartTrimService smartTrim,
         ICpuLimiter cpuLimiter,
         IProcessController processController,
-        IProcessMonitor processMonitor)
+        IProcessMonitor processMonitor,
+        WatchdogEventLog? watchdogEvents = null)
     {
         _logger = logger;
         _ruleStore = ruleStore;
@@ -55,6 +57,7 @@ public class IpcDispatcher
         _cpuLimiter = cpuLimiter;
         _processController = processController;
         _processMonitor = processMonitor;
+        _watchdogEvents = watchdogEvents;
     }
 
     /// <summary>Handles a request from code inside the engine, which needs no authorization.</summary>
@@ -101,6 +104,7 @@ public class IpcDispatcher
                 MessageType.Command => Result(ExecuteCommand(request, caller)),
                 MessageType.GetRules => new IpcMessage { Type = MessageType.RuleList, Payload = JsonSerializer.Serialize(_ruleStore.GetProcessRules().Select(RuleDtoMapper.ToDto).ToList()) },
                 MessageType.SetRule => Result(SaveRule(request.Payload)),
+                MessageType.GetLogs => GetWatchdogEvents(request.Payload),
                 _ => Result(CommandResult.Fail($"Unsupported message type {request.Type}"))
             };
         }
@@ -254,6 +258,14 @@ public class IpcDispatcher
         RuleDtoMapper.CopyTo(dto, rule);
         _ruleStore.SaveProcessRule(rule);
         return CommandResult.Ok();
+    }
+
+    /// <summary>Watchdog and Keep Running events after the client's cursor; the UI shows the ones marked Notify.</summary>
+    private IpcMessage GetWatchdogEvents(string payload)
+    {
+        var query = string.IsNullOrWhiteSpace(payload) ? new WatchdogEventQuery() : ParseArgument<WatchdogEventQuery>(payload);
+        var list = _watchdogEvents?.GetSince(query.After) ?? new WatchdogEventList();
+        return new IpcMessage { Type = MessageType.LogList, Payload = JsonSerializer.Serialize(list) };
     }
 
     private EngineStatus BuildStatus() => new()

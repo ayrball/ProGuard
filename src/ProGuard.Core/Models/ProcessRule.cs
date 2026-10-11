@@ -66,4 +66,7 @@ public class ProcessRule
     public int? GpuPreference { get; set; }
     /// <summary>Re-check the settings above on every poll and put them back if something else changed them.</summary>
     public bool ReapplyIfChanged { get; set; }
+
+    /// <summary>Relaunch the process with its last command line whenever it exits.</summary>
+    public bool KeepRunning { get; set; }
 }

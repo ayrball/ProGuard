@@ -38,7 +38,7 @@ public sealed class Win32ProcessDetailsReader : IProcessDetailsReader
         var handle = Kernel32.OpenProcess(ProcessAccessFlags.QueryLimitedInformation, false, pid);
         if (handle == IntPtr.Zero) return default;
 
-        var buffer = Marshal.AllocHGlobal(sizeof(long));
+        var buffer = Marshal.AllocHGlobal(64);
         try
         {
             int? io = null;

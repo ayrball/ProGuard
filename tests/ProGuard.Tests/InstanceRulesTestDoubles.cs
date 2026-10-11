@@ -63,6 +63,9 @@ internal sealed class FakeProcessMonitor : IProcessMonitor
 
     public event EventHandler<ProcessInfo>? ProcessStarted;
     public event EventHandler<int>? ProcessExited;
+#pragma warning disable CS0067 // nothing here refreshes on a timer
+    public event EventHandler? Refreshed;
+#pragma warning restore CS0067
 
     public ProcessInfo Add(int pid, string name, double cpu = 0)
     {

@@ -33,6 +33,7 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
     
     public event EventHandler<ProcessInfo>? ProcessStarted;
     public event EventHandler<int>? ProcessExited;
+    public event EventHandler? Refreshed;
 
     private readonly IForegroundTracker _foreground;
 
@@ -150,7 +151,10 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
                 // its parent, start time and path) without the access-denied exceptions Process throws for most system
                 // and service processes.
                 var probed = ProcessProbe.TryQuery(pid, includeImagePath: info == null, out var probe);
-                var cpuUsage = probed ? _cpuTracker.GetCpuUsage(pid, probe.CpuTime) : 0;
+                // A process seen for the first time gets its usage since it started (if that was within
+                // CpuUsageTracker.LifetimeSeedWindow) instead of 0, so ProBalance doesn't lose a whole interval.
+                DateTime? seedFrom = info == null && probed && probe.StartTimeUtc != DateTime.MinValue ? probe.StartTimeUtc : null;
+                var cpuUsage = probed ? _cpuTracker.GetCpuUsage(pid, probe.CpuTime, seedFrom) : 0;
 
                 // The id now belongs to a different process: the old one exited between two polls.
                 if (info != null && probed && IsRecycled(info, probe))
@@ -192,6 +196,8 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
             _cpuTracker.RemoveProcess(pid);
             ProcessExited?.Invoke(this, pid);
         }
+
+        Refreshed?.Invoke(this, EventArgs.Empty);
     }
 
     private static bool IsRecycled(ProcessInfo known, in ProcessProbeResult probe) =>

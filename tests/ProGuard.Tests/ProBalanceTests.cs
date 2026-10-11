@@ -62,18 +62,19 @@ internal sealed class FakeIdleSource : IUserIdleSource
 /// </summary>
 internal sealed class ProBalanceHarness : IDisposable
 {
-    public long Now { get; private set; }
+    public long Now { get; set; }
     public double SystemCpu { get; set; } = 50;
     public int ForegroundPid { get; set; }
     public List<ProcessInfo> Processes { get; } = new();
     public FakeProcessAccess Access { get; } = new();
     public FakeIdleSource IdleSource { get; } = new();
     public Mock<IRuleStore> Store { get; } = new();
+    public Mock<IProcessMonitor> Monitor { get; } = new();
     public ProBalanceEngine Engine { get; }
 
     public ProBalanceHarness()
     {
-        var monitor = new Mock<IProcessMonitor>();
+        var monitor = Monitor;
         monitor.Setup(m => m.GetAllProcesses()).Returns(() => Processes.ToList());
         monitor.Setup(m => m.GetProcess(It.IsAny<int>())).Returns((int pid) => Processes.FirstOrDefault(p => p.Pid == pid));
         monitor.Setup(m => m.GetForegroundPid()).Returns(() => ForegroundPid);
@@ -136,7 +137,6 @@ public class ProBalanceTests
         Assert.True(engine.ExcludeForegroundProcesses);
         Assert.True(engine.ExcludeChildrenOfForeground);
         Assert.True(engine.ExcludeServices);
-        Assert.Equal(1000, engine.UpdateSpeedCore);
         Assert.False(engine.RestrainByAffinity);
         Assert.Equal(0, engine.RestraintAffinity);
         Assert.False(engine.ProBalanceDropOneRandomCore);
@@ -429,6 +429,29 @@ public class ProBalanceTests
 
         Assert.False(h.Engine.IsEngaged);
         Assert.Equal(setsBefore, h.Access.SetCalls);
+    }
+
+    [Fact]
+    public async Task EvaluatesAfterEachProcessRefresh_OnlyWhileStarted()
+    {
+        using var h = new ProBalanceHarness();
+        h.Add(100, cpu: 50);
+        void Refresh(long ms) { h.Now = ms; h.Monitor.Raise(m => m.Refreshed += null, EventArgs.Empty); }
+
+        Refresh(0);
+        Refresh(1000);
+        Assert.False(h.Engine.IsEngaged); // not started: refreshes are ignored
+
+        await h.Engine.StartAsync(default);
+        Refresh(2000);
+        Refresh(3000);
+        Assert.Equal(ProcessPriorityClass.BelowNormal, h.PriorityOf(100));
+
+        await h.Engine.StopAsync(default);
+        Assert.Equal(ProcessPriorityClass.Normal, h.PriorityOf(100));
+        Refresh(4000);
+        Refresh(5000);
+        Assert.Equal(ProcessPriorityClass.Normal, h.PriorityOf(100));
     }
 
     [Fact]

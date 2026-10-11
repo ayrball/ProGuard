@@ -14,14 +14,28 @@ public class CpuUsageTracker
     private static readonly int _processorCount = Environment.ProcessorCount;
 
     /// <summary>
-    /// Gets the CPU usage percentage for a process since the last call.
-    /// Returns 0 on the first call for any given process.
+    /// A process first seen within this long of starting gets its average usage since it started as its first
+    /// reading, rather than 0; older ones (e.g. everything running when monitoring begins) still read 0 first.
     /// </summary>
-    public double GetCpuUsage(Process process)
+    public static readonly TimeSpan LifetimeSeedWindow = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// Gets the CPU usage percentage for a process since the last call.
+    /// Returns 0 on the first call for any given process, unless <paramref name="seedFromLifetime"/> is set and the
+    /// process started within <see cref="LifetimeSeedWindow"/>: then its usage since it started. Without that, a new
+    /// CPU hog would show 0% for a whole polling interval and ProBalance would act on it a second later than Process
+    /// Lasso does.
+    /// </summary>
+    public double GetCpuUsage(Process process, bool seedFromLifetime = false)
     {
         try
         {
-            return GetCpuUsage(process.Id, process.TotalProcessorTime);
+            DateTime? startedUtc = null;
+            if (seedFromLifetime && !_snapshots.ContainsKey(process.Id))
+            {
+                try { startedUtc = process.StartTime.ToUniversalTime(); } catch { /* access denied: no seed */ }
+            }
+            return GetCpuUsage(process.Id, process.TotalProcessorTime, startedUtc);
         }
         catch
         {
@@ -30,10 +44,11 @@ public class CpuUsageTracker
     }
 
     /// <summary>
-    /// Same as <see cref="GetCpuUsage(Process)"/> for callers that already read the process's total CPU time
-    /// (for example through <see cref="ProcessProbe"/>, which does not throw for protected processes).
+    /// Same as <see cref="GetCpuUsage(Process, bool)"/> for callers that already read the process's total CPU time
+    /// (for example through <see cref="ProcessProbe"/>, which does not throw for protected processes). Pass
+    /// <paramref name="startedUtc"/> to seed a just-started process's first reading from its lifetime.
     /// </summary>
-    public double GetCpuUsage(int pid, TimeSpan totalProcessorTime)
+    public double GetCpuUsage(int pid, TimeSpan totalProcessorTime, DateTime? startedUtc = null)
     {
         try
         {
@@ -43,7 +58,10 @@ public class CpuUsageTracker
             if (!_snapshots.TryGetValue(pid, out var prev))
             {
                 _snapshots[pid] = (currentCpuTime, currentTimestamp);
-                return 0;
+                if (startedUtc is not DateTime started) return 0;
+                var age = currentTimestamp - started;
+                if (age <= TimeSpan.Zero || age > LifetimeSeedWindow) return 0;
+                prev = (TimeSpan.Zero, started);
             }
 
             var cpuDelta = (currentCpuTime - prev.PrevCpuTime).TotalMilliseconds;

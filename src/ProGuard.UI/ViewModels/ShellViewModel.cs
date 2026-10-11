@@ -80,7 +80,9 @@ public sealed partial class ShellViewModel : ObservableObject
         hub.SnapshotApplied += OnSnapshot;
         hub.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(EngineHub.IsOnline) && !hub.IsOnline) StatusLine = "ENGINE OFFLINE";
+            // IsOffline, not !IsOnline: it is set once a connection attempt has actually failed, which covers starting
+            // with no engine (IsOnline never changes then, and the line would say CONNECTING for ever).
+            if (e.PropertyName == nameof(EngineHub.IsOffline) && hub.IsOffline) StatusLine = "ENGINE OFFLINE";
         };
     }
 

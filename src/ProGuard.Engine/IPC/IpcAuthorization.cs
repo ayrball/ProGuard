@@ -23,6 +23,9 @@ namespace ProGuard.Engine.IPC;
 /// protected processes.</item>
 /// <item>Non-administrators may not set Realtime priority. Windows itself grants it only with
 /// SeIncreaseBasePriorityPrivilege, which standard users lack, and a realtime process can starve the machine.</item>
+/// <item>"Purge now" (<see cref="CommandTypes.PurgeMemory"/>) is administrator-only: purging the standby list and the
+/// file cache throws away every user's cached data machine-wide, and Windows itself requires
+/// SeProfileSingleProcessPrivilege / SeIncreaseQuotaPrivilege for it, which standard users lack.</item>
 /// <item>Anything else is refused. A new command stays administrator-only until it is added here.</item>
 /// </list>
 /// </summary>
@@ -54,6 +57,12 @@ public static class IpcAuthorization
         [CommandTypes.TrimWorkingSet] = ProcessAccessFlags.SetQuota | ProcessAccessFlags.QueryLimitedInformation,
     };
 
+    /// <summary>Commands only administrators may send. Anything not listed elsewhere is refused anyway; these are named so that stays deliberate.</summary>
+    internal static readonly IReadOnlySet<string> AdministratorOnlyCommands = new HashSet<string>(StringComparer.Ordinal)
+    {
+        CommandTypes.PurgeMemory,
+    };
+
     /// <summary>Returns null when <paramref name="caller"/> may make <paramref name="request"/>, otherwise the error to reply with.</summary>
     public static CommandResult? Check(CommandMessage request, IIpcCaller caller)
     {
@@ -74,6 +83,7 @@ public static class IpcAuthorization
 
     private static CommandResult? CheckCommand(CommandMessage cmd, IIpcCaller caller)
     {
+        if (AdministratorOnlyCommands.Contains(cmd.CommandType)) return Deny(caller, $"run {cmd.CommandType}");
         if (UnrestrictedCommands.Contains(cmd.CommandType)) return null;
         if (cmd.CommandType == CommandTypes.TrimWorkingSet && cmd.TargetPid == null) return null;
 

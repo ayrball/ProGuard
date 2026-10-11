@@ -63,6 +63,15 @@ public class SettingsApplier
                     TimeSpan.FromSeconds(settings.MemoryTrimIntervalSeconds),
                     settings.MemoryTrimMemoryThresholdMB * 1024L * 1024L));
 
+            if (all || previous!.MemoryTrimMinimumRamLoadPercent != settings.MemoryTrimMinimumRamLoadPercent
+                    || previous.MemoryTrimExclusions != settings.MemoryTrimExclusions
+                    || previous.MemoryTrimLogNoAction != settings.MemoryTrimLogNoAction
+                    || previous.StandbyPurgeEnabled != settings.StandbyPurgeEnabled
+                    || previous.StandbyPurgeFreeRamThresholdMB != settings.StandbyPurgeFreeRamThresholdMB
+                    || previous.StandbyPurgeOnlyInPerformanceMode != settings.StandbyPurgeOnlyInPerformanceMode
+                    || previous.FileCachePurgeEnabled != settings.FileCachePurgeEnabled)
+                TryApply("MemoryTrim policy", () => _memory trim.ConfigurePolicy(ToMemoryTrimPolicy(settings)));
+
             if (all || previous!.AwayModeEnabled != settings.AwayModeEnabled
                     || previous.IdleTimeoutMinutes != settings.IdleTimeoutMinutes
                     || previous.IdlePowerPlanGuid != settings.IdlePowerPlanGuid)
@@ -92,6 +101,20 @@ public class SettingsApplier
         _responsiveness guard.SetEnabled(settings.ResponsivenessGuardEnabled);
         _responsiveness guard.SetSensitivity(settings.ResponsivenessGuardSensitivity);
     }
+
+    internal static MemoryTrimPolicy ToMemoryTrimPolicy(AppSettings settings) => new()
+    {
+        MinimumRamLoadPercent = settings.MemoryTrimMinimumRamLoadPercent,
+        Exclusions = SplitProcessList(settings.MemoryTrimExclusions),
+        LogNoAction = settings.MemoryTrimLogNoAction,
+        StandbyPurgeEnabled = settings.StandbyPurgeEnabled,
+        StandbyFreeRamThresholdBytes = Math.Max(0, settings.StandbyPurgeFreeRamThresholdMB) * 1024L * 1024L,
+        StandbyOnlyInPerformanceMode = settings.StandbyPurgeOnlyInPerformanceMode,
+        FileCachePurgeEnabled = settings.FileCachePurgeEnabled,
+    };
+
+    internal static string[] SplitProcessList(string? list) =>
+        (list ?? "").Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     // One failing service must not stop the others from getting their settings.
     private void TryApply(string what, Action apply)

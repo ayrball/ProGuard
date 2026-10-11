@@ -209,11 +209,23 @@ public sealed class EngineClient : IAsyncDisposable
         _writer = new StreamWriter(pipe, Utf8, bufferSize: 4096, leaveOpen: true) { NewLine = "\n" };
     }
 
+    /// <summary>
+    /// Drops the connection. Never throws: it runs while handling a broken pipe, and disposing the writer flushes
+    /// whatever the failed request left in its buffer into that same broken pipe ("Pipe is broken"). That exception used
+    /// to escape the request unwrapped and stop the UI's refresh loop for good after an engine restart.
+    /// </summary>
     private void Disconnect()
     {
-        _reader?.Dispose();
-        _writer?.Dispose();
-        _pipe?.Dispose();
+        static void Quietly(IDisposable? disposable)
+        {
+            try { disposable?.Dispose(); }
+            catch (IOException) { }
+            catch (ObjectDisposedException) { }
+        }
+
+        Quietly(_reader);
+        Quietly(_writer);
+        Quietly(_pipe);
         _reader = null;
         _writer = null;
         _pipe = null;

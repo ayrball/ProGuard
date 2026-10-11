@@ -120,8 +120,10 @@ public sealed partial class EngineHub : ObservableObject, IAsyncDisposable
             {
                 return;
             }
-            catch (Exception ex) when (ex is EngineUnavailableException or EngineCommandException)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                // Anything that escapes the client (not only its own exceptions) means no snapshot this time. Letting
+                // it out would end this loop, and the window would show its last snapshot as ONLINE for good.
                 HandOff(null, online: false);
                 wait = OfflineRetry;
             }

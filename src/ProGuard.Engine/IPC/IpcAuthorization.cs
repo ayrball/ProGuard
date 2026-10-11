@@ -52,6 +52,8 @@ namespace ProGuard.Engine.IPC;
 /// <see cref="AppSettings.SetTimerResolutionAtStartup"/> through SaveSettings or SetSetting): it is machine-wide, costs
 /// every user battery life, and the GlobalTimerResolutionRequests switch it can set lives under HKLM. Reading it
 /// (<see cref="CommandTypes.GetTimerResolution"/>) is open to anyone, as the rest of the System page is.</item>
+/// <item>Unparking cores while ProBalance restrains (<see cref="AppSettings.ProBalanceDisableCoreParking"/>) is
+/// administrator-only: it rewrites the active power plan's processor settings for everyone.</item>
 /// <item>Settings listed in <see cref="AdministratorOnlySettings"/> may be saved by a standard user only unchanged: a
 /// SaveSettings or SetSetting that changes one of them is refused as a whole (<see cref="CheckSettingsChange"/>).</item>
 /// <item>Anything else is refused. A new command stays administrator-only until it is added here.</item>
@@ -125,6 +127,8 @@ public static class IpcAuthorization
     internal static readonly IReadOnlyList<string> AdministratorOnlySettings = new[]
     {
         nameof(AppSettings.SetTimerResolutionAtStartup),
+        // Rewrites the active power plan's hidden processor settings, machine-wide (powercfg needs elevation for it too).
+        nameof(AppSettings.ProBalanceDisableCoreParking),
     };
 
     /// <summary>
@@ -146,6 +150,7 @@ public static class IpcAuthorization
     private static string DescribeSetting(string setting) => setting switch
     {
         nameof(AppSettings.SetTimerResolutionAtStartup) => "the system timer resolution",
+        nameof(AppSettings.ProBalanceDisableCoreParking) => "whether ProBalance unparks cores (it edits the power plan)",
         _ => System.Text.RegularExpressions.Regex.Replace(setting, "(?<=[a-z])(?=[A-Z])", " ").ToLowerInvariant(),
     };
 

@@ -24,6 +24,8 @@ public sealed class EngineSettingsDto
     public bool ProBalanceDoNotLowerPriorityClass { get; set; }
     public bool ProBalanceDisableWhenSysIdle { get; set; }
     public int ProBalanceDisableIfSysIdleMs { get; set; } = 30000;
+    /// <summary>Unpark every core while ProBalance restrains anything (OocDisableCoreParkingWhileIn). Administrators only.</summary>
+    public bool ProBalanceDisableCoreParking { get; set; }
 
     /// <summary>Raise the foreground process from Normal to Above Normal while it has focus.</summary>
     public bool ForegroundBoostEnabled { get; set; } = false;

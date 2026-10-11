@@ -29,6 +29,11 @@ public class AppSettings
     public bool ProBalanceDisableWhenSysIdle { get; set; } = false;
     /// <summary>[DisableProBalanceIfSysIdleThisManyMS] 30000.</summary>
     public int ProBalanceDisableIfSysIdleMs { get; set; } = 30000;
+    /// <summary>
+    /// [OocDisableCoreParkingWhileIn] While any process is restrained, set the active plan's core parking minimum to
+    /// 100 % (no parked cores), and put it back afterwards. Administrators only: it edits a machine-wide power plan.
+    /// </summary>
+    public bool ProBalanceDisableCoreParking { get; set; } = false;
     
     /// <summary>Raise the foreground process from Normal to Above Normal while it has focus (ForegroundBoostService). Off by default, as in Process Lasso.</summary>
     public bool ForegroundBoostEnabled { get; set; } = false;

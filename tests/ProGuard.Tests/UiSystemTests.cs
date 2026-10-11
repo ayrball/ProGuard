@@ -154,6 +154,7 @@ public class UiSystemTests
         ProBalanceRestrainByAffinity = true, ProBalanceRestraintAffinity = 0x0AB0_0000_0000_00F0L,
         ProBalanceDropOneRandomCore = true, ProBalanceLowerIoPriority = true, ProBalanceUseEfficiencyMode = true,
         ProBalanceDoNotLowerPriorityClass = true, ProBalanceDisableWhenSysIdle = true, ProBalanceDisableIfSysIdleMs = 12345,
+        ProBalanceDisableCoreParking = true,
         ForegroundBoostEnabled = false,
         SmartTrimEnabled = true, SmartTrimIntervalSeconds = 95, SmartTrimMemoryThresholdMB = 197, SmartTrimMinimumRamLoadPercent = 71,
         SmartTrimExclusions = "chrome.exe, code.exe;obs64.exe", SmartTrimLogNoAction = true,
@@ -249,6 +250,7 @@ public class UiSystemTests
         vm.UseEfficiencyMode = false;
         vm.DoNotLowerPriorityClass = false;
         vm.PauseWhenIdle = false;
+        vm.UnparkCoresWhileRestraining = false;
         vm.IdlePauseMs.Text = "60000";
         vm.ForegroundBoostEnabled = true;
 
@@ -296,6 +298,7 @@ public class UiSystemTests
         Assert.False(s.ProBalanceRestrainByAffinity);
         Assert.Equal(0x0AB0_0000_0000_00F1L, s.ProBalanceRestraintAffinity); // bits for cores that aren't shown survive
         Assert.False(s.ProBalanceDropOneRandomCore || s.ProBalanceLowerIoPriority || s.ProBalanceUseEfficiencyMode || s.ProBalanceDoNotLowerPriorityClass || s.ProBalanceDisableWhenSysIdle);
+        Assert.False(s.ProBalanceDisableCoreParking);
         Assert.Equal(60000, s.ProBalanceDisableIfSysIdleMs);
         Assert.True(s.ForegroundBoostEnabled);
 

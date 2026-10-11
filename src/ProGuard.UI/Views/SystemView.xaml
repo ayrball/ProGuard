@@ -227,6 +227,18 @@
                             </WrapPanel>
                         </StackPanel>
 
+                        <TextBlock Text="WHILE ANYTHING IS RESTRAINED" Style="{StaticResource Sub}"/>
+                        <DockPanel>
+                            <Border DockPanel.Dock="Right" Style="{StaticResource Tag}" VerticalAlignment="Center"
+                                    Visibility="{Binding IsAdministrator, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}">
+                                <TextBlock Text="NEEDS ADMINISTRATOR RIGHTS" Style="{StaticResource Tag.Text}"/>
+                            </Border>
+                            <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding UnparkCoresWhileRestraining}" IsEnabled="{Binding IsAdministrator}"
+                                      Margin="0" HorizontalAlignment="Left" Content="UNPARK EVERY CORE"/>
+                        </DockPanel>
+                        <TextBlock Style="{StaticResource Note}"
+                                   Text="Sets the power plan's core parking minimum to 100% so no core sleeps while a hog is held back, and puts it back afterwards."/>
+
                         <TextBlock Text="WHILE YOU'RE AWAY" Style="{StaticResource Sub}"/>
                         <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding PauseWhenIdle}" Margin="0,0,0,16" Content="PAUSE PROBALANCE WHEN THE MACHINE IS IDLE"/>
                         <ContentControl Content="{Binding IdlePauseMs}" IsEnabled="{Binding PauseWhenIdle}" Focusable="False"/>

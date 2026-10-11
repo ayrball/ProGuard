@@ -38,8 +38,8 @@ namespace ProGuard.Engine.IPC;
 /// machine-wide preferences, and a power plan the user picks is what Windows would let them pick in Power Options.
 /// A plan chosen this way wins over Performance Mode or IdleSaver (see <c>IPowerManager.SetActivePlan</c>).</item>
 /// <item>Anyone may save and delete process and Watchdog rules, as the unelevated UI must. The dispatcher then checks the
-/// rule itself (<see cref="RuleAuthorization"/>: no system processes, Realtime, Watchdog Launch, or ending processes the
-/// caller couldn't end), since that needs the stored rule and the running processes. A rule may be changed or deleted
+/// rule itself (<see cref="RuleAuthorization"/>: no system processes, Realtime, Watchdog Launch, or rules for programs whose
+/// running instances the caller couldn't change or end themselves), since that needs the stored rule and the running processes. A rule may be changed or deleted
 /// only by someone who could have created it. The legacy SetRule request stays administrator-only.</item>
 /// <item>SetEfficiencyMode, SetIoPriority and SetMemoryPriority need the same right as SetPriority. Setting I/O priority
 /// High (3) is administrator-only, like Realtime: Windows needs SeIncreaseBasePriorityPrivilege for it.</item>

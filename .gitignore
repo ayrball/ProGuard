@@ -15,5 +15,8 @@ obj/
 # Test results
 TestResults/
 
+# Output of tools/ProGuard.Preview (PNG renders of the UI)
+artifacts/
+
 # Claude Code per-machine settings
 .claude/

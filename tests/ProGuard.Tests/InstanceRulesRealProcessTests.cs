@@ -16,6 +16,10 @@ public sealed class InstanceRulesRealProcessTests : IDisposable
 {
     private readonly List<Process> _spawned = new();
 
+    // A terminated process is gone only once its threads have run to process the kill. These run at Idle or BelowNormal,
+    // and on a 2-CPU CI runner busy with the rest of the suite such a thread can wait ~4 s for Windows' starvation boost.
+    private const int ExitTimeoutMs = 15_000;
+
     private Process Spawn(ProcessPriorityClass priority = ProcessPriorityClass.BelowNormal)
     {
         var p = Process.Start(new ProcessStartInfo("ping.exe", "-n 60 127.0.0.1")
@@ -57,7 +61,7 @@ public sealed class InstanceRulesRealProcessTests : IDisposable
         Assert.Equal(1, access.GetAffinityMask(p.Id));
 
         Assert.True(access.Terminate(p.Id));
-        Assert.True(p.WaitForExit(5000));
+        Assert.True(p.WaitForExit(ExitTimeoutMs));
         Assert.Null(access.GetPriorityClass(p.Id));
     }
 
@@ -102,7 +106,7 @@ public sealed class InstanceRulesRealProcessTests : IDisposable
         monitor.Start(older.Id, "PING");
         monitor.Start(newer.Id, "PING");
 
-        Assert.True(newer.WaitForExit(5000));
+        Assert.True(newer.WaitForExit(ExitTimeoutMs));
         Assert.False(older.HasExited);
         governor.Stop();
     }

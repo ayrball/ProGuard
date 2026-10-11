@@ -24,4 +24,14 @@ public class RuleDto
     /// <summary>System.Diagnostics.ProcessPriorityClass value.</summary>
     public int? StartupBoostPriorityClass { get; set; }
     public int? StartupBoostSeconds { get; set; }
+
+    // Persistent per-process defaults; same meaning and ranges as on ProcessRule. Null leaves the setting alone.
+    public int? IoPriority { get; set; }
+    public int? MemoryPriority { get; set; }
+    public bool? EfficiencyMode { get; set; }
+    public bool? DisablePriorityBoost { get; set; }
+    public string? CpuSetIds { get; set; }
+    public int? GpuPriority { get; set; }
+    public int? GpuPreference { get; set; }
+    public bool ReapplyIfChanged { get; set; }
 }

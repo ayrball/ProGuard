@@ -14,7 +14,7 @@ namespace ProGuard.Engine.IPC;
 /// <list type="bullet">
 /// <item>Administrators (an elevated token) and SYSTEM may send anything. The dispatcher's own guards (e.g. never
 /// terminating the System process or the engine) still apply.</item>
-/// <item>Anyone may Ping, GetStatus, change the engine settings (SetSetting and the ResponsivenessGuard, MemoryTrim and
+/// <item>Anyone may Ping, GetStatus, read the process rules (GetRules), change the engine settings (SetSetting and the ResponsivenessGuard, MemoryTrim and
 /// AwayMode commands), toggle Performance Mode and trim all working sets. These are the machine-wide preferences the
 /// UI shows on every desktop, as another process manager's GUI does. None of them reads or changes another user's data, and
 /// trimming everything is what MemoryTrim does anyway once it is enabled.</item>
@@ -73,6 +73,7 @@ public static class IpcAuthorization
             case MessageType.Ping:
             case MessageType.GetStatus:
             case MessageType.SetSetting:
+            case MessageType.GetRules: // rule names and settings, no data about anyone's processes
                 return null;
             case MessageType.Command:
                 return CheckCommand(request, caller);

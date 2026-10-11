@@ -520,9 +520,6 @@ public class IpcDispatchAndSettingsTests
                 s.PollingIntervalMs = 3000;
                 ui.SaveChanges();
             }
-            // Make sure the change is visible to the write-time check even on a coarse-grained filesystem clock.
-            File.SetLastWriteTimeUtc(dbPath, DateTime.UtcNow.AddSeconds(5));
-
             Assert.True(store.ReloadIfChanged());
             h.Applier.Apply(store.GetSettings()); // what EngineWorker does on each reload
 

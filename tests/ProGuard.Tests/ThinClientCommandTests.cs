@@ -870,6 +870,17 @@ public class ThinClientCommandTests
     }
 
     [Fact]
+    public void PolledQueries_AreLoggedAtDebug_AndChangesAtInformation()
+    {
+        var h = new ThinHarness();
+        h.SendAsAdmin(CommandTypes.GetSnapshot);
+        h.SendAsAdmin(CommandTypes.ClearActionLog);
+
+        Assert.Equal(Microsoft.Extensions.Logging.LogLevel.Debug, Assert.Single(h.Log.Entries, e => e.Message.Contains("IPC command GetSnapshot")).Level);
+        Assert.Equal(Microsoft.Extensions.Logging.LogLevel.Information, Assert.Single(h.Log.Entries, e => e.Message.Contains("IPC command ClearActionLog")).Level);
+    }
+
+    [Fact]
     public void ClearActionLog_DeletesTheLoggedActions()
     {
         var h = new ThinHarness();

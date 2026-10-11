@@ -17,6 +17,7 @@ public class EngineWorker : BackgroundService
     private readonly ProcessMonitor _processMonitor;
     private readonly ProBalanceEngine _proBalanceEngine;
     private readonly CpuLimiter _cpuLimiter;
+    private readonly CpuAffinityLimiter _cpuAffinityLimiter;
     private readonly SmartTrimService _smartTrimService;
     private readonly PowerManager _powerManager;
     private readonly WatchdogService _watchdogService;
@@ -42,7 +43,8 @@ public class EngineWorker : BackgroundService
         PipeServer pipeServer,
         ForegroundPipeServer foregroundPipeServer,
         RuleStore ruleStore,
-        SettingsApplier settingsApplier)
+        SettingsApplier settingsApplier,
+        CpuAffinityLimiter cpuAffinityLimiter)
     {
         _logger = logger;
         _processMonitor = processMonitor;
@@ -57,6 +59,7 @@ public class EngineWorker : BackgroundService
         _foregroundPipeServer = foregroundPipeServer;
         _ruleStore = ruleStore;
         _settingsApplier = settingsApplier;
+        _cpuAffinityLimiter = cpuAffinityLimiter;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -71,6 +74,7 @@ public class EngineWorker : BackgroundService
         await _processMonitor.StartAsync(stoppingToken);
         await _proBalanceEngine.StartAsync(stoppingToken);
         await _cpuLimiter.StartAsync(stoppingToken);
+        await _cpuAffinityLimiter.StartAsync(stoppingToken);
         await _smartTrimService.StartAsync(stoppingToken);
         await _powerManager.StartAsync(stoppingToken);
         await _watchdogService.StartAsync(stoppingToken);
@@ -105,6 +109,7 @@ public class EngineWorker : BackgroundService
         await _watchdogService.StopAsync(stoppingToken);
         await _powerManager.StopAsync(stoppingToken);
         await _smartTrimService.StopAsync(stoppingToken);
+        await _cpuAffinityLimiter.StopAsync(stoppingToken);
         await _cpuLimiter.StopAsync(stoppingToken);
         await _proBalanceEngine.StopAsync(stoppingToken);
         await _processMonitor.StopAsync(stoppingToken);

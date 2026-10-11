@@ -53,10 +53,12 @@ public class SchemaUpgraderTests : IDisposable
         using (var db = new FileDbContext(_path)) db.EnsureSchema();
 
         var ruleColumns = Columns("ProcessRules");
-        Assert.Equal(
-            new[] { "Id", "ProcessName", "PriorityClass", "AffinityMask", "CpuLimitPercent", "MaxInstances",
-                    "PowerProfileGuid", "ExcludeFromProBalance", "DisallowExecution" }.OrderBy(n => n),
-            ruleColumns.Keys.OrderBy(n => n));
+        // Every column the model maps, whatever rule fields exist today.
+        string[] modelColumns;
+        using (var db = new FileDbContext(_path))
+            modelColumns = db.Model.FindEntityType(typeof(ProcessRule))!.GetProperties()
+                .Select(p => p.GetColumnName()).ToArray();
+        Assert.Equal(modelColumns.OrderBy(n => n), ruleColumns.Keys.OrderBy(n => n));
         Assert.Equal(("INTEGER", true, null), ruleColumns["PriorityClass"]);
         Assert.Equal(("TEXT", true, null), ruleColumns["PowerProfileGuid"]);
         Assert.Equal(("INTEGER", false, "0"), ruleColumns["ExcludeFromProBalance"]);

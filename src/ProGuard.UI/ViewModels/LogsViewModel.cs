@@ -41,12 +41,16 @@ public partial class LogsViewModel : ViewModelBase
             var actions = db.ProBalanceActions.OrderByDescending(a => a.Timestamp).Take(200).ToList();
             foreach (var a in actions)
             {
+                // CPU Limiter (affinity reduction) entries leave both priorities at 0 and put the masks in Reason.
+                bool isCpuLimiter = a.OriginalPriority == 0 && a.NewPriority == 0;
                 _allLogs.Add(new LogEntryItem
                 {
                     Timestamp = a.Timestamp.ToString("g"),
                     Type = "ProBalance",
                     ProcessName = a.ProcessName,
-                    Message = $"{a.Reason} (PID: {a.Pid}, Priority: {a.OriginalPriority} -> {a.NewPriority})"
+                    Message = isCpuLimiter
+                        ? $"{a.Reason} (PID: {a.Pid})"
+                        : $"{a.Reason} (PID: {a.Pid}, Priority: {a.OriginalPriority} -> {a.NewPriority})"
                 });
             }
         }

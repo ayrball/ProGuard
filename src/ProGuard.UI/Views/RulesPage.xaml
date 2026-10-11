@@ -44,6 +44,21 @@
                         <ui:TextBox Text="{Binding NewCpuLimit, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="e.g. 50 or None" Width="130"/>
                     </StackPanel>
 
+                    <StackPanel Margin="0,0,16,12" ToolTip="CPU Limiter: when the process uses at least this much CPU for the given time, remove cores from its affinity for a while, then restore it. Leave the threshold blank for no limit.">
+                        <TextBlock Text="CPU Limiter (affinity):" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,6"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="≥" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <ui:TextBox Text="{Binding NewCpuLimitThreshold, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="%" Width="70"/>
+                            <TextBlock Text="% for" VerticalAlignment="Center" Margin="4,0"/>
+                            <ui:TextBox Text="{Binding NewCpuLimitOverSeconds, UpdateSourceTrigger=PropertyChanged}" Width="60"/>
+                            <TextBlock Text="s, remove" VerticalAlignment="Center" Margin="4,0"/>
+                            <ui:TextBox Text="{Binding NewCpuLimitCores, UpdateSourceTrigger=PropertyChanged}" Width="60"/>
+                            <TextBlock Text="cores for" VerticalAlignment="Center" Margin="4,0"/>
+                            <ui:TextBox Text="{Binding NewCpuLimitDuration, UpdateSourceTrigger=PropertyChanged}" Width="60"/>
+                            <TextBlock Text="s" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+
                     <StackPanel Margin="0,0,20,12" VerticalAlignment="Bottom">
                         <CheckBox IsChecked="{Binding NewIsDisallowed}" Content="Disallow Execution" Margin="0,0,0,6"/>
                     </StackPanel>
@@ -66,6 +81,7 @@
                 <DataGridTextColumn Header="Priority" Binding="{Binding Priority}" Width="130" ElementStyle="{StaticResource FluentDataGridTextStyle}"/>
                 <DataGridTextColumn Header="Affinity" Binding="{Binding Affinity}" Width="120" ElementStyle="{StaticResource FluentDataGridTextStyle}"/>
                 <DataGridTextColumn Header="CPU Limit" Binding="{Binding CpuLimit}" Width="120" ElementStyle="{StaticResource FluentDataGridTextStyle}"/>
+                <DataGridTextColumn Header="CPU Limiter (affinity)" Binding="{Binding CpuAffinityLimit}" Width="220" ElementStyle="{StaticResource FluentDataGridTextStyle}"/>
                 <DataGridTextColumn Header="Max Instances" Binding="{Binding MaxInstances}" Width="130" ElementStyle="{StaticResource FluentDataGridTextStyle}"/>
                 <DataGridCheckBoxColumn Header="Disallowed" Binding="{Binding IsDisallowed}" Width="110"/>
             </DataGrid.Columns>

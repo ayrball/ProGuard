@@ -42,6 +42,15 @@ public class AppSettings
     // Performance Mode (Process Lasso's [GamingMode])
     /// <summary>Plan Performance Mode switches to (TargetPowerPlan); null = High Performance.</summary>
     public string? PerformanceModePlanGuid { get; set; }
+    /// <summary>Processes that turn Performance Mode on while they run (AutomaticGamingModeProcessPaths): exe names
+    /// or full paths, '*' wildcards allowed, separated by ';'.</summary>
+    public string? AutoPerformanceModeProcesses { get; set; }
+    /// <summary>Processes that never turn it on, even if listed or detected (AutomaticGamingModeUserExclusions).</summary>
+    public string? AutoPerformanceModeExclusions { get; set; }
+    /// <summary>Turn it on while a game detected from its install path (Steam, Epic, GOG, ...) runs.</summary>
+    public bool AutoPerformanceModeDetectGames { get; set; } = false;
+    /// <summary>Turn it on while a game from one of the Steam libraries runs (GamingModeEngageForSteam).</summary>
+    public bool PerformanceModeEngageForSteam { get; set; } = false;
 
     // Load-based power switcher ([LoadBasedPowerSwitcher])
     public bool LoadSwitcherEnabled { get; set; } = false;

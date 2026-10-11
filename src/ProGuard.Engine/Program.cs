@@ -57,6 +57,9 @@ public class Program
                 services.AddSingleton<PowerManager>();
                 services.AddSingleton<IPowerManager>(sp => sp.GetRequiredService<PowerManager>());
 
+                services.AddSingleton<AutoPerformanceModeService>();
+                services.AddSingleton<IAutoPerformanceMode>(sp => sp.GetRequiredService<AutoPerformanceModeService>());
+
                 services.AddSingleton<WatchdogService>();
                 services.AddSingleton<IWatchdogService>(sp => sp.GetRequiredService<WatchdogService>());
 

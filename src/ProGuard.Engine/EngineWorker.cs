@@ -27,6 +27,7 @@ public class EngineWorker : BackgroundService
     private readonly ForegroundPipeServer _foregroundPipeServer;
     private readonly RuleStore _ruleStore;
     private readonly SettingsApplier _settingsApplier;
+    private readonly AutoPerformanceModeService _autoPerformanceMode;
 
     private static readonly TimeSpan RuleReloadInterval = TimeSpan.FromSeconds(2);
 
@@ -44,7 +45,8 @@ public class EngineWorker : BackgroundService
         ForegroundPipeServer foregroundPipeServer,
         RuleStore ruleStore,
         SettingsApplier settingsApplier,
-        CpuAffinityLimiter cpuAffinityLimiter)
+        CpuAffinityLimiter cpuAffinityLimiter,
+        AutoPerformanceModeService autoPerformanceMode)
     {
         _logger = logger;
         _processMonitor = processMonitor;
@@ -60,6 +62,7 @@ public class EngineWorker : BackgroundService
         _ruleStore = ruleStore;
         _settingsApplier = settingsApplier;
         _cpuAffinityLimiter = cpuAffinityLimiter;
+        _autoPerformanceMode = autoPerformanceMode;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -77,6 +80,7 @@ public class EngineWorker : BackgroundService
         await _cpuAffinityLimiter.StartAsync(stoppingToken);
         await _smartTrimService.StartAsync(stoppingToken);
         await _powerManager.StartAsync(stoppingToken);
+        _autoPerformanceMode.Start();
         await _watchdogService.StartAsync(stoppingToken);
         await _processGovernor.StartAsync(stoppingToken);
         _foregroundBoostService.Start();
@@ -107,6 +111,7 @@ public class EngineWorker : BackgroundService
 
         await _processGovernor.StopAsync(stoppingToken);
         await _watchdogService.StopAsync(stoppingToken);
+        _autoPerformanceMode.Stop();
         await _powerManager.StopAsync(stoppingToken);
         await _smartTrimService.StopAsync(stoppingToken);
         await _cpuAffinityLimiter.StopAsync(stoppingToken);

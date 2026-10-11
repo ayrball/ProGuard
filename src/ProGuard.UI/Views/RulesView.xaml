@@ -277,6 +277,20 @@
                                         <TextBlock Text="Puts these settings back if something else changes them." Style="{StaticResource Ed.Note}" Margin="0"/>
                                     </StackPanel>
                                 </CheckBox>
+
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ApplyAtLaunch}" Margin="0,18,0,0"
+                                          IsEnabled="{Binding CanSetAtLaunch}">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="SET AT LAUNCH" FontWeight="Bold" FontSize="14"/>
+                                            <Border Style="{StaticResource Tag}" Margin="8,0,0,0" Padding="4,0" VerticalAlignment="Center"
+                                                    Visibility="{Binding IsRestricted, Converter={StaticResource VisibleWhen}}">
+                                                <TextBlock Text="ADMIN" Style="{StaticResource Tag.Text}" FontSize="9"/>
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Text="Windows starts the program with its priority, I/O and memory priority already set, instead of a moment later. Plain program names only." Style="{StaticResource Ed.Note}" Margin="0" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </CheckBox>
                             </StackPanel>
                         </Expander>
                     </StackPanel>

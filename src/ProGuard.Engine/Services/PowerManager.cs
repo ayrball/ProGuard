@@ -50,6 +50,11 @@ public sealed record PowerPlanChange(DateTime Time, Guid From, Guid To, PowerPla
 /// user's own change makes it moot). If the engine dies in between, the next start restores it, unless a start-with
 /// plan is configured or the plan was changed since (Process Lasso's IdleSaverRecoveryGUID).
 /// </para>
+/// <para>
+/// <b>Power mode.</b> Optionally Performance Mode also moves the Windows power-mode slider (an overlay on the plan) to
+/// Best performance and puts the previous mode back when it ends, unless the user picked a mode meanwhile
+/// (<see cref="SetPowerMode"/>). That is the only other thing it changes; the mode is not part of crash recovery.
+/// </para>
 /// <para>Every switch is logged with its reason, to the engine log and to the Logs page (through
 /// <see cref="IRuleStore"/>), and kept in <see cref="RecentChanges"/>.</para>
 /// </summary>
@@ -102,6 +107,12 @@ public class PowerManager : IPowerManager
 
     private Guid _startupPlan;
 
+    // Power mode (the Windows 11 slider): Performance Mode can hold it at Best performance.
+    private readonly IPowerModeOverlay _overlay;
+    private bool _performanceSetsBestMode;
+    private bool _modeHeld;
+    private Guid? _modeBefore;   // what to put back; null when nothing is owed (it was already Best, or the user chose since)
+
     public PowerManager(ILogger<PowerManager> logger, IUserIdleSource idleSource, IRuleStore? ruleStore = null)
         : this(logger, idleSource, null, null, ruleStore: ruleStore)
     {
@@ -112,7 +123,7 @@ public class PowerManager : IPowerManager
     internal PowerManager(ILogger<PowerManager>? logger, IUserIdleSource idleSource,
         Func<Guid>? readActivePlan, Func<Guid, bool>? writeActivePlan,
         Func<double>? systemCpuPercent = null, Func<TimeSpan>? clock = null, IRuleStore? ruleStore = null,
-        IPowerPlanRecoveryStore? recoveryStore = null)
+        IPowerPlanRecoveryStore? recoveryStore = null, IPowerModeOverlay? overlay = null)
     {
         _logger = logger ?? NullLogger<PowerManager>.Instance;
         _idleSource = idleSource;
@@ -127,6 +138,8 @@ public class PowerManager : IPowerManager
         _recovery = recoveryStore ?? (readActivePlan == null
             ? new FilePowerPlanRecoveryStore(_logger)
             : new MemoryPowerPlanRecoveryStore());
+        // And never moves the real slider.
+        _overlay = overlay ?? (readActivePlan == null ? new Win32PowerModeOverlay() : new NoPowerModeOverlay());
     }
 
     /// <summary>The plan changes made since the engine started, oldest first.</summary>
@@ -323,9 +336,50 @@ public class PowerManager : IPowerManager
 
     /// <summary>
     /// The single place features' plan changes happen: applies the winning feature's plan, or restores the baseline
-    /// when none wants one. Caller holds the lock; <paramref name="reason"/> is what just changed.
+    /// when none wants one, then brings the power mode in line with Performance Mode. Caller holds the lock;
+    /// <paramref name="reason"/> is what just changed.
     /// </summary>
     private void Arbitrate(string reason)
+    {
+        ArbitratePlan(reason);
+        ArbitratePowerMode();
+    }
+
+    /// <summary>
+    /// Holds the power mode at Best performance while Performance Mode is on and asks for it, and puts the previous mode
+    /// back afterwards if it is still Best performance. Reads the mode only when that is about to change.
+    /// </summary>
+    private void ArbitratePowerMode()
+    {
+        var wanted = !_stopped && _performanceSetsBestMode && PerformanceModeWanted;
+        if (wanted == _modeHeld) return;
+
+        if (wanted)
+        {
+            if (_overlay.Read() is not { } current) return; // no slider on this Windows: nothing to hold
+            _modeHeld = true;
+            _modeBefore = null;
+            if (current == PowerModes.BestPerformance) return;
+            if (_overlay.Write(PowerModes.BestPerformance))
+            {
+                _modeBefore = current;
+                LogPowerMode($"Power mode {PowerModes.Describe(current)} -> Best performance: Performance Mode");
+            }
+            else _logger.LogError("Windows wouldn't set the power mode to Best performance for Performance Mode");
+            return;
+        }
+
+        _modeHeld = false;
+        if (_modeBefore is not { } before) return;
+        _modeBefore = null;
+        // Changed by someone else meanwhile (outside SetPowerMode): theirs stays.
+        if (_overlay.Read() != PowerModes.BestPerformance) return;
+        if (_overlay.Write(before))
+            LogPowerMode($"Power mode Best performance -> {PowerModes.Describe(before)}: Performance Mode ended");
+        else _logger.LogError("Windows wouldn't put the power mode back to {Mode}", PowerModes.Describe(before));
+    }
+
+    private void ArbitratePlan(string reason)
     {
         var (owner, plan) = Decide();
         var current = _readActivePlan();
@@ -450,6 +504,46 @@ public class PowerManager : IPowerManager
         });
         try { PlanChanged?.Invoke(this, change); }
         catch (Exception ex) { _logger.LogError(ex, "PlanChanged handler failed"); }
+    }
+
+    private void LogPowerMode(string message)
+    {
+        _logger.LogInformation("{Message}", message);
+        _ = _ruleStore?.LogProBalanceActionAsync(new ProBalanceAction
+        {
+            Timestamp = DateTime.UtcNow,
+            ProcessName = ProBalanceAction.PowerPlanEntryName,
+            Reason = message,
+            IsRestored = true,
+        });
+    }
+
+    /// <inheritdoc/>
+    public Guid? GetPowerMode() => _overlay.Read();
+
+    /// <inheritdoc/>
+    public bool SetPowerMode(Guid mode)
+    {
+        lock (_sync)
+        {
+            var current = _overlay.Read();
+            if (current == null || !_overlay.Write(mode)) return false;
+            // A manual choice: Performance Mode must not put its "before" back over it.
+            _modeBefore = null;
+            if (current != mode) LogPowerMode($"Power mode {PowerModes.Describe(current.Value)} -> {PowerModes.Describe(mode)}: set by the user");
+            return true;
+        }
+    }
+
+    /// <inheritdoc/>
+    public void ConfigurePerformanceModePowerMode(bool bestPerformance)
+    {
+        lock (_sync)
+        {
+            if (bestPerformance == _performanceSetsBestMode) return;
+            _performanceSetsBestMode = bestPerformance;
+            ArbitratePowerMode();
+        }
     }
 
     private static string Describe(PowerPlanOwner owner) => owner switch

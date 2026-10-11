@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using ProGuard.Core.Helpers;
+using ProGuard.Core.Models;
 using ProGuard.Core.Native;
 using ProGuard.Shared.Messages;
 
@@ -37,6 +38,8 @@ namespace ProGuard.Engine.IPC;
 /// <item>SaveSettings and SetPowerPlan are open to any user, like SetSetting and Performance Mode: they are the same
 /// machine-wide preferences, and a power plan the user picks is what Windows would let them pick in Power Options.
 /// A plan chosen this way wins over Performance Mode or IdleSaver (see <c>IPowerManager.SetActivePlan</c>).</item>
+/// <item>SetPowerMode is open to any user too: it is the Windows power-mode slider, which every user may move in Windows'
+/// own settings.</item>
 /// <item>Anyone may save and delete process and Watchdog rules, as the unelevated UI must. The dispatcher then checks the
 /// rule itself (<see cref="RuleAuthorization"/>: no system processes, Realtime, Watchdog Launch, or rules for programs whose
 /// running instances the caller couldn't change or end themselves), since that needs the stored rule and the running processes. A rule may be changed or deleted
@@ -47,6 +50,14 @@ namespace ProGuard.Engine.IPC;
 /// caller could end too, and never the System process or the engine.</item>
 /// <item>Clearing the action log (<see cref="CommandTypes.ClearActionLog"/>) is administrator-only: it is the record of
 /// what the engine did to every user's processes.</item>
+/// <item>The system timer resolution is administrator-only to change (<see cref="CommandTypes.SetTimerResolution"/>, and
+/// <see cref="AppSettings.SetTimerResolutionAtStartup"/> through SaveSettings or SetSetting): it is machine-wide, costs
+/// every user battery life, and the GlobalTimerResolutionRequests switch it can set lives under HKLM. Reading it
+/// (<see cref="CommandTypes.GetTimerResolution"/>) is open to anyone, as the rest of the System page is.</item>
+/// <item>Unparking cores while ProBalance restrains (<see cref="AppSettings.ProBalanceDisableCoreParking"/>) is
+/// administrator-only: it rewrites the active power plan's processor settings for everyone.</item>
+/// <item>Settings listed in <see cref="AdministratorOnlySettings"/> may be saved by a standard user only unchanged: a
+/// SaveSettings or SetSetting that changes one of them is refused as a whole (<see cref="CheckSettingsChange"/>).</item>
 /// <item>Anything else is refused. A new command stays administrator-only until it is added here.</item>
 /// </list>
 /// </summary>
@@ -63,6 +74,7 @@ public static class IpcAuthorization
         CommandTypes.DisablePerformanceMode,
         CommandTypes.SaveSettings,
         CommandTypes.SetPowerPlan,
+        CommandTypes.SetPowerMode,
         // Reads.
         CommandTypes.GetSnapshot,
         CommandTypes.GetProcessRules,
@@ -71,6 +83,7 @@ public static class IpcAuthorization
         CommandTypes.GetPower,
         CommandTypes.GetActivity,
         CommandTypes.GetCpuSets,
+        CommandTypes.GetTimerResolution,
     };
 
     /// <summary>Allowed here; <see cref="IpcDispatcher"/> checks the rule's contents with <see cref="RuleAuthorization"/>.</summary>
@@ -107,6 +120,41 @@ public static class IpcAuthorization
     {
         CommandTypes.PurgeMemory,
         CommandTypes.ClearActionLog,
+        CommandTypes.SetTimerResolution,
+    };
+
+    /// <summary>
+    /// <see cref="AppSettings"/> properties only administrators may change. The settings commands themselves stay open,
+    /// so a standard user can save everything else; this is checked against the stored values.
+    /// </summary>
+    internal static readonly IReadOnlyList<string> AdministratorOnlySettings = new[]
+    {
+        nameof(AppSettings.SetTimerResolutionAtStartup),
+        // Rewrites the active power plan's hidden processor settings, machine-wide (powercfg needs elevation for it too).
+        nameof(AppSettings.ProBalanceDisableCoreParking),
+    };
+
+    /// <summary>
+    /// Null when <paramref name="caller"/> may replace <paramref name="stored"/> with <paramref name="incoming"/>,
+    /// otherwise the refusal naming the first administrator-only setting it would change.
+    /// </summary>
+    public static CommandResult? CheckSettingsChange(AppSettings stored, AppSettings incoming, IIpcCaller caller)
+    {
+        if (caller.IsAdministrator) return null;
+        foreach (var name in AdministratorOnlySettings)
+        {
+            var property = typeof(AppSettings).GetProperty(name)!;
+            if (!Equals(property.GetValue(stored), property.GetValue(incoming)))
+                return Deny(caller, "change " + DescribeSetting(name));
+        }
+        return null;
+    }
+
+    private static string DescribeSetting(string setting) => setting switch
+    {
+        nameof(AppSettings.SetTimerResolutionAtStartup) => "the system timer resolution",
+        nameof(AppSettings.ProBalanceDisableCoreParking) => "whether ProBalance unparks cores (it edits the power plan)",
+        _ => System.Text.RegularExpressions.Regex.Replace(setting, "(?<=[a-z])(?=[A-Z])", " ").ToLowerInvariant(),
     };
 
     /// <summary>Returns null when <paramref name="caller"/> may make <paramref name="request"/>, otherwise the error to reply with.</summary>

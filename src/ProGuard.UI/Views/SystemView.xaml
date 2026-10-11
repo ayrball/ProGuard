@@ -228,6 +228,18 @@
                             </WrapPanel>
                         </StackPanel>
 
+                        <TextBlock Text="WHILE ANYTHING IS RESTRAINED" Style="{StaticResource Sub}"/>
+                        <DockPanel>
+                            <Border DockPanel.Dock="Right" Style="{StaticResource Tag}" VerticalAlignment="Center"
+                                    Visibility="{Binding IsAdministrator, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}">
+                                <TextBlock Text="NEEDS ADMINISTRATOR RIGHTS" Style="{StaticResource Tag.Text}"/>
+                            </Border>
+                            <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding UnparkCoresWhileRestraining}" IsEnabled="{Binding IsAdministrator}"
+                                      Margin="0" HorizontalAlignment="Left" Content="UNPARK EVERY CORE"/>
+                        </DockPanel>
+                        <TextBlock Style="{StaticResource Note}"
+                                   Text="Sets the power plan's core parking minimum to 100% so no core sleeps while a hog is held back, and puts it back afterwards."/>
+
                         <TextBlock Text="WHILE YOU'RE AWAY" Style="{StaticResource Sub}"/>
                         <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding PauseWhenIdle}" Margin="0,0,0,16" Content="PAUSE PROBALANCE WHEN THE MACHINE IS IDLE"/>
                         <ContentControl Content="{Binding IdlePauseMs}" IsEnabled="{Binding PauseWhenIdle}" Focusable="False"/>
@@ -343,6 +355,12 @@
 
                     <TextBlock Text="WHAT IT DOES" Style="{StaticResource Sub}"/>
                     <ContentControl Content="{Binding PerformancePlan}" Focusable="False"/>
+                    <StackPanel Visibility="{Binding PowerModeSupported, Converter={StaticResource VisibleWhen}}">
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding PerformanceSetsBestMode}" Margin="0,4,0,0"
+                                  Content="ALSO SET THE POWER MODE TO BEST PERFORMANCE"/>
+                        <TextBlock Style="{StaticResource Note}"
+                                   Text="Your power mode comes back when Performance Mode ends. Windows uses it only under the Balanced plan, so pick Balanced above for this to count."/>
+                    </StackPanel>
 
                     <TextBlock Text="TURNING ON BY ITSELF" Style="{StaticResource Sub}" Margin="0,18,0,12"/>
                     <ContentControl Content="{Binding AutoProcesses}" Focusable="False"/>
@@ -443,15 +461,90 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
+                    <StackPanel Visibility="{Binding PowerModeSupported, Converter={StaticResource VisibleWhen}}" Margin="0,22,0,0">
+                        <TextBlock Text="POWER MODE" Style="{StaticResource Text.Label}" Margin="0,0,0,8"/>
+                        <ItemsControl ItemsSource="{Binding PowerModes}" Focusable="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Style="{StaticResource Opt}" Content="{Binding Label}"
+                                            Command="{Binding DataContext.PickPowerModeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            ui:Seg.IsOn="{Binding IsOn, Mode=OneWay}"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Style="{StaticResource Note}" Text="{Binding PowerModeNote}"/>
+                    </StackPanel>
+
                     <ContentControl Content="{Binding StartWithPlan}" Focusable="False" Margin="0,22,0,0"/>
                 </StackPanel>
             </HeaderedContentControl>
 
-            <!-- ============================================================ H · General -->
+            <!-- ============================================================ H · Timer resolution -->
             <HeaderedContentControl Style="{StaticResource Section}">
                 <HeaderedContentControl.Header>
                     <StackPanel>
                         <TextBlock Text="H" Style="{StaticResource SectionNumber}"/>
+                        <TextBlock Text="TIMER" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Style="{StaticResource SectionBlurb}"
+                                   Text="How often Windows' clock ticks. A finer timer makes sleeps and frame pacing more precise, at the cost of more wake-ups and battery. The engine holds it while it runs."/>
+                    </StackPanel>
+                </HeaderedContentControl.Header>
+                <StackPanel>
+                    <UniformGrid Columns="3" HorizontalAlignment="Left" MinWidth="460">
+                        <StackPanel Margin="0,0,24,0">
+                            <TextBlock Text="NOW" Style="{StaticResource Text.Label}"/>
+                            <TextBlock Text="{Binding TimerCurrentText}" FontFamily="{StaticResource Mono}" FontWeight="Bold" FontSize="24"/>
+                        </StackPanel>
+                        <StackPanel Margin="0,0,24,0" ToolTip="The coarsest the timer runs at (Windows calls it the minimum resolution)">
+                            <TextBlock Text="MINIMUM" Style="{StaticResource Text.Label}"/>
+                            <TextBlock Text="{Binding TimerMinimumText}" FontFamily="{StaticResource Mono}" FontWeight="Bold" FontSize="24" Opacity="0.7"/>
+                        </StackPanel>
+                        <StackPanel ToolTip="The finest the timer can be asked for (Windows calls it the maximum resolution)">
+                            <TextBlock Text="MAXIMUM" Style="{StaticResource Text.Label}"/>
+                            <TextBlock Text="{Binding TimerMaximumText}" FontFamily="{StaticResource Mono}" FontWeight="Bold" FontSize="24" Opacity="0.7"/>
+                        </StackPanel>
+                    </UniformGrid>
+
+                    <DockPanel Margin="0,30,0,8">
+                        <Border DockPanel.Dock="Right" Style="{StaticResource Tag}" VerticalAlignment="Center"
+                                Visibility="{Binding IsAdministrator, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}">
+                            <TextBlock Text="NEEDS ADMINISTRATOR RIGHTS" Style="{StaticResource Tag.Text}"/>
+                        </Border>
+                        <TextBlock Text="ASK WINDOWS FOR" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
+                    </DockPanel>
+                    <ItemsControl ItemsSource="{Binding TimerOptions}" Focusable="False" IsEnabled="{Binding IsAdministrator}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource Opt}" Content="{Binding Label}"
+                                        Command="{Binding DataContext.PickTimerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"
+                                        ui:Seg.IsOn="{Binding IsOn, Mode=OneWay}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="{Binding TimerStatusText}" FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.7" Margin="0,8,0,0"/>
+
+                    <StackPanel Visibility="{Binding TimerGlobalSupported, Converter={StaticResource VisibleWhen}}">
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding TimerGlobalRequests}" IsEnabled="{Binding IsAdministrator}"
+                                  Content="APPLY TO EVERY PROGRAM" Margin="0,22,0,0"/>
+                        <TextBlock Style="{StaticResource Note}"
+                                   Text="Windows 11 honours a timer request only for the program that made it. This switch (GlobalTimerResolutionRequests) makes requests system-wide again. Takes effect after a restart."/>
+                    </StackPanel>
+                </StackPanel>
+            </HeaderedContentControl>
+
+            <!-- ============================================================ I · General -->
+            <HeaderedContentControl Style="{StaticResource Section}">
+                <HeaderedContentControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="I" Style="{StaticResource SectionNumber}"/>
                         <TextBlock Text="GENERAL" Style="{StaticResource SectionTitle}"/>
                         <TextBlock Style="{StaticResource SectionBlurb}"
                                    Text="How ProGuard fits into your Windows session."/>

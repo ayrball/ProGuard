@@ -33,6 +33,7 @@ public class IpcDispatcher
     private readonly WatchdogEventLog? _watchdogEvents;
     private readonly ThinClientCommands? _thinClient;
     private readonly IUserIdleSource? _userIdle;
+    private readonly TimerResolutionService? _timerResolution;
     private readonly Stopwatch _uptime = Stopwatch.StartNew();
 
     // Settings commands read-modify-write the stored settings; concurrent clients must not lose each other's changes.
@@ -50,7 +51,8 @@ public class IpcDispatcher
         IProcessMonitor processMonitor,
         WatchdogEventLog? watchdogEvents = null,
         ThinClientCommands? thinClient = null,
-        IUserIdleSource? userIdle = null)
+        IUserIdleSource? userIdle = null,
+        TimerResolutionService? timerResolution = null)
     {
         _logger = logger;
         _ruleStore = ruleStore;
@@ -64,6 +66,7 @@ public class IpcDispatcher
         _watchdogEvents = watchdogEvents;
         _thinClient = thinClient;
         _userIdle = userIdle;
+        _timerResolution = timerResolution;
     }
 
     /// <summary>Handles a request from code inside the engine, which needs no authorization.</summary>
@@ -106,7 +109,7 @@ public class IpcDispatcher
             {
                 MessageType.Ping => new IpcMessage { Type = MessageType.Pong, Payload = "{}" },
                 MessageType.GetStatus => new IpcMessage { Type = MessageType.Status, Payload = JsonSerializer.Serialize(BuildStatus()) },
-                MessageType.SetSetting => Result(ReplaceSettings(request.Payload)),
+                MessageType.SetSetting => Result(ReplaceSettings(request.Payload, caller)),
                 MessageType.Command => Result(ExecuteCommand(request, caller)),
                 MessageType.GetRules => new IpcMessage { Type = MessageType.RuleList, Payload = JsonSerializer.Serialize(_ruleStore.GetProcessRules().Select(RuleDtoMapper.ToDto).ToList()) },
                 MessageType.SetRule => Result(SaveRule(request.Payload)),
@@ -231,7 +234,15 @@ public class IpcDispatcher
                 return CommandResult.Ok(JsonSerializer.Serialize(DtoMapper.Map<AppSettings, EngineSettingsDto>(_ruleStore.GetSettings())));
 
             case CommandTypes.SaveSettings:
-                return SaveSettings(ParseArgument<EngineSettingsDto>(cmd.Argument));
+                return SaveSettings(ParseArgument<EngineSettingsDto>(cmd.Argument), caller);
+
+            case CommandTypes.GetTimerResolution:
+                return _timerResolution == null
+                    ? CommandResult.Fail("This engine doesn't manage the timer resolution")
+                    : CommandResult.Ok(JsonSerializer.Serialize(TimerResolution()));
+
+            case CommandTypes.SetTimerResolution:
+                return SetTimerResolution(ParseArgument<TimerResolutionArgument>(cmd.Argument));
 
             default:
                 if (_thinClient != null && _thinClient.TryExecute(cmd, caller, out var thinResult)) return thinResult;
@@ -268,15 +279,17 @@ public class IpcDispatcher
     /// Stores the settings the client sent over the stored ones (keeping the stored row's Id) and applies them. The DTO
     /// carries every setting, so it replaces them all; clients send back a copy of what GetSettings gave them.
     /// </summary>
-    private CommandResult SaveSettings(EngineSettingsDto dto)
+    private CommandResult SaveSettings(EngineSettingsDto dto, IIpcCaller caller)
     {
         if (ValidateSettings(dto) is { } invalid) return CommandResult.Fail(invalid);
 
         AppSettings stored;
         lock (_settingsSync)
         {
-            var settings = _ruleStore.GetSettings().Clone();
+            var current = _ruleStore.GetSettings();
+            var settings = current.Clone();
             DtoMapper.CopyTo(dto, settings); // never touches Id: the DTO has none
+            if (IpcAuthorization.CheckSettingsChange(current, settings, caller) is { } denied) return denied;
             _ruleStore.UpdateSettings(settings);
             _settingsApplier.Apply(settings);
             stored = settings;
@@ -298,6 +311,7 @@ public class IpcDispatcher
         if (!Percent(d.LoadSwitcherLowThreshold) || !Percent(d.LoadSwitcherHighThreshold)) return "Load switcher thresholds must be between 0% and 100%";
         if (d.LoadSwitcherAveragingWindowSamples < 1 || d.LoadSwitcherMinimumTimeInPlanMs < 0) return "Invalid load switcher setting";
         if (string.IsNullOrWhiteSpace(d.Theme)) return "The theme can't be empty";
+        if (d.SetTimerResolutionAtStartup < 0 || d.SetTimerResolutionAtStartup > MaxTimerResolution) return "The timer resolution must be between 0 and 100 ms";
         foreach (var guid in new[] { d.IdlePowerPlanGuid, d.PerformanceModePlanGuid, d.LoadSwitcherLowPlanGuid, d.LoadSwitcherHighPlanGuid, d.StartWithPowerPlanGuid })
             if (!string.IsNullOrEmpty(guid) && !Guid.TryParse(guid, out _)) return "Invalid power plan GUID";
         return null;
@@ -306,27 +320,67 @@ public class IpcDispatcher
     private static bool Percent(double value) => value >= 0 && value <= 100;
 
     /// <summary>Saves a changed copy of the stored settings, then applies it to the services.</summary>
-    private CommandResult UpdateSettings(Action<AppSettings> change)
+    private CommandResult UpdateSettings(Action<AppSettings> change) => UpdateSettings(s => { change(s); return null; });
+
+    /// <summary>As above; <paramref name="change"/> may refuse by returning a failure, and then nothing is saved.</summary>
+    private CommandResult UpdateSettings(Func<AppSettings, CommandResult?> change)
     {
         lock (_settingsSync)
         {
             var settings = _ruleStore.GetSettings().Clone();
-            change(settings);
+            if (change(settings) is { } refused) return refused;
             _ruleStore.UpdateSettings(settings);
             _settingsApplier.Apply(settings);
         }
         return CommandResult.Ok();
     }
 
-    private CommandResult ReplaceSettings(string payload)
+    /// <summary>100 ms: far coarser than any timer runs, so anything above it is a mistake.</summary>
+    private const int MaxTimerResolution = 1_000_000;
+
+    /// <summary>Saves the timer resolution, applies it at once, and sets the global switch when asked.</summary>
+    private CommandResult SetTimerResolution(TimerResolutionArgument argument)
+    {
+        if (_timerResolution == null) return CommandResult.Fail("This engine doesn't manage the timer resolution");
+        if (argument.Resolution < 0 || argument.Resolution > MaxTimerResolution) return CommandResult.Fail("The timer resolution must be between 0 and 100 ms");
+        if (argument.GlobalRequests != null && !_timerResolution.GlobalRequestsSupported)
+            return CommandResult.Fail("This version of Windows has no GlobalTimerResolutionRequests switch: every timer request is already system-wide");
+
+        var result = UpdateSettings(s => s.SetTimerResolutionAtStartup = argument.Resolution);
+        if (!result.Success) return result;
+        if (argument.GlobalRequests is bool global) _timerResolution.SetGlobalRequests(global);
+        _thinClient?.Record(0, argument.Resolution == 0
+            ? "Stopped asking for a timer resolution."
+            : $"Asked for a {(argument.Resolution / 10000.0).ToString("0.###", CultureInfo.InvariantCulture)} ms timer resolution.", string.Empty);
+        return CommandResult.Ok(JsonSerializer.Serialize(TimerResolution()));
+    }
+
+    private TimerResolutionDto TimerResolution()
+    {
+        var state = _timerResolution!.GetState();
+        return new TimerResolutionDto
+        {
+            Current = (int)state.Current,
+            Minimum = (int)state.Minimum,
+            Maximum = (int)state.Maximum,
+            Requested = state.Requested,
+            Held = (int)state.Held,
+            GlobalRequestsSupported = state.GlobalRequestsSupported,
+            GlobalRequests = state.GlobalRequests,
+        };
+    }
+
+    private CommandResult ReplaceSettings(string payload, IIpcCaller caller)
     {
         var incoming = ParseArgument<AppSettings>(payload);
         return UpdateSettings(s =>
         {
+            if (IpcAuthorization.CheckSettingsChange(s, incoming, caller) is { } denied) return denied;
             var id = s.Id;
             foreach (var property in typeof(AppSettings).GetProperties().Where(p => p.CanWrite))
                 property.SetValue(s, property.GetValue(incoming));
             s.Id = id; // the stored row keeps its key whatever the client sent
+            return null;
         });
     }
 

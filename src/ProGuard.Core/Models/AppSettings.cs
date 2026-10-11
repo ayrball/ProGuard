@@ -29,6 +29,11 @@ public class AppSettings
     public bool ProBalanceDisableWhenSysIdle { get; set; } = false;
     /// <summary>[DisableProBalanceIfSysIdleThisManyMS] 30000.</summary>
     public int ProBalanceDisableIfSysIdleMs { get; set; } = 30000;
+    /// <summary>
+    /// [OocDisableCoreParkingWhileIn] While any process is restrained, set the active plan's core parking minimum to
+    /// 100 % (no parked cores), and put it back afterwards. Administrators only: it edits a machine-wide power plan.
+    /// </summary>
+    public bool ProBalanceDisableCoreParking { get; set; } = false;
     
     /// <summary>Raise the foreground process from Normal to Above Normal while it has focus (ForegroundBoostService). Off by default, as in Process Lasso.</summary>
     public bool ForegroundBoostEnabled { get; set; } = false;
@@ -71,6 +76,11 @@ public class AppSettings
     public bool AutoPerformanceModeDetectGames { get; set; } = false;
     /// <summary>Turn it on while a game from one of the Steam libraries runs (GamingModeEngageForSteam).</summary>
     public bool PerformanceModeEngageForSteam { get; set; } = false;
+    /// <summary>
+    /// Also move the Windows power-mode slider to Best performance while Performance Mode is on, and back afterwards.
+    /// Windows applies the mode only under the Balanced plan, so this matters when Performance Mode's plan is Balanced.
+    /// </summary>
+    public bool PerformanceModeSetBestPerformance { get; set; } = false;
 
     // Load-based power switcher ([LoadBasedPowerSwitcher])
     public bool LoadSwitcherEnabled { get; set; } = false;
@@ -88,6 +98,13 @@ public class AppSettings
     // [PowerManagement]
     /// <summary>Plan to switch to when the engine starts (StartWithPowerPlan); null = leave it.</summary>
     public string? StartWithPowerPlanGuid { get; set; }
+
+    // System timer ([Performance] SetTimerResolutionAtStartup)
+    /// <summary>
+    /// Timer resolution the engine asks Windows for while it runs, in 100-ns units (5000 = 0.5 ms); 0 = don't ask
+    /// (Process Lasso's default). Administrators only.
+    /// </summary>
+    public int SetTimerResolutionAtStartup { get; set; } = 0;
 
     // General
     public bool StartWithWindows { get; set; } = true;

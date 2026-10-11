@@ -25,7 +25,8 @@ public static class Ntdll
     [DllImport("ntdll.dll")]
     public static extern int NtQueryInformationProcess(IntPtr processHandle, int processInformationClass, ref PROCESS_BASIC_INFORMATION processInformation, int processInformationLength, out int returnLength);
 
-    public const int ProcessIoPriority = 21;
+    // PROCESSINFOCLASS.ProcessIoPriority = 33 (0x21); takes a 4-byte IO_PRIORITY_HINT (0 VeryLow .. 3 High).
+    public const int ProcessIoPriority = 33;
 
     [DllImport("ntdll.dll")]
     public static extern int NtSetInformationProcess(IntPtr processHandle, int processInformationClass, ref int processInformation, int processInformationLength);

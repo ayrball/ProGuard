@@ -6,6 +6,7 @@ using ProGuard.Core.Data;
 using ProGuard.Engine.Services;
 using ProGuard.Engine.Services.ProcessRules;
 using ProGuard.Engine.IPC;
+using ProGuard.Engine.Logging;
 
 namespace ProGuard.Engine;
 
@@ -101,6 +102,7 @@ public class Program
             .ConfigureLogging((context, logging) =>
             {
                 logging.AddConsole();
-                // We'd typically add EventLog or File logger here for Windows Service
+                // A service has no console: keep a text log next to the database for diagnosis.
+                logging.AddProvider(new FileLoggerProvider(FileLoggerProvider.DefaultPath));
             });
 }

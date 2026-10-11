@@ -149,6 +149,12 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     public int TotalRestraints => Volatile.Read(ref _totalRestraints);
     public IReadOnlyCollection<int> RestrainedPids => _restrained.Keys.ToList();
 
+    /// <summary>
+    /// Raised after every pass and whenever restraints are lifted outside one, with whether any process is restrained
+    /// now. Raised outside ProBalance's lock. <see cref="CoreParkingService"/> follows it.
+    /// </summary>
+    public event Action<bool>? RestraintsUpdated;
+
     public ProBalanceEngine(
         ILogger<ProBalanceEngine> logger,
         IProcessMonitor processMonitor,
@@ -183,6 +189,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         _logger.LogInformation("Stopping ProBalance Engine");
         Unsubscribe();
         RestoreAll("ProBalance stopped");
+        RaiseRestraintsUpdated();
         return Task.CompletedTask;
     }
 
@@ -190,7 +197,11 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     {
         _enabled = enabled;
         // Evaluate() stops running when disabled, so nothing else would ever lift the restraints.
-        if (!enabled) RestoreAll("ProBalance disabled");
+        if (!enabled)
+        {
+            RestoreAll("ProBalance disabled");
+            RaiseRestraintsUpdated();
+        }
     }
 
     /// <summary>
@@ -231,8 +242,15 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         {
             if (!_restrained.ContainsKey(pid)) return false;
             Restore(pid, "Came to the foreground");
-            return true;
         }
+        RaiseRestraintsUpdated();
+        return true;
+    }
+
+    private void RaiseRestraintsUpdated()
+    {
+        try { RestraintsUpdated?.Invoke(!_restrained.IsEmpty); }
+        catch (Exception ex) { _logger.LogError(ex, "RestraintsUpdated handler failed"); }
     }
 
     internal void Evaluate(object? state)
@@ -260,6 +278,11 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in ProBalance evaluation loop");
+        }
+        finally
+        {
+            // Also after a pass cut short by the idle pause, which lifts every restraint. Outside the lock.
+            RaiseRestraintsUpdated();
         }
     }
 

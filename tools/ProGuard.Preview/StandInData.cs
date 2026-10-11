@@ -162,7 +162,7 @@ public static class StandInData
         new()
         {
             Id = 3, ProcessName = "SearchIndexer.exe", PriorityClass = (int)ProcessPriorityClass.Idle, IoPriority = 0, MemoryPriority = 1,
-            EfficiencyMode = true,
+            EfficiencyMode = true, ApplyPrioritiesAtCreation = true,
         },
         new()
         {
@@ -249,8 +249,23 @@ public static class StandInData
         },
     };
 
+    /// <summary>The Windows 11 power-mode slider's positions (Balanced is the empty GUID).</summary>
+    public static readonly Guid BestPerformanceMode = Guid.Parse("ded574b5-45a0-4f42-8737-46345c09c238");
+
+    public static List<PowerModeDto> PowerModes() => new()
+    {
+        new() { Id = Guid.Parse("961cc777-2547-4f9d-8174-7d86181b8a7a"), Name = "Best power efficiency" },
+        new() { Id = Guid.Empty, Name = "Balanced" },
+        new() { Id = BestPerformanceMode, Name = "Best performance" },
+    };
+
+    /// <summary>The timer's range in 100-ns units: 15.625 ms coarsest, 0.5 ms finest, as on most PCs.</summary>
+    public const int TimerCoarsest = 156250;
+    public const int TimerFinest = 5000;
+
     public static EngineSettingsDto Settings() => new()
     {
+        SetTimerResolutionAtStartup = 5000,
         ProBalanceEnabled = true,
         ProBalanceSensitivity = 6,
         ProBalanceCpuThreshold = 25,

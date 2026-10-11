@@ -40,6 +40,9 @@ public sealed class StandInMachine
     private string _planOwner = "User";
     private bool _performanceMode;
     private int _foreground = StandInData.ForegroundPid;
+    private bool _timerGlobalRequests;
+    private Guid _powerMode = Guid.Empty;   // the slider's Balanced
+    private Guid _powerModeBeforePerformanceMode;
     private int _tick;
 
     public StandInMachine(bool callerIsAdministrator = true, bool readOnly = false)
@@ -85,6 +88,7 @@ public sealed class StandInMachine
             case CommandTypes.GetSettings: return Data(_settings);
             case CommandTypes.GetPower: return Data(PowerState());
             case CommandTypes.GetCpuSets: return Data(_cpuSets);
+            case CommandTypes.GetTimerResolution: return Data(TimerState());
             case CommandTypes.GetActivity:
             {
                 int max = int.TryParse(cmd.Argument, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n > 0 ? n : 200;
@@ -270,14 +274,38 @@ public sealed class StandInMachine
                 Mutate(() => SetPerformanceMode(on));
                 return CommandResult.Ok();
             }
+            case CommandTypes.SetTimerResolution:
+            {
+                if (!_admin) return Deny("change the system timer resolution");
+                var arg = Argument<TimerResolutionArgument>(cmd);
+                if (arg.Resolution is < 0 or > 1_000_000) return CommandResult.Fail("The timer resolution must be between 0 and 100 ms");
+                Mutate(() =>
+                {
+                    _settings.SetTimerResolutionAtStartup = arg.Resolution;
+                    if (arg.GlobalRequests is bool global) _timerGlobalRequests = global;
+                });
+                Log(ActivityKind.Manual, null, arg.Resolution == 0 ? "Stopped asking for a timer resolution." : $"Asked for a {arg.Resolution / 10000.0:0.###} ms timer resolution.");
+                return Data(TimerState());
+            }
             case CommandTypes.SaveSettings:
             {
                 var settings = Argument<EngineSettingsDto>(cmd);
+                if (!_admin && settings.SetTimerResolutionAtStartup != _settings.SetTimerResolutionAtStartup)
+                    return Deny("change the system timer resolution");
+                if (!_admin && settings.ProBalanceDisableCoreParking != _settings.ProBalanceDisableCoreParking)
+                    return Deny("change whether ProBalance unparks cores (it edits the power plan)");
                 if (settings.ProBalanceSensitivity is < 1 or > 10) return CommandResult.Fail("Sensitivity must be between 1 and 10");
                 if (settings.PollingIntervalMs < 100) return CommandResult.Fail("The polling interval must be at least 100 ms.");
                 Mutate(() => _settings = settings);
                 Log(ActivityKind.System, null, "Settings saved.");
                 return Data(_readOnly ? _settings : settings);
+            }
+            case CommandTypes.SetPowerMode:
+            {
+                if (!Guid.TryParse(cmd.Argument, out var mode) || StandInData.PowerModes().All(m => m.Id != mode)) return CommandResult.Fail("Invalid power mode");
+                Mutate(() => _powerMode = mode);
+                Log(ActivityKind.Power, null, $"Power mode changed to {StandInData.PowerModes().First(m => m.Id == mode).Name}.");
+                return CommandResult.Ok();
             }
             case CommandTypes.SetPowerPlan:
             {
@@ -426,7 +454,27 @@ public sealed class StandInMachine
         PerformanceMode = _performanceMode,
         PerformanceModeAutomatic = false,
         Owner = _planOwner,
+        PowerModeSupported = true,
+        PowerModeId = _powerMode,
+        PowerModes = StandInData.PowerModes(),
     };
+
+    /// <summary>A typical machine: 0.5-15.625 ms, with a browser holding 1 ms unless the engine asks for finer.</summary>
+    private TimerResolutionDto TimerState()
+    {
+        int requested = _settings.SetTimerResolutionAtStartup;
+        int held = requested == 0 ? 0 : Math.Clamp(requested, StandInData.TimerFinest, StandInData.TimerCoarsest);
+        return new TimerResolutionDto
+        {
+            Current = held == 0 ? 10000 : Math.Min(held, 10000),
+            Minimum = StandInData.TimerCoarsest,
+            Maximum = StandInData.TimerFinest,
+            Requested = requested,
+            Held = held,
+            GlobalRequestsSupported = true,
+            GlobalRequests = _timerGlobalRequests,
+        };
+    }
 
     private void SetPerformanceMode(bool on)
     {
@@ -436,12 +484,15 @@ public sealed class StandInMachine
         {
             _planBeforePerformanceMode = _activePlan;
             _activePlan = Guid.TryParse(_settings.PerformanceModePlanGuid, out var plan) ? plan : StandInData.HighPerformance;
+            _powerModeBeforePerformanceMode = _powerMode;
+            if (_settings.PerformanceModeSetBestPerformance) _powerMode = StandInData.BestPerformanceMode;
             _planOwner = "PerformanceMode";
             Log(ActivityKind.Power, null, "Power plan changed to the Performance Mode plan.");
         }
         else
         {
             _activePlan = _planBeforePerformanceMode;
+            if (_settings.PerformanceModeSetBestPerformance && _powerMode == StandInData.BestPerformanceMode) _powerMode = _powerModeBeforePerformanceMode;
             _planOwner = "User";
             Log(ActivityKind.Power, null, "Performance Mode ended; power plan restored.");
         }
@@ -469,6 +520,16 @@ public sealed class StandInMachine
         if (rule.PowerProfileGuid != null && !Guid.TryParse(rule.PowerProfileGuid, out _)) return "Invalid power plan GUID";
         if (!string.IsNullOrWhiteSpace(rule.CpuSetIds) && rule.CpuSetIds.Split(',').Any(id => !int.TryParse(id.Trim(), out _))) return "Invalid CPU Set IDs";
         if (rule.MaxInstances is int max && max < 1) return "Invalid instance limit";
+        if (rule.ApplyPrioritiesAtCreation)
+        {
+            var name = rule.ProcessName.Trim();
+            if (name.IndexOfAny(new[] { '*', '?', '\\', '/', ':' }) >= 0)
+                return "Priorities at launch need a plain program name such as game.exe: Windows can't match a wildcard or a path there";
+            if (rule.PriorityClass == (int)ProcessPriorityClass.RealTime)
+                return "Windows doesn't apply Realtime priority at launch; pick another priority or switch off priorities at launch";
+            if (rule.PriorityClass == null && rule.IoPriority == null && rule.MemoryPriority == null)
+                return "Priorities at launch need a priority, I/O priority or memory priority to apply";
+        }
         return null;
     }
 
@@ -577,6 +638,7 @@ public sealed class StandInMachine
         if (CriticalNames.Contains(Bare(rule.ProcessName))) return $"change rules for {rule.ProcessName}, a system process";
         if (rule.PriorityClass == (int)ProcessPriorityClass.RealTime || rule.StartupBoostPriorityClass == (int)ProcessPriorityClass.RealTime)
             return "set Realtime priority";
+        if (rule.ApplyPrioritiesAtCreation) return "apply priorities at launch: they are written to the machine-wide Image File Execution Options";
         if ((rule.DisallowExecution || rule.MaxInstances != null) && HasInstanceCallerCantEnd(rule.ProcessName))
             return $"make a rule that ends {rule.ProcessName}: some of its instances belong to Windows or another user";
         return null;

@@ -32,6 +32,7 @@ public sealed class RuleService
     private readonly IRuleProcessAccess _access;
     private readonly PersistentRuleService? _persistent;
     private readonly InstanceBalancer? _balancer;
+    private readonly LaunchPriorityService? _launchPriorities;
     private readonly ActivityLog _activity;
 
     public RuleService(
@@ -43,7 +44,8 @@ public sealed class RuleService
         IRuleProcessAccess access,
         ActivityLog activity,
         PersistentRuleService? persistent = null,
-        InstanceBalancer? balancer = null)
+        InstanceBalancer? balancer = null,
+        LaunchPriorityService? launchPriorities = null)
     {
         _logger = logger;
         _store = store;
@@ -54,6 +56,7 @@ public sealed class RuleService
         _activity = activity;
         _persistent = persistent;
         _balancer = balancer;
+        _launchPriorities = launchPriorities;
     }
 
     // === Process rules ===
@@ -93,6 +96,7 @@ public sealed class RuleService
             return IpcAuthorization.Deny(caller, denied);
 
         _store.SaveProcessRule(rule);
+        _launchPriorities?.Sync(_store.GetProcessRules());
         ApplyToRunning(rule, existing);
         _activity.Add(ActivityKind.Manual, rule.ProcessName, 0, existing == null ? $"Added a rule for {rule.ProcessName}." : $"Changed the rule for {rule.ProcessName}.");
         return CommandResult.Ok(Serialize(RuleDtoMapper.ToDto(rule)));
@@ -106,6 +110,7 @@ public sealed class RuleService
             return IpcAuthorization.Deny(caller, denied);
 
         _store.DeleteProcessRule(id);
+        _launchPriorities?.Sync(_store.GetProcessRules());
         ReleaseCap(existing);
         _balancer?.Tick(); // gives balanced instances their own affinity back now rather than at the next check
         _activity.Add(ActivityKind.Manual, existing.ProcessName, 0, $"Deleted the rule for {existing.ProcessName}.");
@@ -143,6 +148,17 @@ public sealed class RuleService
         if (!IsPriority(dto.StartupBoostPriorityClass)) return "Invalid startup boost priority class";
         if (dto.StartupBoostSeconds is int seconds && (seconds < StartupBoostService.MinSeconds || seconds > StartupBoostService.MaxSeconds))
             return $"The startup boost must last {StartupBoostService.MinSeconds}-{StartupBoostService.MaxSeconds} seconds";
+
+        // Launch-time priorities (Image File Execution Options).
+        if (dto.ApplyPrioritiesAtCreation)
+        {
+            if (LaunchPriorityService.ImageName(dto.ProcessName) == null)
+                return "Priorities at launch need a plain program name such as game.exe: Windows can't match a wildcard or a path there";
+            if (dto.PriorityClass == (int)ProcessPriorityClass.RealTime)
+                return "Windows doesn't apply Realtime priority at launch; pick another priority or switch off priorities at launch";
+            if (dto.PriorityClass == null && dto.IoPriority == null && dto.MemoryPriority == null)
+                return "Priorities at launch need a priority, I/O priority or memory priority to apply";
+        }
         return null;
     }
 

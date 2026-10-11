@@ -23,6 +23,7 @@ using ProGuard.Core.Native;
 using ProGuard.Core.Services;
 using ProGuard.UI.Controls;
 using ProGuard.UI.Services;
+using ProGuard.Shared.Messages;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -104,12 +105,16 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
 
     public ObservableCollection<ProcessDisplayItem> Processes { get; set; } = new BulkCollection();
 
+    private readonly EngineProxy _engine;
     private readonly ConfigWriter _config;
 
-    public ProcessListViewModel() : this(new ConfigWriter(new EngineProxy())) { }
+    public ProcessListViewModel() : this(new EngineProxy()) { }
 
-    public ProcessListViewModel(ConfigWriter config)
+    public ProcessListViewModel(EngineProxy engine) : this(engine, new ConfigWriter(engine)) { }
+
+    public ProcessListViewModel(EngineProxy engine, ConfigWriter config)
     {
+        _engine = engine;
         _config = config;
         _ = Task.Run(PollProcessesAsync);
 
@@ -546,22 +551,48 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private void TerminateProcess()
+    private async Task TerminateProcessAsync()
     {
-        if (SelectedProcess != null)
+        var target = SelectedProcess;
+        if (target == null) return;
+        var done = await ViaEngineAsync(e => e.TerminateProcessAsync(target.Pid), $"end {target.Name}");
+        if (done == null)
         {
             try
             {
-                using var p = Process.GetProcessById(SelectedProcess.Pid);
+                using var p = Process.GetProcessById(target.Pid);
                 p.Kill();
+                done = true;
             }
-            catch { }
-            lock (_allProcesses)
+            catch (Exception ex)
             {
-                _allProcesses.RemoveAll(p => p.Pid == SelectedProcess.Pid);
+                MessageBox.Show($"Could not end {target.Name}: {ex.Message}", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
+                done = false;
             }
-            ApplyFilter();
         }
+        if (done != true) return;
+
+        lock (_allProcesses)
+        {
+            _allProcesses.RemoveAll(p => p.Pid == target.Pid);
+        }
+        ApplyFilter();
+    }
+
+    /// <summary>
+    /// Runs a process action through the engine. It acts with the service's rights, but only on what the user could do
+    /// themselves (and refuses Realtime to non-administrators), and its refusal says why, which is shown. Returns true when
+    /// the action was done, false when it was refused, and null when no engine is running, so the caller can try with
+    /// this process's own rights.
+    /// </summary>
+    private async Task<bool?> ViaEngineAsync(Func<EngineProxy, Task<CommandResult?>> send, string what)
+    {
+        if (!_engine.IsConnected && !_engine.IsEngineListening) return null;
+        var result = await send(_engine);
+        if (result == null) return null;
+        if (result.Success) return true;
+        MessageBox.Show($"Could not {what}: {result.Error}", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
+        return false;
     }
 
     [RelayCommand]
@@ -706,48 +737,44 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private void SetCpuLimit()
+    private async Task SetCpuLimitAsync()
     {
-        if (SelectedProcess == null) return;
-        var dialog = new CpuLimitDialog(SelectedProcess.Name, SelectedProcess.Pid, SelectedProcess.CpuLimitPercent)
+        var target = SelectedProcess;
+        if (target == null) return;
+        var dialog = new CpuLimitDialog(target.Name, target.Pid, target.CpuLimitPercent)
         {
             Owner = Application.Current?.MainWindow
         };
+        if (dialog.ShowDialog() != true) return;
 
-        if (dialog.ShowDialog() == true)
+        // The limiter lives in the engine (a job object per process); the UI has none of its own.
+        var remove = dialog.RemoveLimitRequested;
+        var limit = dialog.SelectedLimitPercent;
+        var done = await ViaEngineAsync(
+            e => remove ? e.RemoveCpuLimitAsync(target.Pid) : e.SetCpuLimitAsync(target.Pid, limit),
+            remove ? $"remove the CPU limit of {target.Name}" : $"limit {target.Name} to {limit}% CPU");
+        if (done == null)
         {
-            if (dialog.RemoveLimitRequested)
-            {
-                SelectedProcess.CpuLimitPercent = null;
-                try
-                {
-                    App.GetService<ICpuLimiter>()?.RemoveLimit(SelectedProcess.Pid);
-                }
-                catch { }
-            }
-            else
-            {
-                int limit = dialog.SelectedLimitPercent;
-                SelectedProcess.CpuLimitPercent = limit;
-                try
-                {
-                    App.GetService<ICpuLimiter>()?.AddLimit(SelectedProcess.Pid, limit);
-                }
-                catch { }
-            }
-            ApplyFilter();
+            MessageBox.Show("CPU limits are applied by the ProGuard engine service, which isn't running.", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
         }
+        if (done != true) return;
+
+        target.CpuLimitPercent = remove ? null : limit;
+        ApplyFilter();
     }
 
     [RelayCommand]
-    private void TrimWorkingSet()
+    private async Task TrimWorkingSetAsync()
     {
         if (SelectedProcess == null) return;
         try
         {
             using var p = Process.GetProcessById(SelectedProcess.Pid);
             long before = p.WorkingSet64;
-            Kernel32.EmptyWorkingSet(p.Handle);
+            var done = await ViaEngineAsync(e => e.TrimWorkingSetAsync(SelectedProcess.Pid), $"trim {SelectedProcess.Name}");
+            if (done == false) return;
+            if (done == null) Kernel32.EmptyWorkingSet(p.Handle);
             p.Refresh();
             long after = p.WorkingSet64;
             long reclaimed = Math.Max(0, before - after);
@@ -798,43 +825,53 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private void SetPriorityRealtime() => SetSelectedPriority(ProcessPriorityClass.RealTime);
+    private Task SetPriorityRealtimeAsync() => SetSelectedPriorityAsync(ProcessPriorityClass.RealTime);
     [RelayCommand]
-    private void SetPriorityHigh() => SetSelectedPriority(ProcessPriorityClass.High);
+    private Task SetPriorityHighAsync() => SetSelectedPriorityAsync(ProcessPriorityClass.High);
     [RelayCommand]
-    private void SetPriorityAboveNormal() => SetSelectedPriority(ProcessPriorityClass.AboveNormal);
+    private Task SetPriorityAboveNormalAsync() => SetSelectedPriorityAsync(ProcessPriorityClass.AboveNormal);
     [RelayCommand]
-    private void SetPriorityNormal() => SetSelectedPriority(ProcessPriorityClass.Normal);
+    private Task SetPriorityNormalAsync() => SetSelectedPriorityAsync(ProcessPriorityClass.Normal);
     [RelayCommand]
-    private void SetPriorityBelowNormal() => SetSelectedPriority(ProcessPriorityClass.BelowNormal);
+    private Task SetPriorityBelowNormalAsync() => SetSelectedPriorityAsync(ProcessPriorityClass.BelowNormal);
     [RelayCommand]
-    private void SetPriorityIdle() => SetSelectedPriority(ProcessPriorityClass.Idle);
+    private Task SetPriorityIdleAsync() => SetSelectedPriorityAsync(ProcessPriorityClass.Idle);
 
-    private void SetSelectedPriority(ProcessPriorityClass priority)
+    private async Task SetSelectedPriorityAsync(ProcessPriorityClass priority)
     {
-        if (SelectedProcess != null)
+        var target = SelectedProcess;
+        if (target == null) return;
+
+        var done = await ViaEngineAsync(e => e.SetPriorityAsync(target.Pid, priority), $"set {target.Name} to {priority}");
+        if (done == null)
         {
-            try
-            {
-                using var p = Process.GetProcessById(SelectedProcess.Pid);
-                p.PriorityClass = priority;
-                SelectedProcess.Priority = priority.ToString();
-            }
-            catch
-            {
-                try
-                {
-                    var h = Kernel32.OpenProcess(ProcessAccessFlags.SetInformation, false, SelectedProcess.Pid);
-                    if (h != IntPtr.Zero)
-                    {
-                        Kernel32.SetPriorityClass(h, (uint)priority);
-                        Kernel32.CloseHandle(h);
-                        SelectedProcess.Priority = priority.ToString();
-                    }
-                }
-                catch { }
-            }
-            ApplyFilter();
+            var h = Kernel32.OpenProcess(ProcessAccessFlags.SetInformation, false, target.Pid);
+            if (h == IntPtr.Zero || !Kernel32.SetPriorityClass(h, (uint)priority))
+                MessageBox.Show($"Could not set {target.Name} to {priority}: it belongs to another user, is elevated or protected.", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
+            if (h != IntPtr.Zero) Kernel32.CloseHandle(h);
+        }
+
+        // Show what Windows actually set: without SeIncreaseBasePriorityPrivilege a Realtime request quietly becomes High.
+        var actual = ReadPriority(target.Pid);
+        if (actual != null)
+        {
+            target.Priority = actual.Value.ToString();
+            if (done != false && actual != priority)
+                MessageBox.Show($"Windows set {target.Name} to {actual} instead of {priority}.", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        ApplyFilter();
+    }
+
+    private static ProcessPriorityClass? ReadPriority(int pid)
+    {
+        try
+        {
+            using var p = Process.GetProcessById(pid);
+            return p.PriorityClass;
+        }
+        catch
+        {
+            return null;
         }
     }
 
@@ -853,7 +890,7 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
 
             if (dialog.ShowDialog() == true)
             {
-                ApplyAffinityMask(dialog.SelectedMask);
+                _ = ApplyAffinityMaskAsync(dialog.SelectedMask);
             }
         }
         catch (Exception ex)
@@ -867,7 +904,7 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
     {
         if (SelectedProcess == null) return;
         var topology = SystemInfo.GetCpuTopology();
-        ApplyAffinityMask(topology.PhysicalCoresMask);
+        _ = ApplyAffinityMaskAsync(topology.PhysicalCoresMask);
     }
 
     [RelayCommand]
@@ -875,29 +912,28 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
     {
         if (SelectedProcess == null) return;
         var topology = SystemInfo.GetCpuTopology();
-        ApplyAffinityMask(topology.AllCoresMask);
+        _ = ApplyAffinityMaskAsync(topology.AllCoresMask);
     }
 
-    public void ApplyAffinityMask(long newMask)
+    public async Task ApplyAffinityMaskAsync(long newMask)
     {
-        if (SelectedProcess == null) return;
+        var target = SelectedProcess;
+        if (target == null) return;
 
-        try
+        var done = await ViaEngineAsync(e => e.SetAffinityAsync(target.Pid, newMask), $"set the CPU affinity of {target.Name}");
+        if (done == null)
         {
-            var h = Kernel32.OpenProcess(ProcessAccessFlags.SetInformation | ProcessAccessFlags.QueryInformation, false, SelectedProcess.Pid);
-            if (h != IntPtr.Zero)
-            {
-                Kernel32.SetProcessAffinityMask(h, new IntPtr(newMask));
-                Kernel32.CloseHandle(h);
-                SelectedProcess.RawAffinityMask = newMask;
-                SelectedProcess.AffinityText = FormatAffinityText(newMask);
-                ApplyFilter();
-            }
+            var h = Kernel32.OpenProcess(ProcessAccessFlags.SetInformation | ProcessAccessFlags.QueryInformation, false, target.Pid);
+            done = h != IntPtr.Zero && Kernel32.SetProcessAffinityMask(h, new IntPtr(newMask));
+            if (h != IntPtr.Zero) Kernel32.CloseHandle(h);
+            if (done != true)
+                MessageBox.Show($"Could not set the CPU affinity of {target.Name}: it belongs to another user, is elevated or protected.", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Failed to set CPU affinity: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        if (done != true) return;
+
+        target.RawAffinityMask = newMask;
+        target.AffinityText = FormatAffinityText(newMask);
+        ApplyFilter();
     }
 
     public static string FormatAffinityText(long affinityMask)
@@ -919,39 +955,31 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private void SuspendProcess()
-    {
-        if (SelectedProcess == null) return;
-        try
-        {
-            var h = Kernel32.OpenProcess(ProcessAccessFlags.SuspendResume, false, SelectedProcess.Pid);
-            if (h != IntPtr.Zero)
-            {
-                Ntdll.NtSuspendProcess(h);
-                Kernel32.CloseHandle(h);
-                SelectedProcess.Status = "Suspended";
-                ApplyFilter();
-            }
-        }
-        catch { }
-    }
+    private Task SuspendProcessAsync() => SuspendOrResumeAsync(suspend: true);
 
     [RelayCommand]
-    private void ResumeProcess()
+    private Task ResumeProcessAsync() => SuspendOrResumeAsync(suspend: false);
+
+    private async Task SuspendOrResumeAsync(bool suspend)
     {
-        if (SelectedProcess == null) return;
-        try
+        var target = SelectedProcess;
+        if (target == null) return;
+
+        var done = await ViaEngineAsync(
+            e => suspend ? e.SuspendProcessAsync(target.Pid) : e.ResumeProcessAsync(target.Pid),
+            $"{(suspend ? "suspend" : "resume")} {target.Name}");
+        if (done == null)
         {
-            var h = Kernel32.OpenProcess(ProcessAccessFlags.SuspendResume, false, SelectedProcess.Pid);
-            if (h != IntPtr.Zero)
-            {
-                Ntdll.NtResumeProcess(h);
-                Kernel32.CloseHandle(h);
-                SelectedProcess.Status = "Running";
-                ApplyFilter();
-            }
+            var h = Kernel32.OpenProcess(ProcessAccessFlags.SuspendResume, false, target.Pid);
+            done = h != IntPtr.Zero && (suspend ? Ntdll.NtSuspendProcess(h) : Ntdll.NtResumeProcess(h)) == 0;
+            if (h != IntPtr.Zero) Kernel32.CloseHandle(h);
+            if (done != true)
+                MessageBox.Show($"Could not {(suspend ? "suspend" : "resume")} {target.Name}: it belongs to another user, is elevated or protected.", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
-        catch { }
+        if (done != true) return;
+
+        target.Status = suspend ? "Suspended" : "Running";
+        ApplyFilter();
     }
 
     [RelayCommand]
@@ -1036,7 +1064,7 @@ public partial class ProcessListViewModel : ViewModelBase, IDisposable
                 return;
             }
 
-            TerminateProcess();
+            await TerminateProcessAsync();
             MessageBox.Show($"Process '{name}' disallowed and terminated!", "ProGuard", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)

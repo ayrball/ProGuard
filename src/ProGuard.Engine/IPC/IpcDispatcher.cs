@@ -32,6 +32,7 @@ public class IpcDispatcher
     private readonly IProcessMonitor _processMonitor;
     private readonly WatchdogEventLog? _watchdogEvents;
     private readonly ThinClientCommands? _thinClient;
+    private readonly IUserIdleSource? _userIdle;
     private readonly Stopwatch _uptime = Stopwatch.StartNew();
 
     // Settings commands read-modify-write the stored settings; concurrent clients must not lose each other's changes.
@@ -48,7 +49,8 @@ public class IpcDispatcher
         IProcessController processController,
         IProcessMonitor processMonitor,
         WatchdogEventLog? watchdogEvents = null,
-        ThinClientCommands? thinClient = null)
+        ThinClientCommands? thinClient = null,
+        IUserIdleSource? userIdle = null)
     {
         _logger = logger;
         _ruleStore = ruleStore;
@@ -61,6 +63,7 @@ public class IpcDispatcher
         _processMonitor = processMonitor;
         _watchdogEvents = watchdogEvents;
         _thinClient = thinClient;
+        _userIdle = userIdle;
     }
 
     /// <summary>Handles a request from code inside the engine, which needs no authorization.</summary>
@@ -370,7 +373,10 @@ public class IpcDispatcher
         RamPercent = SystemInfo.GetMemoryLoadPercent(),
         Uptime = _uptime.Elapsed.ToString(@"d\.hh\:mm\:ss", CultureInfo.InvariantCulture),
         ActiveRuleCount = _ruleStore.GetProcessRules().Count(),
-        ProcessCount = _processMonitor.GetAllProcesses().Count()
+        ProcessCount = _processMonitor.GetAllProcesses().Count(),
+        ForegroundPid = _processMonitor.GetForegroundPid(),
+        UserIdleSeconds = _userIdle?.GetIdleTime()?.TotalSeconds,
+        PerformanceModeActive = _powerManager.IsPerformanceModeActive,
     };
 
     internal static IpcMessage Result(CommandResult result) =>

@@ -123,7 +123,10 @@ public class IpcDispatcher
 
     private CommandResult ExecuteCommand(CommandMessage cmd, IIpcCaller caller)
     {
-        _logger.LogInformation("IPC command {Command} (pid {Pid}, arg {Argument}) from {Caller}", cmd.CommandType, cmd.TargetPid, cmd.Argument, caller.Name);
+        // Each open UI polls GetSnapshot every second (and other Get* commands now and then): at Information that was
+        // three quarters of the engine log on an installed system. Commands that change something stay at Information.
+        var logLevel = cmd.CommandType.StartsWith("Get", StringComparison.Ordinal) ? LogLevel.Debug : LogLevel.Information;
+        _logger.Log(logLevel, "IPC command {Command} (pid {Pid}, arg {Argument}) from {Caller}", cmd.CommandType, cmd.TargetPid, cmd.Argument, caller.Name);
 
         switch (cmd.CommandType)
         {

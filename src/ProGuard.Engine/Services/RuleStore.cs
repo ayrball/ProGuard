@@ -66,7 +66,7 @@ public class RuleStore : IRuleStore
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
-            db.Database.EnsureCreated();
+            db.EnsureSchema();
 
             // Take the timestamp before reading so a write that lands mid-load still triggers another reload.
             _dbFilePath = db.Database.GetDbConnection().DataSource;

@@ -42,7 +42,7 @@ public partial class RulesViewModel : ViewModelBase
         try
         {
             using var db = new ProGuardDbContext();
-            db.Database.EnsureCreated();
+            db.EnsureSchema();
 
             var dbRules = db.ProcessRules.ToList();
 
@@ -97,7 +97,7 @@ public partial class RulesViewModel : ViewModelBase
         try
         {
             using var db = new ProGuardDbContext();
-            db.Database.EnsureCreated();
+            db.EnsureSchema();
 
             int? prioVal = null;
             if (Enum.TryParse<ProcessPriorityClass>(NewPriority, out var pc))
@@ -161,7 +161,7 @@ public partial class RulesViewModel : ViewModelBase
         try
         {
             using var db = new ProGuardDbContext();
-            db.Database.EnsureCreated();
+            db.EnsureSchema();
 
             var entity = db.ProcessRules.FirstOrDefault(r => r.Id == SelectedRule.Id || r.ProcessName == SelectedRule.ProcessName);
             if (entity != null)

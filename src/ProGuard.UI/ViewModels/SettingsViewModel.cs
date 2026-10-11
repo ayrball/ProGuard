@@ -48,7 +48,7 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             using var db = new ProGuardDbContext();
-            db.Database.EnsureCreated();
+            db.EnsureSchema();
             var s = db.Settings.FirstOrDefault();
             if (s == null)
             {
@@ -87,7 +87,7 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             using var db = new ProGuardDbContext();
-            db.Database.EnsureCreated();
+            db.EnsureSchema();
             var s = db.Settings.FirstOrDefault();
             if (s != null)
             {

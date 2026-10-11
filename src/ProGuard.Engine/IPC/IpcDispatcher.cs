@@ -150,6 +150,14 @@ public class IpcDispatcher
                 else _smartTrim.TrimMemory();
                 return CommandResult.Ok();
 
+            case CommandTypes.PurgeMemory:
+                var report = _smartTrim.PurgeNow() ?? new MemoryPurgeReport();
+                var data = JsonSerializer.Serialize(report);
+                // Partial success (e.g. trimmed, but the standby purge lacked a privilege) is a success; the report says what failed.
+                return report.Errors.Count > 0 && !report.AnyAction
+                    ? new CommandResult { Success = false, Error = report.Summary(), Data = data }
+                    : CommandResult.Ok(data);
+
             case CommandTypes.EnableProBalance:
                 return UpdateSettings(s => s.ProBalanceEnabled = true);
 

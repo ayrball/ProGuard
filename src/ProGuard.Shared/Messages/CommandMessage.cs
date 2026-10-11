@@ -36,6 +36,11 @@ public static class CommandTypes
     public const string ResumeProcess = "ResumeProcess";
     /// <summary>TargetPid, or no pid to trim every process above the SmartTrim threshold.</summary>
     public const string TrimWorkingSet = "TrimWorkingSet";
+    /// <summary>
+    /// SmartTrim's "Purge now": trims eligible working sets, purges the standby list and, if enabled, the file cache.
+    /// Administrators only. The result's Data is a serialized ProGuard.Core.Models.MemoryPurgeReport.
+    /// </summary>
+    public const string PurgeMemory = "PurgeMemory";
 
     // The commands below change persisted settings, so the engine saves them as well as applying them.
     public const string EnableProBalance = "EnableProBalance";
@@ -79,7 +84,10 @@ public class CommandResult
 {
     public bool Success { get; set; }
     public string? Error { get; set; }
+    /// <summary>Command-specific result data (JSON), for the commands that return any.</summary>
+    public string? Data { get; set; }
 
     public static CommandResult Ok() => new() { Success = true };
+    public static CommandResult Ok(string? data) => new() { Success = true, Data = data };
     public static CommandResult Fail(string error) => new() { Success = false, Error = error };
 }

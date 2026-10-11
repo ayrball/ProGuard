@@ -21,6 +21,19 @@ public static class RuleDtoMapper
         GpuPriority = rule.GpuPriority,
         GpuPreference = rule.GpuPreference,
         ReapplyIfChanged = rule.ReapplyIfChanged,
+        CpuLimitThresholdPercent = rule.CpuLimitThresholdPercent,
+        CpuLimitOverThresholdSeconds = rule.CpuLimitOverThresholdSeconds,
+        CpuLimitCoresToRemove = rule.CpuLimitCoresToRemove,
+        CpuLimitDurationSeconds = rule.CpuLimitDurationSeconds,
+        MaxInstances = rule.MaxInstances,
+        MaxInstancesAllSessions = rule.MaxInstancesAllSessions,
+        InstanceSpreadMode = (int?)rule.InstanceSpreadMode,
+        InstanceSpreadCoresPerInstance = rule.InstanceSpreadCoresPerInstance,
+        InstanceSpreadAvoidSmt = rule.InstanceSpreadAvoidSmt,
+        InstanceSpreadReservedCores = rule.InstanceSpreadReservedCores,
+        InstanceSpreadMinCpuPercent = rule.InstanceSpreadMinCpuPercent,
+        StartupBoostPriorityClass = rule.StartupBoostPriorityClass,
+        StartupBoostSeconds = rule.StartupBoostSeconds,
     };
 
     /// <summary>Copies the fields a <see cref="RuleDto"/> carries onto <paramref name="rule"/>; the others are left as they are.</summary>
@@ -35,5 +48,19 @@ public static class RuleDtoMapper
         rule.GpuPriority = dto.GpuPriority;
         rule.GpuPreference = dto.GpuPreference;
         rule.ReapplyIfChanged = dto.ReapplyIfChanged;
+        rule.CpuLimitThresholdPercent = dto.CpuLimitThresholdPercent;
+        rule.CpuLimitOverThresholdSeconds = dto.CpuLimitOverThresholdSeconds;
+        rule.CpuLimitCoresToRemove = dto.CpuLimitCoresToRemove;
+        rule.CpuLimitDurationSeconds = dto.CpuLimitDurationSeconds;
+        rule.MaxInstances = dto.MaxInstances;
+        rule.MaxInstancesAllSessions = dto.MaxInstancesAllSessions;
+        rule.InstanceSpreadMode = dto.InstanceSpreadMode is int mode && Enum.IsDefined(typeof(InstanceSpreadMode), mode)
+            ? (InstanceSpreadMode)mode : null;
+        rule.InstanceSpreadCoresPerInstance = dto.InstanceSpreadCoresPerInstance;
+        rule.InstanceSpreadAvoidSmt = dto.InstanceSpreadAvoidSmt;
+        rule.InstanceSpreadReservedCores = dto.InstanceSpreadReservedCores;
+        rule.InstanceSpreadMinCpuPercent = dto.InstanceSpreadMinCpuPercent;
+        rule.StartupBoostPriorityClass = dto.StartupBoostPriorityClass;
+        rule.StartupBoostSeconds = dto.StartupBoostSeconds;
     }
 }

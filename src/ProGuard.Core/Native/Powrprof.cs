@@ -9,6 +9,11 @@ public static class Powrprof
     public static readonly Guid HighPerformance = new Guid("8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c");
     public static readonly Guid PowerSaver = new Guid("a1841308-3541-4fab-bc81-f71556f20b4a");
 
+    /// <summary>POWER_DATA_ACCESSOR.ACCESS_SCHEME: makes <see cref="PowerEnumerate"/> list power schemes.</summary>
+    public const uint AccessScheme = 16;
+    public const uint ErrorNoMoreItems = 259;
+    public const uint ErrorMoreData = 234;
+
     [DllImport("powrprof.dll", CharSet = CharSet.Unicode)]
     public static extern uint PowerSetActiveScheme(IntPtr UserRootPowerKey, ref Guid SchemeGuid);
 

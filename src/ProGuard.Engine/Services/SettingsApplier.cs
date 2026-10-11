@@ -19,6 +19,7 @@ public class SettingsApplier
     private readonly IMemoryTrimService _memory trim;
     private readonly IPowerManager _powerManager;
     private readonly IResponsivenessGuardEngine _responsiveness guard;
+    private readonly IAutoPerformanceMode? _autoPerformanceMode;
 
     private readonly object _sync = new();
     private AppSettings? _applied;
@@ -28,13 +29,15 @@ public class SettingsApplier
         IProcessMonitor processMonitor,
         IMemoryTrimService memory trim,
         IPowerManager powerManager,
-        IResponsivenessGuardEngine responsiveness guard)
+        IResponsivenessGuardEngine responsiveness guard,
+        IAutoPerformanceMode? autoPerformanceMode = null)
     {
         _logger = logger;
         _processMonitor = processMonitor;
         _memory trim = memory trim;
         _powerManager = powerManager;
         _responsiveness guard = responsiveness guard;
+        _autoPerformanceMode = autoPerformanceMode;
     }
 
     /// <summary>The settings most recently applied, or null before the first <see cref="Apply"/>.</summary>
@@ -80,6 +83,19 @@ public class SettingsApplier
                     Math.Max(1, settings.IdleTimeoutMinutes),
                     Guid.TryParse(settings.IdlePowerPlanGuid, out var plan) ? plan : Powrprof.PowerSaver));
 
+            if (all || previous!.PerformanceModePlanGuid != settings.PerformanceModePlanGuid)
+                TryApply("Performance Mode", () => _powerManager.ConfigurePerformanceMode(ParsePlan(settings.PerformanceModePlanGuid)));
+
+            if (_autoPerformanceMode != null
+                && (all || !AutoPerformanceModeOptions.FromSettings(previous!).Equals(AutoPerformanceModeOptions.FromSettings(settings))))
+                TryApply("automatic Performance Mode", () => _autoPerformanceMode.Configure(AutoPerformanceModeOptions.FromSettings(settings)));
+
+            if (all || LoadSwitcherOptions.FromSettings(previous!) != LoadSwitcherOptions.FromSettings(settings))
+                TryApply("load switcher", () => _powerManager.ConfigureLoadSwitcher(LoadSwitcherOptions.FromSettings(settings)));
+
+            if (all || previous!.StartWithPowerPlanGuid != settings.StartWithPowerPlanGuid)
+                TryApply("startup power plan", () => _powerManager.ConfigureStartupPlan(ParsePlan(settings.StartWithPowerPlanGuid)));
+
             if (all || previous!.ResponsivenessGuardEnabled != settings.ResponsivenessGuardEnabled
                     || previous.ResponsivenessGuardSensitivity != settings.ResponsivenessGuardSensitivity
                     || previous.ResponsivenessGuardCpuThreshold != settings.ResponsivenessGuardCpuThreshold
@@ -115,6 +131,8 @@ public class SettingsApplier
 
     internal static string[] SplitProcessList(string? list) =>
         (list ?? "").Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private static Guid ParsePlan(string? plan) => Guid.TryParse(plan, out var id) ? id : Guid.Empty;
 
     // One failing service must not stop the others from getting their settings.
     private void TryApply(string what, Action apply)

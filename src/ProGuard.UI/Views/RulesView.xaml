@@ -110,21 +110,21 @@
                                 </CheckBox>
                                 <ContentControl Content="{Binding CorePicker}" Margin="0,10,0,0" Visibility="{Binding AffinityEnabled, Converter={StaticResource VisibleWhen}}"/>
 
-                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ExcludeFromProBalance}" Margin="0,16,0,0">
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ExcludeFromProBalance}" AutomationProperties.Name="NEVER BALANCE IT" Margin="0,16,0,0">
                                     <StackPanel>
                                         <TextBlock Text="NEVER BALANCE IT" FontWeight="Bold" FontSize="14"/>
                                         <TextBlock Text="ProBalance won't lower its priority, even under load." Style="{StaticResource Ed.Note}" Margin="0"/>
                                     </StackPanel>
                                 </CheckBox>
 
-                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding DisallowExecution}" Margin="0,16,0,0">
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding DisallowExecution}" AutomationProperties.Name="BLOCK IT" Margin="0,16,0,0">
                                     <StackPanel>
                                         <TextBlock Text="BLOCK IT" FontWeight="Bold" FontSize="14"/>
                                         <TextBlock Text="Ended the moment it starts, including copies running now." Style="{StaticResource Ed.Note}" Margin="0"/>
                                     </StackPanel>
                                 </CheckBox>
 
-                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding KeepRunning}" Margin="0,16,0,0">
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding KeepRunning}" AutomationProperties.Name="KEEP IT RUNNING" Margin="0,16,0,0">
                                     <StackPanel>
                                         <TextBlock Text="KEEP IT RUNNING" FontWeight="Bold" FontSize="14"/>
                                         <TextBlock Text="Started again with its last command line whenever it exits." Style="{StaticResource Ed.Note}" Margin="0"/>
@@ -136,7 +136,7 @@
                         <!-- CPU -->
                         <Expander Style="{StaticResource Section}" Header="CPU" Tag="{Binding CpuSummary}">
                             <StackPanel>
-                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding LimitEnabled}" Margin="0,14,0,0">
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding LimitEnabled}" AutomationProperties.Name="HARD CAP ITS CPU" Margin="0,14,0,0">
                                     <StackPanel>
                                         <TextBlock Text="HARD CAP ITS CPU" FontWeight="Bold" FontSize="14"/>
                                         <TextBlock Text="A ceiling Windows enforces on the program." Style="{StaticResource Ed.Note}" Margin="0"/>
@@ -199,7 +199,7 @@
                                 <TextBlock Text="MOST COPIES AT ONCE" Style="{StaticResource Ed.Label}" Margin="0,8,0,0"/>
                                 <TextBox Style="{StaticResource Ed.Num}" Tag="NO LIMIT" AutomationProperties.Name="MAX INSTANCES" Text="{Binding MaxInstances, UpdateSourceTrigger=PropertyChanged}"/>
                                 <TextBlock Text="Newer copies over the limit are ended." Style="{StaticResource Ed.Note}"/>
-                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding MaxInstancesAllSessions}" Margin="0,12,0,0">
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding MaxInstancesAllSessions}" AutomationProperties.Name="COUNT ALL SESSIONS" Margin="0,12,0,0">
                                     <StackPanel>
                                         <TextBlock Text="COUNT ALL SESSIONS" FontWeight="Bold" FontSize="14"/>
                                         <TextBlock Text="Otherwise only copies in the same Windows session count." Style="{StaticResource Ed.Note}" Margin="0"/>
@@ -225,7 +225,7 @@
                                             <TextBox Style="{StaticResource Ed.Num}" Tag="ALL" AutomationProperties.Name="ONLY COPIES USING" Text="{Binding BalancerMinCpu, UpdateSourceTrigger=PropertyChanged}"/>
                                         </StackPanel>
                                     </UniformGrid>
-                                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding BalancerAvoidSmt}" Margin="0,14,0,0">
+                                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding BalancerAvoidSmt}" AutomationProperties.Name="AVOID SMT" Margin="0,14,0,0">
                                         <StackPanel>
                                             <TextBlock Text="AVOID SMT" FontWeight="Bold" FontSize="14"/>
                                             <TextBlock Text="Hand out only the first thread of each physical core." Style="{StaticResource Ed.Note}" Margin="0"/>
@@ -271,7 +271,7 @@
                                 <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="GPU PREFERENCE" ItemsSource="{Binding GpuPreferences}" SelectedItem="{Binding GpuPreference}"/>
                                 <TextBlock Text="Takes effect the next time the program starts." Style="{StaticResource Ed.Note}"/>
 
-                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ReapplyIfChanged}" Margin="0,18,0,0">
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ReapplyIfChanged}" AutomationProperties.Name="RE-APPLY IF CHANGED" Margin="0,18,0,0">
                                     <StackPanel>
                                         <TextBlock Text="RE-APPLY IF CHANGED" FontWeight="Bold" FontSize="14"/>
                                         <TextBlock Text="Puts these settings back if something else changes them." Style="{StaticResource Ed.Note}" Margin="0"/>

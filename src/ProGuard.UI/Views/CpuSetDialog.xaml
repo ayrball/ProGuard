@@ -17,7 +17,8 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <ToggleButton Style="{StaticResource Chip}" IsChecked="{Binding IsOn}" Margin="0,0,6,6" Padding="10,8" HorizontalContentAlignment="Left">
+                        <ToggleButton Style="{StaticResource Chip}" IsChecked="{Binding IsOn}" Margin="0,0,6,6" Padding="10,8" HorizontalContentAlignment="Left"
+                                      AutomationProperties.Name="{Binding Footer, StringFormat='CPU SET {0}'}">
                             <StackPanel>
                                 <TextBlock Text="{Binding Label}" FontFamily="{StaticResource Mono}" FontSize="20" FontWeight="Bold"/>
                                 <TextBlock Text="{Binding Detail}" FontFamily="{StaticResource Mono}" FontSize="10" Margin="0,2,0,0"/>

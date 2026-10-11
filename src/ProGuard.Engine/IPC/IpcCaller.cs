@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO.Pipes;
 using System.Security.Principal;
+using System.Threading;
+using System.Threading.Tasks;
 using ProGuard.Core.Native;
 
 namespace ProGuard.Engine.IPC;
@@ -85,7 +87,7 @@ internal sealed class PipeCaller : IIpcCaller
         var isAdministrator = false;
         try
         {
-            pipe.RunAsClient(() =>
+            RunAsClient(pipe, () =>
             {
                 using var identity = WindowsIdentity.GetCurrent(TokenAccessLevels.Query);
                 name = identity.Name;
@@ -150,7 +152,7 @@ internal sealed class PipeCaller : IIpcCaller
         var allowed = false;
         try
         {
-            _pipe.RunAsClient(() =>
+            RunAsClient(_pipe, () =>
             {
                 var handle = Kernel32.OpenProcess(access, false, pid);
                 if (handle == IntPtr.Zero) return;
@@ -163,5 +165,21 @@ internal sealed class PipeCaller : IIpcCaller
             return false;
         }
         return allowed;
+    }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> as the client. <see cref="NamedPipeServerStream.RunAsClient"/> reverts the thread's
+    /// token afterwards but leaves the client's identity in the current ExecutionContext, so every await continuation,
+    /// task and timer later started from this flow would run as the client. On the installed service that made "Purge
+    /// now" fail to open SYSTEM's own token, and SmartTrim timers set up over IPC ran as the user (purges failed, their
+    /// log lines were denied). Running it on a thread pool thread without flowing the context confines that to a
+    /// context that is thrown away.
+    /// </summary>
+    private static void RunAsClient(NamedPipeServerStream pipe, Action action)
+    {
+        Task task;
+        using (ExecutionContext.SuppressFlow())
+            task = Task.Run(() => pipe.RunAsClient(() => action()));
+        task.GetAwaiter().GetResult();
     }
 }

@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ProGuard.Shared.Contracts;
+using ProGuard.Shared.Messages;
 using ProGuard.UI.Services;
 
 namespace ProGuard.UI.ViewModels;
@@ -37,7 +38,15 @@ public sealed partial class ShellViewModel : ObservableObject
     [ObservableProperty] private string statusLine = "CONNECTING";
     [ObservableProperty] private string clock = string.Empty;
 
-    public ShellViewModel(EngineHub hub, Toaster toaster, IconCache icons)
+    /// <summary>
+    /// The MinimizeToTray setting: closing or minimising the window hides it to the tray instead. Defaults to the
+    /// engine's default until the settings have been fetched (see <see cref="OnSnapshot"/>) or the System page changes it.
+    /// </summary>
+    [ObservableProperty] private bool minimizeToTray = true;
+
+    private bool _windowSettingsRequested;
+
+    public ShellViewModel(EngineHub hub, Toaster toaster, IconCache icons, IStartupRegistration? startup = null)
     {
         Hub = hub;
         Toaster = toaster;
@@ -47,7 +56,7 @@ public sealed partial class ShellViewModel : ObservableObject
         Rules = new RulesViewModel(hub, this);
         Watchdog = new WatchdogViewModel(hub, this);
         Activity = new ActivityViewModel(hub);
-        System = new SystemViewModel(hub, this);
+        System = new SystemViewModel(hub, this, startup);
 
         Pages = new[]
         {
@@ -96,6 +105,48 @@ public sealed partial class ShellViewModel : ObservableObject
         var mode = snapshot.CallerIsAdministrator ? "ADMIN" : "STANDARD RIGHTS";
         StatusLine = $"ENGINE ONLINE · {mode} · UP {Fmt.Uptime(snapshot.EngineUptime)}";
         Clock = DateTime.Now.ToString("HH:mm:ss");
+
+        // The tray behaviour needs MinimizeToTray before the System page has ever been opened.
+        if (!_windowSettingsRequested)
+        {
+            _windowSettingsRequested = true;
+            _ = LoadWindowSettingsAsync();
+        }
+    }
+
+    private async Task LoadWindowSettingsAsync()
+    {
+        if (await Hub.QueryAsync<EngineSettingsDto>(CommandTypes.GetSettings, quiet: true) is { } settings)
+        {
+            MinimizeToTray = settings.MinimizeToTray;
+        }
+        else
+        {
+            _windowSettingsRequested = false; // try again on the next snapshot
+        }
+    }
+
+    /// <summary>
+    /// SmartTrim's "Purge now" (administrators only; the engine refuses anyone else and says why). Shows the engine's
+    /// summary as a toast. Returns null when it failed.
+    /// </summary>
+    public async Task<MemoryPurgeResultDto?> PurgeNowAsync()
+    {
+        var result = await Hub.QueryAsync<MemoryPurgeResultDto>(CommandTypes.PurgeMemory);
+        if (result == null) return null;
+
+        Toaster.Show(Fmt.PurgeSummary(result), isError: result.Errors.Count > 0);
+        Hub.RefreshNow();
+        return result;
+    }
+
+    /// <summary>Turns Performance Mode off if the engine reports it on, on otherwise. Returns the new state, or null on failure.</summary>
+    public async Task<bool?> TogglePerformanceModeAsync()
+    {
+        bool enable = Hub.Snapshot?.PerformanceModeActive != true;
+        bool ok = await Hub.RunAsync(enable ? CommandTypes.EnablePerformanceMode : CommandTypes.DisablePerformanceMode,
+            success: enable ? "PERFORMANCE MODE ON" : "PERFORMANCE MODE OFF");
+        return ok ? enable : null;
     }
 }
 

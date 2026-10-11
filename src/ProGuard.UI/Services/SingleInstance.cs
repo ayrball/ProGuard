@@ -8,12 +8,18 @@ namespace ProGuard.UI.Services;
 /// reporter and a second balloon for every Watchdog event.
 /// </summary>
 /// <remarks>
-/// The names live in the session's Local\ namespace, so other users' sessions have their own copy. If the first copy
-/// runs elevated, a standard-rights launch can't open its objects; it can't ask that copy anything and starts normally.
+/// The names live in the session's Local\ namespace, so other users' sessions have their own copy. If a copy's objects
+/// can't be opened at all, this launch can't ask it anything and starts normally.
 /// </remarks>
 public sealed class SingleInstance : IDisposable
 {
     public const string DefaultName = "ProGuard.UI";
+
+    /// <summary>
+    /// Standard and elevated copies count separately: "Run as administrator" while the standard copy sits in the tray
+    /// has to start an elevated window, not just show the standard one (the UI tells standard users to do exactly that).
+    /// </summary>
+    public static string NameFor(bool elevated) => elevated ? DefaultName + ".Elevated" : DefaultName;
 
     private readonly Mutex _mutex;
     private readonly EventWaitHandle _show;

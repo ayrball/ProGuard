@@ -19,6 +19,7 @@ public class SettingsApplier
     private readonly IMemoryTrimService _memory trim;
     private readonly IPowerManager _powerManager;
     private readonly IResponsivenessGuardEngine _responsiveness guard;
+    private readonly IAutoPerformanceMode? _autoPerformanceMode;
 
     private readonly object _sync = new();
     private AppSettings? _applied;
@@ -28,13 +29,15 @@ public class SettingsApplier
         IProcessMonitor processMonitor,
         IMemoryTrimService memory trim,
         IPowerManager powerManager,
-        IResponsivenessGuardEngine responsiveness guard)
+        IResponsivenessGuardEngine responsiveness guard,
+        IAutoPerformanceMode? autoPerformanceMode = null)
     {
         _logger = logger;
         _processMonitor = processMonitor;
         _memory trim = memory trim;
         _powerManager = powerManager;
         _responsiveness guard = responsiveness guard;
+        _autoPerformanceMode = autoPerformanceMode;
     }
 
     /// <summary>The settings most recently applied, or null before the first <see cref="Apply"/>.</summary>
@@ -82,6 +85,10 @@ public class SettingsApplier
 
             if (all || previous!.PerformanceModePlanGuid != settings.PerformanceModePlanGuid)
                 TryApply("Performance Mode", () => _powerManager.ConfigurePerformanceMode(ParsePlan(settings.PerformanceModePlanGuid)));
+
+            if (_autoPerformanceMode != null
+                && (all || !AutoPerformanceModeOptions.FromSettings(previous!).Equals(AutoPerformanceModeOptions.FromSettings(settings))))
+                TryApply("automatic Performance Mode", () => _autoPerformanceMode.Configure(AutoPerformanceModeOptions.FromSettings(settings)));
 
             if (all || LoadSwitcherOptions.FromSettings(previous!) != LoadSwitcherOptions.FromSettings(settings))
                 TryApply("load switcher", () => _powerManager.ConfigureLoadSwitcher(LoadSwitcherOptions.FromSettings(settings)));

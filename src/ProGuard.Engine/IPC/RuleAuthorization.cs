@@ -43,7 +43,7 @@ internal static class RuleAuthorization
         switch (rule.ActionType)
         {
             case WatchdogAction.Launch:
-                return "create Watchdog Launch actions: the program would start as whichever user ran the triggering process";
+                return "add, change or delete Watchdog Launch actions: the program would start as whichever user ran the triggering process";
             case WatchdogAction.SetPriority when WatchdogArguments.TryParsePriority(rule.ActionArgument, out var priority)
                                                   && priority == System.Diagnostics.ProcessPriorityClass.RealTime:
                 return "set Realtime priority";
@@ -63,7 +63,7 @@ internal static class RuleAuthorization
         foreach (var p in monitor.GetAllProcesses().Where(p => ProcessExtensions.NormalizeName(p.Name) == key))
         {
             if (!caller.CanOpenProcess(p.Pid, ProcessAccessFlags.Terminate))
-                return $"create a rule that ends {processName}: a running instance (pid {p.Pid}) belongs to another user, is elevated or protected";
+                return $"add, change or delete a rule that ends {processName}: a running instance (pid {p.Pid}) belongs to another user, is elevated or protected";
         }
         return null;
     }

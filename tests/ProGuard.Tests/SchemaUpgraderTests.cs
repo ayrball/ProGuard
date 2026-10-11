@@ -190,7 +190,7 @@ public class SchemaUpgraderTests : IDisposable
         // UI, each of them has to look at the database itself.
         const int callers = 8;
         using var start = new Barrier(callers);
-        var tasks = Enumerable.Range(0, callers).Select(i => Task.Run(() =>
+        var tasks = Enumerable.Range(0, callers).Select(i => OnOwnThread(() =>
         {
             using DbContext db = i % 2 == 0 ? new FileDbContext(_path) : new OtherFileDbContext(_path);
             start.SignalAndWait();
@@ -211,7 +211,7 @@ public class SchemaUpgraderTests : IDisposable
     {
         const int callers = 8;
         using var start = new Barrier(callers);
-        var tasks = Enumerable.Range(0, callers).Select(i => Task.Run(() =>
+        var tasks = Enumerable.Range(0, callers).Select(i => OnOwnThread(() =>
         {
             using DbContext db = i % 2 == 0 ? new FileDbContext(_path) : new OtherFileDbContext(_path);
             start.SignalAndWait();
@@ -222,6 +222,14 @@ public class SchemaUpgraderTests : IDisposable
         using var check = new FileDbContext(_path);
         Assert.Single(check.Settings);
     }
+
+    /// <summary>
+    /// Runs a caller on a thread of its own. The callers block at the barrier until all of them are there, so on thread
+    /// pool threads they would hold most of a small machine's pool (two threads on a 2-CPU CI runner) for as long as the
+    /// pool takes to grow, and stall every other test meanwhile.
+    /// </summary>
+    private static Task OnOwnThread(Action caller) =>
+        Task.Factory.StartNew(caller, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
     /// <summary>Same as <see cref="FileDbContext"/>, but a different type, so it has its own schema-check cache entry.</summary>
     private sealed class OtherFileDbContext : ProGuardDbContext

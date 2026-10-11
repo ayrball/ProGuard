@@ -35,5 +35,21 @@ internal static class TestEnvironment
             catch { /* best effort cleanup of a temp folder */ }
         };
     }
+
+    /// <summary>
+    /// xUnit runs the test classes side by side, and many of them park a thread pool thread for a while: a pipe client
+    /// waiting for its server, the engine's impersonation (which waits on a second pool thread), a child process being
+    /// waited for. The pool starts with one thread per CPU and adds only a couple a second when they are all busy, so on a
+    /// 2-CPU CI runner a few such tests at once stall everything else for seconds, and pipe tests ran into the client's
+    /// 8 s request timeout. Starting the pool where a developer machine's would be keeps the timing the same everywhere.
+    /// </summary>
+    [ModuleInitializer]
+    internal static void SizeThreadPool()
+    {
+        ThreadPool.GetMinThreads(out var workers, out var io);
+        ThreadPool.SetMinThreads(Math.Max(workers, MinPoolThreads), Math.Max(io, MinPoolThreads));
+    }
+
+    private const int MinPoolThreads = 16;
 #pragma warning restore CA2255
 }

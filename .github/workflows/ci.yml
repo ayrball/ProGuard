@@ -25,14 +25,19 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
+        id: dotnet
         with:
           dotnet-version: 8.0.x
 
+      # The image's newest SDK (10.x) would otherwise build the solution; use the .NET 8 SDK developers use.
+      - name: Pin the .NET 8 SDK
+        run: dotnet new globaljson --sdk-version ${{ steps.dotnet.outputs.dotnet-version }} --force
+
       # No packages.lock.json in the repo, so cache on the project files that list the packages.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ${{ env.NUGET_PACKAGES }}
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
@@ -67,7 +72,7 @@ jobs:
 
       - name: Upload test results
         if: failure() && steps.test.outcome == 'failure' || cancelled()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results
           path: |
@@ -83,8 +88,9 @@ jobs:
 
       - name: Upload UI preview
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ui-preview
           path: artifacts/preview/
           if-no-files-found: warn
+          retention-days: 14

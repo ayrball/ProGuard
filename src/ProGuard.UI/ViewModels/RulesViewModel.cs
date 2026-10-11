@@ -73,6 +73,7 @@ internal static class RuleEffects
                 if (d.GpuPriority is { } gpu) parts.Add($"GPU {RuleText.GpuPriorityName(gpu)}");
                 if (d.GpuPreference is { } pref) parts.Add($"GPU PREF {RuleText.GpuPreferenceName(pref)}");
                 if (d.ReapplyIfChanged) parts.Add("RE-APPLY");
+                if (d.ApplyPrioritiesAtCreation) parts.Add("AT LAUNCH");
                 break;
         }
         return parts;
@@ -169,14 +170,19 @@ public sealed partial class RuleEditor : ObservableObject
     [ObservableProperty] private Choice<int?> gpuPriority;
     [ObservableProperty] private Choice<int?> gpuPreference;
     [ObservableProperty] private bool reapplyIfChanged;
+    /// <summary>Have Windows apply the priorities as the program starts (Image File Execution Options). Administrators only.</summary>
+    [ObservableProperty] private bool applyAtLaunch;
 
     // ---- access ----
     /// <summary>True for a user without administrator rights: the engine refuses some contents, so those are marked and the limits listed.</summary>
-    [ObservableProperty] private bool isRestricted;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanSetAtLaunch))] private bool isRestricted;
+
+    /// <summary>"Set at launch" writes a machine-wide registry setting, which the engine takes only from administrators.</summary>
+    public bool CanSetAtLaunch => !IsRestricted;
 
     /// <summary>What the engine refuses a standard user. Shown as one line in the editor while <see cref="IsRestricted"/>.</summary>
     public const string LimitsHint =
-        "STANDARD RIGHTS. THE ENGINE REFUSES: SYSTEM PROGRAMS AND PROGUARD ITSELF, REALTIME PRIORITY, BLOCKING OR LIMITING PROGRAMS YOU COULDN'T END YOURSELF, AND CHANGING RULES YOU COULDN'T HAVE MADE.";
+        "STANDARD RIGHTS. THE ENGINE REFUSES: SYSTEM PROGRAMS AND PROGUARD ITSELF, REALTIME PRIORITY, PRIORITIES AT LAUNCH, BLOCKING OR LIMITING PROGRAMS YOU COULDN'T END YOURSELF, AND CHANGING RULES YOU COULDN'T HAVE MADE.";
     public string RestrictionHint => LimitsHint;
 
     // ---- collapsed-section summaries ----
@@ -256,6 +262,7 @@ public sealed partial class RuleEditor : ObservableObject
 
             boostSeconds = from.StartupBoostSeconds?.ToString() ?? string.Empty;
             reapplyIfChanged = from.ReapplyIfChanged;
+            applyAtLaunch = from.ApplyPrioritiesAtCreation;
         }
 
         _ready = true;
@@ -434,11 +441,22 @@ public sealed partial class RuleEditor : ObservableObject
         d.GpuPriority = GpuPriority.Value;
         d.GpuPreference = GpuPreference.Value;
         d.ReapplyIfChanged = ReapplyIfChanged;
+        d.ApplyPrioritiesAtCreation = ApplyAtLaunch;
 
         if (d.IoPriority is < 0 or > 3) Fail("I/O priority is 0 (very low) to 3 (high). Pick one of the buttons.");
         if (d.MemoryPriority is < 1 or > 5) Fail("Memory priority is 1 (very low) to 5 (normal). Pick one of the buttons.");
         if (d.GpuPriority is < 0 or > 4) Fail("GPU priority is 0 (idle) to 4 (high). Pick one of the buttons.");
         if (d.GpuPreference is < 0 or > 2) Fail("GPU preference is 0 (let Windows decide) to 2 (high performance). Pick one of the buttons.");
+
+        if (d.ApplyPrioritiesAtCreation)
+        {
+            if (!RuleText.IsPlainProgramName(d.ProcessName))
+                Fail("Priorities at launch need a plain program name such as game.exe: Windows can't match a pattern or a path there.");
+            else if (d.PriorityClass == (int)ProcessPriorityClass.RealTime)
+                Fail("Windows doesn't apply Realtime priority at launch. Pick another priority, or switch off \"Set at launch\".");
+            else if (d.PriorityClass == null && d.IoPriority == null && d.MemoryPriority == null)
+                Fail("\"Set at launch\" needs a priority, I/O priority or memory priority to set. Pick one, or switch it off.");
+        }
 
         dto = d;
         error = problem;
@@ -498,7 +516,10 @@ public sealed partial class RulesViewModel : ObservableObject, IPage
     [ObservableProperty] private bool isLoaded;
 
     /// <summary>True when the engine says this UI isn't an administrator: editing stays open, but some contents are refused.</summary>
-    [ObservableProperty] private bool isRestricted;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanSetAtLaunch))] private bool isRestricted;
+
+    /// <summary>"Set at launch" writes a machine-wide registry setting, which the engine takes only from administrators.</summary>
+    public bool CanSetAtLaunch => !IsRestricted;
 
     public RulesViewModel(EngineHub hub, ShellViewModel shell)
     {

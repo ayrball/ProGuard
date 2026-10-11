@@ -21,6 +21,8 @@ public class SettingsApplier
     private readonly IResponsivenessGuardEngine _responsiveness guard;
     private readonly IAutoPerformanceMode? _autoPerformanceMode;
     private readonly ForegroundBoostService? _foregroundBoost;
+    private readonly TimerResolutionService? _timerResolution;
+    private readonly CoreParkingService? _coreParking;
 
     private readonly object _sync = new();
     private AppSettings? _applied;
@@ -32,7 +34,9 @@ public class SettingsApplier
         IPowerManager powerManager,
         IResponsivenessGuardEngine responsiveness guard,
         IAutoPerformanceMode? autoPerformanceMode = null,
-        ForegroundBoostService? foregroundBoost = null)
+        ForegroundBoostService? foregroundBoost = null,
+        TimerResolutionService? timerResolution = null,
+        CoreParkingService? coreParking = null)
     {
         _logger = logger;
         _processMonitor = processMonitor;
@@ -41,6 +45,8 @@ public class SettingsApplier
         _responsiveness guard = responsiveness guard;
         _autoPerformanceMode = autoPerformanceMode;
         _foregroundBoost = foregroundBoost;
+        _timerResolution = timerResolution;
+        _coreParking = coreParking;
     }
 
     /// <summary>The settings most recently applied, or null before the first <see cref="Apply"/>.</summary>
@@ -92,6 +98,9 @@ public class SettingsApplier
             if (all || previous!.PerformanceModePlanGuid != settings.PerformanceModePlanGuid)
                 TryApply("Performance Mode", () => _powerManager.ConfigurePerformanceMode(ParsePlan(settings.PerformanceModePlanGuid)));
 
+            if (all || previous!.PerformanceModeSetBestPerformance != settings.PerformanceModeSetBestPerformance)
+                TryApply("Performance Mode power mode", () => _powerManager.ConfigurePerformanceModePowerMode(settings.PerformanceModeSetBestPerformance));
+
             if (_autoPerformanceMode != null
                 && (all || !AutoPerformanceModeOptions.FromSettings(previous!).Equals(AutoPerformanceModeOptions.FromSettings(settings))))
                 TryApply("automatic Performance Mode", () => _autoPerformanceMode.Configure(AutoPerformanceModeOptions.FromSettings(settings)));
@@ -110,6 +119,12 @@ public class SettingsApplier
 
             if (all || ResponsivenessGuardRestraintOptions.FromSettings(previous!) != ResponsivenessGuardRestraintOptions.FromSettings(settings))
                 TryApply("ResponsivenessGuard restraint actions", () => _responsiveness guard.ConfigureRestraint(ResponsivenessGuardRestraintOptions.FromSettings(settings)));
+
+            if (_coreParking != null && (all || previous!.ResponsivenessGuardDisableCoreParking != settings.ResponsivenessGuardDisableCoreParking))
+                TryApply("core parking", () => _coreParking.Configure(settings.ResponsivenessGuardDisableCoreParking));
+
+            if (_timerResolution != null && (all || previous!.SetTimerResolutionAtStartup != settings.SetTimerResolutionAtStartup))
+                TryApply("timer resolution", () => _timerResolution.Configure(settings.SetTimerResolutionAtStartup));
 
             _applied = settings.Clone();
         }

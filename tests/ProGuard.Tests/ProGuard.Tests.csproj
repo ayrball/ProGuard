@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\ProGuard.Shared\ProGuard.Shared.csproj" />
     <ProjectReference Include="..\..\src\ProGuard.Engine\ProGuard.Engine.csproj" />
     <ProjectReference Include="..\..\src\ProGuard.UI\ProGuard.UI.csproj" />
+    <ProjectReference Include="..\..\tools\ProGuard.Preview\ProGuard.Preview.csproj" />
   </ItemGroup>
 
   <ItemGroup>

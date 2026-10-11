@@ -11,4 +11,17 @@ public class RuleDto
     public int? CpuLimitOverThresholdSeconds { get; set; }
     public int? CpuLimitCoresToRemove { get; set; }
     public int? CpuLimitDurationSeconds { get; set; }
+
+    // Instance limit, Instance Spread and startup boost: see ProcessRule. Null limit / mode / boost priority = off.
+    public int? MaxInstances { get; set; }
+    public bool MaxInstancesAllSessions { get; set; }
+    /// <summary>ProGuard.Core.Models.InstanceSpreadMode as an int (0 = equal cores, 1 = fixed cores per instance).</summary>
+    public int? InstanceSpreadMode { get; set; }
+    public int? InstanceSpreadCoresPerInstance { get; set; }
+    public bool InstanceSpreadAvoidSmt { get; set; }
+    public int? InstanceSpreadReservedCores { get; set; }
+    public double? InstanceSpreadMinCpuPercent { get; set; }
+    /// <summary>System.Diagnostics.ProcessPriorityClass value.</summary>
+    public int? StartupBoostPriorityClass { get; set; }
+    public int? StartupBoostSeconds { get; set; }
 }

@@ -14,6 +14,7 @@ public class TrayIconService : IDisposable
     private NotifyIcon? _notifyIcon;
     private System.Timers.Timer? _metricsTimer;
     private MenuItem? _statusHeaderItem;
+    private TrayBalloon? _balloon;
     private bool _disposed;
 
     public void Initialize()
@@ -160,9 +161,23 @@ public class TrayIconService : IDisposable
         }
     }
 
+    /// <summary>Shows a tray notification. Safe to call from any thread.</summary>
     public void ShowNotification(string title, string text)
     {
-        // Notification logic
+        if (_disposed) return;
+        Application.Current?.Dispatcher.BeginInvoke(() =>
+        {
+            if (_disposed) return;
+            try
+            {
+                _balloon ??= new TrayBalloon();
+                _balloon.Show(title, text);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Tray notification failed: {ex.Message}");
+            }
+        });
     }
 
     public void Dispose()
@@ -174,6 +189,8 @@ public class TrayIconService : IDisposable
             _metricsTimer?.Dispose();
             _notifyIcon?.Unregister();
             _notifyIcon = null;
+            _balloon?.Dispose();
+            _balloon = null;
         }
     }
 }

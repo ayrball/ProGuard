@@ -51,6 +51,9 @@ public partial class App : Application
             services.AddSingleton<SettingsViewModel>();
             
             services.AddSingleton<TrayIconService>();
+            // Shows the engine's Watchdog notifications in the tray; the Watchdog page also reads its activity.
+            services.AddSingleton<WatchdogNotificationListener>();
+            services.AddHostedService(sp => sp.GetRequiredService<WatchdogNotificationListener>());
         }).Build();
 
     public static T GetService<T>() where T : class

@@ -318,6 +318,39 @@ public class ThinClientCommandTests
         Assert.Equal(30, stored.StartupBoostSeconds);
     }
 
+    // Rules are looked up by file name only. A standard user saved these from the editor (which said "pattern or full
+    // path"); they were stored, listed, and never matched anything.
+    [Theory]
+    [InlineData(@"C:\Windows\System32\*", "not a folder or path")]
+    [InlineData(@"C:\Games\game.exe", "not a folder or path")]
+    [InlineData("svc*.exe", "wildcards aren't supported")]
+    [InlineData("game?.exe", "wildcards aren't supported")]
+    public void SaveProcessRule_RefusesNamesThatCouldNeverMatch(string name, string reason)
+    {
+        var h = new ThinHarness();
+
+        var result = h.SendAsAdmin(CommandTypes.SaveProcessRule, null, Rule(name));
+
+        Assert.False(result.Success);
+        Assert.Contains(reason, result.Error);
+        Assert.Empty(h.Rules);
+    }
+
+    [Theory]
+    [InlineData(@"C:\Tools\app.exe")]
+    [InlineData("app*")]
+    public void SaveWatchdogRule_RefusesNamesThatCouldNeverMatch(string name)
+    {
+        var h = new ThinHarness();
+        var dto = Watch();
+        dto.TargetProcessName = name;
+
+        var result = h.SendAsAdmin(CommandTypes.SaveWatchdogRule, null, dto);
+
+        Assert.False(result.Success);
+        Assert.Contains("would never match anything", result.Error);
+    }
+
     [Fact]
     public void SaveProcessRule_UpdatesInPlaceAndKeepsTheId()
     {

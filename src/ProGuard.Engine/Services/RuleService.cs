@@ -116,6 +116,7 @@ public sealed class RuleService
     public static string? Validate(ProcessRuleDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.ProcessName)) return "A rule needs a process name";
+        if (ProcessExtensions.ProgramNameProblem(dto.ProcessName) is { } badName) return badName;
         if (!IsPriority(dto.PriorityClass)) return "Invalid priority class";
         if (dto.AffinityMask == 0) return "Choose at least one processor";
         if (dto.CpuLimitPercent is { } cap && !(cap >= 1 && cap <= 99)) return "A CPU limit must be between 1% and 99%";
@@ -267,6 +268,7 @@ public sealed class RuleService
     public static string? Validate(WatchdogRuleDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.TargetProcessName)) return "A watchdog rule needs a process name";
+        if (ProcessExtensions.ProgramNameProblem(dto.TargetProcessName) is { } badName) return badName;
         if (!Enum.IsDefined(dto.ConditionType)) return "Invalid watchdog condition";
         if (!Enum.IsDefined(dto.ActionType)) return "Invalid watchdog action";
         if (!Enum.IsDefined(dto.MemoryMetric)) return "Invalid memory measure";

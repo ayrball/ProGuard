@@ -73,6 +73,7 @@ public class StandInEngineTests
         CommandTypes.SaveSettings => (null, StandInData.Settings()),
         CommandTypes.SetPowerPlan => (null, StandInData.HighPerformance),
         CommandTypes.GetActivity => (null, 10),
+        CommandTypes.SetTimerResolution => (null, new TimerResolutionArgument { Resolution = 10000 }),
         _ => (null, null)
     };
 

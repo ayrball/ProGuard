@@ -166,6 +166,7 @@ public class UiSystemTests
         LoadSwitcherMinimumTimeInPlanMs = 7777, LoadSwitcherLowPlanGuid = PowerSaver.ToString("N"), LoadSwitcherHighPlanGuid = HighPerformance.ToString("B"),
         LoadSwitcherDeferLowPlan = false,
         StartWithPowerPlanGuid = Balanced.ToString(),
+        SetTimerResolutionAtStartup = 7777,
         StartWithWindows = true, MinimizeToTray = false, Theme = "Dark", PollingIntervalMs = 1500
     };
 

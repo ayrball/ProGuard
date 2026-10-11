@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using ProGuard.Core.Models;
 using ProGuard.Core.Services;
 using ProGuard.Shared.Contracts;
@@ -21,12 +22,28 @@ public sealed class ActivityFeed
     private readonly IRuleStore _ruleStore;
     private readonly WatchdogEventLog? _watchdog;
     private readonly ActivityLog _manual;
+    private readonly TimeProvider _time;
 
-    public ActivityFeed(IRuleStore ruleStore, ActivityLog manual, WatchdogEventLog? watchdog = null)
+    // Entries at or before this were cleared. Only the action log can be emptied; the other two keep their entries
+    // (the Watchdog log also feeds the UI's notifications), so the feed stops showing them instead.
+    private long _clearedTicks = DateTime.MinValue.Ticks;
+
+    public ActivityFeed(IRuleStore ruleStore, ActivityLog manual, WatchdogEventLog? watchdog = null, TimeProvider? time = null)
     {
         _ruleStore = ruleStore;
         _manual = manual;
         _watchdog = watchdog;
+        _time = time ?? TimeProvider.System;
+    }
+
+    /// <summary>
+    /// "Clear log": deletes the action log and leaves everything that happened until now out of the feed, users' own
+    /// actions and Watchdog events included.
+    /// </summary>
+    public void Clear()
+    {
+        _ruleStore.ClearProBalanceActions();
+        Interlocked.Exchange(ref _clearedTicks, _time.GetUtcNow().UtcDateTime.Ticks);
     }
 
     /// <summary>The newest <paramref name="count"/> entries from every source together, newest first.</summary>
@@ -41,8 +58,10 @@ public sealed class ActivityFeed
         var actions = _ruleStore.GetRecentActions(count);
         if (actions != null) entries.AddRange(actions.Select(FromAction));
 
+        var cleared = new DateTime(Interlocked.Read(ref _clearedTicks), DateTimeKind.Utc);
+
         // Stable: equal timestamps keep the order above (users' own actions first).
-        return entries.OrderByDescending(e => e.TimestampUtc).Take(count).ToList();
+        return entries.Where(e => e.TimestampUtc > cleared).OrderByDescending(e => e.TimestampUtc).Take(count).ToList();
     }
 
     /// <summary>An action-log row: restraint, restore, CPU Limiter constraint or power plan change.</summary>

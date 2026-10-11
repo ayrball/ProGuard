@@ -881,6 +881,25 @@ public class ThinClientCommandTests
         Assert.Empty(h.Actions);
     }
 
+    // Seen on the installed engine: after Clear log the Activity page still listed the rule edits and process actions
+    // from before, which live in the in-memory logs the action log doesn't hold.
+    [Fact]
+    public void ClearActionLog_EmptiesTheWholeActivityFeed_AndLaterEntriesStillShow()
+    {
+        var h = new ThinHarness();
+        h.Actions.Add(new ProBalanceAction { Timestamp = DateTime.UtcNow.AddSeconds(-5), ProcessName = "x", Reason = "r" });
+        h.Manual.Add(ActivityKind.Manual, "game.exe", 0, "Added a rule for game.exe.");
+        h.WatchdogEvents.Add(WatchdogEventKinds.Fired, "Watchdog: app.exe", "fired");
+        Assert.Equal(3, h.Data<List<ActivityEntry>>(h.SendAsAdmin(CommandTypes.GetActivity)).Count);
+
+        Assert.True(h.SendAsAdmin(CommandTypes.ClearActionLog).Success);
+        Assert.Empty(h.Data<List<ActivityEntry>>(h.SendAsAdmin(CommandTypes.GetActivity)));
+
+        Thread.Sleep(20); // a later entry gets a later timestamp
+        h.Manual.Add(ActivityKind.Manual, "game.exe", 0, "Deleted the rule for game.exe.");
+        Assert.Equal("Deleted the rule for game.exe.", Assert.Single(h.Data<List<ActivityEntry>>(h.SendAsAdmin(CommandTypes.GetActivity))).Message);
+    }
+
     // ---------- CPU Sets ----------
 
     [Fact]

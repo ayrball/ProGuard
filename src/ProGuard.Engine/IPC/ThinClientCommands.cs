@@ -153,7 +153,7 @@ public sealed class ThinClientCommands
                 return true;
 
             case CommandTypes.ClearActionLog:
-                _ruleStore.ClearProBalanceActions();
+                _feed.Clear();
                 _logger.LogInformation("Action log cleared by {Caller}", caller.Name);
                 result = CommandResult.Ok();
                 return true;

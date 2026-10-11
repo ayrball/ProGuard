@@ -59,6 +59,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     private int _logical;
     private bool _coresEdited;
     private bool? _startupChoice;
+    private int _startupRefused; // StartWithWindows change notifications still to ignore after Windows refused
     private CancellationTokenSource? _saveCts;
     private IReadOnlyList<PowerPlanDto> _plans = Array.Empty<PowerPlanDto>();
     private Guid _activePlan;
@@ -160,6 +161,9 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     /// <summary>How long a burst of typing waits before saving. Tests set it to zero.</summary>
     internal TimeSpan SaveDelay { get; set; } = TimeSpan.FromMilliseconds(450);
 
+    /// <summary>Sends settings to the engine and returns them as stored, or null when that failed. Replaceable in tests.</summary>
+    internal Func<EngineSettingsDto, Task<EngineSettingsDto?>> Saver { get; set; }
+
     /// <summary>Completes when every save queued so far has been sent.</summary>
     internal Task PendingSave { get; private set; } = Task.CompletedTask;
 
@@ -168,6 +172,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
         _hub = hub;
         _shell = shell;
         _startup = startup ?? new RunKeyStartup();
+        Saver = settings => _hub.QueryAsync<EngineSettingsDto>(CommandTypes.SaveSettings, argument: settings);
 
         for (int i = 1; i <= 10; i++) Sensitivity.Add(new SensitivityStep(i));
         PaintSensitivity();
@@ -294,7 +299,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
 
     // ------------------------------------------------------------------ keeping up with the engine
 
-    private void OnSnapshot(EngineSnapshot s)
+    internal void OnSnapshot(EngineSnapshot s)
     {
         IsAdministrator = s.CallerIsAdministrator;
 
@@ -411,6 +416,11 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
         base.OnPropertyChanged(e);
+        if (e.PropertyName == nameof(StartWithWindows) && _startupRefused > 0)
+        {
+            _startupRefused--; // Windows said no and the switch went back: nothing changed, nothing to save
+            return;
+        }
         if (e.PropertyName != null && Persisted.Contains(e.PropertyName)) QueueSave();
     }
 
@@ -426,6 +436,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
         catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException or InvalidOperationException)
         {
             _shell.Toaster.Show($"Windows wouldn't change the startup entry: {ex.Message}", isError: true);
+            _startupRefused = 2; // the revert below raises one notification, the refused change itself the other
             _loading = true;
             try { StartWithWindows = !value; }
             finally { _loading = false; }
@@ -466,7 +477,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     {
         if (_settings == null) return;
 
-        if (await _hub.QueryAsync<EngineSettingsDto>(CommandTypes.SaveSettings, argument: BuildSettings()) is { } saved)
+        if (await Saver(BuildSettings()) is { } saved)
         {
             _settings = saved;
             _shell.MinimizeToTray = saved.MinimizeToTray;

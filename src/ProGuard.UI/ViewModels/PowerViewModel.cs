@@ -138,6 +138,11 @@ public partial class PowerViewModel : ViewModelBase
             {
                 IsAwayModeEnabled = s.AwayModeEnabled;
                 IdleTimeout = s.IdleTimeoutMinutes * 60;
+                if (Guid.TryParse(s.IdlePowerPlanGuid, out var idlePlan))
+                {
+                    var match = PowerPlans.FirstOrDefault(p => p.Guid == idlePlan);
+                    if (match != null) SelectedIdlePlanIndex = match.Index;
+                }
             }
         }
         catch { }
@@ -160,6 +165,9 @@ public partial class PowerViewModel : ViewModelBase
             {
                 s.AwayModeEnabled = IsAwayModeEnabled;
                 s.IdleTimeoutMinutes = Math.Max(1, IdleTimeout / 60);
+                // The engine reads the plan from the database; without this the idle plan choice never reached it.
+                if (SelectedIdlePlanIndex >= 0 && SelectedIdlePlanIndex < PowerPlans.Count)
+                    s.IdlePowerPlanGuid = PowerPlans[SelectedIdlePlanIndex].Guid.ToString();
                 db.SaveChanges();
             }
         }

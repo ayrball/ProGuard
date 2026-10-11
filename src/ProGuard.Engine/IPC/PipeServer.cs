@@ -1,23 +1,28 @@
 using System;
 using System.IO;
 using System.IO.Pipes;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using ProGuard.Shared.Messages;
 
 namespace ProGuard.Engine.IPC;
 
 public class PipeServer
 {
+    public const string DefaultPipeName = "ProGuardEngine";
+
     private readonly ILogger<PipeServer> _logger;
+    private readonly IpcDispatcher _dispatcher;
     private CancellationTokenSource? _cts;
 
-    public PipeServer(ILogger<PipeServer> logger)
+    public PipeServer(ILogger<PipeServer> logger, IpcDispatcher dispatcher)
     {
         _logger = logger;
+        _dispatcher = dispatcher;
     }
+
+    /// <summary>Name of the pipe to listen on; tests use a unique one so they don't collide with a running engine.</summary>
+    public string PipeName { get; init; } = DefaultPipeName;
 
     public void Start()
     {
@@ -37,7 +42,7 @@ public class PipeServer
         {
             try
             {
-                var server = new NamedPipeServerStream("ProGuardEngine", PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
+                var server = new NamedPipeServerStream(PipeName, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
                 await server.WaitForConnectionAsync(token);
 
                 _ = Task.Run(() => HandleClientAsync(server, token));
@@ -65,21 +70,9 @@ public class PipeServer
                 var line = await reader.ReadLineAsync();
                 if (line == null) break;
 
-                try
-                {
-                    var msg = JsonSerializer.Deserialize<IpcMessage>(line);
-                    if (msg != null)
-                    {
-                        // Handle message based on CommandType
-                        // Send response
-                        var response = new IpcMessage { Type = MessageType.Pong, Payload = "{}" };
-                        await writer.WriteLineAsync(JsonSerializer.Serialize(response));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to process message from client");
-                }
+                // One reply line per request line; the dispatcher turns failures into an error reply.
+                var response = _dispatcher.HandleLine(line);
+                await writer.WriteLineAsync(response);
             }
         }
         catch (Exception ex)

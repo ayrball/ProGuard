@@ -26,6 +26,10 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
     private ManagementEventWatcher? _stopWatcher;
     private Timer? _refreshTimer;
     private readonly CpuUsageTracker _cpuTracker = new();
+    private TimeSpan _pollingInterval = TimeSpan.FromSeconds(1);
+
+    internal static readonly TimeSpan MinPollingInterval = TimeSpan.FromMilliseconds(250);
+    internal static readonly TimeSpan MaxPollingInterval = TimeSpan.FromSeconds(60);
     
     public event EventHandler<ProcessInfo>? ProcessStarted;
     public event EventHandler<int>? ProcessExited;
@@ -57,7 +61,7 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
         }
 
         RefreshProcesses();
-        _refreshTimer = new Timer(_ => SafeRefresh(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        _refreshTimer = new Timer(_ => SafeRefresh(), null, _pollingInterval, _pollingInterval);
         
         return Task.CompletedTask;
     }
@@ -214,6 +218,22 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
         if (hwnd == IntPtr.Zero) return 0;
         User32.GetWindowThreadProcessId(hwnd, out var pid);
         return (int)pid;
+    }
+
+    /// <inheritdoc/>
+    public TimeSpan PollingInterval => _pollingInterval;
+
+    /// <inheritdoc/>
+    public void SetPollingInterval(TimeSpan interval)
+    {
+        // Clamped: a tiny interval would pin a core enumerating processes, a huge one makes the list useless.
+        if (interval < MinPollingInterval) interval = MinPollingInterval;
+        if (interval > MaxPollingInterval) interval = MaxPollingInterval;
+        if (interval == _pollingInterval) return;
+
+        _pollingInterval = interval;
+        _refreshTimer?.Change(interval, interval);
+        _logger.LogInformation("Process polling interval set to {Interval}ms", interval.TotalMilliseconds);
     }
 
     public void Dispose()

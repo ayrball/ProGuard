@@ -51,7 +51,13 @@ public class Program
                 services.AddSingleton<ProcessOrchestrator>();
                 services.AddSingleton<IProcessOrchestrator>(sp => sp.GetRequiredService<ProcessOrchestrator>());
                 
+                services.AddSingleton<ProcessController>();
+                services.AddSingleton<IProcessController>(sp => sp.GetRequiredService<ProcessController>());
+
+                services.AddSingleton<SettingsApplier>();
+
                 services.AddSingleton<ForegroundBoostService>();
+                services.AddSingleton<IpcDispatcher>();
                 services.AddSingleton<PipeServer>();
                 
                 services.AddHostedService<EngineWorker>();

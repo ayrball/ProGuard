@@ -40,6 +40,16 @@ public sealed partial class ProcessRow : ObservableObject
     [ObservableProperty] private string limitText = string.Empty;
     [ObservableProperty] private int parentPid;
     [ObservableProperty] private string startedText = "—";
+    [ObservableProperty] private bool isAffinityLimited;
+    [ObservableProperty] private int? ioPriority;
+    [ObservableProperty] private string ioPriorityText = "—";
+    [ObservableProperty] private int? memoryPriority;
+    [ObservableProperty] private string memoryPriorityText = "—";
+    [ObservableProperty] private string userText = "—";
+    [ObservableProperty] private int sessionId;
+    [ObservableProperty] private long privateBytes;
+    [ObservableProperty] private string privateText = "—";
+    [ObservableProperty] private int threadCount;
 
     public ProcessRow(int pid, string name)
     {
@@ -84,6 +94,26 @@ public sealed partial class ProcessRow : ObservableObject
             CpuLimitPercent = s.CpuLimitPercent;
             LimitText = s.CpuLimitPercent is double l ? $"LIM {l:0.#}%" : string.Empty;
         }
+        if (IsAffinityLimited != s.IsAffinityLimited) IsAffinityLimited = s.IsAffinityLimited;
+        if (IoPriority != s.IoPriority)
+        {
+            IoPriority = s.IoPriority;
+            IoPriorityText = Fmt.IoPriority(s.IoPriority);
+        }
+        if (MemoryPriority != s.MemoryPriority)
+        {
+            MemoryPriority = s.MemoryPriority;
+            MemoryPriorityText = Fmt.MemoryPriority(s.MemoryPriority);
+        }
+        var user = string.IsNullOrEmpty(s.UserName) ? "—" : s.UserName;
+        if (UserText != user) UserText = user;
+        if (SessionId != s.SessionId) SessionId = s.SessionId;
+        if (PrivateBytes != s.PrivateBytes)
+        {
+            PrivateBytes = s.PrivateBytes;
+            PrivateText = Fmt.Bytes(s.PrivateBytes);
+        }
+        if (ThreadCount != s.ThreadCount) ThreadCount = s.ThreadCount;
         if (ParentPid != s.ParentPid) ParentPid = s.ParentPid;
         if (StartedText == "—" && s.StartTimeUtc != DateTime.MinValue) StartedText = s.StartTimeUtc.ToLocalTime().ToString("MMM d · HH:mm");
     }
@@ -102,6 +132,7 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
     private readonly Dictionary<int, ProcessRow> _byPid = new();
     private int _logical = Environment.ProcessorCount;
 
+
     public ObservableCollection<ProcessRow> Rows { get; } = new();
 
     [ObservableProperty] private ProcessRow? selected;
@@ -112,6 +143,7 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
     [ObservableProperty] private int totalCount;
     [ObservableProperty] private string totalCpuText = "0";
     [ObservableProperty] private double cpuScale = 100;
+    [ObservableProperty] private bool isAdministrator = true;
 
     public ProcessesViewModel(EngineHub hub, IconCache icons, ShellViewModel shell)
     {
@@ -143,6 +175,7 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
     internal void Apply(EngineSnapshot snapshot)
     {
         _logical = Math.Max(1, snapshot.LogicalProcessors);
+        IsAdministrator = snapshot.CallerIsAdministrator;
         // A full bar means eight logical processors flat out: per-process load is a small share of a big machine.
         CpuScale = Math.Min(100, 100.0 / _logical * 8);
 
@@ -260,6 +293,27 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
             return Task.CompletedTask;
         }
         return Run();
+    }
+
+    /// <summary>I/O priority hint 0-3 (very low .. high). High needs administrator rights; the engine would refuse it otherwise.</summary>
+    [RelayCommand]
+    private Task SetIoPriorityAsync(string level)
+    {
+        if (Selected is not { } row || !int.TryParse(level, out var hint) || hint is < 0 or > 3) return Task.CompletedTask;
+        if (hint == 3 && !IsAdministrator)
+        {
+            _shell.Toaster.Show("I/O priority High needs administrator rights. Restart ProGuard as administrator to use it.", isError: true);
+            return Task.CompletedTask;
+        }
+        return _hub.RunAsync(CommandTypes.SetIoPriority, row.Pid, hint, $"{row.Name} · I/O {Fmt.IoPriority(hint)}");
+    }
+
+    /// <summary>Memory (page) priority 1-5, very low .. normal.</summary>
+    [RelayCommand]
+    private Task SetMemoryPriorityAsync(string level)
+    {
+        if (Selected is not { } row || !int.TryParse(level, out var value) || value is < 1 or > 5) return Task.CompletedTask;
+        return _hub.RunAsync(CommandTypes.SetMemoryPriority, row.Pid, value, $"{row.Name} · MEMORY {Fmt.MemoryPriority(value)}");
     }
 
     [RelayCommand]

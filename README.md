@@ -33,3 +33,9 @@ Two tests skip unless the test host is elevated or runs as LocalSystem. To insta
 Every pull request and push to `main` builds in Release, runs the tests on `windows-latest`, and uploads the UI preview
 PNGs as the `ui-preview` artifact. Test results (TRX, plus dumps if a test hangs for 5 minutes) are uploaded as
 `test-results` when the tests fail.
+
+## License
+
+Licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE). You are free to use, modify and share this for personal, hobby, educational, research and other noncommercial purposes.
+
+**Commercial use** (selling it, building a paid product or service on it, or using it in a business) needs a separate license from the author. Commercial licenses are available: get in touch via [github.com/ayrball](https://github.com/ayrball) to discuss terms.

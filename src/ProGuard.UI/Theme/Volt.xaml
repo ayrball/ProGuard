@@ -257,6 +257,8 @@
 
     <!-- A wrapping row of chips bound to a list of choices (SelectedItem = the choice). -->
     <Style x:Key="Choice" TargetType="ListBoxItem">
+        <!-- Screen readers (and UI Automation) would otherwise read the record's ToString. -->
+        <Setter Property="AutomationProperties.Name" Value="{Binding Label}"/>
         <Setter Property="Foreground" Value="{StaticResource VoltBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="{StaticResource VoltLineBrush}"/>
@@ -311,6 +313,7 @@
 
     <!-- The navigation rail: a list whose selected item is the current page. -->
     <Style x:Key="Rail.Item" TargetType="ListBoxItem">
+        <Setter Property="AutomationProperties.Name" Value="{Binding Title}"/>
         <Setter Property="Foreground" Value="{StaticResource VoltBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Cursor" Value="Hand"/>

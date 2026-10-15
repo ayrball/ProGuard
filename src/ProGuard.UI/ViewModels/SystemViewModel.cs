@@ -701,7 +701,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
         _shell.Confirm("TRIM EVERY PROCESS?", "Pushes every process's idle memory out to the page file. RAM frees up at once, but apps may feel sluggish for a moment as they page back in.", "TRIM ALL",
             async () =>
             {
-                var freed = await _hub.QueryAsync<long>(CommandTypes.TrimWorkingSet);
+                if (await _hub.QueryAsync<long?>(CommandTypes.TrimWorkingSet) is not { } freed) return;
                 _shell.Toaster.Show($"FREED {Fmt.Bytes(freed)}");
                 _hub.RefreshNow();
             });

@@ -92,7 +92,7 @@
             <StackPanel Margin="0,0,34,16" MinWidth="130">
                 <TextBlock Text="{Binding Label}" Style="{StaticResource Text.Label}" Margin="0,0,0,2"/>
                 <StackPanel Orientation="Horizontal">
-                    <TextBox Style="{StaticResource NumberBox}" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBox Style="{StaticResource NumberBox}" AutomationProperties.Name="{Binding Label}" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"/>
                     <TextBlock Text="{Binding Unit}" Style="{StaticResource Text.Label}" FontWeight="Bold" Margin="8,0,0,8" VerticalAlignment="Bottom"/>
                 </StackPanel>
                 <TextBlock Text="{Binding Range}" FontFamily="{StaticResource Mono}" FontSize="10" Margin="0,4,0,0">
@@ -114,14 +114,14 @@
         <DataTemplate DataType="{x:Type vm:ListField}">
             <StackPanel Margin="0,0,0,16">
                 <TextBlock Text="{Binding Label}" Style="{StaticResource Text.Label}" Margin="0,0,0,6"/>
-                <TextBox Style="{StaticResource ListEditor}" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox Style="{StaticResource ListEditor}" AutomationProperties.Name="{Binding Label}" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"/>
             </StackPanel>
         </DataTemplate>
 
         <DataTemplate DataType="{x:Type vm:PlanPicker}">
             <StackPanel Margin="0,0,0,12">
                 <TextBlock Text="{Binding Label}" Style="{StaticResource Text.Label}" Margin="0,0,0,8"/>
-                <ItemsControl ItemsSource="{Binding Options}" Focusable="False">
+                <ItemsControl ItemsSource="{Binding Options}" Focusable="False" AutomationProperties.Name="{Binding Label}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
@@ -176,7 +176,8 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Button Command="{Binding DataContext.SetSensitivityCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                            CommandParameter="{Binding Level}" Height="44" Margin="0,0,4,0" ToolTip="{Binding Level}">
+                                            CommandParameter="{Binding Level}" Height="44" Margin="0,0,4,0" ToolTip="{Binding Level}"
+                                            AutomationProperties.Name="{Binding Level, StringFormat='SENSITIVITY {0}'}">
                                         <Button.Style>
                                             <Style TargetType="Button" BasedOn="{StaticResource Btn.Base}">
                                                 <Setter Property="Background" Value="Transparent"/>
@@ -345,7 +346,7 @@
                     <DockPanel>
                         <Border DockPanel.Dock="Right" Style="{StaticResource Tag}" VerticalAlignment="Center"
                                 Visibility="{Binding PerformanceModeAutomatic, Converter={StaticResource VisibleWhen}}">
-                            <TextBlock Text="ON AUTOMATICALLY — A GAME IS RUNNING" Style="{StaticResource Tag.Text}"/>
+                            <TextBlock Text="ON AUTOMATICALLY — A LISTED PROGRAM OR A GAME IS RUNNING" Style="{StaticResource Tag.Text}"/>
                         </Border>
                         <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding PerformanceMode}" HorizontalAlignment="Left">
                             <TextBlock Text="PERFORMANCE MODE" FontWeight="Bold" FontSize="15"/>
@@ -419,14 +420,15 @@
                         <TextBlock DockPanel.Dock="Right" Text="{Binding PlanOwnerText}" FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.7" VerticalAlignment="Center"/>
                         <TextBlock Text="INSTALLED PLANS" Style="{StaticResource Text.Label}"/>
                     </DockPanel>
-                    <ItemsControl ItemsSource="{Binding Plans}" Focusable="False">
+                    <ItemsControl ItemsSource="{Binding Plans}" Focusable="False" AutomationProperties.Name="INSTALLED PLANS">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Button Command="{Binding DataContext.ActivatePlanCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                        CommandParameter="{Binding}" Margin="0,0,8,8" MinWidth="170" Padding="16,14" HorizontalContentAlignment="Left">
+                                        CommandParameter="{Binding}" Margin="0,0,8,8" MinWidth="170" Padding="16,14" HorizontalContentAlignment="Left"
+                                        AutomationProperties.Name="{Binding Name}">
                                     <Button.Style>
                                         <Style TargetType="Button" BasedOn="{StaticResource Btn.Outline}">
                                             <Setter Property="BorderBrush" Value="{StaticResource VoltLineBrush}"/>
@@ -552,7 +554,7 @@
                     <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding StartWithWindows}">
                         <TextBlock Text="START WITH WINDOWS" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>
-                    <TextBlock Style="{StaticResource Note}" Text="Opens this window when you sign in. The engine runs on its own either way."/>
+                    <TextBlock Style="{StaticResource Note}" Text="Starts ProGuard in the tray when you sign in. The engine runs on its own either way."/>
                     <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding MinimizeToTray}" Margin="0,22,0,0">
                         <TextBlock Text="KEEP RUNNING IN THE TRAY" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>

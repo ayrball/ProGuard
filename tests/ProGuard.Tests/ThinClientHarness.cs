@@ -77,6 +77,7 @@ internal sealed class ThinHarness
     public FakeProcessTuning Tuning { get; } = new();
     public FakeDetails Details { get; } = new();
     public ActivityLog Manual { get; } = new();
+    public ListLogger<IpcDispatcher> Log { get; } = new();
     public WatchdogEventLog WatchdogEvents { get; } = new();
     public FakeLaunchRegistry LaunchRegistry { get; } = new();
     public FakeTimerNative Timer { get; } = new();
@@ -148,7 +149,7 @@ internal sealed class ThinHarness
         var feed = new ActivityFeed(Store.Object, Manual, WatchdogEvents);
         var thin = new ThinClientCommands(NullLogger<ThinClientCommands>.Instance, Snapshots, actions, rules, feed, Manual,
             Store.Object, Power.Object, Monitor, Tuning);
-        Dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, Store.Object, applier, ProBalance.Object, Power.Object,
+        Dispatcher = new IpcDispatcher(Log, Store.Object, applier, ProBalance.Object, Power.Object,
             SmartTrim.Object, CpuLimiter.Object, Controller.Object, Monitor, WatchdogEvents, thin, timerResolution: TimerResolution);
     }
 

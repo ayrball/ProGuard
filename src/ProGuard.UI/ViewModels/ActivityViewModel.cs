@@ -95,7 +95,7 @@ public sealed partial class ActivityViewModel : ObservableObject, IPage
     {
         if (_shell == null) return;
         _shell.Confirm("CLEAR THE LOG?",
-            "Deletes the recorded ProBalance and power-plan actions from the engine. This can't be undone.", "CLEAR LOG",
+            "Empties the activity log for everyone: ProBalance and power-plan actions, Watchdog events and what users changed. This can't be undone.", "CLEAR LOG",
             async () =>
             {
                 if (await _hub.RunAsync(ClearActionLog, success: "ACTIVITY LOG CLEARED"))

@@ -233,9 +233,11 @@ public class LaunchPriorityTests
         Assert.Equal(new[] { "game2.exe" }, h.LaunchRegistry.Entries.Keys.ToArray());
     }
 
+    // No rule may name a pattern or a path (rules match file names only), so those are refused before the launch-time
+    // check gets to them.
     [Theory]
-    [InlineData("game*.exe", ProcessPriorityClass.High, "plain program name")]
-    [InlineData(@"C:\Games\game.exe", ProcessPriorityClass.High, "plain program name")]
+    [InlineData("game*.exe", ProcessPriorityClass.High, "would never match anything")]
+    [InlineData(@"C:\Games\game.exe", ProcessPriorityClass.High, "would never match anything")]
     [InlineData("game.exe", ProcessPriorityClass.RealTime, "Realtime")]
     [InlineData("game.exe", null, "need a priority")]
     public void RulesThatCantBeWritten_AreRefused(string name, ProcessPriorityClass? priority, string message)

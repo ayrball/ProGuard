@@ -15,7 +15,7 @@
                     <TextBlock Text="ADMIN" Style="{StaticResource Tag.Text}"/>
                 </Border>
                 <Button Style="{StaticResource Btn.Outline}" Content="CLEAR LOG" Command="{Binding ClearLogCommand}" IsEnabled="{Binding IsAdministrator}"
-                        ToolTip="Deletes the recorded ProBalance and power-plan actions (administrators only)"/>
+                        ToolTip="Empties the activity log for everyone (administrators only)"/>
             </StackPanel>
             <StackPanel>
                 <TextBlock Text="ACTIVITY" Style="{StaticResource Text.Title}"/>

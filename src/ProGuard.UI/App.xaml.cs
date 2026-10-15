@@ -12,6 +12,7 @@ public partial class App : Application
     private EngineHub? _hub;
     private TrayIconService? _tray;
     private WatchdogNotificationFeed? _watchdogFeed;
+    private SingleInstance? _instance;
 
     // The engine runs as a service in session 0 and can't see this desktop: ProBalance's foreground exemption,
     // Foreground Boost and IdleSaver all depend on this UI reporting the foreground process and idle time.
@@ -20,6 +21,18 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Started at sign-in (see RunKeyStartup): go straight to the tray rather than opening a window.
+        bool trayStart = e.Args.Contains(RunKeyStartup.TrayArgument, StringComparer.OrdinalIgnoreCase);
+
+        // A copy already runs in this session: it shows its window (unless this is the sign-in start) and this one leaves.
+        if (!SingleInstance.TryClaim(() => Dispatcher.BeginInvoke(() => (MainWindow as MainWindow)?.BringToFront()), out _instance, askToShow: !trayStart,
+            name: SingleInstance.NameFor(IsElevated())))
+        {
+            Shutdown();
+            return;
+        }
+
         DispatcherUnhandledException += OnUnhandledException;
         SessionEnding += (_, _) => { if (MainWindow is MainWindow w) w.IsQuitting = true; };
 
@@ -45,12 +58,17 @@ public partial class App : Application
             LogError(ex);
         }
 
-        // Started at sign-in (see RunKeyStartup): go straight to the tray rather than opening a window.
-        bool toTray = window.HasTray && e.Args.Contains(RunKeyStartup.TrayArgument, StringComparer.OrdinalIgnoreCase);
+        bool toTray = window.HasTray && trayStart;
         if (!toTray) window.Show();
 
         _hub.Start();
         _foregroundReporter.StartAsync(CancellationToken.None);
+    }
+
+    private static bool IsElevated()
+    {
+        using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+        return new System.Security.Principal.WindowsPrincipal(identity).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
     }
 
     private void Quit()
@@ -61,6 +79,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _instance?.Dispose();
         _watchdogFeed?.Dispose();
         _tray?.Dispose();
         _foregroundReporter.Dispose();

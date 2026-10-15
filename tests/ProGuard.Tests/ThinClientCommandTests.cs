@@ -318,6 +318,39 @@ public class ThinClientCommandTests
         Assert.Equal(30, stored.StartupBoostSeconds);
     }
 
+    // Rules are looked up by file name only. A standard user saved these from the editor (which said "pattern or full
+    // path"); they were stored, listed, and never matched anything.
+    [Theory]
+    [InlineData(@"C:\Windows\System32\*", "not a folder or path")]
+    [InlineData(@"C:\Games\game.exe", "not a folder or path")]
+    [InlineData("svc*.exe", "wildcards aren't supported")]
+    [InlineData("game?.exe", "wildcards aren't supported")]
+    public void SaveProcessRule_RefusesNamesThatCouldNeverMatch(string name, string reason)
+    {
+        var h = new ThinHarness();
+
+        var result = h.SendAsAdmin(CommandTypes.SaveProcessRule, null, Rule(name));
+
+        Assert.False(result.Success);
+        Assert.Contains(reason, result.Error);
+        Assert.Empty(h.Rules);
+    }
+
+    [Theory]
+    [InlineData(@"C:\Tools\app.exe")]
+    [InlineData("app*")]
+    public void SaveWatchdogRule_RefusesNamesThatCouldNeverMatch(string name)
+    {
+        var h = new ThinHarness();
+        var dto = Watch();
+        dto.TargetProcessName = name;
+
+        var result = h.SendAsAdmin(CommandTypes.SaveWatchdogRule, null, dto);
+
+        Assert.False(result.Success);
+        Assert.Contains("would never match anything", result.Error);
+    }
+
     [Fact]
     public void SaveProcessRule_UpdatesInPlaceAndKeepsTheId()
     {
@@ -837,6 +870,17 @@ public class ThinClientCommandTests
     }
 
     [Fact]
+    public void PolledQueries_AreLoggedAtDebug_AndChangesAtInformation()
+    {
+        var h = new ThinHarness();
+        h.SendAsAdmin(CommandTypes.GetSnapshot);
+        h.SendAsAdmin(CommandTypes.ClearActionLog);
+
+        Assert.Equal(Microsoft.Extensions.Logging.LogLevel.Debug, Assert.Single(h.Log.Entries, e => e.Message.Contains("IPC command GetSnapshot")).Level);
+        Assert.Equal(Microsoft.Extensions.Logging.LogLevel.Information, Assert.Single(h.Log.Entries, e => e.Message.Contains("IPC command ClearActionLog")).Level);
+    }
+
+    [Fact]
     public void ClearActionLog_DeletesTheLoggedActions()
     {
         var h = new ThinHarness();
@@ -846,6 +890,25 @@ public class ThinClientCommandTests
 
         h.Store.Verify(s => s.ClearProBalanceActions(), Times.Once);
         Assert.Empty(h.Actions);
+    }
+
+    // Seen on the installed engine: after Clear log the Activity page still listed the rule edits and process actions
+    // from before, which live in the in-memory logs the action log doesn't hold.
+    [Fact]
+    public void ClearActionLog_EmptiesTheWholeActivityFeed_AndLaterEntriesStillShow()
+    {
+        var h = new ThinHarness();
+        h.Actions.Add(new ProBalanceAction { Timestamp = DateTime.UtcNow.AddSeconds(-5), ProcessName = "x", Reason = "r" });
+        h.Manual.Add(ActivityKind.Manual, "game.exe", 0, "Added a rule for game.exe.");
+        h.WatchdogEvents.Add(WatchdogEventKinds.Fired, "Watchdog: app.exe", "fired");
+        Assert.Equal(3, h.Data<List<ActivityEntry>>(h.SendAsAdmin(CommandTypes.GetActivity)).Count);
+
+        Assert.True(h.SendAsAdmin(CommandTypes.ClearActionLog).Success);
+        Assert.Empty(h.Data<List<ActivityEntry>>(h.SendAsAdmin(CommandTypes.GetActivity)));
+
+        Thread.Sleep(20); // a later entry gets a later timestamp
+        h.Manual.Add(ActivityKind.Manual, "game.exe", 0, "Deleted the rule for game.exe.");
+        Assert.Equal("Deleted the rule for game.exe.", Assert.Single(h.Data<List<ActivityEntry>>(h.SendAsAdmin(CommandTypes.GetActivity))).Message);
     }
 
     // ---------- CPU Sets ----------

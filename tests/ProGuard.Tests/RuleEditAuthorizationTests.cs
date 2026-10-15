@@ -109,6 +109,51 @@ public class RuleEditAuthorizationTests
         Assert.True(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("victim.exe", r => r.DisallowExecution = true)).Success);
     }
 
+    // Seen on an installed engine: a standard user could save a rule for spoolsv.exe (or svchost.exe) at Idle priority,
+    // which the engine applies as SYSTEM, and could delete an administrator's rule for it.
+    [Fact]
+    public void EveryRule_NeedsTheRightToChangeEveryRunningInstance()
+    {
+        var h = new ThinHarness();
+        h.Process(60, "spoolsv");
+        var caller = new ThinCaller();
+
+        AssertDenied(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("spoolsv.exe", r => r.PriorityClass = (int)ProcessPriorityClass.Idle)), "pid 60");
+        AssertDenied(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("spoolsv.exe", r => r.AffinityMask = 1)), "pid 60");
+        AssertDenied(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("spoolsv.exe", r => r.IoPriority = 0)), "pid 60");
+        AssertDenied(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("spoolsv.exe", r => r.CpuLimitPercent = 1)), "pid 60");
+        foreach (var action in new[] { WatchdogResponse.SetPriority, WatchdogResponse.SetAffinity, WatchdogResponse.SetIoPriority, WatchdogResponse.TrimWorkingSet })
+            AssertDenied(h.Send(caller, CommandTypes.SaveWatchdogRule, null, Watch("spoolsv.exe", action, action == WatchdogResponse.SetAffinity ? "0x1" : null)), "pid 60");
+        Assert.Empty(h.Rules);
+        Assert.Empty(h.WatchdogRules);
+
+        // Watching it only to log or be told is fine: nothing is done to it.
+        Assert.True(h.Send(caller, CommandTypes.SaveWatchdogRule, null, Watch("spoolsv.exe", WatchdogResponse.Notify)).Success);
+
+        // An administrator's harmless-looking rule for it stays out of reach too.
+        var adminRule = h.Data<ProcessRuleDto>(h.Send(Admin, CommandTypes.SaveProcessRule, null, Rule("spoolsv.exe", r => r.PriorityClass = (int)ProcessPriorityClass.Normal)));
+        AssertDenied(h.Send(caller, CommandTypes.DeleteProcessRule, null, adminRule.Id), "pid 60");
+
+        // Their own instance: fine.
+        caller.OpenablePids.Add(60);
+        Assert.True(h.Send(caller, CommandTypes.DeleteProcessRule, null, adminRule.Id).Success);
+        Assert.True(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("spoolsv.exe", r => r.PriorityClass = (int)ProcessPriorityClass.Idle)).Success);
+    }
+
+    [Fact]
+    public void ACpuCap_AlsoNeedsTheRightsToPutTheProcessInAJob()
+    {
+        var h = new ThinHarness();
+        h.Process(70, "game");
+        var caller = new ThinCaller();
+        caller.OpenablePids.Add(70);
+
+        Assert.True(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("game.exe", r => r.CpuLimitPercent = 20)).Success);
+
+        var check = Assert.Single(caller.Checks, c => c.Pid == 70);
+        Assert.Equal(ProcessAccessFlags.SetInformation | ProcessAccessFlags.SetQuota | ProcessAccessFlags.Terminate, check.Access);
+    }
+
     [Fact]
     public void StandardUser_MayNotCreateWatchdogLaunchActions()
     {

@@ -22,7 +22,9 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Button Style="{StaticResource Btn.Outline}" Content="{Binding StringFormat='{}{0}%'}" Margin="0,0,6,0" Padding="14,7"
+                    <!-- ContentStringFormat, not a StringFormat on the Content binding: WPF ignores that one for object-typed Content. -->
+                    <Button Style="{StaticResource Btn.Outline}" Content="{Binding}" ContentStringFormat="{}{0}%" Margin="0,0,6,0" Padding="14,7"
+                            AutomationProperties.Name="{Binding StringFormat='{}{0}%'}"
                             BorderBrush="{StaticResource VoltLineBrush}"
                             Command="{Binding DataContext.PresetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
                 </DataTemplate>

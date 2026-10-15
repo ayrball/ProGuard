@@ -126,7 +126,10 @@ public class IpcDispatcher
 
     private CommandResult ExecuteCommand(CommandMessage cmd, IIpcCaller caller)
     {
-        _logger.LogInformation("IPC command {Command} (pid {Pid}, arg {Argument}) from {Caller}", cmd.CommandType, cmd.TargetPid, cmd.Argument, caller.Name);
+        // Each open UI polls GetSnapshot every second (and other Get* commands now and then): at Information that was
+        // three quarters of the engine log on an installed system. Commands that change something stay at Information.
+        var logLevel = cmd.CommandType.StartsWith("Get", StringComparison.Ordinal) ? LogLevel.Debug : LogLevel.Information;
+        _logger.Log(logLevel, "IPC command {Command} (pid {Pid}, arg {Argument}) from {Caller}", cmd.CommandType, cmd.TargetPid, cmd.Argument, caller.Name);
 
         switch (cmd.CommandType)
         {
@@ -390,6 +393,7 @@ public class IpcDispatcher
     {
         var dto = ParseArgument<ProcessRuleDto>(payload);
         if (string.IsNullOrWhiteSpace(dto.ProcessName)) return CommandResult.Fail("A rule needs a process name");
+        if (ProcessExtensions.ProgramNameProblem(dto.ProcessName) is { } badName) return CommandResult.Fail(badName);
         if (dto.IoPriority is int io && !ProcessRuleOptions.IsValid(ProcessRuleOptions.IoPriorities, io)) return CommandResult.Fail("Invalid I/O priority");
         if (dto.MemoryPriority is int mem && !ProcessRuleOptions.IsValid(ProcessRuleOptions.MemoryPriorities, mem, ProcessRuleOptions.MinMemoryPriority)) return CommandResult.Fail("Invalid memory priority");
         if (dto.GpuPriority is int gpu && !ProcessRuleOptions.IsValid(ProcessRuleOptions.GpuPriorities, gpu)) return CommandResult.Fail("Invalid GPU priority");

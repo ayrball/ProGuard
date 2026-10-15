@@ -65,9 +65,9 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
                     <TextBlock Text="{Binding Clock}" FontFamily="{StaticResource Mono}" FontSize="13" Opacity="0.6" VerticalAlignment="Center" Margin="0,0,22,0"
                                Height="34" Padding="0,9,0,0"/>
-                    <Button Style="{StaticResource Btn.Chrome}" Content="&#xE921;" Click="OnMinimize" ToolTip="Minimise"/>
-                    <Button x:Name="MaxButton" Style="{StaticResource Btn.Chrome}" Content="&#xE922;" Click="OnMaximize" ToolTip="Maximise"/>
-                    <Button Style="{StaticResource Btn.Chrome}" Content="&#xE8BB;" Click="OnClose" ToolTip="Close"/>
+                    <Button Style="{StaticResource Btn.Chrome}" Content="&#xE921;" Click="OnMinimize" ToolTip="Minimise" AutomationProperties.Name="Minimise"/>
+                    <Button x:Name="MaxButton" Style="{StaticResource Btn.Chrome}" Content="&#xE922;" Click="OnMaximize" ToolTip="Maximise" AutomationProperties.Name="Maximise"/>
+                    <Button Style="{StaticResource Btn.Chrome}" Content="&#xE8BB;" Click="OnClose" ToolTip="Close" AutomationProperties.Name="Close"/>
                 </StackPanel>
             </Grid>
 
@@ -118,7 +118,7 @@
                             </StackPanel>
                         </Border>
 
-                        <ListBox Style="{StaticResource Rail}" ItemsSource="{Binding Pages}" SelectedItem="{Binding CurrentPage}" Margin="0,18,0,0"/>
+                        <ListBox Style="{StaticResource Rail}" AutomationProperties.AutomationId="Pages" ItemsSource="{Binding Pages}" SelectedItem="{Binding CurrentPage}" Margin="0,18,0,0"/>
                     </DockPanel>
                 </Border>
 
@@ -142,7 +142,7 @@
                     <!-- Toasts -->
                     <!-- Bottom left, over the lists: bottom right covered the editors' Save and Cancel buttons, top right
                          the pages' NEW buttons. -->
-                    <ItemsControl ItemsSource="{Binding Toaster.Items}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="28,0,0,22" Width="380">
+                    <ItemsControl AutomationProperties.AutomationId="Toasts" ItemsSource="{Binding Toaster.Items}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="28,0,0,22" Width="380">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Margin="0,8,0,0" Padding="16,12" BorderThickness="2" BorderBrush="{StaticResource VoltBrush}">

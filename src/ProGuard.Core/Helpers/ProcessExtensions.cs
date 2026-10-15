@@ -33,6 +33,21 @@ public static class ProcessExtensions
         return trimmed.ToLowerInvariant();
     }
 
+    /// <summary>
+    /// Rules are looked up by <see cref="NormalizeName"/> of the program's file name and nothing else, so a folder or
+    /// a wildcard in a rule's name never matches a process. Null when <paramref name="name"/> is a plain file name,
+    /// otherwise why it isn't, worded for the person who typed it.
+    /// </summary>
+    public static string? ProgramNameProblem(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null; // "needs a name" is reported separately
+        if (name.IndexOfAny(new[] { '\\', '/', ':' }) >= 0)
+            return $"Rules match a program's file name, like chrome.exe, not a folder or path: \"{name.Trim()}\" would never match anything.";
+        if (name.IndexOfAny(new[] { '*', '?' }) >= 0)
+            return $"Rules match one program's exact file name, like chrome.exe; wildcards aren't supported, so \"{name.Trim()}\" would never match anything.";
+        return null;
+    }
+
     public static string ToReadableSize(long bytes)
     {
         string[] sizes = { "B", "KB", "MB", "GB", "TB" };

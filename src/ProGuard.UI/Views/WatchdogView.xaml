@@ -15,7 +15,7 @@
         </Grid.RowDefinitions>
 
         <DockPanel Grid.ColumnSpan="2" Margin="0,0,0,24">
-            <Button DockPanel.Dock="Right" Style="{StaticResource Btn.Solid}" Content="+ NEW WATCH" Command="{Binding NewCommand}" VerticalAlignment="Bottom"/>
+            <Button DockPanel.Dock="Right" Style="{StaticResource Btn.Solid}" Content="+ NEW WATCH" AutomationProperties.AutomationId="NewWatch" Command="{Binding NewCommand}" VerticalAlignment="Bottom"/>
             <StackPanel>
                 <TextBlock Text="WATCHDOG" Style="{StaticResource Text.Title}"/>
                 <TextBlock Text="IF THIS HAPPENS, DO THAT — CHECKED EVERY FEW SECONDS" Style="{StaticResource Text.Label}" Margin="0,6,0,0"/>
@@ -39,10 +39,11 @@
                             </Border.Style>
                             <DockPanel>
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding Enabled}" Margin="0,0,18,0" ToolTip="Armed"/>
+                                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding Enabled}" Margin="0,0,18,0" ToolTip="Armed" AutomationProperties.Name="{Binding Name, StringFormat='ARMED {0}'}"/>
                                     <Button Style="{StaticResource Btn.Outline}" Content="EDIT" Margin="0,0,8,0" Padding="16,8"
+                                            AutomationProperties.Name="{Binding Name, StringFormat='EDIT {0}'}"
                                             Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
-                                    <Button Style="{StaticResource Btn.Ghost}" Content="&#xE74D;" FontFamily="{StaticResource Glyphs}" FontWeight="Normal" ToolTip="Delete"
+                                    <Button Style="{StaticResource Btn.Ghost}" Content="&#xE74D;" FontFamily="{StaticResource Glyphs}" FontWeight="Normal" ToolTip="Delete" AutomationProperties.Name="{Binding Name, StringFormat='DELETE {0}'}"
                                             Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
                                 </StackPanel>
                                 <WrapPanel VerticalAlignment="Center" ToolTip="{Binding Sentence}">
@@ -98,45 +99,45 @@
                     <TextBlock Text="{Binding RestrictionHint}" Style="{StaticResource Text.Label}" FontSize="10.5" Opacity="0.8" TextWrapping="Wrap"/>
                 </Border>
                 <UniformGrid DockPanel.Dock="Bottom" Columns="2" Margin="20,0,20,20">
-                    <Button Style="{StaticResource Btn.Ghost}" Content="CANCEL" Command="{Binding DataContext.CancelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
-                    <Button Style="{StaticResource Btn.Solid}" Content="SAVE WATCH" Command="{Binding DataContext.SaveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                    <Button Style="{StaticResource Btn.Ghost}" Content="CANCEL" AutomationProperties.AutomationId="CancelWatch" Command="{Binding DataContext.CancelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                    <Button Style="{StaticResource Btn.Solid}" Content="SAVE WATCH" AutomationProperties.AutomationId="SaveWatch" Command="{Binding DataContext.SaveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                 </UniformGrid>
                 <Border DockPanel.Dock="Bottom" Style="{StaticResource Ed.Hint}" BorderThickness="0,2,0,0" Margin="0,0,0,12">
-                    <TextBlock Text="{Binding Preview}" FontFamily="{StaticResource Mono}" FontSize="11" FontWeight="Bold" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding Preview}" AutomationProperties.AutomationId="WatchPreview" FontFamily="{StaticResource Mono}" FontSize="11" FontWeight="Bold" TextWrapping="Wrap"/>
                 </Border>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="20,18,20,18">
                         <TextBlock Text="WHEN" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4"/>
-                        <TextBox Style="{StaticResource Field}" Tag="e.g. chrome.exe" Text="{Binding ProcessName, UpdateSourceTrigger=PropertyChanged}" FontSize="20" FontWeight="Bold"/>
+                        <TextBox Style="{StaticResource Field}" AutomationProperties.Name="PROGRAM" Tag="e.g. chrome.exe" Text="{Binding ProcessName, UpdateSourceTrigger=PropertyChanged}" FontSize="20" FontWeight="Bold"/>
 
                         <TextBlock Text="IS" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4" Margin="0,16,0,6"/>
-                        <ListBox Style="{StaticResource Choices}" ItemsSource="{Binding Triggers}" SelectedItem="{Binding Trigger}"/>
+                        <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="CONDITION" ItemsSource="{Binding Triggers}" SelectedItem="{Binding Trigger}"/>
 
-                        <ListBox Style="{StaticResource Choices}" ItemsSource="{Binding Metrics}" SelectedItem="{Binding Metric}" Margin="0,2,0,0"
+                        <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="MEMORY MEASURE" ItemsSource="{Binding Metrics}" SelectedItem="{Binding Metric}" Margin="0,2,0,0"
                                  Visibility="{Binding IsMemory, Converter={StaticResource VisibleWhen}}"/>
 
                         <DockPanel Margin="0,6,0,0" Visibility="{Binding IsNumber, Converter={StaticResource VisibleWhen}}">
                             <TextBlock DockPanel.Dock="Right" Text="{Binding Unit}" Style="{StaticResource Text.H2}" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                            <TextBox Style="{StaticResource Field}" Text="{Binding Threshold, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Mono}"
+                            <TextBox Style="{StaticResource Field}" AutomationProperties.Name="THRESHOLD" Text="{Binding Threshold, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Mono}"
                                      FontSize="24" FontWeight="Bold"/>
                         </DockPanel>
-                        <ContentControl Content="{Binding RunTime}" Margin="0,6,0,0" Visibility="{Binding IsRunTime, Converter={StaticResource VisibleWhen}}"/>
+                        <ContentControl Content="{Binding RunTime}" AutomationProperties.Name="RUN TIME" Margin="0,6,0,0" Visibility="{Binding IsRunTime, Converter={StaticResource VisibleWhen}}"/>
 
                         <TextBlock Text="HOW LONG" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4" Margin="0,18,0,6"/>
-                        <ContentControl Content="{Binding Sustain}"/>
+                        <ContentControl Content="{Binding Sustain}" AutomationProperties.Name="HOW LONG"/>
                         <TextBlock Style="{StaticResource Ed.Note}" Text="It has to hold this long without a break before anything happens."/>
 
                         <TextBlock Text="THEN" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4" Margin="0,18,0,6"/>
-                        <ListBox Style="{StaticResource Choices.Gated}" ItemsSource="{Binding Responses}" SelectedItem="{Binding Response}"/>
+                        <ListBox Style="{StaticResource Choices.Gated}" AutomationProperties.Name="THEN" ItemsSource="{Binding Responses}" SelectedItem="{Binding Response}"/>
 
                         <StackPanel Visibility="{Binding IsPriorityAction, Converter={StaticResource VisibleWhen}}">
                             <TextBlock Text="TO PRIORITY" Style="{StaticResource Ed.Label}"/>
-                            <ListBox Style="{StaticResource Choices.Gated}" ItemsSource="{Binding PriorityChoices}" SelectedItem="{Binding PriorityArg}"/>
+                            <ListBox Style="{StaticResource Choices.Gated}" AutomationProperties.Name="TO PRIORITY" ItemsSource="{Binding PriorityChoices}" SelectedItem="{Binding PriorityArg}"/>
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding IsIoAction, Converter={StaticResource VisibleWhen}}">
                             <TextBlock Text="TO I/O PRIORITY" Style="{StaticResource Ed.Label}"/>
-                            <ListBox Style="{StaticResource Choices}" ItemsSource="{Binding IoChoices}" SelectedItem="{Binding IoArg}"/>
+                            <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="TO I/O PRIORITY" ItemsSource="{Binding IoChoices}" SelectedItem="{Binding IoArg}"/>
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding IsAffinityAction, Converter={StaticResource VisibleWhen}}">
@@ -146,27 +147,27 @@
 
                         <StackPanel Visibility="{Binding IsLaunch, Converter={StaticResource VisibleWhen}}">
                             <TextBlock Text="COMMAND LINE" Style="{StaticResource Ed.Label}"/>
-                            <TextBox Style="{StaticResource Field}" Tag="&quot;C:\Tools\app.exe&quot; -quiet" Text="{Binding CommandLine, UpdateSourceTrigger=PropertyChanged}"
+                            <TextBox Style="{StaticResource Field}" Tag="&quot;C:\Tools\app.exe&quot; -quiet" AutomationProperties.Name="COMMAND LINE" Text="{Binding CommandLine, UpdateSourceTrigger=PropertyChanged}"
                                      FontFamily="{StaticResource Mono}" FontSize="13"/>
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding IsNotify, Converter={StaticResource VisibleWhen}}">
                             <TextBlock Text="MESSAGE (OPTIONAL)" Style="{StaticResource Ed.Label}"/>
-                            <TextBox Style="{StaticResource Field}" Tag="shown in the notification" Text="{Binding Message, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBox Style="{StaticResource Field}" Tag="shown in the notification" AutomationProperties.Name="MESSAGE" Text="{Binding Message, UpdateSourceTrigger=PropertyChanged}"/>
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding IsTrim, Converter={StaticResource VisibleWhen}}">
                             <TextBlock Text="TRIM" Style="{StaticResource Ed.Label}"/>
-                            <ListBox Style="{StaticResource Choices}" ItemsSource="{Binding TrimChoices}" SelectedItem="{Binding Trim}"/>
+                            <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="TRIM" ItemsSource="{Binding TrimChoices}" SelectedItem="{Binding Trim}"/>
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding TakesRestore, Converter={StaticResource VisibleWhen}}">
                             <TextBlock Text="THEN PUT IT BACK AFTER" Style="{StaticResource Ed.Label}"/>
-                            <ContentControl Content="{Binding Restore}"/>
+                            <ContentControl Content="{Binding Restore}" AutomationProperties.Name="PUT IT BACK AFTER"/>
                         </StackPanel>
 
                         <TextBlock Text="DON'T REPEAT FOR" Style="{StaticResource Ed.Label}" Margin="0,22,0,6"/>
-                        <ContentControl Content="{Binding Cooldown}"/>
+                        <ContentControl Content="{Binding Cooldown}" AutomationProperties.Name="DON'T REPEAT FOR"/>
                         <TextBlock Style="{StaticResource Ed.Note}" Text="Per program. Once it has fired, it fires again only after this long or once the condition has cleared."/>
 
                         <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding Enabled}" Margin="0,18,0,0">

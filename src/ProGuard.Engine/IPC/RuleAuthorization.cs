@@ -16,9 +16,12 @@ namespace ProGuard.Engine.IPC;
 /// <item>No rules for session and security processes or ProGuard itself (<see cref="CriticalProcesses"/>).</item>
 /// <item>No Realtime priority, as a rule's priority, startup boost or Watchdog action
 /// (see <see cref="IpcAuthorization"/>).</item>
-/// <item>Rules that end processes (Disallow, an instance limit, Watchdog Terminate or Restart) only for a name whose
-/// running instances the caller could end themselves. Instances started later by other users are not checked: the
-/// rule names a program, and a standard user can already run that program and close it.</item>
+/// <item>Every other rule, and every Watchdog action that changes a process, only for a name whose running instances
+/// the caller could change themselves; rules that end processes (Disallow, an instance limit, Watchdog Terminate or
+/// Restart) also need the right to end them, and a CPU cap the right to put them in a job. Without this a standard
+/// user could have the engine lower the priority of, cap or trim a service (spoolsv.exe, svchost.exe) that Windows
+/// won't let them touch. Instances started later by other users are not checked: the rule names a program, and a
+/// standard user can already run that program and close it.</item>
 /// <item>No launch-time priorities (<see cref="ProcessRule.ApplyPrioritiesAtCreation"/>): they are written to
 /// Image File Execution Options under HKLM, a machine-wide setting only administrators may change, and apply to every
 /// user's copy of the program from the moment it is created.</item>
@@ -36,7 +39,12 @@ internal static class RuleAuthorization
         if (IsRealtime(rule.PriorityClass) || IsRealtime(rule.StartupBoostPriorityClass)) return "set Realtime priority";
         if (rule.ApplyPrioritiesAtCreation) return "apply priorities at launch: they are written to the machine-wide Image File Execution Options";
         if (rule.DisallowExecution || rule.MaxInstances != null) return CheckCanEnd(rule.ProcessName, caller, monitor);
-        return null;
+
+        // The engine applies the rest as SYSTEM: priority, affinity, I/O and memory priority, EcoQoS, CPU Sets and
+        // boosts need SetInformation, a hard cap puts the process in a job object (SetQuota and Terminate).
+        var access = ProcessAccessFlags.SetInformation;
+        if (rule.CpuLimitPercent != null) access |= ProcessAccessFlags.SetQuota | ProcessAccessFlags.Terminate;
+        return CheckCanChange(rule.ProcessName, caller, monitor, access);
     }
 
     /// <inheritdoc cref="CheckProcessRule"/>
@@ -54,20 +62,36 @@ internal static class RuleAuthorization
             case WatchdogAction.Terminate:
             case WatchdogAction.Restart:
                 return CheckCanEnd(rule.TargetProcessName, caller, monitor);
+            case WatchdogAction.SetPriority:
+            case WatchdogAction.SetAffinity:
+            case WatchdogAction.SetIoPriority:
+                return CheckCanChange(rule.TargetProcessName, caller, monitor, ProcessAccessFlags.SetInformation);
+            case WatchdogAction.TrimWorkingSet:
+                return CheckCanChange(rule.TargetProcessName, caller, monitor, ProcessAccessFlags.SetQuota);
             default:
-                return null;
+                return null; // LogAlert and Notify only report
         }
     }
 
     private static bool IsRealtime(int? priorityClass) => priorityClass == (int)System.Diagnostics.ProcessPriorityClass.RealTime;
 
-    private static string? CheckCanEnd(string processName, IIpcCaller caller, IProcessMonitor monitor)
+    private static string? CheckCanEnd(string processName, IIpcCaller caller, IProcessMonitor monitor) =>
+        FirstForbidden(processName, caller, monitor, ProcessAccessFlags.Terminate) is { } pid
+            ? $"add, change or delete a rule that ends {processName}: a running instance (pid {pid}) belongs to another user, is elevated or protected"
+            : null;
+
+    private static string? CheckCanChange(string processName, IIpcCaller caller, IProcessMonitor monitor, ProcessAccessFlags access) =>
+        FirstForbidden(processName, caller, monitor, access) is { } pid
+            ? $"add, change or delete a rule for {processName}: a running instance (pid {pid}) belongs to another user, is elevated or protected"
+            : null;
+
+    /// <summary>The first running instance of <paramref name="processName"/> the caller couldn't open with <paramref name="access"/>.</summary>
+    private static int? FirstForbidden(string processName, IIpcCaller caller, IProcessMonitor monitor, ProcessAccessFlags access)
     {
         var key = ProcessExtensions.NormalizeName(processName);
         foreach (var p in monitor.GetAllProcesses().Where(p => ProcessExtensions.NormalizeName(p.Name) == key))
         {
-            if (!caller.CanOpenProcess(p.Pid, ProcessAccessFlags.Terminate))
-                return $"add, change or delete a rule that ends {processName}: a running instance (pid {p.Pid}) belongs to another user, is elevated or protected";
+            if (!caller.CanOpenProcess(p.Pid, access)) return p.Pid;
         }
         return null;
     }

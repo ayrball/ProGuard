@@ -242,7 +242,7 @@ public sealed partial class WatchdogEditor : ObservableObject
 
     /// <summary>What the engine refuses a standard user. Shown as one line in the editor while <see cref="IsRestricted"/>.</summary>
     public const string LimitsHint =
-        "STANDARD RIGHTS. THE ENGINE REFUSES: SYSTEM PROGRAMS AND PROGUARD ITSELF, REALTIME PRIORITY, LAUNCH ACTIONS, ENDING OR RESTARTING PROGRAMS YOU COULDN'T END YOURSELF, AND CHANGING WATCHES YOU COULDN'T HAVE MADE.";
+        "STANDARD RIGHTS. THE ENGINE REFUSES: SYSTEM PROGRAMS AND PROGUARD ITSELF, REALTIME PRIORITY, LAUNCH ACTIONS, ACTING ON PROGRAMS YOU COULDN'T CHANGE OR END YOURSELF, AND CHANGING WATCHES YOU COULDN'T HAVE MADE.";
     public string RestrictionHint => LimitsHint;
 
     /// <summary>The rule as a sentence, updated as the editor changes.</summary>

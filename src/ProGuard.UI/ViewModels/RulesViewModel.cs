@@ -182,7 +182,7 @@ public sealed partial class RuleEditor : ObservableObject
 
     /// <summary>What the engine refuses a standard user. Shown as one line in the editor while <see cref="IsRestricted"/>.</summary>
     public const string LimitsHint =
-        "STANDARD RIGHTS. THE ENGINE REFUSES: SYSTEM PROGRAMS AND PROGUARD ITSELF, REALTIME PRIORITY, PRIORITIES AT LAUNCH, BLOCKING OR LIMITING PROGRAMS YOU COULDN'T END YOURSELF, AND CHANGING RULES YOU COULDN'T HAVE MADE.";
+        "STANDARD RIGHTS. THE ENGINE REFUSES: SYSTEM PROGRAMS AND PROGUARD ITSELF, REALTIME PRIORITY, PRIORITIES AT LAUNCH, RULES FOR PROGRAMS YOU COULDN'T CHANGE OR END YOURSELF, AND CHANGING RULES YOU COULDN'T HAVE MADE.";
     public string RestrictionHint => LimitsHint;
 
     // ---- collapsed-section summaries ----

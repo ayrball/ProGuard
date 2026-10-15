@@ -15,8 +15,10 @@ namespace ProGuard.Tests;
 
 /// <summary>
 /// The snapshot against this machine's real processes, with the real process monitor and Windows readers. It keeps the
-/// "cheap with hundreds of processes" requirement honest and prints the timings.
+/// "cheap with hundreds of processes" requirement honest and prints the timings. It runs alone (<see cref="RunsAlone"/>):
+/// on a 2-CPU CI runner, sharing the CPUs with the rest of the suite made steady-state builds take half a second.
 /// </summary>
+[Collection(RunsAlone.Name)]
 public class SnapshotPerformanceTests
 {
     private readonly ITestOutputHelper _output;

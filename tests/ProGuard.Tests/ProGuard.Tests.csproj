@@ -26,6 +26,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!--
+      maxParallelThreads is fixed rather than one per CPU: xUnit also runs every async test's continuations on those
+      threads, so on a 2-CPU CI runner two long synchronous tests (the CPU limiter ones sleep for seconds) held up every
+      pipe test for 10 s at a time, past their timeouts.
+    -->
+    <None Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 

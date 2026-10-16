@@ -23,12 +23,20 @@ public interface IUserIdleSource
 
 /// <summary>
 /// Knows the foreground process even when the engine runs as a service. A service lives in session 0, where
-/// <c>GetForegroundWindow</c> only sees session 0's own (empty) desktop, so each user's UI reports its desktop's
-/// foreground process over <see cref="IPC.ForegroundPipeServer"/>.
+/// <c>GetForegroundWindow</c> only sees session 0's own (empty) desktop, so each user session's agent (or, without
+/// one, its UI) reports its desktop's foreground process over <see cref="IPC.ForegroundPipeServer"/>.
 /// <para>
-/// A report lasts as long as the reporting connection. With several reporters (fast user switching, RDP), the one
-/// in the session attached to the physical console wins, then the most recent. With none, the engine falls back
-/// to asking Windows directly, which only works when it isn't running in session 0.
+/// A report lasts as long as the reporting connection. With several sessions reporting (fast user switching, RDP),
+/// one session's report is used, chosen in this order:
+/// <list type="number">
+/// <item>the session attached to the physical console;</item>
+/// <item>else the session whose user touched the keyboard or mouse most recently, by more than
+/// <see cref="IdleTolerance"/> (a remote desktop user while the console sits at the sign-in screen);</item>
+/// <item>else the one whose foreground changed last. Reporters repeat their report every few seconds; a repeat isn't a
+/// change, so two sessions don't take turns just because each keeps repeating itself.</item>
+/// </list>
+/// With no reporter, the engine falls back to asking Windows directly, which only works when it isn't running in
+/// session 0; otherwise <see cref="IsForegroundKnown"/> is false.
 /// </para>
 /// <para>
 /// The same reports carry the reporter's idle time (<c>GetLastInputInfo</c> is per session too, so a service can't
@@ -42,6 +50,13 @@ public sealed class ForegroundTracker : IForegroundTracker, IUserIdleSource
 {
     private const int UnknownSession = -1;
 
+    /// <summary>Three missed repeats (reporters repeat every 5 s): the reporter is hung, not just quiet.</summary>
+    public static readonly TimeSpan StaleAfter = TimeSpan.FromSeconds(15);
+
+    /// <summary>Idle times this close count as equal. A user at the keyboard reports at least every 5 s, and the engine
+    /// ages each report until the next, so two active users can look up to that far apart.</summary>
+    internal static readonly TimeSpan IdleTolerance = TimeSpan.FromSeconds(10);
+
     private readonly ILogger<ForegroundTracker> _logger;
     private readonly Func<int> _localForegroundPid;
     private readonly Func<int, int?> _sessionOfPid;
@@ -54,9 +69,10 @@ public sealed class ForegroundTracker : IForegroundTracker, IUserIdleSource
     private readonly Dictionary<long, Reported> _reports = new();
     private long _sequence;
 
+    /// <param name="ChangedSequence">Order of the last report that changed <paramref name="Pid"/> (repeats keep it).</param>
     /// <param name="Idle">Idle time the reporter saw, or null if it didn't say.</param>
     /// <param name="ReceivedAt">Engine clock when the report arrived, to age <paramref name="Idle"/>.</param>
-    private sealed record Reported(int SessionId, int Pid, long Sequence, TimeSpan? Idle, TimeSpan ReceivedAt);
+    private sealed record Reported(int SessionId, int Pid, long ChangedSequence, TimeSpan? Idle, TimeSpan ReceivedAt);
 
     public ForegroundTracker(ILogger<ForegroundTracker> logger)
         : this(logger, ReadLocalForegroundPid, SessionOf, ActiveConsoleSession, Process.GetCurrentProcess().SessionId != 0)
@@ -95,7 +111,13 @@ public sealed class ForegroundTracker : IForegroundTracker, IUserIdleSource
         }
 
         if (idle < TimeSpan.Zero) idle = null;
-        lock (_sync) _reports[connectionId] = new Reported(clientSessionId, pid, ++_sequence, idle, _clock());
+        lock (_sync)
+        {
+            var changed = _reports.TryGetValue(connectionId, out var previous) && previous.Pid == pid
+                ? previous.ChangedSequence
+                : ++_sequence;
+            _reports[connectionId] = new Reported(clientSessionId, pid, changed, idle, _clock());
+        }
         return true;
     }
 
@@ -112,15 +134,38 @@ public sealed class ForegroundTracker : IForegroundTracker, IUserIdleSource
             if (_reports.Count > 0)
             {
                 var console = _activeConsoleSession();
+                var now = _clock();
                 Reported? best = null;
                 foreach (var r in _reports.Values)
                 {
-                    if (best == null || Prefer(r, best, console)) best = r;
+                    if (best == null || Prefer(r, best, console, now)) best = r;
                 }
                 return best!.Pid;
             }
         }
         return _canSeeDesktop ? _localForegroundPid() : 0;
+    }
+
+    /// <summary>
+    /// False when nothing has told the engine what the foreground process is for a while: no reporter is connected
+    /// (or none has spoken for <see cref="StaleAfter"/>) and the engine can't see a desktop itself. A 0 from
+    /// <see cref="GetForegroundPid"/> then means "don't know", not "nothing has focus".
+    /// </summary>
+    public bool IsForegroundKnown
+    {
+        get
+        {
+            if (_canSeeDesktop) return true;
+            lock (_sync)
+            {
+                var now = _clock();
+                foreach (var r in _reports.Values)
+                {
+                    if (now - r.ReceivedAt < StaleAfter) return true;
+                }
+                return false;
+            }
+        }
     }
 
     public TimeSpan? GetIdleTime()
@@ -141,12 +186,19 @@ public sealed class ForegroundTracker : IForegroundTracker, IUserIdleSource
         return least;
     }
 
-    private static bool Prefer(Reported candidate, Reported current, int consoleSession)
+    private static bool Prefer(Reported candidate, Reported current, int consoleSession, TimeSpan now)
     {
         var candidateOnConsole = candidate.SessionId == consoleSession;
         var currentOnConsole = current.SessionId == consoleSession;
         if (candidateOnConsole != currentOnConsole) return candidateOnConsole;
-        return candidate.Sequence > current.Sequence;
+
+        if (candidate.SessionId != current.SessionId && candidate.Idle is { } a && current.Idle is { } b)
+        {
+            var candidateIdle = a + (now - candidate.ReceivedAt);
+            var currentIdle = b + (now - current.ReceivedAt);
+            if ((candidateIdle - currentIdle).Duration() > IdleTolerance) return candidateIdle < currentIdle;
+        }
+        return candidate.ChangedSequence > current.ChangedSequence;
     }
 
     private static int ReadLocalForegroundPid()

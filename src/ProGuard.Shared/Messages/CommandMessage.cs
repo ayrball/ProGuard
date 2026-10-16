@@ -114,6 +114,18 @@ public static class CommandTypes
     /// <summary>Argument = maximum number of entries (plain integer, default 200). Data = List&lt;<see cref="Contracts.ActivityEntry"/>&gt;, newest first.</summary>
     public const string GetActivity = "GetActivity";
 
+    /// <summary>
+    /// Argument = <see cref="Contracts.LogQuery"/> (optional). Data = <see cref="Contracts.LogPage"/>: the engine log and the
+    /// action log merged, filtered, newest first, with cursors for older pages and for a live tail. Only administrators get
+    /// the engine log; anyone else gets the action log alone (<see cref="Contracts.LogPage.EngineLogIncluded"/> is false).
+    /// </summary>
+    public const string GetLogEntries = "GetLogEntries";
+    /// <summary>
+    /// Argument = <see cref="Contracts.LogQuery"/> (optional; Before, After and Limit are ignored). Data =
+    /// <see cref="Contracts.LogExportDto"/>: every matching entry as CSV. Same sources rule as GetLogEntries.
+    /// </summary>
+    public const string ExportLogs = "ExportLogs";
+
     /// <summary>No args. Data = List&lt;<see cref="Contracts.CpuSetDto"/>&gt;.</summary>
     public const string GetCpuSets = "GetCpuSets";
 

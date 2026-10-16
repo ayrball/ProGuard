@@ -1,0 +1,111 @@
+name: Release
+
+# Push a tag to release: v1.2.0, or v1.2.0-beta.1 for a pre-release. Builds the MSI and the portable zip at that
+# version and attaches them to a GitHub Release with generated notes.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        id: dotnet
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Pin the .NET 8 SDK
+        run: dotnet new globaljson --sdk-version ${{ steps.dotnet.outputs.dotnet-version }} --force
+
+      - name: Read the version from the tag
+        id: version
+        shell: pwsh
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ($env:TAG -notmatch '^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
+            throw "Tag '$env:TAG' isn't v<major>.<minor>.<patch> with an optional -prerelease suffix."
+          }
+          "version=$($env:TAG.Substring(1))" >> $env:GITHUB_OUTPUT
+          "prerelease=$(if ($env:TAG.Contains('-')) { 'true' } else { 'false' })" >> $env:GITHUB_OUTPUT
+
+      # ----- SIGNING HOOK -----------------------------------------------------------------------------------------
+      # Off until the repository variable PROGUARD_SIGNING is set to pfx, trusted-signing or signpath. Add the
+      # matching secrets (and, for trusted-signing, variables) first; installer/sign.ps1 lists what each needs.
+      - name: Fetch the Trusted Signing dlib
+        if: ${{ vars.PROGUARD_SIGNING == 'trusted-signing' }}
+        shell: pwsh
+        run: |
+          nuget install Microsoft.Trusted.Signing.Client -ExcludeVersion -OutputDirectory "$env:RUNNER_TEMP\trusted-signing"
+          "PROGUARD_SIGN_TS_DLIB=$env:RUNNER_TEMP\trusted-signing\Microsoft.Trusted.Signing.Client\bin\x64\Azure.CodeSigning.Dlib.dll" >> $env:GITHUB_ENV
+
+      - name: Build the MSI and the portable zip
+        shell: pwsh
+        env:
+          PROGUARD_SIGNING: ${{ vars.PROGUARD_SIGNING }}
+          PROGUARD_SIGN_TIMESTAMP_URL: ${{ vars.PROGUARD_SIGN_TIMESTAMP_URL }}
+          # pfx
+          PROGUARD_SIGN_PFX_BASE64: ${{ secrets.PROGUARD_SIGN_PFX_BASE64 }}
+          PROGUARD_SIGN_PFX_PASSWORD: ${{ secrets.PROGUARD_SIGN_PFX_PASSWORD }}
+          # trusted-signing
+          PROGUARD_SIGN_TS_ENDPOINT: ${{ vars.PROGUARD_SIGN_TS_ENDPOINT }}
+          PROGUARD_SIGN_TS_ACCOUNT: ${{ vars.PROGUARD_SIGN_TS_ACCOUNT }}
+          PROGUARD_SIGN_TS_PROFILE: ${{ vars.PROGUARD_SIGN_TS_PROFILE }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          # signpath
+          PROGUARD_SIGN_SIGNPATH_TOKEN: ${{ secrets.PROGUARD_SIGN_SIGNPATH_TOKEN }}
+          PROGUARD_SIGN_SIGNPATH_ORGANIZATION: ${{ vars.PROGUARD_SIGN_SIGNPATH_ORGANIZATION }}
+          PROGUARD_SIGN_SIGNPATH_PROJECT: ${{ vars.PROGUARD_SIGN_SIGNPATH_PROJECT }}
+          PROGUARD_SIGN_SIGNPATH_POLICY: ${{ vars.PROGUARD_SIGN_SIGNPATH_POLICY }}
+          PROGUARD_SIGN_SIGNPATH_CONFIGURATION: ${{ vars.PROGUARD_SIGN_SIGNPATH_CONFIGURATION }}
+        run: ./installer/build.ps1 -Version ${{ steps.version.outputs.version }} -Portable
+
+      - name: Checksums
+        shell: pwsh
+        working-directory: artifacts/installer
+        run: |
+          Get-ChildItem *.msi, *.zip | ForEach-Object { "$((Get-FileHash $_ -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)" } |
+            Set-Content -Encoding ascii SHA256SUMS.txt
+          Get-Content SHA256SUMS.txt
+
+      # Kept even if creating the release fails, so the build isn't lost.
+      - name: Upload the build
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ steps.version.outputs.version }}
+          path: |
+            artifacts/installer/*.msi
+            artifacts/installer/*.zip
+            artifacts/installer/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: Create the GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          $files = @(Get-ChildItem artifacts/installer/*.msi, artifacts/installer/*.zip, artifacts/installer/SHA256SUMS.txt).FullName
+          $flags = @("--title", "ProGuard $env:VERSION", "--generate-notes", "--verify-tag")
+          if ($env:PRERELEASE -eq "true") { $flags += "--prerelease" }
+          gh release create $env:TAG @files @flags
+          if ($LASTEXITCODE -ne 0) { throw "gh release create failed ($LASTEXITCODE)." }

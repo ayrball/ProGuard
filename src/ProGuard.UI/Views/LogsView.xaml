@@ -62,6 +62,22 @@
                 </MultiDataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
+
+        <!-- The same level tag in the detail panel, which isn't inside a row, so it never inverts. -->
+        <DataTemplate x:Key="DetailLevelTag">
+            <Border x:Name="Tag" Style="{StaticResource Tag}" HorizontalAlignment="Left" MinWidth="36">
+                <TextBlock x:Name="Text" Text="{Binding Level}" Style="{StaticResource Tag.Text}" HorizontalAlignment="Center"/>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                    <Setter TargetName="Tag" Property="BorderThickness" Value="2.5"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsError}" Value="True">
+                    <Setter TargetName="Tag" Property="Background" Value="{StaticResource VoltBrush}"/>
+                    <Setter TargetName="Text" Property="Foreground" Value="{StaticResource InkBrush}"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
     </UserControl.Resources>
 
     <Grid>
@@ -262,7 +278,7 @@
                     <DockPanel DataContext="{Binding Selected}" Visibility="{Binding Converter={StaticResource VisibleWhen}}">
                         <StackPanel DockPanel.Dock="Top">
                             <DockPanel>
-                                <ContentPresenter DockPanel.Dock="Left" Content="{Binding}" ContentTemplate="{StaticResource LevelTag}" Margin="0,0,10,0"/>
+                                <ContentPresenter DockPanel.Dock="Left" Content="{Binding}" ContentTemplate="{StaticResource DetailLevelTag}" Margin="0,0,10,0"/>
                                 <TextBlock Text="{Binding LevelName}" FontWeight="Bold" FontStretch="Condensed" FontSize="22" VerticalAlignment="Center"/>
                             </DockPanel>
                             <TextBlock Text="{Binding FullTime}" FontFamily="{StaticResource Mono}" FontSize="12" Opacity="0.7" Margin="0,8,0,0"/>

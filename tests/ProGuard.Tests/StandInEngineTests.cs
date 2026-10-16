@@ -75,6 +75,8 @@ public class StandInEngineTests
         CommandTypes.SetPowerMode => (null, StandInData.BestPerformanceMode),
         CommandTypes.GetActivity => (null, 10),
         CommandTypes.SetTimerResolution => (null, new TimerResolutionArgument { Resolution = 10000 }),
+        CommandTypes.GetCpuTuning => (null, StandInData.HighPerformance),
+        CommandTypes.SetCpuTuning => (null, new CpuTuningArgument { PlanId = StandInData.Balanced, Values = { new CpuTuningValueDto { Key = "CPMINCORES", Ac = 100, Dc = 50 } } }),
         _ => (null, null)
     };
 
@@ -311,6 +313,30 @@ public class StandInEngineTests
         Assert.DoesNotContain(await rig.Client.QueryAsync<List<ProcessRuleDto>>(CommandTypes.GetProcessRules), r => r.ProcessName == "x.exe");
     }
 
+    [Fact]
+    public async Task CpuTuning_ChangesThePlan_AndTheParkingFollowsIt()
+    {
+        await using var rig = new Rig();
+        var before = await rig.Client.QueryAsync<CpuTuningDto>(CommandTypes.GetCpuTuning);
+        Assert.Equal(StandInData.Balanced, before.PlanId);
+        Assert.True(before.IsHybrid);
+        Assert.True(before.HasOriginals);
+        Assert.Contains(before.Settings, s => !s.Available);
+        Assert.Equal(CpuTuningCatalog.Settings.Count, before.Settings.Count);
+
+        var after = await rig.Client.QueryAsync<CpuTuningDto>(CommandTypes.SetCpuTuning,
+            argument: new CpuTuningArgument { PlanId = StandInData.Balanced, Preset = CpuTuningPresets.DisableParking });
+        Assert.All(after.Settings.Where(s => s.Key.StartsWith("CPMINCORES", StringComparison.Ordinal)), s => Assert.Equal(100u, s.Ac));
+        var s = await rig.Client.QueryAsync<EngineSnapshot>(CommandTypes.GetSnapshot);
+        Assert.Equal(s.LogicalProcessors, s.CoreParked.Count);
+        Assert.DoesNotContain(true, s.CoreParked);
+
+        var reverted = await rig.Client.QueryAsync<CpuTuningDto>(CommandTypes.SetCpuTuning,
+            argument: new CpuTuningArgument { PlanId = StandInData.Balanced, Preset = CpuTuningPresets.Revert });
+        Assert.False(reverted.HasOriginals);
+        Assert.Equal(10u, reverted.Settings.Single(x => x.Key == "CPMINCORES1").Ac);
+    }
+
     // ------------------------------------------------------------------ the standard user
 
     [Fact]
@@ -327,6 +353,7 @@ public class StandInEngineTests
     [Theory]
     [InlineData(CommandTypes.PurgeMemory)]
     [InlineData(CommandTypes.ClearActionLog)]
+    [InlineData(CommandTypes.SetCpuTuning)]
     public async Task StandardUser_IsDeniedWhatNeedsAdministrator(string command)
     {
         await using var rig = new Rig(administrator: false);

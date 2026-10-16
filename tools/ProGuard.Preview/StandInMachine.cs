@@ -33,6 +33,7 @@ public sealed class StandInMachine
     private readonly List<PowerPlanDto> _plans = StandInData.PowerPlans();
     private readonly List<CpuSetDto> _cpuSets = StandInData.CpuSets();
     private readonly List<ActivityEntry> _activity;
+    private readonly StandInCpuTuning _cpuTuning;
     private EngineSettingsDto _settings = StandInData.Settings();
 
     private Guid _activePlan = StandInData.Balanced;
@@ -52,6 +53,7 @@ public sealed class StandInMachine
         var now = DateTime.UtcNow;
         _processes = StandInData.Processes(now, showPaths: callerIsAdministrator);
         _activity = StandInData.Activity(now);
+        _cpuTuning = new StandInCpuTuning(_plans);
         MarkRuledProcesses();
     }
 
@@ -89,6 +91,13 @@ public sealed class StandInMachine
             case CommandTypes.GetPower: return Data(PowerState());
             case CommandTypes.GetCpuSets: return Data(_cpuSets);
             case CommandTypes.GetTimerResolution: return Data(TimerState());
+            case CommandTypes.GetCpuTuning:
+            {
+                var plan = string.IsNullOrWhiteSpace(cmd.Argument) ? _activePlan : Guid.TryParse(cmd.Argument, out var id) ? id : Guid.Empty;
+                if (plan == Guid.Empty) return CommandResult.Fail("Invalid power plan GUID");
+                if (_plans.All(p => p.Id != plan)) return CommandResult.Fail("That power plan isn't installed on this PC.");
+                return Data(_cpuTuning.Get(plan, _activePlan));
+            }
             case CommandTypes.GetActivity:
             {
                 int max = int.TryParse(cmd.Argument, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n > 0 ? n : 200;
@@ -300,6 +309,16 @@ public sealed class StandInMachine
                 Log(ActivityKind.System, null, "Settings saved.");
                 return Data(_readOnly ? _settings : settings);
             }
+            case CommandTypes.SetCpuTuning:
+            {
+                if (!_admin) return Deny(CommandTypes.Describe(CommandTypes.SetCpuTuning));
+                var arg = Argument<CpuTuningArgument>(cmd);
+                var plan = arg.PlanId == Guid.Empty ? _activePlan : arg.PlanId;
+                if (_plans.All(p => p.Id != plan)) return CommandResult.Fail("That power plan isn't installed on this PC.");
+                if (_cpuTuning.Set(arg, plan, apply: !_readOnly, out var summary) is { } refused) return CommandResult.Fail(refused);
+                Log(ActivityKind.Manual, null, summary);
+                return Data(_cpuTuning.Get(plan, _activePlan));
+            }
             case CommandTypes.SetPowerMode:
             {
                 if (!Guid.TryParse(cmd.Argument, out var mode) || StandInData.PowerModes().All(m => m.Id != mode)) return CommandResult.Fail("Invalid power mode");
@@ -424,6 +443,7 @@ public sealed class StandInMachine
             EngineUptime = DateTime.UtcNow - _engineStarted,
             CpuPercent = Math.Round(load, 1),
             CoreCpuPercent = cores,
+            CoreParked = _cpuTuning.Parked(_activePlan, load),
             ResponsivenessPercent = Math.Round(Math.Clamp(100 - Math.Max(0, load - 70) * 0.5 - 3 * Noise(_tick, 7), 40, 100), 1),
             MemoryPercent = memory,
             TotalMemoryBytes = StandInData.TotalMemoryBytes,

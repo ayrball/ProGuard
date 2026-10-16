@@ -65,4 +65,7 @@ if ($ours) {
 
 $ui = Start-Process -FilePath $uiPath -WorkingDirectory $uiDir -PassThru
 Write-Host "UI started (PID $($ui.Id))." -ForegroundColor Green
-Write-Host "Run this script from an elevated terminal to let ProGuard manage services and system processes." -ForegroundColor DarkGray
+$elevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $elevated) {
+    Write-Host "Run this script from an elevated terminal to let ProGuard manage services and system processes." -ForegroundColor DarkGray
+}

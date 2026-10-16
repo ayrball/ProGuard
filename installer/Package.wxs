@@ -72,21 +72,18 @@
     <ComponentGroup Id="ProgramFiles" Directory="INSTALLFOLDER">
       <Component Id="Engine">
         <File Id="EngineExe" Source="$(var.StagingDir)\ProGuard.Engine.exe" KeyPath="yes" />
-        <!-- Same service as src/ProGuard.Engine/Installer/install-service.ps1: LocalSystem, automatic start,
-             restart after a crash (5 s, 10 s, then every 60 s; the count resets after a day without one). -->
+        <!-- Same service as src/ProGuard.Engine/Installer/install-service.ps1: LocalSystem, automatic start. Its
+             recovery actions are set by ConfigureEngineRecovery below. -->
         <ServiceInstall Id="EngineService" Name="ProGuardEngine" DisplayName="ProGuard Engine"
                         Description="ProGuard Engine Service for process management." Type="ownProcess"
-                        Start="auto" Account="LocalSystem" ErrorControl="normal" Vital="yes">
-          <ServiceConfigFailureActions OnInstall="yes" OnReinstall="yes" ResetPeriod="86400">
-            <Failure Action="restartService" Delay="5000" />
-            <Failure Action="restartService" Delay="10000" />
-            <Failure Action="restartService" Delay="60000" />
-          </ServiceConfigFailureActions>
-        </ServiceInstall>
+                        Start="auto" Account="LocalSystem" ErrorControl="normal" Vital="yes" />
         <!-- Remove="both": installing also replaces a ProGuardEngine service that install-service.ps1 created, and
              the files it copied to Program Files\ProGuard\Engine go with it. Wait: an install fails (and rolls
              back) if the engine doesn't start. -->
         <ServiceControl Id="EngineServiceControl" Name="ProGuardEngine" Start="install" Stop="both" Remove="both" Wait="yes" />
+        <!-- Windows Installer only removes folders it created; after replacing a script install, Program Files\ProGuard
+             already existed. -->
+        <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
         <util:RemoveFolderEx Id="RemoveLegacyEngineDir" On="install" Property="LEGACY_ENGINE_DIR" Condition="NOT Installed" />
         <util:RemoveFolderEx Id="RemoveProGuardData" On="uninstall" Property="PROGUARD_DATA_DIR"
                              Condition="REMOVE_DATA = &quot;1&quot; AND REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
@@ -112,12 +109,21 @@
                      Value="&quot;[INSTALLFOLDER]ProGuard.UI.exe&quot; --tray" Type="string" KeyPath="yes" />
     </Component>
 
+    <!-- Restart after a crash: 5 s, 10 s, then every 60 s; the count resets after a day without one. The same
+         sc.exe command as install-service.ps1. Not Windows Installer's MsiServiceConfigFailureActions: it fails with
+         access denied (error 1939) when the actions restart the service. Runs between InstallServices and
+         StartServices whenever the engine component is (re)installed; a failure rolls the install back. -->
+    <SetProperty Id="ConfigureEngineRecovery" Before="ConfigureEngineRecovery" Sequence="execute"
+                 Value="&quot;[System64Folder]sc.exe&quot; failure ProGuardEngine reset= 86400 actions= restart/5000/restart/10000/restart/60000" />
+    <CustomAction Id="ConfigureEngineRecovery" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred"
+                  Impersonate="no" Return="check" />
+
     <!-- The UI runs in each user's session and the engine's session agents should have ended with the service; end
          whatever is left of this copy (matched by path, so other copies such as a portable one are left alone),
          after the service has stopped and before files are replaced or removed. As LocalSystem, so it reaches
          every session. (Short aliases: the command must fit the 255 characters of CustomAction.Target.) -->
     <SetProperty Id="StopProGuardProcesses" Before="StopProGuardProcesses" Sequence="execute"
-                 Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -Command &quot;Get-Process ProGuard.UI,ProGuard.SessionAgent -EA 0 | ? Path -Like '[INSTALLFOLDER]*' | Stop-Process -Force&quot;" />
+                 Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -Command &quot;Get-Process ProGuard.UI,ProGuard.SessionAgent -EA 0 | ? Path -Like '[INSTALLFOLDER]*' | Stop-Process -Force; exit 0&quot;" />
     <CustomAction Id="StopProGuardProcesses" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred"
                   Impersonate="no" Return="ignore" />
 
@@ -129,6 +135,7 @@
                   Impersonate="yes" Return="ignore" />
 
     <InstallExecuteSequence>
+      <Custom Action="ConfigureEngineRecovery" After="InstallServices" Condition="$Engine = 3" />
       <Custom Action="StopProGuardProcesses" After="StopServices" Condition="Installed OR WIX_UPGRADE_DETECTED" />
       <Custom Action="RemoveRunValue" After="RemoveRegistryValues"
               Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />

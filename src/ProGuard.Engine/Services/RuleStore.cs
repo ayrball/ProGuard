@@ -295,6 +295,49 @@ public class RuleStore : IRuleStore
         lock (_sync) _settings = settings;
     }
 
+    // === Config profiles ===
+
+    public void ReplaceConfiguration(IReadOnlyList<ProcessRule> processRules, IReadOnlyList<WatchdogRule> watchdogRules, AppSettings settings)
+    {
+        using (var scope = _serviceProvider.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+            using var transaction = db.Database.BeginTransaction();
+
+            db.ProcessRules.RemoveRange(db.ProcessRules.ToList());
+            db.WatchdogRules.RemoveRange(db.WatchdogRules.ToList());
+            foreach (var rule in processRules) rule.Id = 0;
+            foreach (var rule in watchdogRules) rule.Id = 0;
+            db.ProcessRules.AddRange(processRules);
+            db.WatchdogRules.AddRange(watchdogRules);
+
+            var existing = db.Settings.FirstOrDefault();
+            if (existing != null)
+            {
+                settings.Id = existing.Id;
+                db.Entry(existing).CurrentValues.SetValues(settings);
+            }
+            else
+            {
+                db.Settings.Add(settings);
+            }
+
+            db.SaveChanges();
+            transaction.Commit();
+        }
+
+        // Only once the transaction has committed, so the caches never show half a switch.
+        var rules = new ConcurrentDictionary<string, ProcessRule>(StringComparer.Ordinal);
+        foreach (var rule in processRules) rules[ProcessExtensions.NormalizeName(rule.ProcessName)] = rule;
+        lock (_sync)
+        {
+            _processRules = rules;
+            _watchdogRules.Clear();
+            _watchdogRules.AddRange(watchdogRules);
+            _settings = settings;
+        }
+    }
+
     // === Logging ===
 
     public async Task LogProBalanceActionAsync(ProBalanceAction action)

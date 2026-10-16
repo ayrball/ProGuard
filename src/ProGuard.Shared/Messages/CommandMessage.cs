@@ -125,6 +125,31 @@ public static class CommandTypes
     /// </summary>
     public const string SetTimerResolution = "SetTimerResolution";
 
+    // --- Config profiles: named copies of the process rules, Watchdog rules and settings (see Contracts.ConfigDocument).
+
+    /// <summary>No args. Data = List&lt;<see cref="Contracts.ConfigProfileDto"/>&gt;, by name.</summary>
+    public const string ListProfiles = "ListProfiles";
+    /// <summary>Argument = the name (plain text). Saves the configuration in force under it, replacing a profile of that name. Data = <see cref="Contracts.ConfigProfileDto"/>.</summary>
+    public const string SaveProfile = "SaveProfile";
+    /// <summary>
+    /// Argument = <see cref="Contracts.SwitchProfileArgument"/>. Replaces the rules, Watchdog rules and settings with the profile's,
+    /// in one step, after saving what was in force as "Before switch". Every rule and setting is checked as the caller
+    /// would be when saving it. Data = <see cref="Contracts.ConfigPreviewDto"/>.
+    /// </summary>
+    public const string SwitchProfile = "SwitchProfile";
+    /// <summary>Argument = profile Id.</summary>
+    public const string DeleteProfile = "DeleteProfile";
+    /// <summary>Argument = <see cref="Contracts.RenameProfileArgument"/>. Data = <see cref="Contracts.ConfigProfileDto"/>.</summary>
+    public const string RenameProfile = "RenameProfile";
+    /// <summary>Argument = profile Id, or nothing for the configuration in force. Data = <see cref="Contracts.ConfigDocument"/>.</summary>
+    public const string ExportConfig = "ExportConfig";
+    /// <summary>
+    /// Argument = <see cref="Contracts.ImportConfigArgument"/>. Reads a config file; with Preview, only reports what it
+    /// would change. Otherwise applies it as <see cref="SwitchProfile"/> does (saving "Before import" first).
+    /// Data = <see cref="Contracts.ConfigPreviewDto"/>.
+    /// </summary>
+    public const string ImportConfig = "ImportConfig";
+
     /// <summary>
     /// What a command does, as words that read after "may not" ("end", "purge memory"). Access-denied replies are
     /// shown to the user as-is, so they name the action rather than the command.
@@ -146,6 +171,8 @@ public static class CommandTypes
         PurgeMemory => "purge memory",
         ClearActionLog => "clear the action log",
         SetTimerResolution => "change the system timer resolution",
+        SwitchProfile => "switch config profiles",
+        ImportConfig => "import a config",
         _ => "run " + System.Text.RegularExpressions.Regex.Replace(commandType, "(?<=[a-z])(?=[A-Z])", " ").ToLowerInvariant()
     };
 

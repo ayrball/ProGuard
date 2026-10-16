@@ -111,6 +111,8 @@ public class Program
                 services.AddSingleton<ProcessActionService>();
                 services.AddSingleton<RuleService>();
                 services.AddSingleton<ThinClientCommands>();
+                services.AddSingleton<IConfigProfileStore, ConfigProfileStore>();
+                services.AddSingleton<ConfigProfileService>();
                 services.AddSingleton<IpcDispatcher>();
                 services.AddSingleton<PipeServer>();
                 services.AddSingleton<ForegroundPipeServer>();

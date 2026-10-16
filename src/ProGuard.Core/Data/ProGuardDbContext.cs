@@ -10,6 +10,7 @@ public class ProGuardDbContext : DbContext
     public DbSet<PowerProfile> PowerProfiles { get; set; } = null!;
     public DbSet<ProBalanceAction> ProBalanceActions { get; set; } = null!;
     public DbSet<AppSettings> Settings { get; set; } = null!;
+    public DbSet<ConfigProfile> ConfigProfiles { get; set; } = null!;
 
     /// <summary>
     /// Environment variable that overrides <see cref="DatabasePath"/> (used by tests and portable installs).

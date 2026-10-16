@@ -75,9 +75,17 @@ public class EngineWorker : BackgroundService
         _coreParking = coreParking;
     }
 
+    internal const string IncreaseBasePriorityPrivilege = "SeIncreaseBasePriorityPrivilege";
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("ProGuard.Engine started at: {time}", System.DateTimeOffset.Now);
+
+        // High I/O priority and Realtime priority class need SeIncreaseBasePriorityPrivilege enabled, not just held:
+        // an elevated token has it disabled, and without it NtSetInformationProcess refuses High and SetPriorityClass
+        // quietly gives High instead of Realtime. Enabled once on the process token, before any rule or request runs.
+        if (new Win32MemoryOperations().EnablePrivilege(IncreaseBasePriorityPrivilege) is { } privilegeProblem)
+            _logger.LogWarning("High I/O priority and Realtime priority won't work: {Problem}", privilegeProblem);
 
         // Before ProBalance can restrain anything: core parking values a crashed run left changed go back first.
         if (_coreParking != null)

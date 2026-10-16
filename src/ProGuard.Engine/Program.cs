@@ -38,6 +38,8 @@ public class Program
                 services.AddSingleton<IForegroundTracker>(sp => sp.GetRequiredService<ForegroundTracker>());
                 // The UI's foreground reports also carry the user's idle time, which a session-0 service can't read.
                 services.AddSingleton<IUserIdleSource>(sp => sp.GetRequiredService<ForegroundTracker>());
+                // With no report at all, ProBalance spares every program that could be the one in use.
+                services.AddSingleton<IForegroundFallback, GuiProgramFallback>();
 
                 services.AddSingleton<ProcessMonitor>();
                 services.AddSingleton<IProcessMonitor>(sp => sp.GetRequiredService<ProcessMonitor>());

@@ -50,6 +50,20 @@ internal sealed class FakeProcessAccess : IProcessPriorityAccess
     }
 }
 
+/// <summary>Foreground known unless a test says otherwise; <see cref="Windowed"/> lists the programs that could be in use.</summary>
+internal sealed class FakeForegroundFallback : IForegroundFallback
+{
+    public bool IsForegroundKnown { get; set; } = true;
+    public HashSet<int> Windowed { get; } = new();
+    public int Asked { get; private set; }
+
+    public bool MightBeForeground(int pid, string? imagePath)
+    {
+        Asked++;
+        return Windowed.Contains(pid);
+    }
+}
+
 internal sealed class FakeIdleSource : IUserIdleSource
 {
     public TimeSpan? Idle { get; set; }
@@ -68,6 +82,7 @@ internal sealed class ProBalanceHarness : IDisposable
     public List<ProcessInfo> Processes { get; } = new();
     public FakeProcessAccess Access { get; } = new();
     public FakeIdleSource IdleSource { get; } = new();
+    public FakeForegroundFallback Fallback { get; } = new();
     public Mock<IRuleStore> Store { get; } = new();
     public Mock<IProcessMonitor> Monitor { get; } = new();
     public ProBalanceEngine Engine { get; }
@@ -79,7 +94,7 @@ internal sealed class ProBalanceHarness : IDisposable
         monitor.Setup(m => m.GetProcess(It.IsAny<int>())).Returns((int pid) => Processes.FirstOrDefault(p => p.Pid == pid));
         monitor.Setup(m => m.GetForegroundPid()).Returns(() => ForegroundPid);
         Engine = new ProBalanceEngine(NullLogger<ProBalanceEngine>.Instance, monitor.Object, Store.Object,
-            () => SystemCpu, Access, () => Now, IdleSource);
+            () => SystemCpu, Access, () => Now, IdleSource, Fallback);
     }
 
     public ProcessInfo Add(int pid, double cpu, ProcessPriorityClass priority = ProcessPriorityClass.Normal,

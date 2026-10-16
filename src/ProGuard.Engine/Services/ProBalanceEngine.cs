@@ -24,6 +24,9 @@ namespace ProGuard.Engine.Services;
 /// <see cref="MinimumTimeOfRestraint"/> ms, or after <see cref="MaximumTimeOfRestraint"/> ms if that is set.</item>
 /// <item>Restraint ends at once if the process comes to the foreground, and is abandoned without restoring if
 /// something else (usually the user) changes the priority meanwhile.</item>
+/// <item>When nobody has said which program is in the foreground (no session agent or UI reporting, see
+/// <see cref="IForegroundFallback"/>), every process that could be it is treated as the foreground process: not
+/// restrained, and released if it was.</item>
 /// <item>Optionally (all off by default, as in Process Lasso) a restraint also narrows the CPU affinity, lowers the
 /// I/O priority and turns on efficiency mode, or uses only those and leaves the priority class alone
 /// (<see cref="DoNotLowerPriorityClass"/>). Each is put back when the restraint ends, unless something else changed
@@ -49,7 +52,9 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     private readonly Func<double> _systemCpuPercent;
     private readonly Func<long> _nowMs;
     private readonly IUserIdleSource? _idleSource;
+    private readonly IForegroundFallback? _foregroundFallback;
     private bool _started;
+    private bool _foregroundWasUnknown;
 
     // Evaluate runs on the process monitor's refresh thread; SetEnabled, ReleaseRestraint and StopAsync come from other threads.
     private readonly object _gate = new();
@@ -162,7 +167,8 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         Func<double>? systemCpuPercent = null,
         IProcessPriorityAccess? processAccess = null,
         Func<long>? clockMs = null,
-        IUserIdleSource? idleSource = null)
+        IUserIdleSource? idleSource = null,
+        IForegroundFallback? foregroundFallback = null)
     {
         _logger = logger;
         _processMonitor = processMonitor;
@@ -171,6 +177,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         _access = processAccess ?? new Win32ProcessPriorityAccess();
         _nowMs = clockMs ?? (() => Environment.TickCount64);
         _idleSource = idleSource;
+        _foregroundFallback = foregroundFallback;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -268,8 +275,9 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
                 foreach (var p in processes) byPid[p.Pid] = p;
 
                 var foregroundPid = ResolveForegroundPid(processes);
-                UpdateRestraints(byPid, foregroundPid, now);
-                RestrainHogs(processes, foregroundPid, now);
+                var foregroundUnknown = IsForegroundUnknown();
+                UpdateRestraints(byPid, foregroundPid, foregroundUnknown, now);
+                RestrainHogs(processes, foregroundPid, foregroundUnknown, now);
 
                 foreach (var pid in _overQuotaSince.Keys.Where(pid => !byPid.ContainsKey(pid)).ToList())
                     _overQuotaSince.Remove(pid);
@@ -309,6 +317,30 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         return false;
     }
 
+    /// <summary>
+    /// True when the foreground exemption is on but nobody has said which program is in the foreground, so any program
+    /// that could be it must be treated as it (Process Lasso never restrains the program in use; we can't tell which
+    /// that is, so we don't restrain any candidate).
+    /// </summary>
+    private bool IsForegroundUnknown()
+    {
+        var unknown = _foregroundFallback is { IsForegroundKnown: false };
+        if (unknown != _foregroundWasUnknown)
+        {
+            _foregroundWasUnknown = unknown;
+            if (unknown)
+                _logger.LogInformation("No foreground report from any user session: until one arrives, ProBalance leaves alone every " +
+                                   "Windows program in a user session, since any of them could be the one in use");
+            else
+                _logger.LogInformation("Foreground reports are back: ProBalance exempts only the foreground process again");
+        }
+        return unknown && ExcludeForegroundProcesses;
+    }
+
+    /// <summary>Under <see cref="IsForegroundUnknown"/>: could this be the program the user is using?</summary>
+    private bool MightBeForeground(ProcessInfo p) =>
+        _access.GetSessionId(p.Pid) is > 0 && _foregroundFallback!.MightBeForeground(p.Pid, p.FilePath);
+
     private int ResolveForegroundPid(List<ProcessInfo> processes)
     {
         var pid = _processMonitor.GetForegroundPid();
@@ -317,7 +349,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     }
 
     /// <summary>Decides, for every process currently restrained, whether the restraint should end.</summary>
-    private void UpdateRestraints(Dictionary<int, ProcessInfo> byPid, int foregroundPid, long now)
+    private void UpdateRestraints(Dictionary<int, ProcessInfo> byPid, int foregroundPid, bool foregroundUnknown, long now)
     {
         foreach (var (pid, r) in _restrained.ToList())
         {
@@ -361,6 +393,8 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
             var restrainedFor = now - r.SinceMs;
             if (ExcludeForegroundProcesses && (pid == foregroundPid || info.IsForeground))
                 Restore(pid, "Came to the foreground");
+            else if (foregroundUnknown && MightBeForeground(info))
+                Restore(pid, "No foreground report: it may be the program in use");
             else if (MaximumTimeOfRestraint > 0 && restrainedFor >= MaximumTimeOfRestraint)
                 Restore(pid, $"Maximum restraint time ({MaximumTimeOfRestraint} ms) reached");
             else if (restrainedFor >= MinimumTimeOfRestraint && info.CpuPercent <= PerProcessUsageForRestore)
@@ -368,7 +402,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         }
     }
 
-    private void RestrainHogs(List<ProcessInfo> processes, int foregroundPid, long now)
+    private void RestrainHogs(List<ProcessInfo> processes, int foregroundPid, bool foregroundUnknown, long now)
     {
         var systemBusy = _systemCpuPercent() >= TotalProcessorUsageBeforeRestraint;
 
@@ -377,7 +411,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
             if (_restrained.ContainsKey(p.Pid)) continue;
 
             // The over-quota run must be unbroken: any sample that doesn't qualify starts it over.
-            if (!systemBusy || p.CpuPercent < PerProcessUsageBeforeRestraint || IsExempt(p, foregroundPid))
+            if (!systemBusy || p.CpuPercent < PerProcessUsageBeforeRestraint || IsExempt(p, foregroundPid, foregroundUnknown))
             {
                 _overQuotaSince.Remove(p.Pid);
                 continue;
@@ -395,7 +429,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     }
 
     /// <summary>Cheap checks first; the parent/session lookups only run for processes that are over quota.</summary>
-    private bool IsExempt(ProcessInfo p, int foregroundPid)
+    private bool IsExempt(ProcessInfo p, int foregroundPid, bool foregroundUnknown)
     {
         if (p.Pid <= 4) return true;
         var name = Core.Helpers.ProcessExtensions.NormalizeName(p.Name);
@@ -411,6 +445,9 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
             return true;
 
         if (ExcludeServices && _access.GetSessionId(p.Pid) == 0) return true;
+
+        // Last: it may read the program file (once per program).
+        if (foregroundUnknown && MightBeForeground(p)) return true;
 
         return false;
     }

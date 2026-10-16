@@ -115,7 +115,12 @@ public sealed class SessionAgentSupervisor : IDisposable
     public bool Start()
     {
         if (!StartSupervising()) return false;
-        _timer = new Timer(_ => Reconcile(), null, TimeSpan.Zero, CheckInterval);
+        _timer = new Timer(_ =>
+        {
+            // An exception escaping a timer callback would take the whole engine down.
+            try { Reconcile(); }
+            catch (Exception ex) { _logger.LogError(ex, "Session agent check failed"); }
+        }, null, TimeSpan.Zero, CheckInterval);
         return true;
     }
 

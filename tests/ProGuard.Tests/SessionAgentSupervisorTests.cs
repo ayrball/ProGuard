@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.IO;
 using System.ServiceProcess;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using ProGuard.Engine.Services;
 using ProGuard.Engine.Services.SessionAgents;
@@ -291,6 +293,30 @@ public class SessionAgentSupervisorTests
         s.OnSessionChange(3, SessionChangeReason.SessionLogon);
         s.Reconcile();
         Assert.Equal(2, _platform.Launched.Count);
+    }
+
+    [Fact]
+    public void TheServiceLifetime_ResolvesFromTheContainer_AndPassesSessionChangesOn()
+    {
+        _platform.Sessions.Add(new UserSession(1, true));
+        var supervisor = new SessionAgentSupervisor(null, _platform, null, () => _now);
+        using var host = Host.CreateDefaultBuilder()
+            .ConfigureServices(services =>
+            {
+                services.AddSingleton(supervisor);
+                services.AddSingleton<IHostLifetime, SessionAwareServiceLifetime>();
+            })
+            .Build();
+
+        var lifetime = Assert.IsType<SessionAwareServiceLifetime>(
+            host.Services.GetService<IHostLifetime>());
+        Assert.True(lifetime.CanHandleSessionChangeEvent);
+
+        supervisor.StartSupervising();
+        lifetime.HandleSessionChange(1, SessionChangeReason.SessionLogon);
+        Assert.Equal(1, _platform.LaunchesIn(1));
+        lifetime.HandleSessionChange(1, SessionChangeReason.SessionLogoff);
+        Assert.True(_platform.Running(1).Killed);
     }
 
     // ---------- The Win32 platform, against this machine ----------

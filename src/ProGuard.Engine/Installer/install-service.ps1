@@ -3,6 +3,8 @@
     Installs (or with -Uninstall removes) the ProGuard engine as a LocalSystem Windows service.
 .DESCRIPTION
     Publish first:  dotnet publish src\ProGuard.Engine -c Release
+    That publishes the session agent (ProGuard.SessionAgent.exe) with the engine. The service starts one in every
+    signed-in user's session, as that user, to report the session's foreground program and idle time.
     The published files are copied to -InstallDir (default "%ProgramFiles%\ProGuard\Engine") and the service runs
     from there. It must not run from a build folder: the service is LocalSystem, so anyone who can write to its
     directory could replace the exe or a DLL and run code as SYSTEM. Program Files is writable only by admins.
@@ -16,6 +18,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $serviceName = "ProGuardEngine"
+$agentName = "ProGuard.SessionAgent"
 
 $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -37,8 +40,19 @@ function Remove-ProGuardService {
     for ($i = 0; $i -lt 20 -and (Get-Service -Name $serviceName -ErrorAction SilentlyContinue); $i++) { Start-Sleep -Milliseconds 250 }
 }
 
+# The service ends its session agents when it stops. One left behind by a service that crashed would keep the
+# installed files in use, so end any that remain, in every session (taskkill can end other users' processes).
+# Matched by name only: an elevated shell can't read the path of another user's process.
+function Stop-SessionAgents {
+    if (-not (Get-Process -Name $agentName -ErrorAction SilentlyContinue)) { return }
+    Write-Host "Ending leftover session agents..."
+    taskkill.exe /F /IM "$agentName.exe" 2>&1 | Out-Null
+    for ($i = 0; $i -lt 20 -and (Get-Process -Name $agentName -ErrorAction SilentlyContinue); $i++) { Start-Sleep -Milliseconds 250 }
+}
+
 if ($Uninstall) {
     Remove-ProGuardService
+    Stop-SessionAgents
     if (Test-Path $InstallDir) {
         Write-Host "Deleting $InstallDir..."
         Remove-Item -Recurse -Force $InstallDir
@@ -56,8 +70,15 @@ if (-not (Test-Path $sourceExe)) {
     exit 1
 }
 
-# Reinstalling over a running service: stop it first so its files can be replaced.
+$sourceAgent = Join-Path $SourceDir "$agentName.exe"
+if (-not (Test-Path $sourceAgent)) {
+    Write-Error "$sourceAgent not found: the engine's publish output should include it. Publish again: dotnet publish src\ProGuard.Engine -c Release"
+    exit 1
+}
+
+# Reinstalling over a running service: stop it (and its session agents) first so its files can be replaced.
 Remove-ProGuardService
+Stop-SessionAgents
 
 Write-Host "Copying $SourceDir to $InstallDir..."
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null

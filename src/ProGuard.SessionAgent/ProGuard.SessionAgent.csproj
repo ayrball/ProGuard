@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Runs in every signed-in user's session, started by the engine as that user, and reports the session's foreground
+    process and idle time (see Program.cs). No window, no WPF or WinForms: it should cost next to nothing.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ProGuard.SessionAgent</RootNamespace>
+    <AssemblyName>ProGuard.SessionAgent</AssemblyName>
+    <ApplicationIcon>..\ProGuard.UI\Assets\proguard-icon.ico</ApplicationIcon>
+    <!-- Small footprint: one heap without the background GC thread, no ICU, no localized exception text. -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProGuard.Shared\ProGuard.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

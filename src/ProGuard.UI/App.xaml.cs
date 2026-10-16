@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using ProGuard.Shared.Client;
+using ProGuard.Shared.Reporting;
 using ProGuard.UI.Services;
 using ProGuard.UI.ViewModels;
 
@@ -15,8 +16,9 @@ public partial class App : Application
     private SingleInstance? _instance;
 
     // The engine runs as a service in session 0 and can't see this desktop: ProBalance's foreground exemption,
-    // Foreground Boost and IdleSaver all depend on this UI reporting the foreground process and idle time.
-    private readonly ForegroundReporter _foregroundReporter = new();
+    // Foreground Boost and IdleSaver depend on a report of the foreground process and idle time. The session agent the
+    // engine starts normally sends it; this one covers a session without one and stays quiet while the agent runs.
+    private readonly ForegroundReporter _foregroundReporter = new(yieldToSessionAgent: true);
 
     protected override void OnStartup(StartupEventArgs e)
     {

@@ -22,5 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ProGuard.Core\ProGuard.Core.csproj" />
     <ProjectReference Include="..\ProGuard.Shared\ProGuard.Shared.csproj" />
+    <!-- Not used by the engine's code: built and published next to it, for SessionAgentSupervisor to start. -->
+    <ProjectReference Include="..\ProGuard.SessionAgent\ProGuard.SessionAgent.csproj" />
   </ItemGroup>
 </Project>

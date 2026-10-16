@@ -24,6 +24,10 @@ internal static class TestEnvironment
         // Likewise for the engine's pipe: an EngineClient built with the default pipe name must never reach an installed
         // engine (a test toggling Performance Mode used to switch the real machine's power plan through it).
         Environment.SetEnvironmentVariable(ProGuard.Shared.Client.EngineClient.PipeNameVariable, "ProGuardTests_" + Guid.NewGuid().ToString("N"));
+        // The same for foreground reports and the session agent's mutex, which agents the tests start inherit: they must
+        // neither report to an installed engine nor make the UI on this desktop stop reporting.
+        Environment.SetEnvironmentVariable(ProGuard.Shared.Reporting.ForegroundReporter.PipeNameVariable, "ProGuardTests_Fg_" + Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable(ProGuard.Shared.Reporting.SessionAgentInstance.MutexNameVariable, @"Local\ProGuardTests_Agent_" + Guid.NewGuid().ToString("N"));
 
         AppDomain.CurrentDomain.ProcessExit += (_, _) =>
         {

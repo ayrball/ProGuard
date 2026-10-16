@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text;
+using Microsoft.Win32.SafeHandles;
 using Microsoft.Extensions.Logging;
 using ProGuard.Core.Helpers;
 using ProGuard.Core.Native;
@@ -52,6 +53,15 @@ public class UserSessionLauncher : IUserSessionLauncher
 
     public int Launch(LaunchRequest request)
     {
+        using var process = Start(request, out var pid);
+        return pid;
+    }
+
+    /// <summary>
+    /// <see cref="Launch"/>, keeping a handle to the new process (to wait for it or end it); the caller disposes it.
+    /// </summary>
+    public SafeProcessHandle Start(LaunchRequest request, out int processId)
+    {
         if (string.IsNullOrWhiteSpace(request.CommandLine) && string.IsNullOrWhiteSpace(request.ExecutablePath))
             throw new ArgumentException("Nothing to launch: no program or command line", nameof(request));
 
@@ -61,22 +71,24 @@ public class UserSessionLauncher : IUserSessionLauncher
             : request.CommandLine;
         var directory = ResolveWorkingDirectory(request);
 
-        int pid;
+        LaunchNative.PROCESS_INFORMATION info;
         if (IsRunningAsSystem())
         {
-            pid = LaunchAsSessionUser(session, request.ExecutablePath, commandLine, directory);
+            info = LaunchAsSessionUser(session, request.ExecutablePath, commandLine, directory);
         }
         else if (Kernel32.ProcessIdToSessionId((uint)Environment.ProcessId, out var own) && own == session)
         {
-            pid = LaunchAsSelf(request.ExecutablePath, commandLine, directory);
+            info = LaunchAsSelf(request.ExecutablePath, commandLine, directory);
         }
         else
         {
             throw new InvalidOperationException($"Only the engine service (LocalSystem) can start programs in session {session}");
         }
 
-        _logger.LogInformation("Launched {CommandLine} as process {Pid} in session {Session}", commandLine, pid, session);
-        return pid;
+        Kernel32.CloseHandle(info.hThread);
+        processId = info.dwProcessId;
+        _logger.LogInformation("Launched {CommandLine} as process {Pid} in session {Session}", commandLine, processId, session);
+        return new SafeProcessHandle(info.hProcess, ownsHandle: true);
     }
 
     /// <summary>The session to launch into: the requested one, else the console's. Session 0 is refused.</summary>
@@ -111,7 +123,7 @@ public class UserSessionLauncher : IUserSessionLauncher
         return identity.IsSystem;
     }
 
-    private static int LaunchAsSessionUser(uint session, string? program, string commandLine, string directory)
+    private static LaunchNative.PROCESS_INFORMATION LaunchAsSessionUser(uint session, string? program, string commandLine, string directory)
     {
         IntPtr userToken = IntPtr.Zero, primaryToken = IntPtr.Zero, environment = IntPtr.Zero;
         try
@@ -136,7 +148,7 @@ public class UserSessionLauncher : IUserSessionLauncher
                     false, CreationFlags, environment, directory, ref startup, out var info))
                 throw new Win32Exception(Marshal.GetLastWin32Error(), $"CreateProcessAsUser failed for {commandLine}");
 
-            return Finish(info);
+            return info;
         }
         finally
         {
@@ -146,13 +158,13 @@ public class UserSessionLauncher : IUserSessionLauncher
         }
     }
 
-    private static int LaunchAsSelf(string? program, string commandLine, string directory)
+    private static LaunchNative.PROCESS_INFORMATION LaunchAsSelf(string? program, string commandLine, string directory)
     {
         var startup = NewStartupInfo();
         if (!LaunchNative.CreateProcess(program, new StringBuilder(commandLine), IntPtr.Zero, IntPtr.Zero,
                 false, LaunchNative.CREATE_NEW_CONSOLE | LaunchNative.CREATE_DEFAULT_ERROR_MODE, IntPtr.Zero, directory, ref startup, out var info))
             throw new Win32Exception(Marshal.GetLastWin32Error(), $"CreateProcess failed for {commandLine}");
-        return Finish(info);
+        return info;
     }
 
     private const uint CreationFlags =
@@ -163,11 +175,4 @@ public class UserSessionLauncher : IUserSessionLauncher
         cb = Marshal.SizeOf<LaunchNative.STARTUPINFO>(),
         lpDesktop = InteractiveDesktop
     };
-
-    private static int Finish(LaunchNative.PROCESS_INFORMATION info)
-    {
-        Kernel32.CloseHandle(info.hThread);
-        Kernel32.CloseHandle(info.hProcess);
-        return info.dwProcessId;
-    }
 }

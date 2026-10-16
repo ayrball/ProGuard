@@ -7,6 +7,7 @@ using Moq;
 using ProGuard.Engine.IPC;
 using ProGuard.Engine.Services;
 using ProGuard.Shared.Messages;
+using ProGuard.Shared.Reporting;
 using ProGuard.UI.Services;
 
 namespace ProGuard.Tests;
@@ -83,6 +84,96 @@ public class ForegroundReportingTests
         Assert.Equal(102, t.GetForegroundPid());
         t.Report(1, 1, 103);
         Assert.Equal(103, t.GetForegroundPid());
+    }
+
+    /// <summary>A tracker on a fake clock (<see cref="_now"/>), sessions as in <see cref="Tracker"/>.</summary>
+    private ForegroundTracker ClockedTracker(int console = ConsoleSession, bool canSeeDesktop = false) =>
+        new(null, () => 0, pid => pid / 100 is 1 or 2 or 3 ? pid / 100 : 0, () => console, canSeeDesktop,
+            localIdleTime: () => null, clock: () => _now);
+
+    private TimeSpan _now = TimeSpan.FromHours(5);
+
+    [Fact]
+    public void RepeatedReports_DontTakeTurns_BetweenSessions()
+    {
+        // Console at the sign-in screen (session 7, no reporter); two sessions report, each repeating every 5 s.
+        var t = ClockedTracker(console: 7);
+        t.Report(1, 1, 101);
+        t.Report(2, 2, 201);
+        Assert.Equal(201, t.GetForegroundPid());
+
+        for (var i = 0; i < 4; i++)
+        {
+            _now += TimeSpan.FromSeconds(2.5);
+            t.Report(1, 1, 101);                // a repeat, not a change: session 2 keeps it
+            Assert.Equal(201, t.GetForegroundPid());
+            _now += TimeSpan.FromSeconds(2.5);
+            t.Report(2, 2, 201);
+            Assert.Equal(201, t.GetForegroundPid());
+        }
+
+        t.Report(1, 1, 102);                    // a real change in session 1 does count
+        Assert.Equal(102, t.GetForegroundPid());
+    }
+
+    [Fact]
+    public void WithoutAConsoleReporter_TheSessionInUseWins()
+    {
+        // A remote desktop user in session 2 while session 1 sits disconnected (fast user switching).
+        var t = ClockedTracker(console: 7);
+        t.Report(1, 2, 201, idle: TimeSpan.FromSeconds(1));
+        t.Report(2, 1, 101, idle: TimeSpan.FromMinutes(20));     // the newer report, but nobody is there
+        Assert.Equal(201, t.GetForegroundPid());
+
+        // The disconnected session's report keeps ageing; the active user keeps reporting.
+        _now += TimeSpan.FromMinutes(1);
+        t.Report(1, 2, 202, idle: TimeSpan.Zero);
+        t.Report(2, 1, 102, idle: TimeSpan.FromMinutes(21));
+        Assert.Equal(202, t.GetForegroundPid());
+    }
+
+    [Fact]
+    public void TwoActiveSessions_FallBackToTheLatestChange()
+    {
+        var t = ClockedTracker(console: 7);
+        t.Report(1, 1, 101, idle: TimeSpan.FromSeconds(1));
+        t.Report(2, 2, 201, idle: TimeSpan.FromSeconds(4));     // within IdleTolerance: both in use
+        Assert.Equal(201, t.GetForegroundPid());
+    }
+
+    [Fact]
+    public void TheConsoleSession_WinsEvenWhileItsUserIsIdle()
+    {
+        var t = ClockedTracker(console: 1);
+        t.Report(1, 1, 101, idle: TimeSpan.FromMinutes(10));    // watching a video, say
+        t.Report(2, 2, 201, idle: TimeSpan.Zero);
+        Assert.Equal(101, t.GetForegroundPid());
+    }
+
+    [Fact]
+    public void ForegroundIsUnknown_WithNoReporter_OrOnlyAHungOne()
+    {
+        var t = ClockedTracker();
+        Assert.False(t.IsForegroundKnown);
+
+        t.Report(1, 1, 101);
+        Assert.True(t.IsForegroundKnown);
+        t.Report(1, 1, 0);                      // locked: known to be nothing
+        Assert.True(t.IsForegroundKnown);
+
+        _now += ForegroundTracker.StaleAfter;   // connected, but silent for three repeats
+        Assert.False(t.IsForegroundKnown);
+        t.Report(1, 1, 101);
+        Assert.True(t.IsForegroundKnown);
+
+        t.Disconnect(1);                        // the agent died: unknown at once, not after a grace period
+        Assert.False(t.IsForegroundKnown);
+    }
+
+    [Fact]
+    public void ForegroundIsKnown_WhenTheEngineCanSeeTheDesktopItself()
+    {
+        Assert.True(ClockedTracker(canSeeDesktop: true).IsForegroundKnown);
     }
 
     [Fact]

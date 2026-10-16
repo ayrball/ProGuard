@@ -8,13 +8,18 @@ using System.Threading;
 using System.Threading.Tasks;
 using ProGuard.Shared.Messages;
 
-namespace ProGuard.UI.Services;
+namespace ProGuard.Shared.Reporting;
 
 /// <summary>
 /// Tells the engine which process owns this desktop's foreground window. The engine runs as a service in session 0
 /// and can't see the user's desktop, so ProBalance's foreground exemption and Foreground Boost depend on this.
 /// Keeps one connection open (the engine drops the report when it closes) and sends a line whenever the
 /// foreground process changes.
+/// <para>
+/// The session agent (ProGuard.SessionAgent, which the engine keeps running in every user session) runs one, so the
+/// reports don't depend on the UI being open. The UI runs one too, for an engine that can't start the agent, but
+/// stands aside while the session's agent runs (<see cref="SessionAgentInstance"/>), so a session has one reporter.
+/// </para>
 /// <para>
 /// Each report also carries how long this desktop has had no keyboard or mouse input, for IdleSaver: the engine
 /// can't call <c>GetLastInputInfo</c> for the user's session from session 0. The engine ages the last report by
@@ -35,16 +40,30 @@ public sealed class ForegroundReporter : IDisposable
     private readonly string _pipeName;
     private readonly Func<int> _foregroundPid;
     private readonly Func<TimeSpan?> _idleTime;
+    private readonly Func<bool> _shouldReport;
     private CancellationTokenSource? _cts;
     private Task? _loop;
 
-    public ForegroundReporter() : this(PipeNames.Foreground, ReadForegroundPid, ReadIdleTime) { }
+    /// <summary>Overrides the pipe name, so tests (and agents they start) never report to an installed engine.</summary>
+    public const string PipeNameVariable = "PROGUARD_FOREGROUND_PIPE";
 
-    internal ForegroundReporter(string pipeName, Func<int> foregroundPid, Func<TimeSpan?>? idleTime = null)
+    public static string DefaultPipeName =>
+        Environment.GetEnvironmentVariable(PipeNameVariable) is { Length: > 0 } name ? name : PipeNames.Foreground;
+
+    /// <param name="yieldToSessionAgent">Stay quiet while this session's agent runs (the UI); false for the agent itself.</param>
+    public ForegroundReporter(bool yieldToSessionAgent)
+        : this(DefaultPipeName, ReadForegroundPid, ReadIdleTime,
+            yieldToSessionAgent ? () => !SessionAgentInstance.IsRunning() : null)
+    {
+    }
+
+    /// <param name="shouldReport">Checked before connecting and at every poll; while false, the connection is closed.</param>
+    internal ForegroundReporter(string pipeName, Func<int> foregroundPid, Func<TimeSpan?>? idleTime = null, Func<bool>? shouldReport = null)
     {
         _pipeName = pipeName;
         _foregroundPid = foregroundPid;
         _idleTime = idleTime ?? (() => null);
+        _shouldReport = shouldReport ?? (() => true);
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -68,16 +87,23 @@ public sealed class ForegroundReporter : IDisposable
     {
         while (!token.IsCancellationRequested)
         {
-            try
+            // While someone else reports for this session we stay disconnected; ReportChangesAsync returns (closing
+            // the connection, which drops our report) as soon as that starts.
+            if (_shouldReport())
             {
-                using var pipe = new NamedPipeClientStream(".", _pipeName, PipeDirection.Out, PipeOptions.Asynchronous);
-                await pipe.ConnectAsync(1000, token);
-                await ReportChangesAsync(pipe, token);
-            }
-            catch (OperationCanceledException) when (token.IsCancellationRequested) { return; }
-            catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException or OperationCanceledException)
-            {
-                // Engine not running, restarting or refusing us: try again shortly.
+                try
+                {
+                    using var pipe = new NamedPipeClientStream(".", _pipeName, PipeDirection.Out, PipeOptions.Asynchronous);
+                    // One attempt, no waiting: with a timeout, .NET retries a missing pipe in a spin loop until it runs
+                    // out, which an agent that waits for the engine for hours can't afford. ReconnectDelay paces us.
+                    await pipe.ConnectAsync(0, token);
+                    await ReportChangesAsync(pipe, token);
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested) { return; }
+                catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException or OperationCanceledException)
+                {
+                    // Engine not running, restarting or refusing us: try again shortly.
+                }
             }
 
             try { await Task.Delay(ReconnectDelay, token); }
@@ -91,7 +117,7 @@ public sealed class ForegroundReporter : IDisposable
         int? lastSent = null;
         TimeSpan? lastSentIdle = null;
         var lastSentAt = DateTime.MinValue;
-        while (!token.IsCancellationRequested)
+        while (!token.IsCancellationRequested && _shouldReport())
         {
             var pid = _foregroundPid();
             var idle = _idleTime();
@@ -138,7 +164,7 @@ public sealed class ForegroundReporter : IDisposable
         return TimeSpan.FromMilliseconds(unchecked((uint)Environment.TickCount - info.dwTime));
     }
 
-    // The UI's own desktop only: reading the foreground window and input time touches no other process.
+    // This session's desktop only: reading the foreground window and input time touches no other process.
     [StructLayout(LayoutKind.Sequential)]
     private struct LASTINPUTINFO
     {

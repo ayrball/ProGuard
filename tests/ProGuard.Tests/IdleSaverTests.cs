@@ -5,6 +5,7 @@ using ProGuard.Core.Native;
 using ProGuard.Engine.IPC;
 using ProGuard.Engine.Services;
 using ProGuard.Shared.Messages;
+using ProGuard.Shared.Reporting;
 using ProGuard.UI.Services;
 
 namespace ProGuard.Tests;

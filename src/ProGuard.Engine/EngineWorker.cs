@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using ProGuard.Engine.IPC;
 using ProGuard.Engine.Services;
 using ProGuard.Engine.Services.ProcessRules;
+using ProGuard.Engine.Services.SessionAgents;
 
 namespace ProGuard.Engine;
 
@@ -32,6 +33,7 @@ public class EngineWorker : BackgroundService
     private readonly LaunchPriorityService? _launchPriorities;
     private readonly TimerResolutionService? _timerResolution;
     private readonly CoreParkingService? _coreParking;
+    private readonly SessionAgentSupervisor? _sessionAgents;
 
     private static readonly TimeSpan RuleReloadInterval = TimeSpan.FromSeconds(2);
 
@@ -53,7 +55,8 @@ public class EngineWorker : BackgroundService
         AutoPerformanceModeService autoPerformanceMode,
         LaunchPriorityService? launchPriorities = null,
         TimerResolutionService? timerResolution = null,
-        CoreParkingService? coreParking = null)
+        CoreParkingService? coreParking = null,
+        SessionAgentSupervisor? sessionAgents = null)
     {
         _logger = logger;
         _processMonitor = processMonitor;
@@ -73,6 +76,7 @@ public class EngineWorker : BackgroundService
         _launchPriorities = launchPriorities;
         _timerResolution = timerResolution;
         _coreParking = coreParking;
+        _sessionAgents = sessionAgents;
     }
 
     internal const string IncreaseBasePriorityPrivilege = "SeIncreaseBasePriorityPrivilege";
@@ -101,6 +105,8 @@ public class EngineWorker : BackgroundService
 
         // Before anything asks for the foreground process, so a UI that's already running can reconnect.
         _foregroundPipeServer.Start();
+        // Then the agents that report to it, one per user session, so the reports don't depend on the UI being open.
+        _sessionAgents?.Start();
         await _processMonitor.StartAsync(stoppingToken);
         await _proBalanceEngine.StartAsync(stoppingToken);
         await _cpuLimiter.StartAsync(stoppingToken);
@@ -136,6 +142,7 @@ public class EngineWorker : BackgroundService
         _logger.LogInformation("ProGuard.Engine stopping at: {time}", System.DateTimeOffset.Now);
         
         _pipeServer.Stop();
+        _sessionAgents?.Stop();
         _foregroundPipeServer.Stop();
         _foregroundBoostService.Stop();
 

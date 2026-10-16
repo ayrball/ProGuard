@@ -1,11 +1,12 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
+using Microsoft.Win32.SafeHandles;
 
 namespace ProGuard.Engine.Native;
 
 /// <summary>
-/// P/Invokes used only by the Watchdog, Keep Running and <see cref="Services.UserSessionLauncher"/>: launching into a
+/// P/Invokes used only by the Watchdog, Keep Running, the session agent supervisor and <see cref="Services.UserSessionLauncher"/>: launching into a
 /// user's session, reading another process's command line, and the queries the shared Core wrappers don't have.
 /// </summary>
 internal static class LaunchNative
@@ -20,6 +21,16 @@ internal static class LaunchNative
 
     public const uint INVALID_SESSION = 0xFFFFFFFF;
     public const int ERROR_NO_TOKEN = 1008;
+
+    public const uint SYNCHRONIZE = 0x00100000;
+    public const uint PROCESS_TERMINATE = 0x0001;
+    public const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+    public const uint WAIT_OBJECT_0 = 0;
+
+    /// <summary>WTS_TYPE_CLASS.WTSTypeSessionInfoLevel1, for freeing what WTSEnumerateSessionsEx returned.</summary>
+    public const int WTSTypeSessionInfoLevel1 = 2;
+    /// <summary>WTS_CONNECTSTATE_CLASS.WTSActive: a user is signed in and connected (console or remote).</summary>
+    public const int WTSActive = 0;
 
     /// <summary>PROCESSINFOCLASS.ProcessCommandLineInformation (Windows 8.1+): a UNICODE_STRING followed by its text.</summary>
     public const int ProcessCommandLineInformation = 60;
@@ -71,6 +82,45 @@ internal static class LaunchNative
         public UIntPtr PeakPagefileUsage;
         public UIntPtr PrivateUsage;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct WTS_SESSION_INFO_1
+    {
+        public int ExecEnvId;
+        public int State;
+        public int SessionId;
+        public IntPtr pSessionName;
+        public IntPtr pHostName;
+        public IntPtr pUserName;
+        public IntPtr pDomainName;
+        public IntPtr pFarmName;
+    }
+
+    [DllImport("wtsapi32.dll", EntryPoint = "WTSEnumerateSessionsExW", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool WTSEnumerateSessionsEx(IntPtr server, ref int level, int filter, out IntPtr sessions, out int count);
+
+    [DllImport("wtsapi32.dll", EntryPoint = "WTSFreeMemoryExW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool WTSFreeMemoryEx(int typeClass, IntPtr memory, int count);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern SafeProcessHandle OpenProcess(uint access, [MarshalAs(UnmanagedType.Bool)] bool inheritHandle, int processId);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern uint WaitForSingleObject(SafeProcessHandle handle, uint milliseconds);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetExitCodeProcess(SafeProcessHandle process, out uint exitCode);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool TerminateProcess(SafeProcessHandle process, uint exitCode);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, EntryPoint = "QueryFullProcessImageNameW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool QueryFullProcessImageName(SafeProcessHandle process, int flags, StringBuilder name, ref int size);
 
     [DllImport("wtsapi32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

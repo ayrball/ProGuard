@@ -87,7 +87,7 @@ public static class CriticalProcesses
     private static readonly HashSet<string> Names = new(StringComparer.Ordinal)
     {
         "system", "idle", "registry", "memory compression", "secure system", "smss", "csrss", "wininit",
-        "winlogon", "services", "lsass", "lsaiso", "dwm", "fontdrvhost", "proguard.engine", "proguard.ui"
+        "winlogon", "services", "lsass", "lsaiso", "dwm", "fontdrvhost", "proguard.engine", "proguard.ui", "proguard.sessionagent"
     };
 
     /// <summary>True for session/security processes and ProGuard itself, by name.</summary>

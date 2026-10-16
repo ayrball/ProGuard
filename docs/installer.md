@@ -42,7 +42,7 @@ takes it as the `ProductVersion` MSBuild property. CI builds use `0.0.<run numbe
 | | |
 | --- | --- |
 | Program files | `C:\Program Files\ProGuard`: `ProGuard.Engine.exe`, `ProGuard.UI.exe`, `ProGuard.SessionAgent.exe` (the engine starts it from its own folder), native libraries, `appsettings.json`, `LICENSE.txt`, `NOTICE.txt` |
-| Service | `ProGuardEngine`, "ProGuard Engine", LocalSystem, automatic start, same description as `install-service.ps1`. Recovery: restart after 5 s, 10 s, then every 60 s; the count resets after a day. Started at the end of the install, which fails and rolls back if the engine doesn't start. |
+| Service | `ProGuardEngine`, "ProGuard Engine", LocalSystem, automatic start, same description as `install-service.ps1`. Recovery: restart after 5 s, 10 s, then every 60 s; the count resets after a day. It is set with the same `sc.exe failure` command as the script, because Windows Installer's own `MsiServiceConfigFailureActions` fails with access denied (error 1939) for restart actions. Started at the end of the install, which fails and rolls back if the engine doesn't start. |
 | Start menu | "ProGuard" (all users) → `ProGuard.UI.exe` |
 | Start at sign-in | Optional, on by default: `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, value `ProGuard.UI` = `"C:\Program Files\ProGuard\ProGuard.UI.exe" --tray` |
 | Data | `%ProgramData%\ProGuard` belongs to the engine, which creates it. The MSI doesn't install or remove it, except on uninstall with `REMOVE_DATA=1`. |

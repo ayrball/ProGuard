@@ -23,6 +23,39 @@ text describing each action, the INI keys and their defaults, and timing experim
 - **IPC/eventing**: named kernel objects (`Global\ProcessLasso_ProBalanceEvent9`, mutexes) + the shared INI. GUI tells the governor to reload.
 - **Rule matching**: name, wildcard, full path (`MatchWildcardsToPathnames`), optional command line (`MatchOnCommandLine`), regex.
 
+### Session agent: how a session-0 service learns the foreground program
+
+The governor runs as a service in session 0, which has no access to a user's desktop: `GetForegroundWindow` and
+`GetLastInputInfo` only answer for the caller's own session. `bitsumsessionagent.exe` is Process Lasso's helper in the
+user's session (how the governor starts it and talks to it wasn't traced). ProGuard's counterpart is
+`ProGuard.SessionAgent.exe`; before it, only the WPF UI reported, so with the UI closed ProBalance had no foreground
+process to exempt (see `docs/volt-verification.md`).
+
+| | ProGuard |
+|---|---|
+| What it does | Reports its session's foreground process (`GetForegroundWindow` → `GetWindowThreadProcessId`) and idle time (`GetLastInputInfo`) on the `ProGuardEngine.Foreground` pipe: a line on every change, a repeat every 5 s, and one at once when the user comes back from being idle. The UI's reporter is the same code (`ProGuard.Shared/Reporting/ForegroundReporter.cs`). |
+| Cost | Windowless WinExe, no WPF; workstation non-concurrent GC, invariant globalization: about 6–8 MB private memory, a 250 ms poll, one connection attempt every 2 s while the engine is away. |
+| One per session | Mutex `Local\ProGuard.SessionAgent`; a second copy exits with code 2. |
+| Who starts it | The engine (`SessionAgentSupervisor`). As a service: one in every active user session, as that session's user (`WTSQueryUserToken` → `CreateProcessAsUser` on `winsta0\default`). Sessions come from `WTSEnumerateSessionsEx` every 2 s and from `SERVICE_CONTROL_SESSIONCHANGE`: sign-in, connect and unlock start an agent at once, sign-out ends it. Run as an ordinary process, the engine starts one in its own session only. |
+| Restarts | After 2 s, doubling per failure up to 5 min; a run of a minute resets the count. A disconnected session keeps its agent, and gets a new one only on reconnect. When the engine stops it ends every agent; one left by a crashed engine is adopted (same session, same full path). |
+| The UI | Still reports, for an engine that can't start agents, but closes its connection while its session's agent mutex exists, and reconnects when it's gone. |
+| Several sessions | The engine uses one session's report: the console's; else the session with the most recent input (by more than 10 s, e.g. a remote desktop user while the console shows the sign-in screen); else the one whose foreground changed last (the 5 s repeats don't count). IdleSaver uses the least idle session, so one active user keeps the machine awake. |
+| Install | Published with the engine (`dotnet publish src\ProGuard.Engine`); `install-service.ps1` refuses a publish folder without it and ends leftover agents before replacing or deleting the install folder. |
+
+**No report at all.** When no agent or UI is connected, or none has been heard from for 15 s, and the engine runs in
+session 0, ProBalance can't tell which program is in the foreground. Rather than exempting nothing (which restrained a
+game in the Volt check), it treats every program that could be in use as the foreground process: a **Windows GUI
+program (PE subsystem `WINDOWS_GUI`) in a user session** is not restrained, and is released if it was ("No foreground
+report: it may be the program in use"). Console programs (compilers, encoders, scripts) and session-0 processes are
+restrained as usual. ProGuard can't list another session's visible top-level windows from session 0 (`EnumWindows`
+only reaches the caller's own session's window stations), so the program's subsystem stands in for "owns a top-level
+window"; it's read from the program file, cached per path, and an unreadable file counts as possibly in use.
+
+This is compatible with Process Lasso's rule that the program in use is never restrained (`ExcludeForegroundProcesses2`):
+it keeps that promise when ProGuard can't tell which program it is, at the cost of sparing some background GUI programs
+until a report arrives. It's ProGuard's own safety net: what Process Lasso's governor does without its agent wasn't
+observed. It follows the foreground exemption (off when that is off).
+
 ## Feature → mechanism map
 
 ### ProBalance (`[OutOfControlProcessRestraint]`)
@@ -140,7 +173,7 @@ Paths are under `src/`.
 | Services excluded | yes | no |
 | Ends on becoming foreground | yes | no, and ForegroundBoost won't boost it either |
 | Respect manual change during restraint | yes | overwrites |
-| Optional restraint actions (affinity / drop one random core, I/O priority Low, efficiency mode, `DoNotLowerPriorityClass`) and `DisableProBalanceWhenSysIdle` | yes, all off by default | done, all off by default; each setting is put back unless changed externally meanwhile; idle time comes from the UI's foreground reports |
+| Optional restraint actions (affinity / drop one random core, I/O priority Low, efficiency mode, `DoNotLowerPriorityClass`) and `DisableProBalanceWhenSysIdle` | yes, all off by default | done, all off by default; each setting is put back unless changed externally meanwhile; idle time comes from the session agents' foreground reports (or the UI's) |
 | `OocDisableCoreParkingWhileIn` | yes, off by default | done, off by default (`CoreParkingService.cs`): while anything is restrained, the active plan's `CPMINCORES` (and `CPMINCORES1` on hybrid CPUs) is set to 100 % for AC and DC and the plan re-applied; the originals come back when nothing is restrained, the option is turned off or the engine stops, except values changed meanwhile. Follows a plan switch. Originals kept in `core-parking-recovery.json` before the change and restored at the next start after a crash. Administrators only |
 
 PL's design point: low thresholds and per-process hysteresis. It restrains early and briefly, rather than waiting until the machine is already pegged at 85 %.

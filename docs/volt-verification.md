@@ -223,7 +223,7 @@ window to report (`ForegroundPid 0` in `GetStatus`). The earlier service check c
 **Incident caused by that limit.** The user started a Steam game during the run. With my restraint options on and no
 foreground report, ProBalance restrained the game for 63 s (BelowNormal, I/O Low, efficiency mode; 18:46:24 to
 18:47:27). I then turned ProBalance and game detection off, and the engine restored it. A real user who quits the UI
-from the tray is in the same position; see the follow-ups.
+from the tray is in the same position; see the follow-ups (since fixed: the session agent reports without the UI).
 
 **Fixed here**:
 - The release reason said the game "exited" when the settings changed while it still ran (08fd5f6).
@@ -281,9 +281,20 @@ are flaky while the machine is busy (a game was running): they failed in 2 of 3 
 
 ## Follow-ups (not fixed here)
 
-- **No foreground report, no exemption**: with no UI connected (quit from the tray, or a session without one),
-  ProBalance can restrain the app the user is using, as it did to the game above. Options: hold off restraining
-  processes in a session with no reporter, or work out the foreground process another way.
+- ~~**No foreground report, no exemption**~~ **Fixed** (branch `feature/session-agent`): with no UI connected (quit
+  from the tray, or a session without one), ProBalance could restrain the app the user is using, as it did to the game
+  above. Now:
+  - the engine keeps a small session agent (`ProGuard.SessionAgent.exe`, like Process Lasso's `bitsumsessionagent.exe`)
+    running in every signed-in session, as that session's user, and it reports the foreground process and idle time
+    whether or not the UI is open; the UI stands aside while it runs;
+  - with several sessions reporting, the engine uses the console session's report (else the session with the most
+    recent input), and a reporter's 5 s repeats no longer make sessions take turns;
+  - if no report arrives at all (no agent, no UI, or none heard from for 15 s), ProBalance spares every Windows GUI
+    program in a user session, so the game in use isn't restrained, and releases any it had restrained.
+
+  Covered by unit tests with fake WTS calls and real agent processes in the test's own session. Not yet re-checked on an
+  installed service (doing so needs installing it): sign-in, sign-out and fast user switching with the UI closed.
+  Details: `docs/process-lasso-internals.md`, "Session agent".
 - Process Lasso matches rules by wildcard, full path, command line and regex; ProGuard only by exact file name (now
   stated in the editor and enforced). Adding patterns needs `RuleAuthorization` to check what a pattern can match.
 - A standard user's rule is checked against the instances running when it is saved. A service started later under

@@ -12,8 +12,12 @@ namespace ProGuard.Tests;
 /// stands aside while one runs. Agents started here inherit the test run's private pipe and mutex names
 /// (<see cref="TestEnvironment"/>), so they never reach an installed engine or silence the UI on this desktop.
 /// </summary>
+[Collection(Collection)]
 public class SessionAgentTests
 {
+    /// <summary>Tests that start real agents share the run's agent mutex, so they take turns.</summary>
+    public const string Collection = "Session agent processes";
+
     private static string UniqueName(string what) => $@"Local\ProGuardTest_{what}_" + Guid.NewGuid().ToString("N");
 
     private static async Task<bool> WaitFor(Func<bool> condition, int timeoutMs = 10_000)

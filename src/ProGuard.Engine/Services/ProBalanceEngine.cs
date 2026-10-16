@@ -90,7 +90,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     private static readonly HashSet<string> ProtectedProcesses = new(StringComparer.Ordinal)
     {
         "system", "idle", "registry", "memory compression", "smss", "csrss", "wininit", "winlogon",
-        "services", "lsass", "dwm", "audiodg", "fontdrvhost", "proguard.engine", "proguard.ui"
+        "services", "lsass", "dwm", "audiodg", "fontdrvhost", "proguard.engine", "proguard.ui", "proguard.sessionagent"
     };
 
     /// <summary>System-wide CPU % that must be reached before anything is restrained.</summary>

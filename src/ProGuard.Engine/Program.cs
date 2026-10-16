@@ -1,10 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting.WindowsServices;
 using Microsoft.Extensions.Logging;
 using ProGuard.Core.Services;
 using ProGuard.Core.Data;
 using ProGuard.Engine.Services;
 using ProGuard.Engine.Services.ProcessRules;
+using ProGuard.Engine.Services.SessionAgents;
 using ProGuard.Engine.IPC;
 using ProGuard.Engine.Logging;
 
@@ -62,7 +64,8 @@ public class Program
                 services.AddSingleton<IAutoPerformanceMode>(sp => sp.GetRequiredService<AutoPerformanceModeService>());
 
                 services.AddSingleton<IProcessActions, Win32ProcessActions>();
-                services.AddSingleton<IUserSessionLauncher, UserSessionLauncher>();
+                services.AddSingleton<UserSessionLauncher>();
+                services.AddSingleton<IUserSessionLauncher>(sp => sp.GetRequiredService<UserSessionLauncher>());
                 services.AddSingleton<WatchdogEventLog>();
                 services.AddSingleton<KeepRunningService>();
                 services.AddSingleton<WatchdogService>();
@@ -109,6 +112,17 @@ public class Program
                 services.AddSingleton<IpcDispatcher>();
                 services.AddSingleton<PipeServer>();
                 services.AddSingleton<ForegroundPipeServer>();
+
+                // The session agents that report each desktop's foreground process and idle time, UI or no UI. A
+                // service supervises every user session (and asks the SCM for session changes); an engine run from a
+                // console only its own.
+                var isService = WindowsServiceHelpers.IsWindowsService();
+                services.AddSingleton(sp => new SessionAgentSupervisor(
+                    sp.GetRequiredService<ILogger<SessionAgentSupervisor>>(),
+                    new Win32SessionAgentPlatform(sp.GetRequiredService<UserSessionLauncher>()),
+                    onlySession: isService ? null : System.Diagnostics.Process.GetCurrentProcess().SessionId));
+                if (isService)
+                    services.AddSingleton<IHostLifetime, SessionAwareServiceLifetime>();
                 
                 services.AddHostedService<EngineWorker>();
             })

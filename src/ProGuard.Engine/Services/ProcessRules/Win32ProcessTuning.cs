@@ -258,6 +258,14 @@ public sealed class Win32ProcessTuning : IProcessTuningNative
 
     private static void CheckStatus(int status, string what)
     {
-        if (status != 0) throw new Win32Exception($"{what} failed with NTSTATUS 0x{status:X8}");
+        if (status == 0) return;
+        // High I/O priority needs SeIncreaseBasePriorityPrivilege, which the engine only has when it runs elevated.
+        if (status == StatusPrivilegeNotHeld) throw new Win32Exception(PrivilegeNotHeldMessage);
+        throw new Win32Exception($"{what} failed with NTSTATUS 0x{status:X8}");
     }
+
+    internal const int StatusPrivilegeNotHeld = unchecked((int)0xC0000061);
+
+    internal const string PrivilegeNotHeldMessage =
+        "Windows refused: this needs the engine to run as administrator (it lacks the \"increase scheduling priority\" right).";
 }

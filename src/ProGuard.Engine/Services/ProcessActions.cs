@@ -73,6 +73,8 @@ public class Win32ProcessActions : IProcessActions
         {
             int value = ioPriority;
             var status = Ntdll.NtSetInformationProcess(h, Ntdll.ProcessIoPriority, ref value, sizeof(int));
+            if (status == ProcessRules.Win32ProcessTuning.StatusPrivilegeNotHeld)
+                throw new InvalidOperationException(ProcessRules.Win32ProcessTuning.PrivilegeNotHeldMessage);
             if (status != 0) throw new InvalidOperationException($"NtSetInformationProcess(ProcessIoPriority) failed: NTSTATUS 0x{status:X8}");
             return true;
         });

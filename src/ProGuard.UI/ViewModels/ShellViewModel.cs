@@ -28,6 +28,7 @@ public sealed partial class ShellViewModel : ObservableObject
     public WatchdogViewModel Watchdog { get; }
     public ActivityViewModel Activity { get; }
     public SystemViewModel System { get; }
+    public AdvancedViewModel Advanced { get; }
 
     public IReadOnlyList<PageItem> Pages { get; }
 
@@ -61,6 +62,7 @@ public sealed partial class ShellViewModel : ObservableObject
         Watchdog = new WatchdogViewModel(hub, this);
         Activity = new ActivityViewModel(hub, this);
         System = new SystemViewModel(hub, this, startup);
+        Advanced = new AdvancedViewModel(hub, this);
 
         Pages = new[]
         {
@@ -70,6 +72,7 @@ public sealed partial class ShellViewModel : ObservableObject
             new PageItem("04", "WATCHDOG", Watchdog),
             new PageItem("05", "ACTIVITY", Activity),
             new PageItem("06", "SYSTEM", System),
+            new PageItem("07", "ADVANCED", Advanced),
         };
         currentPage = Pages[0];
 

@@ -75,6 +75,11 @@ public class StandInEngineTests
         CommandTypes.SetPowerMode => (null, StandInData.BestPerformanceMode),
         CommandTypes.GetActivity => (null, 10),
         CommandTypes.SetTimerResolution => (null, new TimerResolutionArgument { Resolution = 10000 }),
+        CommandTypes.SaveProfile => (null, "Evening"),
+        CommandTypes.SwitchProfile => (null, new SwitchProfileArgument { Id = 1 }),
+        CommandTypes.DeleteProfile => (null, 2),
+        CommandTypes.RenameProfile => (null, new RenameProfileArgument { Id = 1, Name = "Games" }),
+        CommandTypes.ImportConfig => (null, new ImportConfigArgument { Document = ProGuard.Shared.Profiles.ConfigDocuments.Serialize(new ConfigDocument { Name = "Sample" }), Preview = true }),
         _ => (null, null)
     };
 

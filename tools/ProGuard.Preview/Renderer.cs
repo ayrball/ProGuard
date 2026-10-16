@@ -184,6 +184,11 @@ internal sealed class Renderer
 
     private void ExercisePage(PageItem page, string prefix)
     {
+        if (page.Page is AdvancedViewModel advanced)
+        {
+            ExerciseAdvanced(advanced, prefix);
+            return;
+        }
         if (page.Page is not ProcessesViewModel processes)
         {
             RunOpeners(page, prefix, onlyMatching: null, tryConfirm: false);
@@ -212,6 +217,31 @@ internal sealed class Renderer
             RunOpeners(page, prefix + "--system", onlyMatching: new Regex("^End"), tryConfirm: true);
         }
         processes.Selected = null;
+    }
+
+    /// <summary>Each ADVANCED sub-section, and for CPU TUNING the battery values too.</summary>
+    private void ExerciseAdvanced(AdvancedViewModel advanced, string prefix)
+    {
+        foreach (var section in advanced.Sections)
+        {
+            string name = $"{prefix}--{Slug(section.Label)}";
+            advanced.CurrentSection = section;
+            Pump(TimeSpan.FromSeconds(0.8));
+            Shot(name);
+            if (section.Page is not CpuTuningViewModel tuning)
+            {
+                ShotScrolled(name);
+                continue;
+            }
+
+            // A long page of settings: every screenful, plugged in, then the settings again on battery.
+            ShotPaged(name);
+            tuning.IsDc = true;
+            Pump(TimeSpan.FromMilliseconds(400));
+            ShotPaged(name + "--battery");
+            tuning.IsDc = false;
+        }
+        advanced.CurrentSection = advanced.Sections[0];
     }
 
     /// <summary>Runs each opener command (with a few sample parameters if it takes one) and renders whatever it opens.</summary>
@@ -396,6 +426,20 @@ internal sealed class Renderer
             Shot($"{label}--scrolled{(regions.Count > 1 ? "-" + (i + 1) : "")}");
             regions[i].ScrollToHome();
         }
+    }
+
+    /// <summary>The page's scrolling region a screenful at a time below the first (up to six in all), back at the top afterwards.</summary>
+    private void ShotPaged(string label)
+    {
+        var region = Descendants(_window).OfType<ScrollViewer>().FirstOrDefault(s => s.IsVisible && s.ScrollableHeight > 8);
+        if (region == null) return;
+        int pages = Math.Min(6, (int)Math.Ceiling(region.ExtentHeight / Math.Max(1, region.ViewportHeight)));
+        for (int i = 1; i < pages; i++)
+        {
+            region.ScrollToVerticalOffset(i * region.ViewportHeight);
+            Shot($"{label}--page{i + 1}");
+        }
+        region.ScrollToHome();
     }
 
     private BitmapSource Capture(Visual visual, double width, double height)

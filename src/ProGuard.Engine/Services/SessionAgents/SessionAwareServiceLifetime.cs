@@ -28,9 +28,15 @@ public sealed class SessionAwareServiceLifetime : WindowsServiceLifetime
 
     protected override void OnSessionChange(SessionChangeDescription changeDescription)
     {
-        _logger.LogDebug("Session {Session}: {Reason}", changeDescription.SessionId, changeDescription.Reason);
-        try { _agents.OnSessionChange(changeDescription.SessionId, changeDescription.Reason); }
-        catch (Exception ex) { _logger.LogError(ex, "Session change handling failed"); }
+        HandleSessionChange(changeDescription.SessionId, changeDescription.Reason);
         base.OnSessionChange(changeDescription);
+    }
+
+    /// <summary>Runs on the SCM's thread: must not throw.</summary>
+    internal void HandleSessionChange(int sessionId, SessionChangeReason reason)
+    {
+        _logger.LogDebug("Session {Session}: {Reason}", sessionId, reason);
+        try { _agents.OnSessionChange(sessionId, reason); }
+        catch (Exception ex) { _logger.LogError(ex, "Session change handling failed"); }
     }
 }

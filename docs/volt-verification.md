@@ -281,7 +281,7 @@ are flaky while the machine is busy (a game was running): they failed in 2 of 3 
 
 ## Follow-ups (not fixed here)
 
-- ~~**No foreground report, no exemption**~~ **Fixed** (branch `feature/session-agent`): with no UI connected (quit
+- ~~**No foreground report, no exemption**~~ **Fixed** (PR #19): with no UI connected (quit
   from the tray, or a session without one), ProBalance could restrain the app the user is using, as it did to the game
   above. Now:
   - the engine keeps a small session agent (`ProGuard.SessionAgent.exe`, like Process Lasso's `bitsumsessionagent.exe`)
@@ -292,8 +292,24 @@ are flaky while the machine is busy (a game was running): they failed in 2 of 3 
   - if no report arrives at all (no agent, no UI, or none heard from for 15 s), ProBalance spares every Windows GUI
     program in a user session, so the game in use isn't restrained, and releases any it had restrained.
 
-  Covered by unit tests with fake WTS calls and real agent processes in the test's own session. Not yet re-checked on an
-  installed service (doing so needs installing it): sign-in, sign-out and fast user switching with the UI closed.
+  Covered by unit tests with fake WTS calls and real agent processes in the test's own session, and checked on an
+  installed service on 2026-10-16 (Release publish of 3677c81, `install-service.ps1`, uninstalled afterwards; UI closed
+  unless stated; Process Lasso uninstalled beforehand):
+  - **Start**: the service started `ProGuard.SessionAgent.exe` from `C:\Program Files\ProGuard\Engine` in session 1 as
+    the signed-in user, unelevated. It connected to the foreground pipe 50 ms later. `GetStatus` `ForegroundPid` matched
+    the desktop's foreground window, and `UserIdleSeconds` followed input.
+  - **Restart**: killing the agent three times in a row brought it back after 2 s, 4 s and 8 s. After a 32 s run the
+    next restart took 16 s: a run under a minute doesn't reset the back-off.
+  - **UI**: a UI started with `--tray` never connected a reporter while the agent ran. It connected 0.4 s after the
+    agent was killed, and disconnected 225 ms after the restarted agent connected.
+  - **No report**: two 2-thread CPU burners ran, one `WINDOWS_GUI` and one console program. While reports flowed, both
+    were restrained (neither was in front). With the agent suspended (`NtSuspendProcess`), after about 15 s ProBalance
+    logged the fallback and restored the GUI burner ("No foreground report: it may be the program in use"). It kept the
+    console burner restrained. Within 1 s of resuming the agent, it restrained the GUI burner again.
+  - **Stop and uninstall**: stopping the service ended the agent itself ("Ended session agent … the engine is
+    stopping"). Uninstalling left no service, install folder or agent.
+  - **Not checked**: sign-in, sign-out, fast user switching and remote desktop. They need a second account or session.
+
   Details: `docs/process-lasso-internals.md`, "Session agent".
 - Process Lasso matches rules by wildcard, full path, command line and regex; ProGuard only by exact file name (now
   stated in the editor and enforced). Adding patterns needs `RuleAuthorization` to check what a pattern can match.

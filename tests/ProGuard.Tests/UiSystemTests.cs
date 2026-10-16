@@ -605,6 +605,8 @@ public class UiSystemTests
     }
 
     // Synchronous on purpose: the toasts are posted to this thread's dispatcher, and only this thread can run it.
+    // Awaiting would resume on a thread-pool thread and leave them unrun, so xUnit1031 doesn't apply to these three.
+#pragma warning disable xUnit1031
     [Fact]
     public void Processes_Trim_ThatTheEngineRefuses_ShowsTheRefusal_AndNoAmountFreed()
     {
@@ -644,6 +646,7 @@ public class UiSystemTests
 
         Assert.Equal(new[] { "The engine is busy." }, Toasts(shell));
     }
+#pragma warning restore xUnit1031
 
     /// <summary>The toasts on screen once everything already posted to this thread's dispatcher has run.</summary>
     private static string[] Toasts(ShellViewModel shell)

@@ -1,6 +1,8 @@
 <#
 .SYNOPSIS
     Installs (or with -Uninstall removes) the ProGuard engine as a LocalSystem Windows service.
+    For development. Users install ProGuard with its MSI (installer\build.ps1, docs\installer.md), which installs the
+    same service; this script refuses to run while the MSI is installed.
 .DESCRIPTION
     Publish first:  dotnet publish src\ProGuard.Engine -c Release
     That publishes the session agent (ProGuard.SessionAgent.exe) with the engine. The service starts one in every
@@ -23,6 +25,16 @@ $agentName = "ProGuard.SessionAgent"
 $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Error "Run this script from an elevated PowerShell."
+    exit 1
+}
+
+# The MSI (installer\, docs\installer.md) owns the same service name. Replacing or deleting its service from here would
+# leave Windows Installer with a product whose service is gone, so don't: uninstall the MSI first.
+$msiUpgradeCode = "{276E7864-81FA-4F30-AC57-41896E15D3C6}"
+$windowsInstaller = New-Object -ComObject WindowsInstaller.Installer
+$msiProducts = $windowsInstaller.GetType().InvokeMember("RelatedProducts", "GetProperty", $null, $windowsInstaller, @($msiUpgradeCode))
+if ($msiProducts.GetType().InvokeMember("Count", "GetProperty", $null, $msiProducts, $null) -gt 0) {
+    Write-Error "ProGuard is installed from its MSI. Uninstall it first (Settings > Apps > ProGuard), then run this script."
     exit 1
 }
 

@@ -404,7 +404,7 @@ public class WatchdogTests
     }
 
     [Fact]
-    public void PendingRestores_AreAppliedWhenTheServiceStops()
+    public async Task PendingRestores_AreAppliedWhenTheServiceStops()
     {
         var h = new Harness();
         h.AddProcess(100, cpu: 90);
@@ -412,7 +412,7 @@ public class WatchdogTests
         h.AddRule(WatchdogAction.SetPriority, argument: "Idle", actionDuration: 600);
 
         h.Tick();
-        h.Watchdog.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
+        await h.Watchdog.StopAsync(CancellationToken.None);
         Assert.Equal(ProcessPriorityClass.Normal, h.Actions.Priorities[100]);
     }
 

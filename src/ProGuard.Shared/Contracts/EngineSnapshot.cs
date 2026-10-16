@@ -19,6 +19,12 @@ public sealed class EngineSnapshot
     /// <summary>Load of each logical processor, 0-100, in processor order. Empty when unavailable.</summary>
     public List<double> CoreCpuPercent { get; set; } = new();
 
+    /// <summary>
+    /// Whether Windows has each logical processor parked right now (PDH <c>Parking Status</c>), in the same order as
+    /// <see cref="CoreCpuPercent"/>. Empty when unavailable.
+    /// </summary>
+    public List<bool> CoreParked { get; set; } = new();
+
     /// <summary>Process Lasso's "responsiveness" (from the processor queue length), 0-100; null before the first reading.</summary>
     public double? ResponsivenessPercent { get; set; }
 

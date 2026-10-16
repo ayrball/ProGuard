@@ -12,9 +12,15 @@ namespace ProGuard.Core.Helpers;
 /// <param name="PerCorePercent"><c>\Processor Information(g,n)\% Processor Time</c> for each logical CPU, in group
 /// and index order.</param>
 /// <param name="QueueLength"><c>\System\Processor Queue Length</c>: threads ready to run but waiting for a CPU.</param>
-public sealed record ProcessorSample(double? UtilityPercent, IReadOnlyList<double> PerCorePercent, double? QueueLength)
+/// <param name="CoreParked"><c>\Processor Information(g,n)\Parking Status</c> for each logical CPU, in the same order
+/// as <paramref name="PerCorePercent"/>: true while Windows has the core parked. Empty when unavailable.</param>
+public sealed record ProcessorSample(double? UtilityPercent, IReadOnlyList<double> PerCorePercent, double? QueueLength,
+    IReadOnlyList<bool>? CoreParked = null)
 {
     public static readonly ProcessorSample Empty = new(null, Array.Empty<double>(), null);
+
+    /// <summary><see cref="CoreParked"/>, never null.</summary>
+    public IReadOnlyList<bool> Parked => CoreParked ?? Array.Empty<bool>();
 }
 
 /// <summary>
@@ -28,18 +34,22 @@ public sealed class ProcessorCounters : IDisposable
     internal const string UtilityPath = @"\Processor Information(_Total)\% Processor Utility";
     internal const string PerCorePath = @"\Processor Information(*)\% Processor Time";
     internal const string QueueLengthPath = @"\System\Processor Queue Length";
+    /// <summary>1 while the core is parked, else 0. A raw count rather than a rate, so the first collection has it.</summary>
+    internal const string ParkingStatusPath = @"\Processor Information(*)\Parking Status";
 
     private IntPtr _query;
     private readonly IntPtr _utility;
     private readonly IntPtr _perCore;
     private readonly IntPtr _queueLength;
+    private readonly IntPtr _parking;
 
-    private ProcessorCounters(IntPtr query, IntPtr utility, IntPtr perCore, IntPtr queueLength)
+    private ProcessorCounters(IntPtr query, IntPtr utility, IntPtr perCore, IntPtr queueLength, IntPtr parking)
     {
         _query = query;
         _utility = utility;
         _perCore = perCore;
         _queueLength = queueLength;
+        _parking = parking;
     }
 
     /// <summary>Null when PDH can't be used at all, or none of the counters exists.</summary>
@@ -51,13 +61,14 @@ public sealed class ProcessorCounters : IDisposable
             var utility = Add(query, UtilityPath);
             var perCore = Add(query, PerCorePath);
             var queueLength = Add(query, QueueLengthPath);
-            if (utility == IntPtr.Zero && perCore == IntPtr.Zero && queueLength == IntPtr.Zero)
+            var parking = Add(query, ParkingStatusPath);
+            if (utility == IntPtr.Zero && perCore == IntPtr.Zero && queueLength == IntPtr.Zero && parking == IntPtr.Zero)
             {
                 Pdh.PdhCloseQuery(query);
                 return null;
             }
 
-            var counters = new ProcessorCounters(query, utility, perCore, queueLength);
+            var counters = new ProcessorCounters(query, utility, perCore, queueLength, parking);
             counters.Collect(); // baseline for the rate counters
             return counters;
         }
@@ -76,8 +87,9 @@ public sealed class ProcessorCounters : IDisposable
         if (_query == IntPtr.Zero || Pdh.PdhCollectQueryData(_query) != Pdh.ERROR_SUCCESS) return ProcessorSample.Empty;
         return new ProcessorSample(
             ReadValue(_utility, Pdh.PDH_FMT_DOUBLE | Pdh.PDH_FMT_NOCAP100),
-            ReadPerCore(),
-            ReadValue(_queueLength, Pdh.PDH_FMT_DOUBLE));
+            ReadPerCore(_perCore, 100),
+            ReadValue(_queueLength, Pdh.PDH_FMT_DOUBLE),
+            ReadParked());
     }
 
     private static double? ReadValue(IntPtr counter, uint format)
@@ -87,18 +99,27 @@ public sealed class ProcessorCounters : IDisposable
         return IsValid(value) ? Math.Max(0, value.DoubleValue) : null;
     }
 
-    private IReadOnlyList<double> ReadPerCore()
+    private IReadOnlyList<bool> ReadParked()
     {
-        if (_perCore == IntPtr.Zero) return Array.Empty<double>();
+        var values = ReadPerCore(_parking, 1);
+        var parked = new bool[values.Count];
+        for (var i = 0; i < parked.Length; i++) parked[i] = values[i] >= 0.5;
+        return parked;
+    }
+
+    /// <summary>A per-core counter's values, clamped to 0..<paramref name="max"/>, in group and index order.</summary>
+    private static IReadOnlyList<double> ReadPerCore(IntPtr counter, double max)
+    {
+        if (counter == IntPtr.Zero) return Array.Empty<double>();
 
         uint size = 0;
-        var status = Pdh.PdhGetFormattedCounterArray(_perCore, Pdh.PDH_FMT_DOUBLE, ref size, out _, IntPtr.Zero);
+        var status = Pdh.PdhGetFormattedCounterArray(counter, Pdh.PDH_FMT_DOUBLE, ref size, out _, IntPtr.Zero);
         if (status != Pdh.PDH_MORE_DATA || size == 0) return Array.Empty<double>();
 
         var buffer = Marshal.AllocHGlobal((int)size);
         try
         {
-            if (Pdh.PdhGetFormattedCounterArray(_perCore, Pdh.PDH_FMT_DOUBLE, ref size, out var count, buffer) != Pdh.ERROR_SUCCESS)
+            if (Pdh.PdhGetFormattedCounterArray(counter, Pdh.PDH_FMT_DOUBLE, ref size, out var count, buffer) != Pdh.ERROR_SUCCESS)
                 return Array.Empty<double>();
 
             var cores = new List<(int Group, int Index, double Percent)>((int)count);
@@ -108,7 +129,7 @@ public sealed class ProcessorCounters : IDisposable
                 var item = Marshal.PtrToStructure<PDH_FMT_COUNTERVALUE_ITEM>(buffer + i * itemSize);
                 var name = Marshal.PtrToStringUni(item.Name);
                 if (!TryParseCoreInstance(name, out var group, out var index) || !IsValid(item.Value)) continue;
-                cores.Add((group, index, Math.Clamp(item.Value.DoubleValue, 0, 100)));
+                cores.Add((group, index, Math.Clamp(item.Value.DoubleValue, 0, max)));
             }
 
             cores.Sort((a, b) => a.Group != b.Group ? a.Group.CompareTo(b.Group) : a.Index.CompareTo(b.Index));

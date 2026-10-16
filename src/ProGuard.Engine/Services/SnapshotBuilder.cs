@@ -21,7 +21,8 @@ public sealed record SystemMetrics(
     double MemoryPercent,
     long TotalMemoryBytes,
     long AvailableMemoryBytes,
-    int LogicalProcessors)
+    int LogicalProcessors,
+    IReadOnlyList<bool>? CoreParked = null)
 {
     /// <summary>Task Manager's CPU figure, the PDH per-core loads and queue length, and GlobalMemoryStatusEx.</summary>
     public static SystemMetrics Read()
@@ -31,7 +32,7 @@ public sealed record SystemMetrics(
         var memory = MEMORYSTATUSEX.Create();
         Kernel32.GlobalMemoryStatusEx(ref memory);
         return new SystemMetrics(cpu, sample.PerCorePercent, sample.QueueLength, memory.dwMemoryLoad,
-            (long)memory.ullTotalPhys, (long)memory.ullAvailPhys, SystemInfo.LogicalProcessorCount);
+            (long)memory.ullTotalPhys, (long)memory.ullAvailPhys, SystemInfo.LogicalProcessorCount, sample.Parked);
     }
 }
 
@@ -192,6 +193,7 @@ public sealed class SnapshotBuilder
             EngineUptime = now - _startedUtc,
             CpuPercent = metrics.CpuPercent,
             CoreCpuPercent = metrics.CoreCpuPercent.ToList(),
+            CoreParked = metrics.CoreParked?.ToList() ?? new List<bool>(),
             ResponsivenessPercent = _responsiveness.Percent,
             MemoryPercent = metrics.MemoryPercent,
             TotalMemoryBytes = metrics.TotalMemoryBytes,

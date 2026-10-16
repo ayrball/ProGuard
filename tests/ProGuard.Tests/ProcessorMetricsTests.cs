@@ -31,6 +31,8 @@ public class ProcessorMetricsTests
         Assert.All(sample.PerCorePercent, p => Assert.InRange(p, 0, 100));
         Assert.NotNull(sample.QueueLength);
         Assert.True(sample.QueueLength >= 0);
+        // Parking Status: one per logical CPU where Windows has the counter (a VM may not).
+        Assert.True(sample.Parked.Count == 0 || sample.Parked.Count == Environment.ProcessorCount, $"{sample.Parked.Count} parking states for {Environment.ProcessorCount} CPUs");
     }
 
     [Fact]

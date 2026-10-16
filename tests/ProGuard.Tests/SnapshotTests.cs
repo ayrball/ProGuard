@@ -56,6 +56,7 @@ public class SnapshotTests
 
         Assert.Equal(37.5, s.CpuPercent);
         Assert.Equal(new[] { 10.0, 20.0, 30.0, 40.0 }, s.CoreCpuPercent);
+        Assert.Empty(s.CoreParked); // the harness metrics have no parking states
         Assert.Equal(75.0, s.ResponsivenessPercent); // a queue of 2 on 4 processors: 0.5 waiting per CPU of the 2 that saturate
         Assert.Equal(61, s.MemoryPercent);
         Assert.Equal(16L << 30, s.TotalMemoryBytes);

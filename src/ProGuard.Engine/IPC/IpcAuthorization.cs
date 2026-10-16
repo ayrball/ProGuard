@@ -56,6 +56,10 @@ namespace ProGuard.Engine.IPC;
 /// (<see cref="CommandTypes.GetTimerResolution"/>) is open to anyone, as the rest of the System page is.</item>
 /// <item>Unparking cores while ProBalance restrains (<see cref="AppSettings.ProBalanceDisableCoreParking"/>) is
 /// administrator-only: it rewrites the active power plan's processor settings for everyone.</item>
+/// <item>CPU tuning (<see cref="CommandTypes.SetCpuTuning"/>) is administrator-only too: it rewrites a power plan's core
+/// parking and frequency settings, which are machine-wide (Windows itself needs elevation to write them), and shows
+/// hidden settings in every user's Power Options. Reading them (<see cref="CommandTypes.GetCpuTuning"/>) is open to
+/// anyone, as powercfg /query is.</item>
 /// <item>Settings listed in <see cref="AdministratorOnlySettings"/> may be saved by a standard user only unchanged: a
 /// SaveSettings or SetSetting that changes one of them is refused as a whole (<see cref="CheckSettingsChange"/>).</item>
 /// <item>Anything else is refused. A new command stays administrator-only until it is added here.</item>
@@ -84,6 +88,7 @@ public static class IpcAuthorization
         CommandTypes.GetActivity,
         CommandTypes.GetCpuSets,
         CommandTypes.GetTimerResolution,
+        CommandTypes.GetCpuTuning,
     };
 
     /// <summary>Allowed here; <see cref="IpcDispatcher"/> checks the rule's contents with <see cref="RuleAuthorization"/>.</summary>
@@ -121,6 +126,7 @@ public static class IpcAuthorization
         CommandTypes.PurgeMemory,
         CommandTypes.ClearActionLog,
         CommandTypes.SetTimerResolution,
+        CommandTypes.SetCpuTuning,
     };
 
     /// <summary>

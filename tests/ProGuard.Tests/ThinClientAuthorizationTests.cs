@@ -22,7 +22,7 @@ public class ThinClientAuthorizationTests
         CommandTypes.ConfigureIdleSaver, CommandTypes.ConfigureSmartTrim,
         CommandTypes.EnablePerformanceMode, CommandTypes.DisablePerformanceMode,
         CommandTypes.GetSnapshot, CommandTypes.GetProcessRules, CommandTypes.GetWatchdogRules, CommandTypes.GetSettings,
-        CommandTypes.GetPower, CommandTypes.GetActivity, CommandTypes.GetCpuSets, CommandTypes.GetTimerResolution,
+        CommandTypes.GetPower, CommandTypes.GetActivity, CommandTypes.GetCpuSets, CommandTypes.GetTimerResolution, CommandTypes.GetCpuTuning,
         CommandTypes.SaveSettings, CommandTypes.SetPowerPlan, CommandTypes.SetPowerMode,
         // Open here; the dispatcher then checks the rule itself (see RuleEditAuthorizationTests).
         CommandTypes.SaveProcessRule, CommandTypes.DeleteProcessRule, CommandTypes.SaveWatchdogRule, CommandTypes.DeleteWatchdogRule,
@@ -45,7 +45,7 @@ public class ThinClientAuthorizationTests
         new object?[] { CommandTypes.TerminateProcessTree, null, ProcessAccessFlags.Terminate },
     };
 
-    private static readonly string[] AdministratorsOnly = { CommandTypes.PurgeMemory, CommandTypes.ClearActionLog, CommandTypes.SetTimerResolution };
+    private static readonly string[] AdministratorsOnly = { CommandTypes.PurgeMemory, CommandTypes.ClearActionLog, CommandTypes.SetTimerResolution, CommandTypes.SetCpuTuning };
 
     // Sent by the UI on the foreground pipe only; the command pipe refuses it from standard users.
     private static readonly string[] NotForThisPipe = { CommandTypes.ReportForeground };

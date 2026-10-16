@@ -111,7 +111,7 @@ public sealed class FileCoreParkingRecoveryStore : ICoreParkingRecoveryStore
     }
 }
 
-public sealed class Win32CoreParkingPower : ICoreParkingPower
+public class Win32CoreParkingPower : ICoreParkingPower
 {
     public Guid ActiveScheme()
     {
@@ -190,6 +190,38 @@ public sealed class CoreParkingService
     public Guid? HeldScheme
     {
         get { lock (_sync) return _held?.Scheme; }
+    }
+
+    /// <summary>
+    /// While the cores of <paramref name="scheme"/> are held unparked: the plan's own value of <paramref name="setting"/>,
+    /// the one that comes back when ProBalance lets go. Null when not held, or when the hold didn't change that setting.
+    /// </summary>
+    public AcDc? HeldOriginal(Guid scheme, Guid setting)
+    {
+        lock (_sync)
+            return _held is { } record && record.Scheme == scheme && record.Originals.TryGetValue(setting, out var v) ? v : null;
+    }
+
+    /// <summary>
+    /// Changes the user's value of a plan's setting (CPU tuning) without fighting a hold. While the plan's cores are held
+    /// unparked and the hold changed <paramref name="setting"/>, the plan keeps 100 % for now and
+    /// <paramref name="values"/> becomes what is put back when ProBalance lets go (also after a crash: the recovery
+    /// record is rewritten). Otherwise <paramref name="write"/> runs, under this service's lock so a hold can't start
+    /// halfway through. Returns <paramref name="write"/>'s result, or true when deferred.
+    /// </summary>
+    public bool WriteUserValue(Guid scheme, Guid setting, AcDc values, Func<bool> write, out bool deferred)
+    {
+        lock (_sync)
+        {
+            deferred = _held is { } record && record.Scheme == scheme && record.Originals.ContainsKey(setting);
+            if (!deferred) return write();
+
+            _held!.Originals[setting] = values;
+            _recovery.Save(_held);
+            _logger.LogInformation("{Setting} of {Plan} set to {Values} while ProBalance holds its cores unparked; applied when it lets go",
+                setting, PowerPlans.Describe(scheme), Describe(values));
+            return true;
+        }
     }
 
     public void Configure(bool enabled)

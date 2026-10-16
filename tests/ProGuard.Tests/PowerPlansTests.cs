@@ -34,7 +34,7 @@ public class PowerPlansTests
         Assert.NotEmpty(plans);
         Assert.Equal(plans.Count, plans.Select(p => p.Id).Distinct().Count());
 
-        var active = new PowerManager(null, Mock.Of<IUserIdleSource>()).GetActivePlan();
+        var active = new PowerManager(Microsoft.Extensions.Logging.Abstractions.NullLogger<PowerManager>.Instance, Mock.Of<IUserIdleSource>()).GetActivePlan();
         if (active != Guid.Empty) Assert.Contains(plans, p => p.Id == active);
     }
 }

@@ -66,7 +66,13 @@ public partial class ProcessesView : UserControl
 
     private void OnTableMouseEnter(object sender, MouseEventArgs e) { _pointerOver = true; SyncFreeze(); }
     private void OnTableMouseLeave(object sender, MouseEventArgs e) { _pointerOver = false; SyncFreeze(); }
-    private void OnMenuOpened(object sender, RoutedEventArgs e) { _menuOpen = true; SyncFreeze(); }
+    private void OnMenuOpened(object sender, RoutedEventArgs e)
+    {
+        _menuOpen = true;
+        SyncFreeze();
+        // So the Always submenus tick what the program's rule keeps.
+        if (Vm is { } vm) _ = vm.LoadSelectedRuleAsync();
+    }
     private void OnMenuClosed(object sender, RoutedEventArgs e) { _menuOpen = false; SyncFreeze(); }
 
     private void OnTableRightButtonDown(object sender, MouseButtonEventArgs e)

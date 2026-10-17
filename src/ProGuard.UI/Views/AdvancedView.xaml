@@ -6,6 +6,7 @@
     <UserControl.Resources>
         <!-- Sub-section pages: one DataTemplate per section's view model (see AdvancedViewModel). -->
         <DataTemplate DataType="{x:Type vm:CpuTuningViewModel}"><views:CpuTuningView/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:LogsViewModel}"><views:LogsView/></DataTemplate>
 
         <!-- A sub-section tab: big condensed words, the current one underlined in volt. -->
         <Style x:Key="Section.Tab" TargetType="ListBoxItem">

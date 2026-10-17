@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -9,6 +10,7 @@ using ProGuard.Core.Models;
 using ProGuard.Core.Native;
 using ProGuard.Core.Services;
 using ProGuard.Engine.IPC;
+using ProGuard.Engine.Logging;
 using ProGuard.Engine.Services;
 using ProGuard.Engine.Services.ProcessRules;
 using ProGuard.Shared.Messages;
@@ -99,7 +101,8 @@ internal sealed class ThinHarness
     public SystemMetrics Metrics { get; set; } = new(37.5, new[] { 10.0, 20.0, 30.0, 40.0 }, 2.0, 61, 16L << 30, 6L << 30, 4);
     public int MetricsReads { get; private set; }
 
-    public ThinHarness()
+    /// <param name="engineLogPath">The engine's text log for the log viewer; by default one that doesn't exist (an empty log).</param>
+    public ThinHarness(string? engineLogPath = null)
     {
         Store.Setup(s => s.GetProcessRules()).Returns(() => Rules.ToList());
         Store.Setup(s => s.GetProcessRule(It.IsAny<string>())).Returns((string name) =>
@@ -122,6 +125,8 @@ internal sealed class ThinHarness
         Store.Setup(s => s.GetSettings()).Returns(() => Stored);
         Store.Setup(s => s.UpdateSettings(It.IsAny<AppSettings>())).Callback<AppSettings>(s => Stored = s);
         Store.Setup(s => s.GetRecentActions(It.IsAny<int>())).Returns((int n) => Actions.OrderByDescending(a => a.Timestamp).Take(n).ToList());
+        Store.Setup(s => s.GetActions(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<int>())).Returns((int? before, int? after, int n) => Actions
+            .Where(a => (before == null || a.Id < before) && (after == null || a.Id > after)).OrderByDescending(a => a.Id).Take(n).ToList());
         Store.Setup(s => s.ClearProBalanceActions()).Callback(() => Actions.Clear());
 
         ProBalance.SetupGet(p => p.RestrainedPids).Returns(Array.Empty<int>());
@@ -151,7 +156,8 @@ internal sealed class ThinHarness
         var feed = new ActivityFeed(Store.Object, Manual, WatchdogEvents);
         CpuTuning = new CpuTuningService(power: PowerSettings, originals: new MemoryCpuTuningOriginalsStore());
         var thin = new ThinClientCommands(NullLogger<ThinClientCommands>.Instance, Snapshots, actions, rules, feed, Manual,
-            Store.Object, Power.Object, Monitor, Tuning, CpuTuning);
+            Store.Object, Power.Object, Monitor, Tuning, CpuTuning,
+            new LogQueryService(new EngineLogReader(engineLogPath ?? Path.Combine(Path.GetTempPath(), "ProGuard.Tests.NoLog", "engine.log")), Store.Object));
         Dispatcher = new IpcDispatcher(Log, Store.Object, applier, ProBalance.Object, Power.Object,
             SmartTrim.Object, CpuLimiter.Object, Controller.Object, Monitor, WatchdogEvents, thin, timerResolution: TimerResolution);
     }

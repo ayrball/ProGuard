@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ProGuard's per-machine x64 MSI. Design notes and the reasons for each choice: docs/installer.md.
+
+  Public properties (msiexec ... NAME=value):
+    START_AT_SIGNIN=0|1  Start the UI in the tray when the installing user signs in (default 1; on upgrade, the
+                         current setting is kept).
+    REMOVE_DATA=1        On uninstall, also delete %ProgramData%\ProGuard (database, rules, logs). Kept by default.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <!-- Never change the UpgradeCode: it is how a new version finds and replaces the installed one. -->
+  <Package Name="ProGuard" Manufacturer="ayrball" Version="$(var.ProductVersion)"
+           UpgradeCode="276E7864-81FA-4F30-AC57-41896E15D3C6" Scope="perMachine" Compressed="yes" InstallerVersion="500">
+
+    <!-- Any other build replaces the installed one, including one with the same version: two products would both
+         try to own the ProGuardEngine service. The old one is removed inside this install's transaction, so a
+         failed upgrade rolls back to it. -->
+    <MajorUpgrade Schedule="afterInstallInitialize" AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="A newer version of ProGuard is already installed. Uninstall it first to install this version." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="ProGuardIcon" SourceFile="$(var.IconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="ProGuardIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/ayrball/ProGuard" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/ayrball/ProGuard/issues" />
+
+    <Property Id="START_AT_SIGNIN" Value="1" Secure="yes" />
+    <Property Id="REMOVE_DATA" Secure="yes" />
+
+    <!-- The UI's own "start with Windows" switch (RunKeyStartup) reads and writes this same value, so the installer
+         and the UI always agree. -->
+    <Property Id="EXISTING_RUN_VALUE">
+      <RegistrySearch Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\Run" Name="ProGuard.UI" Type="raw" />
+    </Property>
+    <!-- Upgrading keeps the user's choice: off if they turned it off in the UI. (The UI sequence does this first when
+         there is a UI, so that what the user picks in the dialog isn't overwritten afterwards.) -->
+    <SetProperty Action="KeepStartAtSignInOff_UI" Id="START_AT_SIGNIN" Value="0" After="AppSearch" Sequence="ui"
+                 Condition="WIX_UPGRADE_DETECTED AND NOT EXISTING_RUN_VALUE" />
+    <SetProperty Action="KeepStartAtSignInOff" Id="START_AT_SIGNIN" Value="0" After="AppSearch" Sequence="execute"
+                 Condition="WIX_UPGRADE_DETECTED AND NOT EXISTING_RUN_VALUE AND UILevel &lt; 4" />
+
+    <!-- Process Lasso and ProGuard adjust the same processes and fight. Detected only to warn (OptionsDlg, and the
+         PROCESS_LASSO_FOUND property in the log of a quiet install); the installer never touches it. -->
+    <Property Id="PL_INSTALL_DIR64">
+      <RegistrySearch Root="HKLM" Key="SOFTWARE\ProcessLasso" Name="Install_Dir" Type="raw" Bitness="always64" />
+    </Property>
+    <Property Id="PL_INSTALL_DIR32">
+      <RegistrySearch Root="HKLM" Key="SOFTWARE\ProcessLasso" Name="Install_Dir" Type="raw" Bitness="always32" />
+    </Property>
+    <Property Id="PL_SERVICE">
+      <RegistrySearch Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\ProcessGovernor" Name="ImagePath" Type="raw" Bitness="always64" />
+    </Property>
+    <SetProperty Id="PROCESS_LASSO_FOUND" Value="1" After="AppSearch" Sequence="both"
+                 Condition="PL_INSTALL_DIR64 OR PL_INSTALL_DIR32 OR PL_SERVICE" />
+
+    <!-- Folders RemoveFolderEx may delete; each RemoveFolderEx below has its own condition. -->
+    <SetProperty Id="PROGUARD_DATA_DIR" Value="[CommonAppDataFolder]ProGuard\" After="AppSearch" Sequence="execute" />
+    <SetProperty Id="LEGACY_ENGINE_DIR" Value="[ProgramFiles64Folder]ProGuard\Engine\" After="AppSearch" Sequence="execute" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="ProGuard" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder" />
+
+    <Feature Id="ProGuard" Title="ProGuard" AllowAbsent="no">
+      <ComponentGroupRef Id="ProgramFiles" />
+      <ComponentRef Id="StartAtSignIn" />
+    </Feature>
+
+    <ComponentGroup Id="ProgramFiles" Directory="INSTALLFOLDER">
+      <Component Id="Engine">
+        <File Id="EngineExe" Source="$(var.StagingDir)\ProGuard.Engine.exe" KeyPath="yes" />
+        <!-- Same service as src/ProGuard.Engine/Installer/install-service.ps1: LocalSystem, automatic start. Its
+             recovery actions are set by ConfigureEngineRecovery below. -->
+        <ServiceInstall Id="EngineService" Name="ProGuardEngine" DisplayName="ProGuard Engine"
+                        Description="ProGuard Engine Service for process management." Type="ownProcess"
+                        Start="auto" Account="LocalSystem" ErrorControl="normal" Vital="yes" />
+        <!-- Remove="both": installing also replaces a ProGuardEngine service that install-service.ps1 created, and
+             the files it copied to Program Files\ProGuard\Engine go with it. Wait: an install fails (and rolls
+             back) if the engine doesn't start. -->
+        <ServiceControl Id="EngineServiceControl" Name="ProGuardEngine" Start="install" Stop="both" Remove="both" Wait="yes" />
+        <!-- Windows Installer only removes folders it created; after replacing a script install, Program Files\ProGuard
+             already existed. -->
+        <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
+        <util:RemoveFolderEx Id="RemoveLegacyEngineDir" On="install" Property="LEGACY_ENGINE_DIR" Condition="NOT Installed" />
+        <util:RemoveFolderEx Id="RemoveProGuardData" On="uninstall" Property="PROGUARD_DATA_DIR"
+                             Condition="REMOVE_DATA = &quot;1&quot; AND REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+      </Component>
+
+      <Component Id="UI">
+        <File Id="UiExe" Source="$(var.StagingDir)\ProGuard.UI.exe" KeyPath="yes">
+          <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="ProGuard" Advertise="no"
+                    Description="See and manage what ProGuard does with your processes." WorkingDirectory="INSTALLFOLDER" />
+        </File>
+      </Component>
+
+      <!-- Everything else build.ps1 staged: the session agent, native libraries, appsettings.json, license files. -->
+      <Files Include="$(var.StagingDir)\**">
+        <Exclude Files="$(var.StagingDir)\ProGuard.Engine.exe" />
+        <Exclude Files="$(var.StagingDir)\ProGuard.UI.exe" />
+      </Files>
+    </ComponentGroup>
+
+    <!-- HKCU, not HKLM: see docs/installer.md. Written for the user who runs the installer. -->
+    <Component Id="StartAtSignIn" Directory="INSTALLFOLDER" Condition="START_AT_SIGNIN = &quot;1&quot;">
+      <RegistryValue Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\Run" Name="ProGuard.UI"
+                     Value="&quot;[INSTALLFOLDER]ProGuard.UI.exe&quot; --tray" Type="string" KeyPath="yes" />
+    </Component>
+
+    <!-- Restart after a crash: 5 s, 10 s, then every 60 s; the count resets after a day without one. The same
+         sc.exe command as install-service.ps1. Not Windows Installer's MsiServiceConfigFailureActions: it fails with
+         access denied (error 1939) when the actions restart the service. Runs between InstallServices and
+         StartServices whenever the engine component is (re)installed; a failure rolls the install back. -->
+    <SetProperty Id="ConfigureEngineRecovery" Before="ConfigureEngineRecovery" Sequence="execute"
+                 Value="&quot;[System64Folder]sc.exe&quot; failure ProGuardEngine reset= 86400 actions= restart/5000/restart/10000/restart/60000" />
+    <CustomAction Id="ConfigureEngineRecovery" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred"
+                  Impersonate="no" Return="check" />
+
+    <!-- The UI runs in each user's session and the engine's session agents should have ended with the service; end
+         whatever is left of this copy (matched by path, so other copies such as a portable one are left alone),
+         after the service has stopped and before files are replaced or removed. As LocalSystem, so it reaches
+         every session. (Short aliases: the command must fit the 255 characters of CustomAction.Target.) -->
+    <SetProperty Id="StopProGuardProcesses" Before="StopProGuardProcesses" Sequence="execute"
+                 Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -Command &quot;Get-Process ProGuard.UI,ProGuard.SessionAgent -EA 0 | ? Path -Like '[INSTALLFOLDER]*' | Stop-Process -Force; exit 0&quot;" />
+    <CustomAction Id="StopProGuardProcesses" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred"
+                  Impersonate="no" Return="ignore" />
+
+    <!-- The UI's switch can also turn start-at-sign-in on, outside the installer. On uninstall, clear the value for
+         the user who uninstalls, whoever set it (it would point at a deleted exe). -->
+    <SetProperty Id="RemoveRunValue" Before="RemoveRunValue" Sequence="execute"
+                 Value="&quot;[System64Folder]reg.exe&quot; delete &quot;HKCU\Software\Microsoft\Windows\CurrentVersion\Run&quot; /v ProGuard.UI /f" />
+    <CustomAction Id="RemoveRunValue" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred"
+                  Impersonate="yes" Return="ignore" />
+
+    <InstallExecuteSequence>
+      <Custom Action="ConfigureEngineRecovery" After="InstallServices" Condition="$Engine = 3" />
+      <Custom Action="StopProGuardProcesses" After="StopServices" Condition="Installed OR WIX_UPGRADE_DETECTED" />
+      <Custom Action="RemoveRunValue" After="RemoveRegistryValues"
+              Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+    </InstallExecuteSequence>
+
+    <UIRef Id="ProGuardUI" />
+  </Package>
+</Wix>

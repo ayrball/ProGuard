@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using ProGuard.Shared.Contracts;
 using ActivityKind = ProGuard.Shared.Contracts.ActivityKind;
 
@@ -377,5 +378,64 @@ public static class StandInData
         A(11500, ActivityKind.System, "", 0, "Engine started with administrator rights.");
 
         return list.OrderByDescending(a => a.TimestampUtc).ToList();
+    }
+
+    /// <summary>The engine's text log as the log viewer shows it: a few hours of an ordinary day, every level present.</summary>
+    public static List<LogEntryDto> EngineLog(DateTime nowUtc)
+    {
+        var list = new List<LogEntryDto>();
+        void L(int secondsAgo, LogLevelDto level, string category, string message, string? process = null, int? pid = null, string? detail = null)
+        {
+            var time = nowUtc.AddSeconds(-secondsAgo).AddMilliseconds(-(secondsAgo * 37 % 1000));
+            list.Add(new LogEntryDto
+            {
+                Id = "f:" + time.Ticks.ToString(CultureInfo.InvariantCulture), TimestampUtc = time, Source = LogSource.Engine, Level = level,
+                Category = category, Message = message, ProcessName = process, Pid = pid, Detail = detail,
+            });
+        }
+
+        L(4, LogLevelDto.Debug, "IpcDispatcher", "IPC command GetSnapshot (pid , arg ) from " + Me);
+        L(12, LogLevelDto.Information, "ProBalanceEngine", "ProBalance restrained MsMpEng (2480) from Normal to BelowNormal at 6.4% CPU", "MsMpEng", 2480);
+        L(33, LogLevelDto.Information, "IpcDispatcher", "IPC command SetCpuLimit (pid 3300, arg 15) from " + Me, null, 3300);
+        L(34, LogLevelDto.Information, "CpuLimiter", "Limited PID 3300 to 15% CPU", null, 3300);
+        L(49, LogLevelDto.Information, "CpuAffinityLimiter", "Constraining CPU affinity of ffmpeg (11200): over 85% for 10s, removing 4 cores for 30s", "ffmpeg", 11200);
+        L(61, LogLevelDto.Warning, "SessionAgentSupervisor", "Session agent 2772 in session 1 exited with code -1 after 0:00:50; restarting in 0:00:02", null, 2772);
+        L(63, LogLevelDto.Information, "UserSessionLauncher", "Launched \"C:\\Program Files\\ProGuard\\Engine\\ProGuard.SessionAgent.exe\" as process 38508 in session 1", "ProGuard.SessionAgent.exe", 38508);
+        L(90, LogLevelDto.Information, "ProBalanceEngine", "ProBalance restrained chrome (7220) from Normal to BelowNormal at 5.8% CPU", "chrome", 7220);
+        L(142, LogLevelDto.Information, "WatchdogService", "Watchdog: chrome (7388) memory above 4096 MB for 60s; logged an alert", "chrome", 7388);
+        L(207, LogLevelDto.Information, "SmartTrimService", "SmartTrim trimmed 31 processes, 1.4 GB reclaimed");
+        L(240, LogLevelDto.Debug, "ProcessMonitor", "Polled 412 processes in 18 ms");
+        L(264, LogLevelDto.Information, "ProBalanceEngine", "ProBalance restored SearchIndexer (2700) to Idle: CPU usage dropped to 0.2%", "SearchIndexer", 2700);
+        L(301, LogLevelDto.Error, "RuleStore", "Failed to log ProBalance action", detail:
+            "Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.\n" +
+            " ---> Microsoft.Data.Sqlite.SqliteException (0x80004005): SQLite Error 5: 'database is locked'.\n" +
+            "   at Microsoft.Data.Sqlite.SqliteException.ThrowExceptionForRC(Int32 rc, sqlite3 db)\n" +
+            "   at Microsoft.Data.Sqlite.SqliteDataReader.NextResult()\n" +
+            "   at ProGuard.Engine.Services.RuleStore.LogProBalanceActionAsync(ProBalanceAction action)");
+        L(342, LogLevelDto.Information, "ProcessGovernor", "Applied rule to Discord (8812): CPU cap 10%, cores 16-23, priority BelowNormal", "Discord", 8812);
+        L(412, LogLevelDto.Information, "IpcDispatcher", "IPC command SuspendProcess (pid 4400, arg ) from " + Me, null, 4400);
+        L(470, LogLevelDto.Warning, "IpcDispatcher", "Refused IPC request Command/PurgeMemory (pid (null)) from DESKTOP-9F2K1TE\\guest");
+        L(517, LogLevelDto.Information, "ProBalanceEngine", "ProBalance restored chrome (7168) to Normal: CPU usage dropped to 0.0%", "chrome", 7168);
+        L(642, LogLevelDto.Information, "WatchdogService", "Watchdog: ms-teams (7600) memory above 1500 MB for 60s; working set trimmed", "ms-teams", 7600);
+        L(700, LogLevelDto.Trace, "ForegroundTracker", "Foreground changed to Code (6120), session 1", "Code", 6120);
+        L(782, LogLevelDto.Information, "PowerManager", "Performance Mode ended; restoring the Balanced power plan");
+        L(907, LogLevelDto.Information, "ProcessGovernor", "Applied rule to obs64 (9921): priority High, I/O priority High", "obs64", 9921);
+        L(1192, LogLevelDto.Information, "StartupBoostService", "Startup boost: Cyberpunk2077 (13760) at High for 60s", "Cyberpunk2077", 13760);
+        L(1262, LogLevelDto.Information, "AutoPerformanceModeService", "Cyberpunk2077.exe started; engaging Performance Mode", "Cyberpunk2077.exe", 13760);
+        L(1263, LogLevelDto.Information, "PowerManager", "Switched to the High performance power plan (Performance Mode)");
+        L(1712, LogLevelDto.Warning, "KeepRunningService", "Plex Media Server.exe exited with code 3221225477; relaunching", "Plex Media Server.exe");
+        L(1952, LogLevelDto.Information, "IpcDispatcher", "IPC command TerminateProcess (pid 8116, arg ) from " + Me, null, 8116);
+        L(2652, LogLevelDto.Information, "SmartTrimService", "Purge now: standby list purged, 2.1 GB freed");
+        L(3482, LogLevelDto.Information, "InstanceLimiter", "msedgewebview2.exe: 6 instances allowed; ended a new one (pid 7712)", "msedgewebview2.exe", 7712);
+        L(3902, LogLevelDto.Information, "PowerManager", "Idle for 15 minutes; switched to the Power saver power plan");
+        L(5302, LogLevelDto.Information, "WatchdogService", "Watchdog: MsMpEng (2480) CPU above 40% for 30s; priority BelowNormal for 5 minutes", "MsMpEng", 2480);
+        L(6102, LogLevelDto.Information, "IpcDispatcher", "IPC command SaveSettings (pid , arg {...}) from " + Me);
+        L(9402, LogLevelDto.Warning, "PowerPlanRecoveryStore", "The engine stopped during a power plan switch; restoring Balanced");
+        L(11380, LogLevelDto.Critical, "EngineWorker", "Unhandled exception in the foreground pipe server; restarting it", detail:
+            "System.IO.IOException: All pipe instances are busy.\n   at System.IO.Pipes.NamedPipeServerStream.Create()");
+        L(11500, LogLevelDto.Information, "EngineWorker", "ProGuard.Engine started with administrator rights");
+        L(11501, LogLevelDto.Information, "RuleStore", "Loaded 14 process rules, 6 watchdog rules, 0 power profiles");
+
+        return list;
     }
 }

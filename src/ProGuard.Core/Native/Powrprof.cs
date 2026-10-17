@@ -46,6 +46,39 @@ public static class Powrprof
     [DllImport("powrprof.dll")]
     public static extern uint PowerWriteDCValueIndex(IntPtr RootPowerKey, ref Guid SchemeGuid, ref Guid SubGroupOfPowerSettingsGuid, ref Guid PowerSettingGuid, uint DcValueIndex);
 
+    /// <summary>The value a setting takes in the given scheme personality (Balanced, High performance, Power saver) out of the box.</summary>
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerReadACDefaultIndex(IntPtr RootPowerKey, ref Guid SchemePersonalityGuid, ref Guid SubGroupOfPowerSettingsGuid, ref Guid PowerSettingGuid, out uint AcDefaultIndex);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerReadDCDefaultIndex(IntPtr RootPowerKey, ref Guid SchemePersonalityGuid, ref Guid SubGroupOfPowerSettingsGuid, ref Guid PowerSettingGuid, out uint DcDefaultIndex);
+
+    /// <summary>Reads a setting's raw value; with no subgroup and <see cref="SchemePersonality"/> it gives the plan's personality GUID.</summary>
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerReadACValue(IntPtr RootPowerKey, ref Guid SchemeGuid, IntPtr SubGroupOfPowerSettingsGuid, ref Guid PowerSettingGuid, out uint Type, byte[]? Buffer, ref uint BufferSize);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerReadValueMin(IntPtr RootPowerKey, ref Guid SubGroupOfPowerSettingsGuid, ref Guid PowerSettingGuid, out uint ValueMinimum);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerReadValueMax(IntPtr RootPowerKey, ref Guid SubGroupOfPowerSettingsGuid, ref Guid PowerSettingGuid, out uint ValueMaximum);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerReadValueIncrement(IntPtr RootPowerKey, ref Guid SubGroupOfPowerSettingsGuid, ref Guid PowerSettingGuid, out uint ValueIncrement);
+
+    /// <summary>A setting's attributes (<see cref="AttributeHide"/>); 0 when it has none or doesn't exist.</summary>
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerReadSettingAttributes(ref Guid SubGroupGuid, ref Guid PowerSettingGuid);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerWriteSettingAttributes(ref Guid SubGroupGuid, ref Guid PowerSettingGuid, uint Attributes);
+
+    /// <summary>POWER_ATTRIBUTE_HIDE: Power Options doesn't show the setting.</summary>
+    public const uint AttributeHide = 1;
+
+    /// <summary>GUID_POWERSCHEME_PERSONALITY: which of the three Windows plans a plan was made from.</summary>
+    public static readonly Guid SchemePersonality = new Guid("245d8541-3943-4422-b025-13a784f679b7");
+
     [DllImport("powrprof.dll", CharSet = CharSet.Unicode)]
     public static extern uint PowerReadFriendlyName(IntPtr RootPowerKey, ref Guid SchemeGuid, IntPtr SubGroupOfPowerSettingsGuid, IntPtr PowerSettingGuid, IntPtr Buffer, ref uint BufferSize);
 }

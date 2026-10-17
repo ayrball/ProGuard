@@ -209,5 +209,10 @@ public class ThinClientPipeTests
 
         Assert.True(result.Success, result.Error);
         Assert.NotNull(host.Services.GetRequiredService<ProGuard.Engine.Services.SnapshotBuilder>());
+
+        // CPU tuning is wired in too. A read: the machine's power plans are left as they are.
+        reply = dispatcher.Dispatch(new CommandMessage { CommandType = CommandTypes.GetCpuTuning });
+        result = System.Text.Json.JsonSerializer.Deserialize<CommandResult>(reply.Payload)!;
+        Assert.True(result.Success, result.Error);
     }
 }

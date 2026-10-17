@@ -34,6 +34,7 @@ public sealed class ThinClientCommands
     private readonly IPowerManager _power;
     private readonly IProcessMonitor _monitor;
     private readonly IProcessTuningNative _native;
+    private readonly CpuTuningService? _cpuTuning;
     private readonly LogQueryService? _logs;
 
     public ThinClientCommands(
@@ -47,8 +48,10 @@ public sealed class ThinClientCommands
         IPowerManager power,
         IProcessMonitor monitor,
         IProcessTuningNative native,
+        CpuTuningService? cpuTuning = null,
         LogQueryService? logs = null)
     {
+        _cpuTuning = cpuTuning;
         _logger = logger;
         _snapshots = snapshots;
         _actions = actions;
@@ -159,6 +162,12 @@ public sealed class ThinClientCommands
                 }).ToList()));
                 return true;
 
+            case CommandTypes.GetCpuTuning:
+                result = GetCpuTuning(cmd.Argument);
+                return true;
+            case CommandTypes.SetCpuTuning:
+                result = SetCpuTuning(ParseArgument<CpuTuningArgument>(cmd.Argument), caller);
+                return true;
             case CommandTypes.GetLogEntries:
             {
                 if (_logs == null) { result = CommandResult.Fail("This engine has no log viewer"); return true; }
@@ -248,6 +257,31 @@ public sealed class ThinClientCommands
         _power.SetActivePlan(id);
         if (_power.GetActivePlan() != id) return CommandResult.Fail($"Windows wouldn't switch to the {plan} power plan.");
         return CommandResult.Ok();
+    }
+
+    // === CPU tuning ===
+
+    private CommandResult GetCpuTuning(string? argument)
+    {
+        if (_cpuTuning == null) return CommandResult.Fail("This engine doesn't manage CPU tuning");
+        Guid? plan = null;
+        if (!string.IsNullOrWhiteSpace(argument))
+        {
+            if (!Guid.TryParse(argument.Trim(), out var id)) return CommandResult.Fail("Invalid power plan GUID");
+            plan = id;
+        }
+        return CommandResult.Ok(JsonSerializer.Serialize(_cpuTuning.Get(plan)));
+    }
+
+    /// <summary>Administrators only (<see cref="IpcAuthorization"/>): power plans are the whole machine's.</summary>
+    private CommandResult SetCpuTuning(CpuTuningArgument argument, IIpcCaller caller)
+    {
+        if (_cpuTuning == null) return CommandResult.Fail("This engine doesn't manage CPU tuning");
+        var change = _cpuTuning.Set(argument);
+        Record(0, change.Summary, string.Empty);
+        _logger.LogInformation("CPU tuning changed by {Caller}: {Summary}", caller.Name, change.Summary);
+        var data = JsonSerializer.Serialize(change.Tuning);
+        return change.Error == null ? CommandResult.Ok(data) : new CommandResult { Success = false, Error = change.Error, Data = data };
     }
 
     // === Arguments ===

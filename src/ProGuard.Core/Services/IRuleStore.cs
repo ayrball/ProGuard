@@ -34,6 +34,12 @@ public interface IRuleStore
     AppSettings GetSettings();
     void UpdateSettings(AppSettings settings);
 
+    /// <summary>
+    /// Replaces every process rule, every Watchdog rule and the settings in one transaction (a config profile switch or
+    /// import): either all of it is stored or none of it. The rules get new ids.
+    /// </summary>
+    void ReplaceConfiguration(IReadOnlyList<ProcessRule> processRules, IReadOnlyList<WatchdogRule> watchdogRules, AppSettings settings);
+
     // Logging
     Task LogProBalanceActionAsync(ProBalanceAction action);
 

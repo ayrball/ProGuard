@@ -562,6 +562,71 @@
                     <ContentControl Content="{Binding PollingInterval}" Focusable="False" Margin="0,26,0,0"/>
                 </StackPanel>
             </HeaderedContentControl>
+
+            <!-- ============================================================ J · Profiles & backup -->
+            <HeaderedContentControl Style="{StaticResource Section}">
+                <HeaderedContentControl.Header>
+                    <StackPanel>
+                        <TextBlock Text="J" Style="{StaticResource SectionNumber}"/>
+                        <TextBlock Text="PROFILES &amp; BACKUP" Style="{StaticResource SectionTitle}" TextWrapping="Wrap"/>
+                        <TextBlock Style="{StaticResource SectionBlurb}"
+                                   Text="Save the rules, Watchdog rules and every setting under a name and switch between them, or move them to another PC as a file. A switch keeps what it replaced as BEFORE SWITCH."/>
+                    </StackPanel>
+                </HeaderedContentControl.Header>
+                <StackPanel DataContext="{Binding Profiles}">
+                    <WrapPanel>
+                        <Button Style="{StaticResource Btn.Solid}" Content="SAVE CURRENT AS" Command="{Binding NewProfileCommand}" Margin="0,0,10,8"/>
+                        <Button Style="{StaticResource Btn.Outline}" Content="EXPORT TO FILE" Command="{Binding ExportCommand}" Margin="0,0,10,8"
+                                ToolTip="Write the configuration in force to a file you can import on any PC"/>
+                        <Button Style="{StaticResource Btn.Outline}" Content="IMPORT FROM FILE" Command="{Binding ImportCommand}" Margin="0,0,10,8"
+                                ToolTip="Shows what the file would change before anything is applied"/>
+                    </WrapPanel>
+
+                    <TextBlock Text="SAVED PROFILES" Style="{StaticResource Sub}"/>
+                    <TextBlock Style="{StaticResource Note}" Margin="0,0,0,0" Text="No profiles yet. Save the current configuration to start one."
+                               Visibility="{Binding HasProfiles, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}"/>
+                    <ItemsControl ItemsSource="{Binding Profiles}" Focusable="False" AutomationProperties.Name="SAVED PROFILES">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="{StaticResource VoltLineBrush}" BorderThickness="0,0,0,1" Padding="0,10" AutomationProperties.Name="{Binding Name}">
+                                    <DockPanel>
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Button Style="{StaticResource Btn.Outline}" Content="SWITCH" Margin="0,0,6,0" Padding="16,8"
+                                                    Command="{Binding DataContext.Profiles.SwitchProfileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='SWITCH TO {0}'}"/>
+                                            <Button Style="{StaticResource Btn.Ghost}" Content="RENAME"
+                                                    Command="{Binding DataContext.Profiles.RenameProfileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='RENAME {0}'}"/>
+                                            <Button Style="{StaticResource Btn.Ghost}" Content="EXPORT"
+                                                    Command="{Binding DataContext.Profiles.ExportCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='EXPORT {0}'}"/>
+                                            <Button Style="{StaticResource Btn.Ghost}" Content="DELETE"
+                                                    Command="{Binding DataContext.Profiles.DeleteProfileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='DELETE {0}'}"/>
+                                        </StackPanel>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                            <TextBlock Text="{Binding Name}" FontSize="17" FontWeight="Bold" TextTrimming="CharacterEllipsis">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Automatic}" Value="True">
+                                                                <Setter Property="Opacity" Value="0.75"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Text="{Binding Detail}" FontFamily="{StaticResource Mono}" FontSize="10.5" Opacity="0.6" Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Style="{StaticResource Note}" Margin="0,12,0,0"
+                               Text="CPU Set IDs, cores this PC doesn't have and power plans that aren't installed only make sense on the PC they were saved on: they are left out when a profile or file is applied, and the preview lists each one."/>
+                </StackPanel>
+            </HeaderedContentControl>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

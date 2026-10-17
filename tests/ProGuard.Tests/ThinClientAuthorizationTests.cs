@@ -26,6 +26,9 @@ public class ThinClientAuthorizationTests
         CommandTypes.SaveSettings, CommandTypes.SetPowerPlan, CommandTypes.SetPowerMode,
         // Open here; the dispatcher then checks the rule itself (see RuleEditAuthorizationTests).
         CommandTypes.SaveProcessRule, CommandTypes.DeleteProcessRule, CommandTypes.SaveWatchdogRule, CommandTypes.DeleteWatchdogRule,
+        // Config profiles; switching and importing are then checked rule by rule (see ConfigProfileTests).
+        CommandTypes.ListProfiles, CommandTypes.SaveProfile, CommandTypes.RenameProfile, CommandTypes.DeleteProfile, CommandTypes.ExportConfig,
+        CommandTypes.SwitchProfile, CommandTypes.ImportConfig,
         // Open, but only administrators get the engine log in the reply (see LogViewerEngineTests).
         CommandTypes.GetLogEntries, CommandTypes.ExportLogs,
     };

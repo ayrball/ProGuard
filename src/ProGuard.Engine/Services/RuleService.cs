@@ -167,6 +167,22 @@ public sealed class RuleService
 
     // === Applying a rule to what is already running ===
 
+    /// <summary>
+    /// After every rule was replaced at once (a config profile switch or import): lifts the caps of rules that are gone
+    /// and puts each new rule into effect on running instances, as saving them one by one would.
+    /// </summary>
+    public void ApplyReplaced(IReadOnlyList<ProcessRule> previous, IReadOnlyList<ProcessRule> current)
+    {
+        _launchPriorities?.Sync(_store.GetProcessRules());
+        var before = previous.GroupBy(r => ProcessExtensions.NormalizeName(r.ProcessName)).ToDictionary(g => g.Key, g => g.First());
+        var after = current.Select(r => ProcessExtensions.NormalizeName(r.ProcessName)).ToHashSet();
+        foreach (var (key, rule) in before)
+            if (!after.Contains(key)) ReleaseCap(rule);
+        foreach (var rule in current)
+            ApplyToRunning(rule, before.GetValueOrDefault(ProcessExtensions.NormalizeName(rule.ProcessName)));
+        _balancer?.Tick();
+    }
+
     private void ApplyToRunning(ProcessRule rule, ProcessRule? previous)
     {
         try

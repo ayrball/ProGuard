@@ -34,6 +34,7 @@ public class IpcDispatcher
     private readonly ThinClientCommands? _thinClient;
     private readonly IUserIdleSource? _userIdle;
     private readonly TimerResolutionService? _timerResolution;
+    private readonly ConfigProfileService? _profiles;
     private readonly Stopwatch _uptime = Stopwatch.StartNew();
 
     // Settings commands read-modify-write the stored settings; concurrent clients must not lose each other's changes.
@@ -52,7 +53,8 @@ public class IpcDispatcher
         WatchdogEventLog? watchdogEvents = null,
         ThinClientCommands? thinClient = null,
         IUserIdleSource? userIdle = null,
-        TimerResolutionService? timerResolution = null)
+        TimerResolutionService? timerResolution = null,
+        ConfigProfileService? profiles = null)
     {
         _logger = logger;
         _ruleStore = ruleStore;
@@ -67,6 +69,7 @@ public class IpcDispatcher
         _thinClient = thinClient;
         _userIdle = userIdle;
         _timerResolution = timerResolution;
+        _profiles = profiles;
     }
 
     /// <summary>Handles a request from code inside the engine, which needs no authorization.</summary>
@@ -244,6 +247,15 @@ public class IpcDispatcher
             case CommandTypes.SetTimerResolution:
                 return SetTimerResolution(ParseArgument<TimerResolutionArgument>(cmd.Argument));
 
+            case CommandTypes.ListProfiles:
+            case CommandTypes.SaveProfile:
+            case CommandTypes.SwitchProfile:
+            case CommandTypes.DeleteProfile:
+            case CommandTypes.RenameProfile:
+            case CommandTypes.ExportConfig:
+            case CommandTypes.ImportConfig:
+                return Profiles(cmd, caller);
+
             default:
                 if (_thinClient != null && _thinClient.TryExecute(cmd, caller, out var thinResult)) return thinResult;
                 return CommandResult.Fail($"Unknown command '{cmd.CommandType}'");
@@ -265,6 +277,28 @@ public class IpcDispatcher
             ? $"Trimmed the working set ({MemoryPurgeReport.FormatMb(report.WorkingSetBytesReclaimed)} reclaimed)."
             : report.Summary() + ".");
         return CommandResult.Ok(report.WorkingSetBytesReclaimed.ToString(CultureInfo.InvariantCulture));
+    }
+
+    private CommandResult Profiles(CommandMessage cmd, IIpcCaller caller)
+    {
+        if (_profiles == null) return CommandResult.Fail("This engine doesn't keep config profiles");
+        switch (cmd.CommandType)
+        {
+            case CommandTypes.ListProfiles: return _profiles.List();
+            case CommandTypes.SaveProfile: return _profiles.Save(cmd.Argument);
+            case CommandTypes.DeleteProfile: return _profiles.Delete(ParseInt(cmd.Argument));
+            case CommandTypes.RenameProfile: return _profiles.Rename(ParseArgument<RenameProfileArgument>(cmd.Argument));
+            case CommandTypes.ExportConfig: return _profiles.Export(cmd.Argument);
+        }
+
+        // These replace the settings too: under the settings lock, so a concurrent SaveSettings can't interleave.
+        var switching = cmd.CommandType == CommandTypes.SwitchProfile;
+        var switchArgument = switching ? ParseArgument<SwitchProfileArgument>(cmd.Argument) : null;
+        var importArgument = switching ? null : ParseArgument<ImportConfigArgument>(cmd.Argument);
+        lock (_settingsSync)
+        {
+            return switching ? _profiles.Switch(switchArgument!, caller) : _profiles.Import(importArgument!, caller);
+        }
     }
 
     private static MemoryPurgeResultDto ToDto(MemoryPurgeReport report)
@@ -298,7 +332,7 @@ public class IpcDispatcher
         return CommandResult.Ok(JsonSerializer.Serialize(DtoMapper.Map<AppSettings, EngineSettingsDto>(stored)));
     }
 
-    private static string? ValidateSettings(EngineSettingsDto d)
+    internal static string? ValidateSettings(EngineSettingsDto d)
     {
         if (d.ProBalanceSensitivity < 1 || d.ProBalanceSensitivity > 10) return "Sensitivity must be between 1 and 10";
         if (!Percent(d.ProBalanceCpuThreshold) || !Percent(d.ProBalanceRecoveryThreshold)) return "ProBalance thresholds must be between 0% and 100%";

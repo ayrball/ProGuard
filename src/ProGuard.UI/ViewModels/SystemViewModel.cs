@@ -74,6 +74,9 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     public ObservableCollection<ChoiceOption<int>> TimerOptions { get; } = new();
     public ObservableCollection<ChoiceOption<Guid>> PowerModes { get; } = new();
 
+    /// <summary>The PROFILES &amp; BACKUP section.</summary>
+    public ProfilesViewModel Profiles { get; }
+
     // ProBalance. ProBalanceCpuThreshold/RecoveryThreshold have no control: the engine's ProBalance follows Process
     // Lasso's timing (set through the sensitivity) and ignores them, so they go back exactly as stored.
     public NumberField IdlePauseMs { get; } = new("PAUSE AFTER IDLE FOR", "MS", 1000, 3_600_000);
@@ -190,6 +193,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
         _shell = shell;
         _startup = startup ?? new RunKeyStartup();
         Saver = settings => _hub.QueryAsync<EngineSettingsDto>(CommandTypes.SaveSettings, argument: settings);
+        Profiles = new ProfilesViewModel(hub, shell, LoadAsync); // a switch replaces the settings: show the new ones
 
         for (int i = 1; i <= 10; i++) Sensitivity.Add(new SensitivityStep(i));
         PaintSensitivity();
@@ -212,7 +216,11 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
         hub.SnapshotApplied += OnSnapshot;
     }
 
-    public void OnShown() => _ = LoadAsync();
+    public void OnShown()
+    {
+        _ = LoadAsync();
+        _ = Profiles.LoadAsync();
+    }
     public void OnHidden() { }
 
     internal async Task LoadAsync()

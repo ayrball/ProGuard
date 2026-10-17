@@ -20,7 +20,7 @@ namespace ProGuard.Preview;
 /// Purge now, Realtime priority) and for acting on processes the caller doesn't own. With <paramref name="readOnly"/>
 /// actions still succeed but change nothing, which keeps a render run repeatable.
 /// </remarks>
-public sealed class StandInMachine
+public sealed partial class StandInMachine
 {
     private readonly object _gate = new();
     private readonly bool _admin;
@@ -404,6 +404,7 @@ public sealed class StandInMachine
             }
 
             default:
+                if (TryProfiles(cmd, out var profileResult)) return profileResult;
                 return CommandResult.Fail($"The stand-in engine doesn't implement '{cmd.CommandType}'.");
         }
     }

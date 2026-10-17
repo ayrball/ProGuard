@@ -319,15 +319,20 @@ public class RuleStore : IRuleStore
         db.ProBalanceActions.ExecuteDelete();
     }
 
-    public IReadOnlyList<ProBalanceAction> GetRecentActions(int count)
+    public IReadOnlyList<ProBalanceAction> GetRecentActions(int count) => GetActions(null, null, count);
+
+    public IReadOnlyList<ProBalanceAction> GetActions(int? beforeId, int? afterId, int count)
     {
         if (count <= 0) return Array.Empty<ProBalanceAction>();
         try
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+            IQueryable<ProBalanceAction> query = db.ProBalanceActions.AsNoTracking();
+            if (beforeId is int before) query = query.Where(a => a.Id < before);
+            if (afterId is int after) query = query.Where(a => a.Id > after);
             // Ids only grow, so the highest are the newest (and the primary key needs no index of its own).
-            var actions = db.ProBalanceActions.AsNoTracking().OrderByDescending(a => a.Id).Take(count).ToList();
+            var actions = query.OrderByDescending(a => a.Id).Take(count).ToList();
             foreach (var action in actions) action.Timestamp = DateTime.SpecifyKind(action.Timestamp, DateTimeKind.Utc);
             return actions;
         }

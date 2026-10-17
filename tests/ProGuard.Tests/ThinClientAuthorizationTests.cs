@@ -26,6 +26,8 @@ public class ThinClientAuthorizationTests
         CommandTypes.SaveSettings, CommandTypes.SetPowerPlan, CommandTypes.SetPowerMode,
         // Open here; the dispatcher then checks the rule itself (see RuleEditAuthorizationTests).
         CommandTypes.SaveProcessRule, CommandTypes.DeleteProcessRule, CommandTypes.SaveWatchdogRule, CommandTypes.DeleteWatchdogRule,
+        // Open, but only administrators get the engine log in the reply (see LogViewerEngineTests).
+        CommandTypes.GetLogEntries, CommandTypes.ExportLogs,
     };
 
     /// <summary>Command, argument that is valid for it, and the access the caller must have to the target.</summary>

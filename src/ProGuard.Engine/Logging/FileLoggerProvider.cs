@@ -68,9 +68,11 @@ public sealed class FileLoggerProvider : ILoggerProvider
     {
         var info = new FileInfo(_path);
         if (!info.Exists || info.Length < MaxBytes) return;
-        var previous = Path.ChangeExtension(_path, ".1" + Path.GetExtension(_path));
-        File.Move(_path, previous, overwrite: true);
+        File.Move(_path, RolledOverPath(_path), overwrite: true);
     }
+
+    /// <summary>Where the log at <paramref name="path"/> goes when it rolls over: <c>engine.log</c> -> <c>engine.1.log</c>.</summary>
+    public static string RolledOverPath(string path) => Path.ChangeExtension(path, ".1" + Path.GetExtension(path));
 
     private static string LevelName(LogLevel level) => level switch
     {

@@ -14,8 +14,8 @@ namespace ProGuard.Engine.IPC;
 /// or deleted only by someone who could have created it, so a standard user can't lift an administrator's rule either.
 /// <list type="bullet">
 /// <item>No rules for session and security processes or ProGuard itself (<see cref="CriticalProcesses"/>).</item>
-/// <item>No Realtime priority, as a rule's priority, startup boost or Watchdog action
-/// (see <see cref="IpcAuthorization"/>).</item>
+/// <item>No Realtime priority, as a rule's priority, startup boost or Watchdog action, and no High I/O priority, as a
+/// rule's I/O priority or Watchdog action: setting either directly is administrator-only too (see <see cref="IpcAuthorization"/>).</item>
 /// <item>Every other rule, and every Watchdog action that changes a process, only for a name whose running instances
 /// the caller could change themselves; rules that end processes (Disallow, an instance limit, Watchdog Terminate or
 /// Restart) also need the right to end them, and a CPU cap the right to put them in a job. Without this a standard
@@ -37,6 +37,7 @@ internal static class RuleAuthorization
         if (caller.IsAdministrator) return null;
         if (CriticalProcesses.IsCriticalName(rule.ProcessName)) return $"change rules for {rule.ProcessName}, a system process";
         if (IsRealtime(rule.PriorityClass) || IsRealtime(rule.StartupBoostPriorityClass)) return "set Realtime priority";
+        if (rule.IoPriority == WatchdogArguments.IoHigh) return "set High I/O priority";
         if (rule.ApplyPrioritiesAtCreation) return "apply priorities at launch: they are written to the machine-wide Image File Execution Options";
         if (rule.DisallowExecution || rule.MaxInstances != null) return CheckCanEnd(rule.ProcessName, caller, monitor);
 
@@ -59,6 +60,9 @@ internal static class RuleAuthorization
             case WatchdogAction.SetPriority when WatchdogArguments.TryParsePriority(rule.ActionArgument, out var priority)
                                                   && priority == System.Diagnostics.ProcessPriorityClass.RealTime:
                 return "set Realtime priority";
+            case WatchdogAction.SetIoPriority when WatchdogArguments.TryParseIoPriority(rule.ActionArgument, out var io)
+                                                    && io == WatchdogArguments.IoHigh:
+                return "set High I/O priority";
             case WatchdogAction.Terminate:
             case WatchdogAction.Restart:
                 return CheckCanEnd(rule.TargetProcessName, caller, monitor);

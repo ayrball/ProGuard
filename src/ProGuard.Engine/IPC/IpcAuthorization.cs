@@ -41,7 +41,7 @@ namespace ProGuard.Engine.IPC;
 /// <item>SetPowerMode is open to any user too: it is the Windows power-mode slider, which every user may move in Windows'
 /// own settings.</item>
 /// <item>Anyone may save and delete process and Watchdog rules, as the unelevated UI must. The dispatcher then checks the
-/// rule itself (<see cref="RuleAuthorization"/>: no system processes, Realtime, Watchdog Launch, or rules for programs whose
+/// rule itself (<see cref="RuleAuthorization"/>: no system processes, Realtime, High I/O priority, Watchdog Launch, or rules for programs whose
 /// running instances the caller couldn't change or end themselves), since that needs the stored rule and the running processes. A rule may be changed or deleted
 /// only by someone who could have created it. The legacy SetRule request stays administrator-only.</item>
 /// <item>SetEfficiencyMode, SetIoPriority and SetMemoryPriority need the same right as SetPriority. Setting I/O priority

@@ -820,6 +820,179 @@ public class UiSystemTests
         Assert.Equal("1", Assert.Single(engine.Received()).Argument);
     }
 
+    // ------------------------------------------------------------------ "always": kept as the program's rule
+
+    /// <summary>A fake engine holding <paramref name="rules"/>: answers GetProcessRules, and saves and deletes like the real one.</summary>
+    private static FakeEngine RuleEngine(params ProcessRuleDto[] rules)
+    {
+        var stored = rules.ToList();
+        return new FakeEngine
+        {
+            Handler = c =>
+            {
+                switch (c.CommandType)
+                {
+                    case CommandTypes.GetProcessRules:
+                        return CommandResult.Ok(JsonSerializer.Serialize(stored));
+                    case CommandTypes.SaveProcessRule:
+                        var rule = JsonSerializer.Deserialize<ProcessRuleDto>(c.Argument!, EngineClient.Json)!;
+                        if (rule.Id == 0) rule.Id = 100 + stored.Count;
+                        stored.RemoveAll(r => r.Id == rule.Id);
+                        stored.Add(rule);
+                        return CommandResult.Ok(JsonSerializer.Serialize(rule));
+                    case CommandTypes.DeleteProcessRule:
+                        stored.RemoveAll(r => r.Id.ToString() == c.Argument);
+                        return CommandResult.Ok();
+                    default:
+                        return CommandResult.Ok();
+                }
+            }
+        };
+    }
+
+    private static ProcessesViewModel AlwaysPage(FakeEngine engine, out ShellViewModel shell, bool admin = true)
+    {
+        shell = NewShell(pipe: engine.PipeName);
+        var vm = shell.Processes;
+        vm.Apply(new EngineSnapshot { LogicalProcessors = 8, CallerIsAdministrator = admin, Processes = { Detailed(42) } });
+        vm.Selected = vm.Rows.Single();
+        return vm;
+    }
+
+    private static ProcessRuleDto[] Saved(FakeEngine engine) => engine.Received()
+        .Where(c => c.CommandType == CommandTypes.SaveProcessRule)
+        .Select(c => JsonSerializer.Deserialize<ProcessRuleDto>(c.Argument!, EngineClient.Json)!).ToArray();
+
+    [Fact]
+    public async Task Processes_AlwaysPriority_MakesARuleForTheProgram()
+    {
+        await using var engine = RuleEngine();
+        var vm = AlwaysPage(engine, out _);
+
+        await vm.AlwaysPriorityCommand.ExecuteAsync("High");
+
+        var rule = Assert.Single(Saved(engine));
+        Assert.Equal(0, rule.Id); // new
+        Assert.Equal("game.exe", rule.ProcessName);
+        Assert.Equal((int)ProcessPriorityClass.High, rule.PriorityClass);
+        Assert.Null(rule.IoPriority);
+        Assert.Equal((int)ProcessPriorityClass.High, vm.SelectedRule?.PriorityClass); // the menu ticks it
+    }
+
+    [Fact]
+    public async Task Processes_AlwaysIoAndMemoryPriority_ChangeOnlyThatSettingOfTheProgramsRule()
+    {
+        await using var engine = RuleEngine(new ProcessRuleDto { Id = 3, ProcessName = "game.exe", PriorityClass = (int)ProcessPriorityClass.High, AffinityMask = 0x3, CpuLimitPercent = 40 });
+        var vm = AlwaysPage(engine, out _);
+
+        await vm.AlwaysIoPriorityCommand.ExecuteAsync("3");
+        await vm.AlwaysMemoryPriorityCommand.ExecuteAsync("2");
+
+        var saves = Saved(engine);
+        Assert.Equal(2, saves.Length);
+        Assert.All(saves, r => Assert.Equal(3, r.Id)); // the existing rule, not a second one
+        var last = saves[1];
+        Assert.Equal(3, last.IoPriority);
+        Assert.Equal(2, last.MemoryPriority);
+        Assert.Equal((int)ProcessPriorityClass.High, last.PriorityClass);
+        Assert.Equal(0x3, last.AffinityMask);
+        Assert.Equal(40, last.CpuLimitPercent);
+    }
+
+    [Fact]
+    public async Task Processes_AlwaysForget_DropsTheSetting_AndDeletesARuleLeftWithNothingToDo()
+    {
+        await using var engine = RuleEngine(new ProcessRuleDto { Id = 3, ProcessName = "game", PriorityClass = (int)ProcessPriorityClass.High, IoPriority = 3 });
+        var vm = AlwaysPage(engine, out _);
+
+        await vm.AlwaysPriorityCommand.ExecuteAsync(ProcessesViewModel.Forget);
+        var kept = Assert.Single(Saved(engine));
+        Assert.Null(kept.PriorityClass);
+        Assert.Equal(3, kept.IoPriority);
+
+        await vm.AlwaysIoPriorityCommand.ExecuteAsync(ProcessesViewModel.Forget);
+        var delete = Assert.Single(engine.Received(), c => c.CommandType == CommandTypes.DeleteProcessRule);
+        Assert.Equal("3", delete.Argument);
+        Assert.Null(vm.SelectedRule);
+
+        // Nothing left to forget: no rule is written or deleted.
+        int sent = engine.Received().Length;
+        await vm.AlwaysMemoryPriorityCommand.ExecuteAsync(ProcessesViewModel.Forget);
+        Assert.DoesNotContain(engine.Received().Skip(sent), c => c.CommandType is CommandTypes.SaveProcessRule or CommandTypes.DeleteProcessRule);
+    }
+
+    [Fact]
+    public async Task Processes_AlwaysRealtime_AsksFirst_AndAlwaysHighLevels_NeedAdministratorRights()
+    {
+        await using var engine = RuleEngine();
+        var vm = AlwaysPage(engine, out var shell);
+
+        await vm.AlwaysPriorityCommand.ExecuteAsync("RealTime");
+        Assert.Empty(engine.Received()); // nothing until confirmed
+        var confirm = Assert.IsType<ConfirmDialogViewModel>(shell.Dialog);
+        await confirm.ConfirmCommand.ExecuteAsync(null);
+        Assert.Equal((int)ProcessPriorityClass.RealTime, Assert.Single(Saved(engine)).PriorityClass);
+
+        await using var standardEngine = RuleEngine();
+        var standard = AlwaysPage(standardEngine, out var standardShell, admin: false);
+        await standard.AlwaysPriorityCommand.ExecuteAsync("RealTime");
+        await standard.AlwaysIoPriorityCommand.ExecuteAsync("3");
+        Assert.Empty(standardEngine.Received());
+        Assert.Null(standardShell.Dialog);
+
+        await standard.AlwaysIoPriorityCommand.ExecuteAsync("1"); // lower levels are fine for anyone
+        Assert.Equal(1, Assert.Single(Saved(standardEngine)).IoPriority);
+    }
+
+    [Fact]
+    public async Task Processes_AlwaysOutOfRangeLevels_AreIgnored()
+    {
+        await using var engine = RuleEngine();
+        var vm = AlwaysPage(engine, out _);
+
+        await vm.AlwaysPriorityCommand.ExecuteAsync("Fast");
+        await vm.AlwaysPriorityCommand.ExecuteAsync("7");
+        await vm.AlwaysIoPriorityCommand.ExecuteAsync("4");
+        await vm.AlwaysMemoryPriorityCommand.ExecuteAsync("0");
+
+        Assert.Empty(engine.Received());
+    }
+
+    [Fact]
+    public void Processes_MakeRule_SeedsWhatTheProcessHasNow_ButNotWhatIsTemporaryOrDefault()
+    {
+        var s = Detailed();
+        s.Priority = ProcessPriorityClass.High;
+        s.IoPriority = 0;
+        s.MemoryPriority = 5; // Windows' default
+        s.AffinityMask = 0x0F;
+        s.IsAffinityLimited = false;
+        var row = new ProcessRow(s.Pid, s.Name);
+        row.Update(s, 8);
+
+        var seed = ProcessesViewModel.SeedRule(row, 8);
+        Assert.Equal("game.exe", seed.ProcessName);
+        Assert.Equal((int)ProcessPriorityClass.High, seed.PriorityClass);
+        Assert.Equal(0, seed.IoPriority);
+        Assert.Null(seed.MemoryPriority);
+        Assert.Equal(0x0F, seed.AffinityMask);
+
+        // ProBalance's lowered priority and the CPU Limiter's cores are temporary; all cores and Normal I/O are defaults.
+        s.IsRestrained = true;
+        s.IsAffinityLimited = true;
+        s.IoPriority = 2;
+        row.Update(s, 8);
+        seed = ProcessesViewModel.SeedRule(row, 8);
+        Assert.Null(seed.PriorityClass);
+        Assert.Null(seed.AffinityMask);
+        Assert.Null(seed.IoPriority);
+
+        s.IsAffinityLimited = false;
+        s.AffinityMask = 0xFF;
+        row.Update(s, 8);
+        Assert.Null(ProcessesViewModel.SeedRule(row, 8).AffinityMask);
+    }
+
     // ------------------------------------------------------------------ watchdog notifications
 
     private sealed class FakeFeed

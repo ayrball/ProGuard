@@ -384,8 +384,138 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
     private async Task MakeRuleAsync()
     {
         if (Selected is not { } row) return;
-        await _shell.Rules.StartNewAsync(row.Name, row.Priority, row.CpuLimitPercent);
+        await _shell.Rules.StartNewAsync(SeedRule(row, _logical));
         _shell.GoTo(_shell.Rules);
+    }
+
+    /// <summary>
+    /// A new rule holding what <paramref name="row"/> has now. Left out: a priority ProBalance lowered and cores the CPU
+    /// Limiter took away (both temporary), and I/O priority, memory priority and cores at Windows' defaults, which a rule
+    /// would only repeat.
+    /// </summary>
+    internal static ProcessRuleDto SeedRule(ProcessRow row, int logical)
+    {
+        long allCores = logical >= 64 ? -1L : (1L << logical) - 1;
+        return new ProcessRuleDto
+        {
+            ProcessName = row.Name,
+            PriorityClass = row.IsRestrained ? null : (int?)row.Priority,
+            CpuLimitPercent = row.CpuLimitPercent,
+            IoPriority = row.IoPriority is int io && io != DefaultIoPriority ? io : null,
+            MemoryPriority = row.MemoryPriority is int memory && memory != DefaultMemoryPriority ? memory : null,
+            AffinityMask = !row.IsAffinityLimited && row.AffinityMask != 0 && (row.AffinityMask & allCores) != allCores ? row.AffinityMask : null,
+        };
+    }
+
+    private const int DefaultIoPriority = 2, DefaultMemoryPriority = 5;
+
+    // ------------------------------------------------------------------ "always": kept as the program's rule
+
+    /// <summary>The menus' "Forget" entry: drops that setting from the program's rule.</summary>
+    public const string Forget = "Forget";
+
+    /// <summary>The selected program's rule as last read (when the menu opened, or after an "always" change); null when it has none.</summary>
+    [ObservableProperty] private ProcessRuleDto? selectedRule;
+
+    partial void OnSelectedChanged(ProcessRow? value) => SelectedRule = null;
+
+    /// <summary>Reads the selected program's rule, so the "Always" menus can tick what it keeps.</summary>
+    public async Task LoadSelectedRuleAsync()
+    {
+        if (Selected is not { } row) return;
+        var rules = await _hub.QueryAsync<List<ProcessRuleDto>>(CommandTypes.GetProcessRules, quiet: true);
+        if (rules != null && Selected == row) SelectedRule = RuleText.RuleFor(rules, row.Name);
+    }
+
+    /// <summary>Priority by name, or <see cref="Forget"/>: set on every running copy now, and on each one that starts later.</summary>
+    [RelayCommand]
+    private Task AlwaysPriorityAsync(string level)
+    {
+        if (Selected is not { } row) return Task.CompletedTask;
+        if (level == Forget) return RememberAsync(row, null, r => r.PriorityClass != null, r => r.PriorityClass = null);
+        if (!Enum.TryParse<ProcessPriorityClass>(level, out var priority) || !Enum.IsDefined(priority)) return Task.CompletedTask;
+
+        Task Run() => RememberAsync(row, $"PRIORITY {Fmt.Priority(priority)}", _ => true, r => r.PriorityClass = (int)priority);
+        if (priority == ProcessPriorityClass.RealTime)
+        {
+            if (!IsAdministrator)
+            {
+                _shell.Toaster.Show("Realtime priority needs administrator rights. Restart ProGuard as administrator to use it.", isError: true);
+                return Task.CompletedTask;
+            }
+            _shell.Confirm("ALWAYS REALTIME?", $"{row.Name} will run at Realtime priority every time it starts. That lets it starve Windows itself, including your mouse and keyboard. Only use it for a program you trust to stay light.",
+                "ALWAYS REALTIME", Run);
+            return Task.CompletedTask;
+        }
+        return Run();
+    }
+
+    /// <summary>I/O priority hint 0-3, or <see cref="Forget"/>. High needs administrator rights, as when setting it once.</summary>
+    [RelayCommand]
+    private Task AlwaysIoPriorityAsync(string level)
+    {
+        if (Selected is not { } row) return Task.CompletedTask;
+        if (level == Forget) return RememberAsync(row, null, r => r.IoPriority != null, r => r.IoPriority = null);
+        if (!int.TryParse(level, out var hint) || hint is < 0 or > 3) return Task.CompletedTask;
+        if (hint == 3 && !IsAdministrator)
+        {
+            _shell.Toaster.Show("I/O priority High needs administrator rights. Restart ProGuard as administrator to use it.", isError: true);
+            return Task.CompletedTask;
+        }
+        return RememberAsync(row, $"I/O {Fmt.IoPriority(hint)}", _ => true, r => r.IoPriority = hint);
+    }
+
+    /// <summary>Memory priority 1-5, or <see cref="Forget"/>.</summary>
+    [RelayCommand]
+    private Task AlwaysMemoryPriorityAsync(string level)
+    {
+        if (Selected is not { } row) return Task.CompletedTask;
+        if (level == Forget) return RememberAsync(row, null, r => r.MemoryPriority != null, r => r.MemoryPriority = null);
+        if (!int.TryParse(level, out var value) || value is < 1 or > 5) return Task.CompletedTask;
+        return RememberAsync(row, $"MEMORY {Fmt.MemoryPriority(value)}", _ => true, r => r.MemoryPriority = value);
+    }
+
+    /// <summary>
+    /// Writes one setting into the program's rule, creating the rule if there is none and leaving the rest of it alone.
+    /// Saving a rule puts it into effect on the running copies straight away, and the engine applies it again to every
+    /// copy that starts, including the ones running when the engine itself starts. <paramref name="what"/> is null when
+    /// forgetting: <paramref name="has"/> then says whether the rule keeps that setting, and a rule left with nothing to
+    /// do is deleted.
+    /// </summary>
+    private async Task RememberAsync(ProcessRow row, string? what, Func<ProcessRuleDto, bool> has, Action<ProcessRuleDto> change)
+    {
+        var rules = await _hub.QueryAsync<List<ProcessRuleDto>>(CommandTypes.GetProcessRules);
+        if (rules == null) return;
+
+        var existing = RuleText.RuleFor(rules, row.Name);
+        bool forgetting = what == null;
+        if (forgetting && (existing == null || !has(existing)))
+        {
+            _shell.Toaster.Show($"{row.Name} has nothing like that kept for it.");
+            return;
+        }
+
+        var rule = existing != null ? DtoCopy.Clone(existing) : new ProcessRuleDto { ProcessName = RuleText.Display(row.Name) };
+        change(rule);
+
+        if (forgetting && RuleEffects.All(rule, _logical).Count == 0)
+        {
+            if (await _hub.RunAsync(CommandTypes.DeleteProcessRule, argument: rule.Id,
+                    success: $"{row.Name} · FORGOTTEN. Running copies keep what they have now."))
+            {
+                if (Selected == row) SelectedRule = null;
+                _hub.RefreshNow();
+            }
+            return;
+        }
+
+        var saved = await _hub.QueryAsync<ProcessRuleDto>(CommandTypes.SaveProcessRule, argument: rule);
+        if (saved == null) return;
+        if (Selected == row) SelectedRule = saved;
+        _shell.Toaster.Show(forgetting
+            ? $"{row.Name} · FORGOTTEN. Running copies keep what they have now."
+            : $"{row.Name} · ALWAYS {what}. Set now, and again whenever it starts.");
+        _hub.RefreshNow();
     }
 
     [RelayCommand]

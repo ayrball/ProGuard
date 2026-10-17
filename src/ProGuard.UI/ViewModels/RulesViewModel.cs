@@ -182,7 +182,7 @@ public sealed partial class RuleEditor : ObservableObject
 
     /// <summary>What the engine refuses a standard user. Shown as one line in the editor while <see cref="IsRestricted"/>.</summary>
     public const string LimitsHint =
-        "STANDARD RIGHTS. THE ENGINE REFUSES: SYSTEM PROGRAMS AND PROGUARD ITSELF, REALTIME PRIORITY, PRIORITIES AT LAUNCH, RULES FOR PROGRAMS YOU COULDN'T CHANGE OR END YOURSELF, AND CHANGING RULES YOU COULDN'T HAVE MADE.";
+        "STANDARD RIGHTS. THE ENGINE REFUSES: SYSTEM PROGRAMS AND PROGUARD ITSELF, REALTIME PRIORITY, HIGH I/O PRIORITY, PRIORITIES AT LAUNCH, RULES FOR PROGRAMS YOU COULDN'T CHANGE OR END YOURSELF, AND CHANGING RULES YOU COULDN'T HAVE MADE.";
     public string RestrictionHint => LimitsHint;
 
     // ---- collapsed-section summaries ----
@@ -206,7 +206,7 @@ public sealed partial class RuleEditor : ObservableObject
         _logical = logical;
         var priorities = PriorityChoices("LEAVE");
         var boostPriorities = PriorityChoices("OFF");
-        var io = IntChoices("LEAVE", RuleText.IoPriorityName, 0, 3);
+        var io = IntChoices("LEAVE", RuleText.IoPriorityName, 0, 3, adminFrom: 3);
         var memory = IntChoices("LEAVE", RuleText.MemoryPriorityName, 1, 5);
         var gpu = IntChoices("LEAVE", RuleText.GpuPriorityName, 0, 4);
         var preference = IntChoices("LEAVE", RuleText.GpuPreferenceName, 0, 2);
@@ -476,10 +476,11 @@ public sealed partial class RuleEditor : ObservableObject
         new("REALTIME", ProcessPriorityClass.RealTime, AdminOnly: true),
     };
 
-    private static List<Choice<int?>> IntChoices(string none, Func<int, string> name, int min, int max)
+    /// <param name="adminFrom">Values from this one up are administrator-only (I/O priority High).</param>
+    private static List<Choice<int?>> IntChoices(string none, Func<int, string> name, int min, int max, int? adminFrom = null)
     {
         var list = new List<Choice<int?>> { new(none, null) };
-        for (int i = min; i <= max; i++) list.Add(new Choice<int?>(name(i), i));
+        for (int i = min; i <= max; i++) list.Add(new Choice<int?>(name(i), i, AdminOnly: i >= adminFrom));
         return list;
     }
 
@@ -560,17 +561,15 @@ public sealed partial class RulesViewModel : ObservableObject, IPage
     }
 
     /// <summary>
-    /// Opens the editor pre-filled from a running process (the "make a rule" action), or on that program's existing
-    /// rule. The list loads only when the Rules page is shown, so it is fetched first: otherwise a program that
-    /// already has a rule would get a NEW RULE editor, which the engine then refuses as a duplicate.
+    /// Opens the editor pre-filled from a running process (the "make a rule" action, <paramref name="seed"/> holding what
+    /// the process has now), or on that program's existing rule. The list loads only when the Rules page is shown, so it
+    /// is fetched first: otherwise a program that already has a rule would get a NEW RULE editor, which the engine then
+    /// refuses as a duplicate.
     /// </summary>
-    public async Task StartNewAsync(string processName, ProcessPriorityClass? priority, double? cpuLimit)
+    public async Task StartNewAsync(ProcessRuleDto seed)
     {
         await LoadAsync();
-        var existing = Rules.FirstOrDefault(r => string.Equals(RuleText.Display(r.Dto.ProcessName), RuleText.Display(processName), StringComparison.OrdinalIgnoreCase));
-        Editor = existing != null
-            ? new RuleEditor(Logical, existing.Dto)
-            : new RuleEditor(Logical, new ProcessRuleDto { ProcessName = processName, PriorityClass = (int?)priority, CpuLimitPercent = cpuLimit });
+        Editor = new RuleEditor(Logical, RuleText.RuleFor(Rules.Select(r => r.Dto), seed.ProcessName) ?? seed);
     }
 
     [RelayCommand]

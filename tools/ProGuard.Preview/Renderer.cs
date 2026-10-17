@@ -184,6 +184,11 @@ internal sealed class Renderer
 
     private void ExercisePage(PageItem page, string prefix)
     {
+        if (page.Page is AdvancedViewModel advanced)
+        {
+            ExerciseAdvanced(advanced, prefix);
+            return;
+        }
         if (page.Page is not ProcessesViewModel processes)
         {
             RunOpeners(page, prefix, onlyMatching: null, tryConfirm: false);
@@ -215,6 +220,27 @@ internal sealed class Renderer
     }
 
     /// <summary>Runs each opener command (with a few sample parameters if it takes one) and renders whatever it opens.</summary>
+    /// <summary>Each ADVANCED sub-section, and in LOGS an entry with a stack trace selected.</summary>
+    private void ExerciseAdvanced(AdvancedViewModel advanced, string prefix)
+    {
+        foreach (var section in advanced.Sections)
+        {
+            string name = $"{prefix}--{Slug(section.Label)}";
+            advanced.CurrentSection = section;
+            Pump(TimeSpan.FromSeconds(0.8));
+            Shot(name);
+
+            if (section.Page is LogsViewModel logs && (logs.Entries.FirstOrDefault(r => r.IsError && r.HasDetail) ?? logs.Entries.FirstOrDefault()) is { } row)
+            {
+                logs.Selected = row;
+                Pump(TimeSpan.FromMilliseconds(500));
+                Shot(name + "--selected");
+                logs.Selected = null;
+            }
+        }
+        advanced.CurrentSection = advanced.Sections[0];
+    }
+
     private void RunOpeners(PageItem page, string prefix, Regex? onlyMatching, bool tryConfirm)
     {
         var owner = page.Page;

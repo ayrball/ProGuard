@@ -21,8 +21,11 @@ public class PipeServer
 
     /// <summary>Enough for every session's UI (and a few tools) without letting one user exhaust the engine.</summary>
     internal const int MaxConnections = 16;
-    /// <summary>The largest request is a serialized AppSettings, well under this.</summary>
-    internal const int MaxLineLength = 64 * 1024;
+    /// <summary>
+    /// The largest request is an imported config file (ConfigDocuments.MaxDocumentLength characters, a little more once
+    /// JSON-escaped into the request). Bounded, so an unprivileged client can't make the engine buffer unbounded input.
+    /// </summary>
+    internal const int MaxLineLength = 1024 * 1024;
 
     private readonly ILogger<PipeServer> _logger;
     private readonly IpcDispatcher _dispatcher;

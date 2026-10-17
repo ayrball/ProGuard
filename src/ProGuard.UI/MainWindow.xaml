@@ -29,6 +29,8 @@
         <DataTemplate DataType="{x:Type vm:AffinityDialogViewModel}"><views:AffinityDialog/></DataTemplate>
         <DataTemplate DataType="{x:Type vm:CpuLimitDialogViewModel}"><views:CpuLimitDialog/></DataTemplate>
         <DataTemplate DataType="{x:Type vm:CpuSetDialogViewModel}"><views:CpuSetDialog/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ProfileNameDialogViewModel}"><views:ProfileNameDialog/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ConfigPreviewDialogViewModel}"><views:ConfigPreviewDialog/></DataTemplate>
     </Window.Resources>
 
     <Border x:Name="Frame" BorderBrush="{StaticResource VoltLineBrush}" BorderThickness="1">

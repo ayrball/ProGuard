@@ -58,6 +58,10 @@ namespace ProGuard.Engine.IPC;
 /// administrator-only: it rewrites the active power plan's processor settings for everyone.</item>
 /// <item>Settings listed in <see cref="AdministratorOnlySettings"/> may be saved by a standard user only unchanged: a
 /// SaveSettings or SetSetting that changes one of them is refused as a whole (<see cref="CheckSettingsChange"/>).</item>
+/// <item>Config profiles: listing, saving, renaming, deleting and exporting them is open to any user (a profile changes
+/// nothing until it is applied, and the rules and settings it holds are readable by anyone anyway). Switching to one and
+/// importing a config are open here too, and <c>ConfigProfileService</c> then checks every rule it would add, change or
+/// remove with <see cref="RuleAuthorization"/> and the settings with <see cref="CheckSettingsChange"/>, as the caller.</item>
 /// <item>The log viewer's commands (<see cref="CommandTypes.GetLogEntries"/>, <see cref="CommandTypes.ExportLogs"/>) are open
 /// to any user, but what they read depends on the caller (<see cref="MayReadEngineLog"/>). The action log stays readable by
 /// everyone, as it already is through GetActivity. The engine's text log is administrators-only: it is free text that
@@ -94,6 +98,19 @@ public static class IpcAuthorization
         // What they return is limited by MayReadEngineLog.
         CommandTypes.GetLogEntries,
         CommandTypes.ExportLogs,
+        // Config profiles: bookkeeping and reading.
+        CommandTypes.ListProfiles,
+        CommandTypes.SaveProfile,
+        CommandTypes.RenameProfile,
+        CommandTypes.DeleteProfile,
+        CommandTypes.ExportConfig,
+    };
+
+    /// <summary>Allowed here; <c>ConfigProfileService</c> checks every rule and setting they would apply, as the caller.</summary>
+    internal static readonly IReadOnlySet<string> ConfigCommands = new HashSet<string>(StringComparer.Ordinal)
+    {
+        CommandTypes.SwitchProfile,
+        CommandTypes.ImportConfig,
     };
 
     /// <summary>Whether <paramref name="caller"/> may read the engine's text log (see the policy above). The action log is open to all.</summary>
@@ -193,7 +210,7 @@ public static class IpcAuthorization
     private static CommandResult? CheckCommand(CommandMessage cmd, IIpcCaller caller)
     {
         if (AdministratorOnlyCommands.Contains(cmd.CommandType)) return Deny(caller, CommandTypes.Describe(cmd.CommandType));
-        if (UnrestrictedCommands.Contains(cmd.CommandType) || RuleCommands.Contains(cmd.CommandType)) return null;
+        if (UnrestrictedCommands.Contains(cmd.CommandType) || RuleCommands.Contains(cmd.CommandType) || ConfigCommands.Contains(cmd.CommandType)) return null;
         if (cmd.CommandType == CommandTypes.TrimWorkingSet && cmd.TargetPid == null) return null;
 
         if (!ProcessCommandAccess.TryGetValue(cmd.CommandType, out var access))

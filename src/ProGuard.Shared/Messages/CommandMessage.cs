@@ -163,6 +163,17 @@ public static class CommandTypes
     public const string ImportConfig = "ImportConfig";
 
     /// <summary>
+    /// Argument = power plan GUID (plain text); none = the active plan. Data = <see cref="Contracts.CpuTuningDto"/>: the
+    /// plan's core parking and processor frequency settings, plugged in and on battery.
+    /// </summary>
+    public const string GetCpuTuning = "GetCpuTuning";
+    /// <summary>
+    /// Argument = <see cref="Contracts.CpuTuningArgument"/>: new values or a preset for one plan. Administrators only:
+    /// power plans are machine-wide. Data = the plan's <see cref="Contracts.CpuTuningDto"/> afterwards.
+    /// </summary>
+    public const string SetCpuTuning = "SetCpuTuning";
+
+    /// <summary>
     /// What a command does, as words that read after "may not" ("end", "purge memory"). Access-denied replies are
     /// shown to the user as-is, so they name the action rather than the command.
     /// </summary>
@@ -183,6 +194,7 @@ public static class CommandTypes
         PurgeMemory => "purge memory",
         ClearActionLog => "clear the action log",
         SetTimerResolution => "change the system timer resolution",
+        SetCpuTuning => "change a power plan's core parking and CPU frequency settings",
         SwitchProfile => "switch config profiles",
         ImportConfig => "import a config",
         _ => "run " + System.Text.RegularExpressions.Regex.Replace(commandType, "(?<=[a-z])(?=[A-Z])", " ").ToLowerInvariant()

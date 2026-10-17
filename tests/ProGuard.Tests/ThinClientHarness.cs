@@ -83,6 +83,8 @@ internal sealed class ThinHarness
     public WatchdogEventLog WatchdogEvents { get; } = new();
     public FakeLaunchRegistry LaunchRegistry { get; } = new();
     public FakeTimerNative Timer { get; } = new();
+    public FakePowerSettings PowerSettings { get; } = new();
+    public CpuTuningService CpuTuning { get; }
     public TimerResolutionService TimerResolution { get; }
     public ForegroundBoostService ForegroundBoost { get; }
     public SnapshotBuilder Snapshots { get; }
@@ -152,8 +154,9 @@ internal sealed class ThinHarness
         var rules = new RuleService(NullLogger<RuleService>.Instance, Store.Object, Monitor, CpuLimiter.Object, ProBalance.Object,
             Access.Object, Manual, launchPriorities: new LaunchPriorityService(registry: LaunchRegistry));
         var feed = new ActivityFeed(Store.Object, Manual, WatchdogEvents);
+        CpuTuning = new CpuTuningService(power: PowerSettings, originals: new MemoryCpuTuningOriginalsStore());
         var thin = new ThinClientCommands(NullLogger<ThinClientCommands>.Instance, Snapshots, actions, rules, feed, Manual,
-            Store.Object, Power.Object, Monitor, Tuning,
+            Store.Object, Power.Object, Monitor, Tuning, CpuTuning,
             new LogQueryService(new EngineLogReader(engineLogPath ?? Path.Combine(Path.GetTempPath(), "ProGuard.Tests.NoLog", "engine.log")), Store.Object));
         Dispatcher = new IpcDispatcher(Log, Store.Object, applier, ProBalance.Object, Power.Object,
             SmartTrim.Object, CpuLimiter.Object, Controller.Object, Monitor, WatchdogEvents, thin, timerResolution: TimerResolution);

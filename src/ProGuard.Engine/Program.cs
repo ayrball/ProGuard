@@ -99,6 +99,8 @@ public class Program
 
                 services.AddSingleton(sp => new TimerResolutionService(sp.GetRequiredService<ILogger<TimerResolutionService>>()));
                 services.AddSingleton(sp => new CoreParkingService(sp.GetRequiredService<ILogger<CoreParkingService>>(), sp.GetRequiredService<IRuleStore>()));
+                // Per-plan core parking and frequency; works with CoreParkingService rather than against it.
+                services.AddSingleton(sp => new CpuTuningService(sp.GetRequiredService<ILogger<CpuTuningService>>(), coreParking: sp.GetRequiredService<CoreParkingService>()));
                 services.AddSingleton<SettingsApplier>();
 
                 services.AddSingleton<ForegroundBoostService>();

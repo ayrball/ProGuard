@@ -64,8 +64,8 @@ through a different view from the one Windows Installer uses:
   desktop app, which is an MSIX package (`Claude_pzs8sxrjxfjjc`). Its processes get the package's registry
   virtualization: writes under `HKCU\Software` go to a private hive
   (`%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\SystemAppData\Helium\User.dat`), and deleting a value there hides the
-  real one. Writes under HKLM are refused, which is why `New-Item HKLM:\SOFTWARE\ProcessLasso` failed with "Requested
-  registry access is not allowed" in run 1.
+  real one. HKLM isn't virtualized: the fake Process Lasso key the elevated test script wrote was seen by
+  the MSI.
 - The Windows Installer service, and the `reg delete` it starts, use the real registry.
 
 Checked on 2026-10-17. With the value set from a test shell, `reg query` in that shell shows it, but the same query

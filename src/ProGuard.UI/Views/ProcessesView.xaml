@@ -44,6 +44,23 @@
                           IsChecked="{Binding Selected.Priority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=BelowNormal}"/>
                 <MenuItem Header="Idle" Command="{Binding SetPriorityCommand}" CommandParameter="Idle"
                           IsChecked="{Binding Selected.Priority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=Idle}"/>
+                <Separator Style="{StaticResource Menu.Separator}"/>
+                <MenuItem Header="Always" AutomationProperties.Name="Always priority">
+                    <MenuItem Header="Realtime" Command="{Binding AlwaysPriorityCommand}" CommandParameter="RealTime"
+                              IsChecked="{Binding SelectedRule.PriorityClass, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=256}"/>
+                    <MenuItem Header="High" Command="{Binding AlwaysPriorityCommand}" CommandParameter="High"
+                              IsChecked="{Binding SelectedRule.PriorityClass, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=128}"/>
+                    <MenuItem Header="Above normal" Command="{Binding AlwaysPriorityCommand}" CommandParameter="AboveNormal"
+                              IsChecked="{Binding SelectedRule.PriorityClass, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=32768}"/>
+                    <MenuItem Header="Normal" Command="{Binding AlwaysPriorityCommand}" CommandParameter="Normal"
+                              IsChecked="{Binding SelectedRule.PriorityClass, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=32}"/>
+                    <MenuItem Header="Below normal" Command="{Binding AlwaysPriorityCommand}" CommandParameter="BelowNormal"
+                              IsChecked="{Binding SelectedRule.PriorityClass, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=16384}"/>
+                    <MenuItem Header="Idle" Command="{Binding AlwaysPriorityCommand}" CommandParameter="Idle"
+                              IsChecked="{Binding SelectedRule.PriorityClass, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=64}"/>
+                    <Separator Style="{StaticResource Menu.Separator}"/>
+                    <MenuItem Header="Forget" Command="{Binding AlwaysPriorityCommand}" CommandParameter="Forget"/>
+                </MenuItem>
             </MenuItem>
             <MenuItem Header="I/O priority">
                 <MenuItem Header="High (administrator)" Command="{Binding SetIoPriorityCommand}" CommandParameter="3"
@@ -54,6 +71,19 @@
                           IsChecked="{Binding Selected.IoPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=1}"/>
                 <MenuItem Header="Very low" Command="{Binding SetIoPriorityCommand}" CommandParameter="0"
                           IsChecked="{Binding Selected.IoPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=0}"/>
+                <Separator Style="{StaticResource Menu.Separator}"/>
+                <MenuItem Header="Always" AutomationProperties.Name="Always I/O priority">
+                    <MenuItem Header="High (administrator)" Command="{Binding AlwaysIoPriorityCommand}" CommandParameter="3"
+                              IsChecked="{Binding SelectedRule.IoPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=3}"/>
+                    <MenuItem Header="Normal" Command="{Binding AlwaysIoPriorityCommand}" CommandParameter="2"
+                              IsChecked="{Binding SelectedRule.IoPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=2}"/>
+                    <MenuItem Header="Low" Command="{Binding AlwaysIoPriorityCommand}" CommandParameter="1"
+                              IsChecked="{Binding SelectedRule.IoPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=1}"/>
+                    <MenuItem Header="Very low" Command="{Binding AlwaysIoPriorityCommand}" CommandParameter="0"
+                              IsChecked="{Binding SelectedRule.IoPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=0}"/>
+                    <Separator Style="{StaticResource Menu.Separator}"/>
+                    <MenuItem Header="Forget" Command="{Binding AlwaysIoPriorityCommand}" CommandParameter="Forget"/>
+                </MenuItem>
             </MenuItem>
             <MenuItem Header="Memory priority">
                 <MenuItem Header="Normal" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="5"
@@ -66,6 +96,21 @@
                           IsChecked="{Binding Selected.MemoryPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=2}"/>
                 <MenuItem Header="Very low" Command="{Binding SetMemoryPriorityCommand}" CommandParameter="1"
                           IsChecked="{Binding Selected.MemoryPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=1}"/>
+                <Separator Style="{StaticResource Menu.Separator}"/>
+                <MenuItem Header="Always" AutomationProperties.Name="Always memory priority">
+                    <MenuItem Header="Normal" Command="{Binding AlwaysMemoryPriorityCommand}" CommandParameter="5"
+                              IsChecked="{Binding SelectedRule.MemoryPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=5}"/>
+                    <MenuItem Header="Below normal" Command="{Binding AlwaysMemoryPriorityCommand}" CommandParameter="4"
+                              IsChecked="{Binding SelectedRule.MemoryPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=4}"/>
+                    <MenuItem Header="Medium" Command="{Binding AlwaysMemoryPriorityCommand}" CommandParameter="3"
+                              IsChecked="{Binding SelectedRule.MemoryPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=3}"/>
+                    <MenuItem Header="Low" Command="{Binding AlwaysMemoryPriorityCommand}" CommandParameter="2"
+                              IsChecked="{Binding SelectedRule.MemoryPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=2}"/>
+                    <MenuItem Header="Very low" Command="{Binding AlwaysMemoryPriorityCommand}" CommandParameter="1"
+                              IsChecked="{Binding SelectedRule.MemoryPriority, Mode=OneWay, Converter={StaticResource EqualsParameter}, ConverterParameter=1}"/>
+                    <Separator Style="{StaticResource Menu.Separator}"/>
+                    <MenuItem Header="Forget" Command="{Binding AlwaysMemoryPriorityCommand}" CommandParameter="Forget"/>
+                </MenuItem>
             </MenuItem>
             <MenuItem Header="CPU cap…" Command="{Binding EditCpuLimitCommand}"/>
             <MenuItem Header="Cores…" Command="{Binding EditAffinityCommand}"/>

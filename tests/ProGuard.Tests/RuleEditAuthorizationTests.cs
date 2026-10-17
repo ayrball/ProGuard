@@ -82,6 +82,19 @@ public class RuleEditAuthorizationTests
     }
 
     [Fact]
+    public void StandardUser_MayNotPutHighIoPriorityInARule()
+    {
+        var h = new ThinHarness();
+        AssertDenied(h.Send(Standard, CommandTypes.SaveProcessRule, null, Rule("game.exe", r => r.IoPriority = 3)), "High I/O priority");
+        AssertDenied(h.Send(Standard, CommandTypes.SaveWatchdogRule, null, Watch("game.exe", WatchdogResponse.SetIoPriority, "high")), "High I/O priority");
+        AssertDenied(h.Send(Standard, CommandTypes.SaveWatchdogRule, null, Watch("game.exe", WatchdogResponse.SetIoPriority, "3")), "High I/O priority");
+        Assert.Empty(h.Rules);
+        Assert.Empty(h.WatchdogRules);
+
+        Assert.True(h.Send(Admin, CommandTypes.SaveProcessRule, null, Rule("game.exe", r => r.IoPriority = 3)).Success);
+    }
+
+    [Fact]
     public void StandardUser_MayNotRuleSystemProcesses()
     {
         var h = new ThinHarness();

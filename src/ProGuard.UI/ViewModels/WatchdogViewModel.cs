@@ -206,7 +206,7 @@ public sealed partial class WatchdogEditor : ObservableObject
     public IReadOnlyList<Choice<ProcessPriorityClass?>> PriorityChoices { get; }
 
     public IReadOnlyList<Choice<int?>> IoChoices { get; } = Enumerable.Range(0, 4)
-        .Select(i => new Choice<int?>(RuleText.IoPriorityName(i), i)).ToList();
+        .Select(i => new Choice<int?>(RuleText.IoPriorityName(i), i, AdminOnly: i == 3)).ToList();
 
     public IReadOnlyList<Choice<bool>> TrimChoices { get; } = new[] { new Choice<bool>("ONCE", false), new Choice<bool>("CONTINUOUSLY", true) };
 

@@ -48,6 +48,10 @@ internal static class RuleText
         return Fmt.Exe(trimmed);
     }
 
+    /// <summary>The rule written for exactly this program name ("chrome" and "chrome.exe" alike), if there is one.</summary>
+    public static ProGuard.Shared.Contracts.ProcessRuleDto? RuleFor(IEnumerable<ProGuard.Shared.Contracts.ProcessRuleDto> rules, string processName) =>
+        rules.FirstOrDefault(r => string.Equals(Display(r.ProcessName), Display(processName), StringComparison.OrdinalIgnoreCase));
+
     /// <summary>
     /// A name Windows can look up in Image File Execution Options: a file name, without wildcards or a path. The engine
     /// checks the same (<c>LaunchPriorityService.ImageName</c>).

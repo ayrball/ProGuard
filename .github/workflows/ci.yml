@@ -94,3 +94,58 @@ jobs:
           path: artifacts/preview/
           if-no-files-found: warn
           retention-days: 14
+
+  # The MSI, built the way release.yml builds it (but unsigned, at version 0.0.<run number>), so every PR has an
+  # installer to try. In parallel with the tests.
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        id: dotnet
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Pin the .NET 8 SDK
+        run: dotnet new globaljson --sdk-version ${{ steps.dotnet.outputs.dotnet-version }} --force
+
+      - uses: actions/cache@v6
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-installer-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'installer/*.wixproj') }}
+          restore-keys: nuget-installer-${{ runner.os }}-
+
+      - name: Build the MSI
+        shell: pwsh
+        run: ./installer/build.ps1 -Version 0.0.${{ github.run_number }}
+
+      # The signing hook is off for every real build. Check its pfx route still works, on a copy of one exe, with a
+      # throw-away self-signed certificate (no timestamp server, so the step doesn't depend on the network).
+      - name: Check the signing hook
+        shell: pwsh
+        run: |
+          $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=ProGuard CI signing check" -CertStoreLocation Cert:\CurrentUser\My
+          try {
+            $password = [guid]::NewGuid().ToString()
+            $pfx = Join-Path $env:RUNNER_TEMP "ci-check.pfx"
+            Export-PfxCertificate -Cert $cert -FilePath $pfx -Password (ConvertTo-SecureString $password -AsPlainText -Force) | Out-Null
+            $copy = Join-Path $env:RUNNER_TEMP "ProGuard.SessionAgent.exe"
+            Copy-Item artifacts/installer/files/ProGuard.SessionAgent.exe $copy
+            $env:PROGUARD_SIGNING = "pfx"
+            $env:PROGUARD_SIGN_PFX_BASE64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($pfx))
+            $env:PROGUARD_SIGN_PFX_PASSWORD = $password
+            $env:PROGUARD_SIGN_TIMESTAMP_URL = "none"
+            ./installer/sign.ps1 -Path $copy
+          } finally {
+            Remove-Item "Cert:\CurrentUser\My\$($cert.Thumbprint)"
+          }
+
+      - name: Upload the MSI
+        uses: actions/upload-artifact@v7
+        with:
+          name: installer
+          path: artifacts/installer/*.msi
+          if-no-files-found: error
+          retention-days: 14

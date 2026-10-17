@@ -34,6 +34,7 @@ public sealed class ThinClientCommands
     private readonly IPowerManager _power;
     private readonly IProcessMonitor _monitor;
     private readonly IProcessTuningNative _native;
+    private readonly LogQueryService? _logs;
 
     public ThinClientCommands(
         ILogger<ThinClientCommands> logger,
@@ -45,7 +46,8 @@ public sealed class ThinClientCommands
         IRuleStore ruleStore,
         IPowerManager power,
         IProcessMonitor monitor,
-        IProcessTuningNative native)
+        IProcessTuningNative native,
+        LogQueryService? logs = null)
     {
         _logger = logger;
         _snapshots = snapshots;
@@ -57,6 +59,7 @@ public sealed class ThinClientCommands
         _power = power;
         _monitor = monitor;
         _native = native;
+        _logs = logs;
     }
 
     /// <summary>Runs <paramref name="cmd"/> if it is one of the thin client's commands; false for any other.</summary>
@@ -155,6 +158,23 @@ public sealed class ThinClientCommands
                     IsParked = s.Parked,
                 }).ToList()));
                 return true;
+
+            case CommandTypes.GetLogEntries:
+            {
+                if (_logs == null) { result = CommandResult.Fail("This engine has no log viewer"); return true; }
+                var query = string.IsNullOrWhiteSpace(cmd.Argument) ? new LogQuery() : ParseArgument<LogQuery>(cmd.Argument);
+                result = CommandResult.Ok(JsonSerializer.Serialize(_logs.Query(query, IpcAuthorization.MayReadEngineLog(caller))));
+                return true;
+            }
+            case CommandTypes.ExportLogs:
+            {
+                if (_logs == null) { result = CommandResult.Fail("This engine has no log viewer"); return true; }
+                var query = string.IsNullOrWhiteSpace(cmd.Argument) ? new LogQuery() : ParseArgument<LogQuery>(cmd.Argument);
+                var export = _logs.Export(query, IpcAuthorization.MayReadEngineLog(caller));
+                _logger.LogInformation("{Count} log entries exported by {Caller}", export.Count, caller.Name);
+                result = CommandResult.Ok(JsonSerializer.Serialize(export));
+                return true;
+            }
 
             case CommandTypes.ClearActionLog:
                 _feed.Clear();

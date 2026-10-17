@@ -42,3 +42,7 @@ Limits:
   then restrain whatever the user is really using. Turn ProBalance off while such a UI is the only one running.
 - No tray icon (there is no taskbar on that desktop), and context menus need real input.
 - An elevated UI needs an elevated client (UIPI): start both from an elevated shell.
+- Started from a shell inside the Claude desktop app (an MSIX package), the UI reads and writes a virtualized HKCU. Its
+  "start with Windows" switch then changes a private copy of the Run value that Windows never sees at sign-in, and it
+  doesn't see a value an installer wrote. Read the real value from a process started through WMI
+  (docs/installer-verification.md).

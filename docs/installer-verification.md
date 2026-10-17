@@ -48,23 +48,41 @@ recovery was 5000/10000/60000, the session agent ran from Program Files, the MSI
 everything went (including the folder that existed before), the process stop returned 0, there was no ARP entry and
 the data was kept.
 
-## Start at sign-in: the installer is right, but something else changes the value
+## Start at sign-in: the installer was right; the test saw a different registry
 
-The logs show the MSI doing what it should with `HKCU\...\Run\ProGuard.UI`:
+The MSI logs show it handling `HKCU\...\Run\ProGuard.UI` as designed:
 
 - install with `START_AT_SIGNIN=1`: `RegAddValue(Name=ProGuard.UI,Value="C:\Program Files\ProGuard\ProGuard.UI.exe" --tray)`
 - upgrade: `EXISTING_RUN_VALUE` read, `KeepStartAtSignInOff` run only when it is empty
 - uninstall: `RegRemoveValue(Name=ProGuard.UI)`, and the `reg delete` safety net then finds nothing left
 
-But while ProGuard was installed, the value repeatedly changed a few seconds after the installer or I set it.
-Something removed it about 5 s after the install wrote it. Something added it back about 6 s after I deleted it. It
-reappeared after uninstalls had removed it. Each time, the data was exactly what the UI's `RunKeyStartup.Enable()`
-writes. It also happened at moments when no UI was running from Program Files. Once ProGuard was uninstalled, the
-value stayed as set: present for 90 s in one check, absent for 120 s in another. I couldn't find the writer. Other
-sessions were running `dotnet test` and dev builds on the machine at the same time. The installer-side checks that
-depend on this value ("Run value", "stays off", "gone after uninstall") are therefore judged from the MSI logs, not
-from the registry afterwards. Follow-up: find what writes this value while the engine runs.
+During the runs the value seemed to change by itself: it was gone right after the install wrote it, back right after I
+deleted it, and present after uninstalls had removed it. Nothing was changing it. The test looked at the registry
+through a different view from the one Windows Installer uses:
 
+- The test shells, the elevated scripts started from them, and the UIs they launched all descend from the Claude
+  desktop app, which is an MSIX package (`Claude_pzs8sxrjxfjjc`). Its processes get the package's registry
+  virtualization: writes under `HKCU\Software` go to a private hive
+  (`%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\SystemAppData\Helium\User.dat`), and deleting a value there hides the
+  real one. Writes under HKLM are refused, which is why `New-Item HKLM:\SOFTWARE\ProcessLasso` failed with "Requested
+  registry access is not allowed" in run 1.
+- The Windows Installer service, and the `reg delete` it starts, use the real registry.
+
+Checked on 2026-10-17. With the value set from a test shell, `reg query` in that shell shows it, but the same query
+from a process started through WMI (`Win32_Process.Create`, outside the app's process tree, same user) reports it
+missing. The same is true with the shell's command sandbox off. The real registry after the runs: no `ProGuard.UI`
+Run value and no `HKLM\SOFTWARE\ProcessLasso`.
+
+The supposed flips are exactly the gaps between the two views: the MSI wrote and removed the real value, and the test
+read and wrote the overlay. So the installer's start-at-sign-in handling is verified by its logs, and the "Run value",
+"stays off" and "gone after uninstall" failures in run 2 were measurement errors. The UI's own `RunKeyStartup` is fine
+too: nothing in ProGuard writes the value except the System page switch. It didn't change when the whole test suite
+(twice, with the value absent and then present), the Preview tool (`--mode all`) or a Restart Manager shutdown and
+restart of the UI ran against it.
+
+When testing anything that touches the registry from a Claude session, read the real state from a process started
+through WMI, for example
+`Invoke-CimMethod Win32_Process -MethodName Create -Arguments @{ CommandLine = 'cmd /c reg query ... > out.txt' }`.
 ## After the runs
 
 No ProGuard service, `C:\Program Files\ProGuard`, Start menu shortcut, ARP entry, ProGuard process, Run value or fake

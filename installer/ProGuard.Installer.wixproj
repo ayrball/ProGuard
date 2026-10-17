@@ -1,0 +1,33 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+
+  <!--
+    The per-machine x64 MSI. Build it with installer\build.ps1, which publishes the exes into StagingDir first;
+    this project only packages that folder. It isn't in ProGuard.sln for that reason.
+  -->
+  <PropertyGroup>
+    <OutputType>Package</OutputType>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <OutputName Condition="'$(OutputName)' == ''">ProGuard</OutputName>
+    <!-- Major.minor.build: the only parts Windows Installer compares when deciding on an upgrade. -->
+    <ProductVersion Condition="'$(ProductVersion)' == ''">0.0.0</ProductVersion>
+    <StagingDir Condition="'$(StagingDir)' == ''">$(MSBuildThisFileDirectory)..\artifacts\installer\files</StagingDir>
+    <LicenseRtf Condition="'$(LicenseRtf)' == ''">$(MSBuildThisFileDirectory)..\artifacts\installer\License.rtf</LicenseRtf>
+    <DefineConstants>ProductVersion=$(ProductVersion);StagingDir=$(StagingDir);LicenseRtf=$(LicenseRtf);IconPath=$(MSBuildThisFileDirectory)..\src\ProGuard.UI\Assets\proguard-icon.ico</DefineConstants>
+    <BindPaths>$(StagingDir)</BindPaths>
+    <!-- ICE61: AllowSameVersionUpgrades is deliberate (see Package.wxs).
+         ICE43, ICE57: they treat the Start Menu shortcut as per-user data, but in this per-machine package
+         ProgramMenuFolder is the all-users Start Menu, so the exe is the right key path. -->
+    <SuppressIces>ICE61;ICE43;ICE57</SuppressIces>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.2" />
+    <PackageReference Include="WixToolset.UI.wixext" Version="5.0.2" />
+  </ItemGroup>
+
+  <Target Name="CheckStagingDir" BeforeTargets="CoreCompile">
+    <Error Condition="!Exists('$(StagingDir)\ProGuard.Engine.exe')" Text="$(StagingDir) has no ProGuard.Engine.exe. Build with installer\build.ps1, which publishes the exes first." />
+    <Error Condition="!Exists('$(LicenseRtf)')" Text="$(LicenseRtf) is missing. Build with installer\build.ps1, which generates it from LICENSE." />
+  </Target>
+
+</Project>

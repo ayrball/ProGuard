@@ -23,6 +23,7 @@
         <DataTemplate DataType="{x:Type vm:WatchdogViewModel}"><views:WatchdogView/></DataTemplate>
         <DataTemplate DataType="{x:Type vm:ActivityViewModel}"><views:ActivityView/></DataTemplate>
         <DataTemplate DataType="{x:Type vm:SystemViewModel}"><views:SystemView/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AdvancedViewModel}"><views:AdvancedView/></DataTemplate>
         <!-- Dialogs -->
         <DataTemplate DataType="{x:Type vm:ConfirmDialogViewModel}"><views:ConfirmDialog/></DataTemplate>
         <DataTemplate DataType="{x:Type vm:AffinityDialogViewModel}"><views:AffinityDialog/></DataTemplate>

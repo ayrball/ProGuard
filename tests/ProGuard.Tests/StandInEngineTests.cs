@@ -404,4 +404,68 @@ public class StandInEngineTests
             foreach (var client in clients) await client.DisposeAsync();
         }
     }
+
+    // ------------------------------------------------------------------ the log viewer
+
+    [Fact]
+    public async Task Logs_PageNewestFirst_AcrossBothSources_ForAnAdministrator()
+    {
+        await using var rig = new Rig(readOnly: true);
+        var seen = new List<LogEntryDto>();
+        string? cursor = null;
+        do
+        {
+            var page = await rig.Client.QueryAsync<LogPage>(CommandTypes.GetLogEntries, argument: new LogQuery { Limit = 7, Before = cursor });
+            Assert.True(page.EngineLogIncluded);
+            seen.AddRange(page.Entries);
+            cursor = page.OlderCursor;
+        } while (cursor != null);
+
+        Assert.Contains(seen, e => e.Source == LogSource.Engine);
+        Assert.Contains(seen, e => e.Source == LogSource.Actions);
+        Assert.Equal(seen.Count, seen.Select(e => e.Id).Distinct().Count());
+        Assert.Equal(seen.OrderByDescending(e => e.TimestampUtc).Select(e => e.Id), seen.Select(e => e.Id));
+        foreach (var level in Enum.GetValues<LogLevelDto>()) Assert.Contains(seen, e => e.Level == level);
+        Assert.Contains(seen, e => e.Detail?.Contains("at ") == true);
+    }
+
+    [Fact]
+    public async Task Logs_StandardUser_GetsOnlyTheActionLog()
+    {
+        await using var rig = new Rig(administrator: false);
+        var page = await rig.Client.QueryAsync<LogPage>(CommandTypes.GetLogEntries);
+        Assert.False(page.EngineLogIncluded);
+        Assert.NotEmpty(page.Entries);
+        Assert.All(page.Entries, e => Assert.Equal(LogSource.Actions, e.Source));
+
+        var export = await rig.Client.QueryAsync<LogExportDto>(CommandTypes.ExportLogs);
+        Assert.Equal(page.Entries.Count, export.Count);
+        Assert.StartsWith("TimestampUtc,", export.Csv);
+    }
+
+    [Fact]
+    public async Task Logs_LiveTail_BringsNewLines()
+    {
+        await using var rig = new Rig();
+        var head = (await rig.Client.QueryAsync<LogPage>(CommandTypes.GetLogEntries)).HeadCursor;
+        var fresh = new List<LogEntryDto>();
+        for (int i = 0; i < 3; i++)
+        {
+            var tail = await rig.Client.QueryAsync<LogPage>(CommandTypes.GetLogEntries, argument: new LogQuery { After = head });
+            fresh.AddRange(tail.Entries);
+            head = tail.HeadCursor;
+        }
+        Assert.Single(fresh);
+    }
+
+    [Fact]
+    public async Task Logs_Filters_AreApplied()
+    {
+        await using var rig = new Rig(readOnly: true);
+        var errors = await rig.Client.QueryAsync<LogPage>(CommandTypes.GetLogEntries, argument: new LogQuery { Levels = new() { LogLevelDto.Error, LogLevelDto.Critical } });
+        Assert.Equal(2, errors.Entries.Count);
+        var chrome = await rig.Client.QueryAsync<LogPage>(CommandTypes.GetLogEntries, argument: new LogQuery { Process = "7220" });
+        Assert.All(chrome.Entries, e => Assert.Equal(7220, e.Pid));
+        Assert.NotEmpty(chrome.Entries);
+    }
 }

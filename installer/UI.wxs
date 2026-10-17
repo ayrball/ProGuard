@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The installer's dialogs: WixUI's standard ones plus two of ours.
+    Install:   Welcome > License > Options (start at sign-in, Process Lasso note) > Ready > Progress > Finish
+    Uninstall: Maintenance > Repair or Remove > (Remove only) Remove options (delete data?) > Ready > Progress > Finish
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
+
+    <!-- Finish page: "Open ProGuard now", run as the user (the UI sequence runs unelevated). -->
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Open ProGuard now" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+    <CustomAction Id="LaunchProGuard" FileRef="UiExe" ExeCommand="" Return="asyncNoWait" Impersonate="yes" />
+
+    <!-- The checkboxes edit private copies; Next writes the public properties as 1 or 0. -->
+    <SetProperty Id="StartAtSignInCheck" Value="1" After="KeepStartAtSignInOff_UI" Sequence="ui"
+                 Condition="START_AT_SIGNIN = &quot;1&quot;" />
+    <SetProperty Id="RemoveDataCheck" Value="1" After="AppSearch" Sequence="ui" Condition="REMOVE_DATA = &quot;1&quot;" />
+
+    <UI Id="ProGuardUI">
+      <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
+      <TextStyle Id="WixUI_Font_Bigger" FaceName="Tahoma" Size="12" />
+      <TextStyle Id="WixUI_Font_Title" FaceName="Tahoma" Size="9" Bold="yes" />
+      <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+      <Property Id="WixUI_Mode" Value="Minimal" />
+      <Property Id="ARPNOMODIFY" Value="1" />
+
+      <DialogRef Id="ErrorDlg" />
+      <DialogRef Id="FatalError" />
+      <DialogRef Id="FilesInUse" />
+      <DialogRef Id="MsiRMFilesInUse" />
+      <DialogRef Id="PrepareDlg" />
+      <DialogRef Id="ProgressDlg" />
+      <DialogRef Id="ResumeDlg" />
+      <DialogRef Id="UserExit" />
+      <DialogRef Id="WelcomeDlg" />
+      <DialogRef Id="LicenseAgreementDlg" />
+      <DialogRef Id="VerifyReadyDlg" />
+      <DialogRef Id="MaintenanceWelcomeDlg" />
+      <DialogRef Id="MaintenanceTypeDlg" />
+
+      <Dialog Id="OptionsDlg" Width="370" Height="270" Title="!(loc.WelcomeDlg_Title)">
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="!(loc.WixUINext)" />
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)" />
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Options" />
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="Choose whether ProGuard opens when you sign in." />
+        <Control Id="StartAtSignIn" Type="CheckBox" X="20" Y="60" Width="330" Height="17" Property="StartAtSignInCheck" CheckBoxValue="1"
+                 Text="&amp;Start ProGuard in the notification area when I sign in" />
+        <Control Id="StartAtSignInNote" Type="Text" X="37" Y="79" Width="313" Height="40" NoPrefix="yes"
+                 Text="The ProGuard engine runs as a service and always starts with Windows. This only adds the tray icon for your account. Anyone can change it later in ProGuard's System page." />
+        <Control Id="LassoTitle" Type="Text" X="20" Y="135" Width="330" Height="13" NoPrefix="yes"
+                 HideCondition="NOT PROCESS_LASSO_FOUND" ShowCondition="PROCESS_LASSO_FOUND"
+                 Text="{\WixUI_Font_Title}Process Lasso is installed" />
+        <Control Id="LassoWarning" Type="Text" X="20" Y="150" Width="330" Height="50" NoPrefix="yes"
+                 HideCondition="NOT PROCESS_LASSO_FOUND" ShowCondition="PROCESS_LASSO_FOUND"
+                 Text="Both programs adjust the same processes and will fight over them. ProGuard won't remove or change Process Lasso: uninstall it yourself, or at least stop its ProcessGovernor service, before relying on ProGuard." />
+      </Dialog>
+
+      <Dialog Id="RemoveDataDlg" Width="370" Height="270" Title="!(loc.WelcomeDlg_Title)">
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="!(loc.WixUINext)" />
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)" />
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Remove ProGuard" />
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="Choose what to remove." />
+        <Control Id="KeepNote" Type="Text" X="20" Y="60" Width="330" Height="40" NoPrefix="yes"
+                 Text="ProGuard's program files and service are always removed. Its settings, rules and logs in [CommonAppDataFolder]ProGuard are kept, so a later install picks up where you left off." />
+        <Control Id="RemoveData" Type="CheckBox" X="20" Y="105" Width="330" Height="17" Property="RemoveDataCheck" CheckBoxValue="1"
+                 Text="&amp;Also delete ProGuard's settings, rules and logs" />
+      </Dialog>
+
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchProGuard" Order="1"
+               Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="999" />
+
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="LicenseAgreementDlg" Condition="NOT Installed" />
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Condition="Installed AND PATCH" />
+
+      <Publish Dialog="LicenseAgreementDlg" Control="Print" Event="DoAction" Value="WixUIPrintEula_$(sys.BUILDARCHSHORT)" />
+      <Publish Dialog="LicenseAgreementDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" />
+      <Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="OptionsDlg" Condition="LicenseAccepted = &quot;1&quot;" />
+
+      <Publish Dialog="OptionsDlg" Control="Back" Event="NewDialog" Value="LicenseAgreementDlg" />
+      <Publish Dialog="OptionsDlg" Control="Next" Property="START_AT_SIGNIN" Value="1" Order="1" Condition="StartAtSignInCheck" />
+      <Publish Dialog="OptionsDlg" Control="Next" Property="START_AT_SIGNIN" Value="0" Order="2" Condition="NOT StartAtSignInCheck" />
+      <Publish Dialog="OptionsDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Order="3" />
+
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="OptionsDlg" Order="1" Condition="NOT Installed" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Order="2"
+               Condition="Installed AND NOT PATCH AND WixUI_InstallMode &lt;&gt; &quot;Remove&quot;" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="RemoveDataDlg" Order="2"
+               Condition="Installed AND NOT PATCH AND WixUI_InstallMode = &quot;Remove&quot;" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="2" Condition="Installed AND PATCH" />
+
+      <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="MaintenanceTypeDlg" />
+
+      <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="VerifyReadyDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="RemoveDataDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg" />
+
+      <Publish Dialog="RemoveDataDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" />
+      <Publish Dialog="RemoveDataDlg" Control="Next" Property="REMOVE_DATA" Value="1" Order="1" Condition="RemoveDataCheck" />
+      <Publish Dialog="RemoveDataDlg" Control="Next" Property="REMOVE_DATA" Value="0" Order="2" Condition="NOT RemoveDataCheck" />
+      <Publish Dialog="RemoveDataDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Order="3" />
+    </UI>
+
+    <UIRef Id="WixUI_Common" />
+  </Fragment>
+</Wix>

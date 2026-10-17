@@ -62,6 +62,13 @@ namespace ProGuard.Engine.IPC;
 /// nothing until it is applied, and the rules and settings it holds are readable by anyone anyway). Switching to one and
 /// importing a config are open here too, and <c>ConfigProfileService</c> then checks every rule it would add, change or
 /// remove with <see cref="RuleAuthorization"/> and the settings with <see cref="CheckSettingsChange"/>, as the caller.</item>
+/// <item>The log viewer's commands (<see cref="CommandTypes.GetLogEntries"/>, <see cref="CommandTypes.ExportLogs"/>) are open
+/// to any user, but what they read depends on the caller (<see cref="MayReadEngineLog"/>). The action log stays readable by
+/// everyone, as it already is through GetActivity. The engine's text log is administrators-only: it is free text that
+/// records other users' process names and ids, the account behind every pipe request, file paths and exception
+/// details. It isn't redacted for standard users instead, because a free-text line can't be cleaned reliably (a user
+/// name or a path can turn up anywhere in a message or a stack trace). A standard user simply gets the action log alone,
+/// and the reply says the engine log was left out.</item>
 /// <item>Anything else is refused. A new command stays administrator-only until it is added here.</item>
 /// </list>
 /// </summary>
@@ -88,6 +95,9 @@ public static class IpcAuthorization
         CommandTypes.GetActivity,
         CommandTypes.GetCpuSets,
         CommandTypes.GetTimerResolution,
+        // What they return is limited by MayReadEngineLog.
+        CommandTypes.GetLogEntries,
+        CommandTypes.ExportLogs,
         // Config profiles: bookkeeping and reading.
         CommandTypes.ListProfiles,
         CommandTypes.SaveProfile,
@@ -102,6 +112,9 @@ public static class IpcAuthorization
         CommandTypes.SwitchProfile,
         CommandTypes.ImportConfig,
     };
+
+    /// <summary>Whether <paramref name="caller"/> may read the engine's text log (see the policy above). The action log is open to all.</summary>
+    public static bool MayReadEngineLog(IIpcCaller caller) => caller.IsAdministrator;
 
     /// <summary>Allowed here; <see cref="IpcDispatcher"/> checks the rule's contents with <see cref="RuleAuthorization"/>.</summary>
     internal static readonly IReadOnlySet<string> RuleCommands = new HashSet<string>(StringComparer.Ordinal)

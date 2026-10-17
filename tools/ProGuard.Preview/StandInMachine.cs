@@ -33,6 +33,7 @@ public sealed partial class StandInMachine
     private readonly List<PowerPlanDto> _plans = StandInData.PowerPlans();
     private readonly List<CpuSetDto> _cpuSets = StandInData.CpuSets();
     private readonly List<ActivityEntry> _activity;
+    private readonly StandInLogs _logs;
     private EngineSettingsDto _settings = StandInData.Settings();
 
     private Guid _activePlan = StandInData.Balanced;
@@ -52,6 +53,7 @@ public sealed partial class StandInMachine
         var now = DateTime.UtcNow;
         _processes = StandInData.Processes(now, showPaths: callerIsAdministrator);
         _activity = StandInData.Activity(now);
+        _logs = new StandInLogs(now, readOnly);
         MarkRuledProcesses();
     }
 
@@ -94,6 +96,11 @@ public sealed partial class StandInMachine
                 int max = int.TryParse(cmd.Argument, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n > 0 ? n : 200;
                 return Data(_activity.Take(max).ToList());
             }
+
+            case CommandTypes.GetLogEntries:
+                return Data(_logs.Query(OptionalArgument<LogQuery>(cmd), _activity, _admin));
+            case CommandTypes.ExportLogs:
+                return Data(_logs.Export(OptionalArgument<LogQuery>(cmd), _activity, _admin));
 
             // ---- acting on one process
             case CommandTypes.SetPriority:
@@ -612,6 +619,9 @@ public sealed partial class StandInMachine
         string.IsNullOrWhiteSpace(cmd.Argument)
             ? throw new ArgumentException($"{cmd.CommandType} needs an argument.")
             : JsonSerializer.Deserialize<T>(cmd.Argument, EngineClient.Json) ?? throw new ArgumentException($"{cmd.CommandType} needs an argument.");
+
+    private static T OptionalArgument<T>(CommandMessage cmd) where T : new() =>
+        string.IsNullOrWhiteSpace(cmd.Argument) ? new T() : Argument<T>(cmd);
 
     private static CommandResult Data(object value) => CommandResult.Ok(JsonSerializer.Serialize(value, value.GetType()));
 

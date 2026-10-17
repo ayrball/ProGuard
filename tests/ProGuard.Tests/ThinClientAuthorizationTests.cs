@@ -29,6 +29,8 @@ public class ThinClientAuthorizationTests
         // Config profiles; switching and importing are then checked rule by rule (see ConfigProfileTests).
         CommandTypes.ListProfiles, CommandTypes.SaveProfile, CommandTypes.RenameProfile, CommandTypes.DeleteProfile, CommandTypes.ExportConfig,
         CommandTypes.SwitchProfile, CommandTypes.ImportConfig,
+        // Open, but only administrators get the engine log in the reply (see LogViewerEngineTests).
+        CommandTypes.GetLogEntries, CommandTypes.ExportLogs,
     };
 
     /// <summary>Command, argument that is valid for it, and the access the caller must have to the target.</summary>

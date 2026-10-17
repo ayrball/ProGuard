@@ -110,6 +110,8 @@ public class Program
                 services.AddSingleton<SnapshotBuilder>();
                 services.AddSingleton<ProcessActionService>();
                 services.AddSingleton<RuleService>();
+                services.AddSingleton(_ => new EngineLogReader(FileLoggerProvider.DefaultPath));
+                services.AddSingleton<LogQueryService>();
                 services.AddSingleton<ThinClientCommands>();
                 services.AddSingleton<IConfigProfileStore, ConfigProfileStore>();
                 services.AddSingleton<ConfigProfileService>();

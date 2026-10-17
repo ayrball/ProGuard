@@ -1,0 +1,324 @@
+<UserControl x:Class="ProGuard.UI.Views.LogsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <!-- Column widths shared by the header and every row. -->
+        <GridLength x:Key="ColTime">104</GridLength>
+        <GridLength x:Key="ColLevel">54</GridLength>
+        <GridLength x:Key="ColSource">74</GridLength>
+        <GridLength x:Key="ColCategory">150</GridLength>
+        <GridLength x:Key="ColProcess">140</GridLength>
+
+        <Style x:Key="Col.Head" TargetType="TextBlock" BasedOn="{StaticResource Text.Label}">
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+
+        <!-- Selectable text in the detail panel: no box, volt selection. -->
+        <Style x:Key="ReadOnlyText" TargetType="TextBox">
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Foreground" Value="{StaticResource VoltBrush}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource VoltBrush}"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource VoltBrush}"/>
+            <Setter Property="SelectionOpacity" Value="0.35"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <ScrollViewer x:Name="PART_ContentHost" Focusable="False"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- The level of an entry. Quiet levels are dim, warnings outlined heavy, errors a solid block: the level reads
+             from across the room without leaving the volt palette. -->
+        <DataTemplate x:Key="LevelTag">
+            <Border x:Name="Tag" Style="{StaticResource Tag}" HorizontalAlignment="Left" MinWidth="36">
+                <TextBlock x:Name="Text" Text="{Binding Level}" Style="{StaticResource Tag.Text}" HorizontalAlignment="Center"/>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                    <Setter TargetName="Tag" Property="BorderThickness" Value="2.5"/>
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsError}" Value="True"/>
+                        <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="False"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="Tag" Property="Background" Value="{StaticResource VoltBrush}"/>
+                    <Setter TargetName="Text" Property="Foreground" Value="{StaticResource InkBrush}"/>
+                </MultiDataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsError}" Value="True"/>
+                        <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="Tag" Property="Background" Value="{StaticResource InkBrush}"/>
+                    <Setter TargetName="Text" Property="Foreground" Value="{StaticResource VoltBrush}"/>
+                </MultiDataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- The same level tag in the detail panel, which isn't inside a row, so it never inverts. -->
+        <DataTemplate x:Key="DetailLevelTag">
+            <Border x:Name="Tag" Style="{StaticResource Tag}" HorizontalAlignment="Left" MinWidth="36">
+                <TextBlock x:Name="Text" Text="{Binding Level}" Style="{StaticResource Tag.Text}" HorizontalAlignment="Center"/>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                    <Setter TargetName="Tag" Property="BorderThickness" Value="2.5"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsError}" Value="True">
+                    <Setter TargetName="Tag" Property="Background" Value="{StaticResource VoltBrush}"/>
+                    <Setter TargetName="Text" Property="Foreground" Value="{StaticResource InkBrush}"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ============================================================ search + actions -->
+        <DockPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button AutomationProperties.AutomationId="LogLive" Command="{Binding ToggleLiveCommand}" Margin="0,0,8,0" MinWidth="104"
+                        ToolTip="Follow new entries as they are written, or hold the table still">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Btn.Solid}">
+                            <Setter Property="Content" Value="● LIVE"/>
+                            <Setter Property="AutomationProperties.Name" Value="Pause the live tail"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsLive}" Value="False">
+                                    <Setter Property="Content" Value="❚❚ PAUSED"/>
+                                    <Setter Property="AutomationProperties.Name" Value="Resume the live tail"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="Foreground" Value="{StaticResource VoltBrush}"/>
+                                    <Setter Property="BorderBrush" Value="{StaticResource VoltBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button Style="{StaticResource Btn.Outline}" Content="EXPORT CSV" Command="{Binding ExportCommand}" Margin="0,0,8,0"
+                        ToolTip="Save every entry the filters match as a CSV file"/>
+                <Border Style="{StaticResource Tag}" Margin="0,0,8,0" Visibility="{Binding IsAdministrator, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}">
+                    <TextBlock Text="ADMIN" Style="{StaticResource Tag.Text}"/>
+                </Border>
+                <Button Style="{StaticResource Btn.Outline}" Content="CLEAR ACTION LOG" Command="{Binding ClearActionLogCommand}"
+                        ToolTip="Deletes the logged ProBalance, CPU Limiter and power-plan actions for everyone (administrators only)"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal">
+                <Grid Width="280" Margin="0,0,20,0">
+                    <TextBox AutomationProperties.Name="SEARCH THE LOG" Style="{StaticResource Field}" Tag="SEARCH THE LOG"
+                             Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Style="{StaticResource Btn.Ghost}" Content="&#xE711;" FontFamily="{StaticResource Glyphs}" FontWeight="Normal" FontSize="10"
+                            HorizontalAlignment="Right" Padding="8" Command="{Binding ClearSearchCommand}" ToolTip="Clear"
+                            AutomationProperties.Name="Clear the search"
+                            Visibility="{Binding Search, Converter={StaticResource VisibleWhen}}"/>
+                </Grid>
+                <TextBox Width="160" Margin="0,0,20,0" AutomationProperties.Name="PROCESS OR PID" Style="{StaticResource Field}" Tag="PROCESS OR PID"
+                         Text="{Binding Process, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox Width="160" AutomationProperties.Name="CATEGORY" Style="{StaticResource Field}" Tag="CATEGORY"
+                         ToolTip="The logger (ProBalanceEngine, IpcDispatcher...) or, for the action log, ProBalance, CpuLimiter or Power"
+                         Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- ============================================================ filter chips -->
+        <StackPanel Grid.Row="1" Margin="0,16,0,8">
+            <DockPanel>
+                <ListBox DockPanel.Dock="Right" AutomationProperties.AutomationId="LogRange" Style="{StaticResource Choices}"
+                         ItemsSource="{Binding Ranges}" SelectedItem="{Binding Range}"/>
+                <ListBox AutomationProperties.AutomationId="LogSources" Style="{StaticResource Choices}" ItemsSource="{Binding Sources}" SelectedItem="{Binding Source}"/>
+            </DockPanel>
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource Btn.Ghost}" Content="RESET FILTERS" Command="{Binding ClearFiltersCommand}" Padding="10,6"/>
+                <ItemsControl AutomationProperties.AutomationId="LogLevels" ItemsSource="{Binding Levels}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <ToggleButton Style="{StaticResource Chip}" Content="{Binding Label}" IsChecked="{Binding IsOn}" Margin="0,0,6,6"
+                                          AutomationProperties.Name="{Binding Label}" ToolTip="Show or hide this level"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </DockPanel>
+        </StackPanel>
+
+        <!-- ============================================================ engine log withheld -->
+        <Border Grid.Row="2" BorderBrush="{StaticResource VoltBrush}" BorderThickness="2" Padding="14,10" Margin="0,0,0,12"
+                Visibility="{Binding EngineLogIncluded, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}">
+            <DockPanel>
+                <Border DockPanel.Dock="Left" Style="{StaticResource Tag}" Margin="0,0,12,0">
+                    <TextBlock Text="ADMIN" Style="{StaticResource Tag.Text}"/>
+                </Border>
+                <TextBlock Style="{StaticResource Text.Body}" FontSize="13" VerticalAlignment="Center"
+                           Text="Showing the action log only. The engine log records every user's processes and accounts, so only administrators can read it: run ProGuard as administrator to see it."/>
+            </DockPanel>
+        </Border>
+
+        <!-- ============================================================ table + detail -->
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="340"/>
+            </Grid.ColumnDefinitions>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Border BorderBrush="{StaticResource VoltBrush}" BorderThickness="0,0,0,2" Padding="10,0,10,8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="{StaticResource ColTime}"/>
+                            <ColumnDefinition Width="{StaticResource ColLevel}"/>
+                            <ColumnDefinition Width="{StaticResource ColSource}"/>
+                            <ColumnDefinition Width="{StaticResource ColCategory}"/>
+                            <ColumnDefinition Width="{StaticResource ColProcess}"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="TIME" Style="{StaticResource Col.Head}"/>
+                        <TextBlock Grid.Column="1" Text="LEVEL" Style="{StaticResource Col.Head}"/>
+                        <TextBlock Grid.Column="2" Text="SOURCE" Style="{StaticResource Col.Head}"/>
+                        <TextBlock Grid.Column="3" Text="CATEGORY" Style="{StaticResource Col.Head}"/>
+                        <TextBlock Grid.Column="4" Text="PROCESS" Style="{StaticResource Col.Head}"/>
+                        <TextBlock Grid.Column="5" Text="MESSAGE" Style="{StaticResource Col.Head}"/>
+                    </Grid>
+                </Border>
+
+                <!-- Virtualized (the Table style recycles rows), fixed-height rows so thousands of lines scroll smoothly. -->
+                <ListBox x:Name="Table" Grid.Row="1" AutomationProperties.AutomationId="LogEntries" Style="{StaticResource Table}"
+                         ItemContainerStyle="{StaticResource Table.Row}" ItemsSource="{Binding Entries}" SelectedItem="{Binding Selected}"
+                         ScrollViewer.ScrollChanged="OnScrollChanged">
+                    <ListBox.InputBindings>
+                        <KeyBinding Key="C" Modifiers="Control" Command="{Binding CopySelectedCommand}"/>
+                    </ListBox.InputBindings>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid x:Name="Row" Height="32" Margin="10,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="{StaticResource ColTime}"/>
+                                    <ColumnDefinition Width="{StaticResource ColLevel}"/>
+                                    <ColumnDefinition Width="{StaticResource ColSource}"/>
+                                    <ColumnDefinition Width="{StaticResource ColCategory}"/>
+                                    <ColumnDefinition Width="{StaticResource ColProcess}"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding Time}" FontFamily="{StaticResource Mono}" FontSize="11.5" Opacity="0.7" VerticalAlignment="Center"/>
+                                <ContentPresenter Grid.Column="1" Content="{Binding}" ContentTemplate="{StaticResource LevelTag}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding Source}" FontFamily="{StaticResource Mono}" FontSize="10" Opacity="0.6" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="3" Text="{Binding Category}" FontWeight="SemiBold" FontStretch="SemiCondensed" FontSize="13"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
+                                <TextBlock Grid.Column="4" Text="{Binding Process}" FontFamily="{StaticResource Mono}" FontSize="11.5"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
+                                <TextBlock x:Name="Message" Grid.Column="5" Text="{Binding Message}" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            </Grid>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding IsQuiet}" Value="True">
+                                    <Setter TargetName="Row" Property="Opacity" Value="0.5"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                                    <Setter TargetName="Message" Property="FontWeight" Value="SemiBold"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsError}" Value="True">
+                                    <Setter TargetName="Message" Property="FontWeight" Value="Bold"/>
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <StackPanel Grid.Row="1" VerticalAlignment="Center" IsHitTestVisible="False" Visibility="{Binding IsEmpty, Converter={StaticResource VisibleWhen}}">
+                    <TextBlock Text="NOTHING&#x0a;LOGGED." Style="{StaticResource Text.Hero}" FontSize="96" LineHeight="84" Opacity="0.2"/>
+                    <TextBlock Style="{StaticResource Text.Body}" FontSize="15" MaxWidth="460" HorizontalAlignment="Left" Margin="0,18,0,0" Opacity="0.75"
+                               Text="No entry matches these filters. Widen the time range, turn more levels on, or reset the filters."/>
+                </StackPanel>
+
+                <DockPanel Grid.Row="2" Margin="0,10,0,0">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Btn.Ghost}" Content="LOAD OLDER" Command="{Binding LoadOlderCommand}" Padding="10,6"
+                            Visibility="{Binding HasOlder, Converter={StaticResource VisibleWhen}}"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.6"
+                                   Text="{Binding Entries.Count, StringFormat='{}{0} ENTRIES SHOWN'}"/>
+                        <TextBlock FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.6" Margin="14,0,0,0"
+                                   Visibility="{Binding IsLive, Converter={StaticResource VisibleWhen}}"
+                                   Text="{Binding NewSinceResume, StringFormat='LIVE · {0} NEW'}"/>
+                        <TextBlock FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.6" Margin="14,0,0,0" Text="PAUSED · NEW ENTRIES WAIT UNTIL YOU RESUME"
+                                   Visibility="{Binding IsLive, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}"/>
+                    </StackPanel>
+                </DockPanel>
+            </Grid>
+
+            <!-- ============================================================ the selected entry -->
+            <Border Grid.Column="1" BorderBrush="{StaticResource VoltLineBrush}" BorderThickness="2,0,0,0" Margin="24,0,0,0" Padding="24,0,0,0"
+                    AutomationProperties.AutomationId="LogDetail">
+                <Grid>
+                    <StackPanel Visibility="{Binding Selected, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}" Margin="0,4,0,0">
+                        <TextBlock Text="SELECTED ENTRY" Style="{StaticResource Text.Label}"/>
+                        <TextBlock Text="PICK A LINE TO READ ALL OF IT." Style="{StaticResource Text.H2}" Margin="0,8,0,0" Opacity="0.35" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <DockPanel DataContext="{Binding Selected}" Visibility="{Binding Converter={StaticResource VisibleWhen}}">
+                        <StackPanel DockPanel.Dock="Top">
+                            <DockPanel>
+                                <ContentPresenter DockPanel.Dock="Left" Content="{Binding}" ContentTemplate="{StaticResource DetailLevelTag}" Margin="0,0,10,0"/>
+                                <TextBlock Text="{Binding LevelName}" FontWeight="Bold" FontStretch="Condensed" FontSize="22" VerticalAlignment="Center"/>
+                            </DockPanel>
+                            <TextBlock Text="{Binding FullTime}" FontFamily="{StaticResource Mono}" FontSize="12" Opacity="0.7" Margin="0,8,0,0"/>
+
+                            <Grid Margin="0,16,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="SOURCE" Style="{StaticResource Text.Label}" Margin="0,0,0,6"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Source}" FontFamily="{StaticResource Mono}" FontSize="12"/>
+                                <TextBlock Grid.Row="1" Text="CATEGORY" Style="{StaticResource Text.Label}" Margin="0,0,0,6"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Category}" FontFamily="{StaticResource Mono}" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Grid.Row="2" Text="PROCESS" Style="{StaticResource Text.Label}"/>
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Process}" FontFamily="{StaticResource Mono}" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                            </Grid>
+
+                            <TextBlock Text="MESSAGE" Style="{StaticResource Text.Label}" Margin="0,18,0,6"/>
+                            <TextBox Style="{StaticResource ReadOnlyText}" Text="{Binding FullMessage, Mode=OneWay}" FontFamily="{StaticResource Display}" FontSize="14"
+                                     AutomationProperties.Name="Message" MaxHeight="160" VerticalScrollBarVisibility="Auto"/>
+                        </StackPanel>
+
+                        <Button DockPanel.Dock="Bottom" Style="{StaticResource Btn.Outline}" Content="COPY ROW" HorizontalAlignment="Left" Margin="0,14,0,0"
+                                Command="{Binding DataContext.CopySelectedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                ToolTip="Copy this entry to the clipboard (Ctrl+C in the table)"/>
+
+                        <StackPanel DockPanel.Dock="Top" Visibility="{Binding HasDetail, Converter={StaticResource VisibleWhen}}">
+                            <TextBlock Text="DETAIL" Style="{StaticResource Text.Label}" Margin="0,18,0,6"/>
+                        </StackPanel>
+                        <TextBox Style="{StaticResource ReadOnlyText}" Text="{Binding Detail, Mode=OneWay}" FontFamily="{StaticResource Mono}" FontSize="11.5"
+                                 TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                                 AutomationProperties.Name="Detail" Visibility="{Binding HasDetail, Converter={StaticResource VisibleWhen}}"/>
+                    </DockPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

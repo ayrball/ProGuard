@@ -77,6 +77,11 @@ public class StandInEngineTests
         CommandTypes.SetTimerResolution => (null, new TimerResolutionArgument { Resolution = 10000 }),
         CommandTypes.GetCpuTuning => (null, StandInData.HighPerformance),
         CommandTypes.SetCpuTuning => (null, new CpuTuningArgument { PlanId = StandInData.Balanced, Values = { new CpuTuningValueDto { Key = "CPMINCORES", Ac = 100, Dc = 50 } } }),
+        CommandTypes.SaveProfile => (null, "Evening"),
+        CommandTypes.SwitchProfile => (null, new SwitchProfileArgument { Id = 1 }),
+        CommandTypes.DeleteProfile => (null, 2),
+        CommandTypes.RenameProfile => (null, new RenameProfileArgument { Id = 1, Name = "Games" }),
+        CommandTypes.ImportConfig => (null, new ImportConfigArgument { Document = ProGuard.Shared.Profiles.ConfigDocuments.Serialize(new ConfigDocument { Name = "Sample" }), Preview = true }),
         _ => (null, null)
     };
 

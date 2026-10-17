@@ -219,7 +219,7 @@ internal sealed class Renderer
         processes.Selected = null;
     }
 
-    /// <summary>Each ADVANCED sub-section, and for CPU TUNING the battery values too.</summary>
+    /// <summary>Each ADVANCED sub-section, for CPU TUNING the battery values too, and in LOGS an entry with a stack trace selected.</summary>
     private void ExerciseAdvanced(AdvancedViewModel advanced, string prefix)
     {
         foreach (var section in advanced.Sections)
@@ -228,18 +228,25 @@ internal sealed class Renderer
             advanced.CurrentSection = section;
             Pump(TimeSpan.FromSeconds(0.8));
             Shot(name);
-            if (section.Page is not CpuTuningViewModel tuning)
+            if (section.Page is CpuTuningViewModel tuning)
             {
-                ShotScrolled(name);
+                // A long page of settings: every screenful, plugged in, then the settings again on battery.
+                ShotPaged(name);
+                tuning.IsDc = true;
+                Pump(TimeSpan.FromMilliseconds(400));
+                ShotPaged(name + "--battery");
+                tuning.IsDc = false;
                 continue;
             }
 
-            // A long page of settings: every screenful, plugged in, then the settings again on battery.
-            ShotPaged(name);
-            tuning.IsDc = true;
-            Pump(TimeSpan.FromMilliseconds(400));
-            ShotPaged(name + "--battery");
-            tuning.IsDc = false;
+            ShotScrolled(name);
+            if (section.Page is LogsViewModel logs && (logs.Entries.FirstOrDefault(r => r.IsError && r.HasDetail) ?? logs.Entries.FirstOrDefault()) is { } row)
+            {
+                logs.Selected = row;
+                Pump(TimeSpan.FromMilliseconds(500));
+                Shot(name + "--selected");
+                logs.Selected = null;
+            }
         }
         advanced.CurrentSection = advanced.Sections[0];
     }

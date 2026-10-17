@@ -18,6 +18,7 @@ public sealed record AdvancedSection(string Label, string Blurb, object Page);
 public sealed partial class AdvancedViewModel : ObservableObject, IPage
 {
     public CpuTuningViewModel CpuTuning { get; }
+    public LogsViewModel Logs { get; }
 
     public IReadOnlyList<AdvancedSection> Sections { get; }
 
@@ -28,10 +29,12 @@ public sealed partial class AdvancedViewModel : ObservableObject, IPage
     public AdvancedViewModel(EngineHub hub, ShellViewModel? shell = null)
     {
         CpuTuning = new CpuTuningViewModel(hub, shell);
+        Logs = new LogsViewModel(hub, shell);
 
         Sections = new[]
         {
             // Sub-sections:
+            new AdvancedSection("LOGS", "ENGINE LOG AND ACTION LOG, NEWEST FIRST", Logs),
             new AdvancedSection("CPU TUNING", "CORE PARKING AND CPU FREQUENCY, PER POWER PLAN", CpuTuning),
         };
         currentSection = Sections[0];

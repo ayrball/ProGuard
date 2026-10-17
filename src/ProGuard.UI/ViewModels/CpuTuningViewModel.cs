@@ -140,7 +140,6 @@ public sealed partial class CpuTuningViewModel : ObservableObject, IPage
     private readonly Dictionary<string, (uint? Ac, uint? Dc)> _pending = new();
     private CancellationTokenSource? _saveCts;
     private CpuTuningDto? _tuning;
-    private bool _shown;
     private bool _coresLoaded;
 
     /// <summary>How long after the last change a save goes out; tests set zero.</summary>
@@ -182,12 +181,11 @@ public sealed partial class CpuTuningViewModel : ObservableObject, IPage
 
     public void OnShown()
     {
-        _shown = true;
         _ = LoadAsync(IsLoaded ? PlanId : null);
         if (!_coresLoaded) _ = LoadCoresAsync();
     }
 
-    public void OnHidden() => _shown = false;
+    public void OnHidden() { }
 
     private async Task LoadAsync(Guid? plan)
     {

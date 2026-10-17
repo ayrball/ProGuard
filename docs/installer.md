@@ -116,4 +116,9 @@ msiexec /i artifacts\installer\ProGuard-0.0.2-x64.msi /qn /l*v upgrade.log
 msiexec /x artifacts\installer\ProGuard-0.0.2-x64.msi /qn /l*v uninstall.log
 ```
 
+When the prompt descends from the Claude desktop app (an MSIX package), its registry is virtualized: it doesn't see
+the HKCU values the MSI writes (the start-at-sign-in Run value), and its own HKCU writes don't reach the real
+registry. Check those from a process started through WMI instead; see
+[installer-verification.md](installer-verification.md#start-at-sign-in-the-installer-was-right-the-test-saw-a-different-registry).
+
 Results of the last full check are in [installer-verification.md](installer-verification.md).

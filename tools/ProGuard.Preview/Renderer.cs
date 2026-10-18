@@ -111,7 +111,8 @@ internal sealed class Renderer
 
         var toaster = new Toaster(_app.Dispatcher);
         _hub = new EngineHub(new EngineClient(pipe), _app.Dispatcher, toaster);
-        _shell = new ShellViewModel(_hub, toaster, _icons);
+        // The render shows what an elevated or a standard window looks like, whatever this tool itself runs as.
+        _shell = new ShellViewModel(_hub, toaster, _icons, elevation: new PretendElevation(elevated: mode != RenderMode.Standard));
         _window = new MainWindow
         {
             DataContext = _shell,
@@ -539,6 +540,19 @@ internal sealed class Renderer
             {
                 return _seen.Select(kv => $"{kv.Value.Count}x (first in {kv.Value.Where}) {kv.Key}").ToList();
             }
+        }
+    }
+
+    /// <summary>Says whether the window is elevated without asking Windows, and never starts anything.</summary>
+    private sealed class PretendElevation(bool elevated) : IElevationLauncher
+    {
+        public bool IsElevated => elevated;
+        public bool AlwaysElevate { get; set; }
+
+        public ElevationOutcome Restart(IReadOnlyList<string> arguments, out string? error)
+        {
+            error = null;
+            return ElevationOutcome.Cancelled;
         }
     }
 }

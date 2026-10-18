@@ -9,7 +9,8 @@ using WinForms = System.Windows.Forms;
 namespace ProGuard.UI.Services;
 
 /// <summary>
-/// ProGuard's notification-area icon: click to show or hide the window, a menu for Performance Mode, Purge now and Exit,
+/// ProGuard's notification-area icon: click to show or hide the window, a menu for Performance Mode, Purge now, Restart as
+/// administrator (while the window has standard rights) and Exit,
 /// and balloons for Watchdog events. WPF has no tray icon of its own, so this wraps WinForms' NotifyIcon (the one
 /// place WinForms is used). Must be created and used on the UI thread, except <see cref="ShowBalloon"/>.
 /// </summary>
@@ -26,6 +27,7 @@ public sealed class TrayIconService : IDisposable
     private readonly WinForms.ToolStripMenuItem _showItem;
     private readonly WinForms.ToolStripMenuItem _performanceItem;
     private readonly WinForms.ToolStripMenuItem _purgeItem;
+    private readonly WinForms.ToolStripMenuItem _elevateItem;
     private bool _disposed;
 
     public TrayIconService(ShellViewModel shell, Dispatcher dispatcher, Action toggleWindow, Action showWindow, Action exit)
@@ -39,6 +41,10 @@ public sealed class TrayIconService : IDisposable
         _showItem = new WinForms.ToolStripMenuItem("SHOW PROGUARD", null, (_, _) => _toggleWindow());
         _performanceItem = new WinForms.ToolStripMenuItem("PERFORMANCE MODE", null, async (_, _) => await TogglePerformanceModeAsync()) { CheckOnClick = false };
         _purgeItem = new WinForms.ToolStripMenuItem("PURGE NOW", null, async (_, _) => await PurgeNowAsync());
+        _elevateItem = new WinForms.ToolStripMenuItem("RESTART AS ADMINISTRATOR", null, (_, _) => _shell.RestartElevatedCommand.Execute(null))
+        {
+            Visible = _shell.CanRestartElevated,
+        };
         var exitItem = new WinForms.ToolStripMenuItem("EXIT", null, (_, _) => _exit());
 
         _menu = new WinForms.ContextMenuStrip
@@ -52,7 +58,7 @@ public sealed class TrayIconService : IDisposable
         };
         _menu.Items.AddRange(new WinForms.ToolStripItem[]
         {
-            _showItem, new WinForms.ToolStripSeparator(), _performanceItem, _purgeItem, new WinForms.ToolStripSeparator(), exitItem
+            _showItem, new WinForms.ToolStripSeparator(), _performanceItem, _purgeItem, new WinForms.ToolStripSeparator(), _elevateItem, exitItem
         });
         _menu.Opening += (_, _) => RefreshMenu();
 

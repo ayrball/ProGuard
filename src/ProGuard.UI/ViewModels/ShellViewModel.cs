@@ -47,14 +47,47 @@ public sealed partial class ShellViewModel : ObservableObject
     [ObservableProperty] private bool minimizeToTray = true;
 
     private bool _windowSettingsRequested;
+    private readonly IElevationLauncher _elevation;
+
+    /// <summary>True while this window runs with standard rights: "Restart as administrator" is offered.</summary>
+    public bool CanRestartElevated => !_elevation.IsElevated;
+
+    /// <summary>
+    /// "Always start as administrator": each start with standard rights asks for administrator rights at once (a UAC
+    /// prompt), including the start at sign-in. Saying no there opens ProGuard with standard rights as before.
+    /// </summary>
+    public bool AlwaysStartElevated
+    {
+        get => _elevation.AlwaysElevate;
+        set
+        {
+            if (value == _elevation.AlwaysElevate) return;
+            try
+            {
+                _elevation.AlwaysElevate = value;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or global::System.Security.SecurityException or global::System.IO.IOException)
+            {
+                Toaster.Show($"Windows wouldn't save that: {ex.Message}", isError: true);
+            }
+            OnPropertyChanged();
+            if (value && _elevation.AlwaysElevate && CanRestartElevated)
+                Toaster.Show("From now on ProGuard starts as administrator, after a UAC prompt. Restart as administrator now to use it straight away.");
+        }
+    }
+
+    /// <summary>Closes the app for good (not just to the tray). Set by the app; tests leave it, or record it.</summary>
+    public Action? Quit { get; set; }
 
     // Ticks on its own, so the header clock keeps time while the engine is offline and no snapshots arrive.
     private readonly DispatcherTimer _clockTimer;
 
-    public ShellViewModel(EngineHub hub, Toaster toaster, IconCache icons, IStartupRegistration? startup = null)
+    public ShellViewModel(EngineHub hub, Toaster toaster, IconCache icons, IStartupRegistration? startup = null, IElevationLauncher? elevation = null)
     {
         Hub = hub;
         Toaster = toaster;
+        _elevation = elevation ?? new ElevationLauncher();
+        if (CanRestartElevated) toaster.Elevate = () => RestartElevatedCommand.Execute(null);
 
         Overview = new OverviewViewModel(hub, this);
         Processes = new ProcessesViewModel(hub, icons, this);
@@ -102,6 +135,33 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         var item = Pages.FirstOrDefault(p => ReferenceEquals(p.Page, page));
         if (item != null) CurrentPage = item;
+    }
+
+    /// <summary>Opens the page with this title (as on the rail, any case); an unknown title is ignored.</summary>
+    public void GoTo(string title)
+    {
+        var item = Pages.FirstOrDefault(p => string.Equals(p.Title, title, StringComparison.OrdinalIgnoreCase));
+        if (item != null) CurrentPage = item;
+    }
+
+    /// <summary>
+    /// Starts this window again with administrator rights, on the same page, and quits this copy once the new one is on
+    /// its way. Declining the UAC prompt leaves everything as it was.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanRestartElevated))]
+    private void RestartElevated()
+    {
+        if (!CanRestartElevated) return; // the tray menu and toasts call Execute directly
+        switch (_elevation.Restart(ElevationLauncher.PageArguments(CurrentPage.Title), out var error))
+        {
+            case ElevationOutcome.Started:
+                Quit?.Invoke();
+                break;
+            case ElevationOutcome.Failed:
+                Toaster.Show(error ?? "Windows couldn't start an administrator copy of ProGuard.", isError: true);
+                break;
+            // Cancelled: the user said no at the prompt, which needs no comment.
+        }
     }
 
     public void ShowDialog(object dialogViewModel) => Dialog = dialogViewModel;

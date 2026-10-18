@@ -551,6 +551,20 @@
                     </StackPanel>
                 </HeaderedContentControl.Header>
                 <StackPanel>
+                    <!-- Only while this window has standard rights. -->
+                    <StackPanel Margin="0,0,0,26"
+                                Visibility="{Binding DataContext.CanRestartElevated, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource VisibleWhen}}">
+                        <Button Style="{StaticResource Btn.Outline}" Content="RESTART AS ADMINISTRATOR" HorizontalAlignment="Left" Padding="18,10"
+                                Command="{Binding DataContext.RestartElevatedCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                        <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap"
+                                   Text="This window has standard rights, so ProGuard refuses Realtime and High I/O priority, Purge now, CPU tuning and the timer resolution. The engine keeps running either way; restarting only reopens this window, on this page."/>
+                    </StackPanel>
+                    <CheckBox Style="{StaticResource Switch}"
+                              IsChecked="{Binding DataContext.AlwaysStartElevated, RelativeSource={RelativeSource AncestorType=Window}}">
+                        <TextBlock Text="ALWAYS START AS ADMINISTRATOR" FontWeight="Bold" FontSize="15"/>
+                    </CheckBox>
+                    <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,8,0,22"
+                               Text="ProGuard asks for administrator rights (a UAC prompt) each time it starts, including at sign-in, so Realtime and High I/O priority always work. Say no and it opens with standard rights."/>
                     <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding StartWithWindows}">
                         <TextBlock Text="START WITH WINDOWS" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>

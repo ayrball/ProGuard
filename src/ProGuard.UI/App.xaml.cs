@@ -27,9 +27,27 @@ public partial class App : Application
         // Started at sign-in (see RunKeyStartup): go straight to the tray rather than opening a window.
         bool trayStart = e.Args.Contains(RunKeyStartup.TrayArgument, StringComparer.OrdinalIgnoreCase);
 
+        var elevation = new ElevationLauncher();
+
+        // "Always start as administrator": a copy with standard rights hands over to an elevated one straight away, with
+        // the same arguments (the sign-in start keeps --tray). Declined or failed, this copy carries on with standard rights.
+        string? elevationProblem = null;
+        if (!elevation.IsElevated && elevation.AlwaysElevate)
+        {
+            switch (elevation.Restart(e.Args, out var error))
+            {
+                case ElevationOutcome.Started:
+                    Shutdown();
+                    return;
+                case ElevationOutcome.Failed:
+                    elevationProblem = error;
+                    break;
+            }
+        }
+
         // A copy already runs in this session: it shows its window (unless this is the sign-in start) and this one leaves.
         if (!SingleInstance.TryClaim(() => Dispatcher.BeginInvoke(() => (MainWindow as MainWindow)?.BringToFront()), out _instance, askToShow: !trayStart,
-            name: SingleInstance.NameFor(IsElevated())))
+            name: SingleInstance.NameFor(elevation.IsElevated)))
         {
             Shutdown();
             return;
@@ -41,7 +59,10 @@ public partial class App : Application
         var toaster = new Toaster(Dispatcher);
         var client = new EngineClient();
         _hub = new EngineHub(client, Dispatcher, toaster);
-        var shell = new ShellViewModel(_hub, toaster, new IconCache(Dispatcher));
+        var shell = new ShellViewModel(_hub, toaster, new IconCache(Dispatcher), elevation: elevation) { Quit = Quit };
+        // Restarted as administrator from another copy: back on the page it was showing.
+        if (ElevationLauncher.PageFrom(e.Args) is { } page) shell.GoTo(page);
+        if (elevationProblem != null) toaster.Show(elevationProblem, isError: true);
 
         var window = new MainWindow { DataContext = shell };
         MainWindow = window;
@@ -65,12 +86,6 @@ public partial class App : Application
 
         _hub.Start();
         _foregroundReporter.StartAsync(CancellationToken.None);
-    }
-
-    private static bool IsElevated()
-    {
-        using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
-        return new System.Security.Principal.WindowsPrincipal(identity).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
     }
 
     private void Quit()

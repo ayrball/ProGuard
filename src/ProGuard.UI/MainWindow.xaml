@@ -118,6 +118,14 @@
                                 <TextBlock Text="{Binding Hub.Snapshot.Processes.Count, StringFormat='{}{0} PROCESSES WATCHED'}" FontFamily="{StaticResource Mono}"
                                            FontSize="10.5" Opacity="0.6" Margin="0,4,0,0"
                                            Visibility="{Binding Hub.IsOnline, Converter={StaticResource VisibleWhen}}"/>
+                                <!-- Standard rights: the engine refuses what only an administrator may do. Hidden while
+                                     offline, when the card turns volt and an outline button would vanish into it. -->
+                                <ContentControl Focusable="False" Visibility="{Binding Hub.IsOnline, Converter={StaticResource VisibleWhen}}">
+                                    <Button Style="{StaticResource Btn.Outline}" Content="RESTART AS ADMIN" Command="{Binding RestartElevatedCommand}"
+                                            AutomationProperties.Name="Restart as administrator" FontSize="11.5" Padding="10,7" Margin="0,12,0,0"
+                                            HorizontalAlignment="Left" ToolTip="Open ProGuard again with administrator rights, on this page"
+                                            Visibility="{Binding CanRestartElevated, Converter={StaticResource VisibleWhen}}"/>
+                                </ContentControl>
                             </StackPanel>
                         </Border>
 
@@ -178,7 +186,23 @@
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
-                                        <TextBlock Grid.Column="1" Text="{Binding Message}" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13.5"/>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13.5"/>
+                                            <Button Content="{Binding ActionText}" Command="{Binding Action}" HorizontalAlignment="Left" Margin="0,10,0,0"
+                                                    Padding="10,6" FontSize="11.5" BorderThickness="2" Background="Transparent" Cursor="Hand"
+                                                    Foreground="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}"
+                                                    BorderBrush="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}"
+                                                    Visibility="{Binding Action, Converter={StaticResource VisibleWhen}}">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                                                BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+                                                            <TextBlock Text="{TemplateBinding Content}" FontWeight="Bold" FontSize="{TemplateBinding FontSize}"/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                            </Button>
+                                        </StackPanel>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

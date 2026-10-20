@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -439,6 +440,79 @@ public class PersistentRuleServiceTests
         Assert.Equal(1, service.ReapplyChanged());
         Assert.Equal(0, _native.Io[1]);
         Assert.Contains(_log.Entries, e => e.Message == "Re-applied I/O priority Very Low (was Normal) to watched (1): it had been changed");
+    }
+
+    [Fact]
+    public void Reapply_PutsBackCpuPriority_UnlessSomethingHoldsItForNow()
+    {
+        _processes.Add(new ProcessInfo { Pid = 1, Name = "game" });
+        _processes.Add(new ProcessInfo { Pid = 2, Name = "once" });
+        _rules.Setup(r => r.GetProcessRule("game")).Returns(new ProcessRule { PriorityClass = (int)ProcessPriorityClass.High, ReapplyIfChanged = true });
+        _rules.Setup(r => r.GetProcessRule("once")).Returns(new ProcessRule { PriorityClass = (int)ProcessPriorityClass.High }); // applied at start only
+        var priorities = new Dictionary<int, ProcessPriorityClass> { [1] = ProcessPriorityClass.Normal, [2] = ProcessPriorityClass.Normal };
+        var access = new Mock<IRuleProcessAccess>();
+        access.Setup(a => a.GetPriorityClass(It.IsAny<int>())).Returns((int pid) => priorities.TryGetValue(pid, out var p) ? p : null);
+        access.Setup(a => a.SetPriorityClass(It.IsAny<int>(), It.IsAny<ProcessPriorityClass>()))
+            .Returns((int pid, ProcessPriorityClass p) => { priorities[pid] = p; return true; });
+        var held = new HashSet<int>();
+        var service = Create();
+        service.PriorityAccess = access.Object;
+        service.PriorityHeld = held.Contains;
+
+        // The game set its own priority back to Normal: put back to High, and logged as a re-apply.
+        Assert.Equal(1, service.ReapplyChanged());
+        Assert.Equal(ProcessPriorityClass.High, priorities[1]);
+        Assert.Equal(ProcessPriorityClass.Normal, priorities[2]);
+        Assert.Contains(_log.Entries, e => e.Message == "Re-applied CPU priority High (was Normal) to game (1): it had been changed");
+
+        // Already High: nothing to do.
+        Assert.Equal(0, service.ReapplyChanged());
+
+        // ProBalance (or a boost) holds it lower for a while: left alone, so they don't fight.
+        priorities[1] = ProcessPriorityClass.BelowNormal;
+        held.Add(1);
+        Assert.Equal(0, service.ReapplyChanged());
+        Assert.Equal(ProcessPriorityClass.BelowNormal, priorities[1]);
+
+        // Released without putting it back: the rule's priority returns.
+        held.Clear();
+        Assert.Equal(1, service.ReapplyChanged());
+        Assert.Equal(ProcessPriorityClass.High, priorities[1]);
+    }
+
+    [Fact]
+    public void Reapply_LeavesCpuPriorityAlone_WithoutPriorityAccess_OrWhenWindowsRefuses()
+    {
+        _processes.Add(new ProcessInfo { Pid = 1, Name = "game" });
+        _rules.Setup(r => r.GetProcessRule("game")).Returns(new ProcessRule { PriorityClass = (int)ProcessPriorityClass.High, ReapplyIfChanged = true });
+        var service = Create();
+        Assert.Equal(0, service.ReapplyChanged()); // no access wired: start-time only, as before
+
+        var access = new Mock<IRuleProcessAccess>();
+        access.Setup(a => a.GetPriorityClass(1)).Returns(ProcessPriorityClass.Normal);
+        access.Setup(a => a.SetPriorityClass(1, ProcessPriorityClass.High)).Returns(false);
+        service.PriorityAccess = access.Object;
+        for (var i = 0; i < 3; i++) Assert.Equal(0, service.ReapplyChanged());
+        Assert.Single(_log.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("CPU priority")); // logged once
+    }
+
+    [Fact]
+    public void StartupBoost_AndForegroundBoost_SayWhatTheyHold()
+    {
+        var access = new Mock<IRuleProcessAccess>();
+        access.Setup(a => a.GetStartTimeUtc(5)).Returns(DateTime.UtcNow);
+        access.Setup(a => a.GetPriorityClass(5)).Returns(ProcessPriorityClass.Normal);
+        access.Setup(a => a.SetPriorityClass(5, ProcessPriorityClass.High)).Returns(true);
+        var boost = new StartupBoostService(NullLogger<StartupBoostService>.Instance, access.Object);
+
+        Assert.False(boost.IsBoosting(5));
+        Assert.True(boost.TryBoost(new ProcessInfo { Pid = 5, Name = "game" }, new ProcessRule { StartupBoostPriorityClass = (int)ProcessPriorityClass.High, StartupBoostSeconds = 60 }));
+        Assert.True(boost.IsBoosting(5));
+        boost.OnProcessExited(5);
+        Assert.False(boost.IsBoosting(5));
+
+        var foreground = new ForegroundBoostService(NullLogger<ForegroundBoostService>.Instance, Mock.Of<IProBalanceEngine>(), Mock.Of<IForegroundTracker>());
+        Assert.Equal(0, foreground.BoostedPid);
     }
 
     [Fact]

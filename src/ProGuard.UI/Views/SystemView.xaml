@@ -565,6 +565,12 @@
                     </CheckBox>
                     <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,8,0,22"
                                Text="ProGuard asks for administrator rights (a UAC prompt) each time it starts, including at sign-in, so Realtime and High I/O priority always work. Say no and it opens with standard rights."/>
+                    <CheckBox Style="{StaticResource Switch}"
+                              IsChecked="{Binding DataContext.RememberPriorityChanges, RelativeSource={RelativeSource AncestorType=Window}}">
+                        <TextBlock Text="REMEMBER CHANGES TO PROGRAMS" FontWeight="Bold" FontSize="15"/>
+                    </CheckBox>
+                    <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,8,0,22"
+                               Text="Priority, I/O and memory priority, efficiency mode, cores and CPU caps you set on the Processes page are kept in that program's rule, so they are set again whenever the program starts, and put back if the program changes them. Windows' own processes stay one-off. Off: changes last until the process exits; use Always in the right-click menu to keep one."/>
                     <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding StartWithWindows}">
                         <TextBlock Text="START WITH WINDOWS" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>

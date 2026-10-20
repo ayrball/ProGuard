@@ -284,7 +284,8 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
     {
         if (Selected is not { } row || !Enum.TryParse<ProcessPriorityClass>(level, out var priority)) return Task.CompletedTask;
 
-        Task Run() => _hub.RunAsync(CommandTypes.SetPriority, row.Pid, priority, $"{row.Name} → {Fmt.Priority(priority)}");
+        Task Run() => SetAsync(row, CommandTypes.SetPriority, priority, $"{row.Name} → {Fmt.Priority(priority)}",
+            $"PRIORITY {Fmt.Priority(priority)}", r => r.PriorityClass = (int)priority);
 
         if (priority == ProcessPriorityClass.RealTime)
         {
@@ -305,7 +306,8 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
             _shell.Toaster.Show("I/O priority High needs administrator rights. Restart ProGuard as administrator to use it.", isError: true);
             return Task.CompletedTask;
         }
-        return _hub.RunAsync(CommandTypes.SetIoPriority, row.Pid, hint, $"{row.Name} · I/O {Fmt.IoPriority(hint)}");
+        return SetAsync(row, CommandTypes.SetIoPriority, hint, $"{row.Name} · I/O {Fmt.IoPriority(hint)}",
+            $"I/O {Fmt.IoPriority(hint)}", r => r.IoPriority = hint);
     }
 
     /// <summary>Memory (page) priority 1-5, very low .. normal.</summary>
@@ -313,7 +315,26 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
     private Task SetMemoryPriorityAsync(string level)
     {
         if (Selected is not { } row || !int.TryParse(level, out var value) || value is < 1 or > 5) return Task.CompletedTask;
-        return _hub.RunAsync(CommandTypes.SetMemoryPriority, row.Pid, value, $"{row.Name} · MEMORY {Fmt.MemoryPriority(value)}");
+        return SetAsync(row, CommandTypes.SetMemoryPriority, value, $"{row.Name} · MEMORY {Fmt.MemoryPriority(value)}",
+            $"MEMORY {Fmt.MemoryPriority(value)}", r => r.MemoryPriority = value);
+    }
+
+    /// <summary>
+    /// Changes the running process (priority, I/O or memory priority, efficiency mode, cores, CPU cap) and, while
+    /// "Remember changes" is on, keeps it in the program's rule too (<see cref="RememberAsync"/>). Windows' own
+    /// processes are left one-off: a rule names a program, and one for svchost.exe or the like would reach every copy.
+    /// <paramref name="change"/> writes the new value into the rule, or clears it when the change undoes a setting
+    /// (all cores again, the cap removed).
+    /// </summary>
+    internal async Task SetAsync(ProcessRow row, string command, object? argument, string done, string what, Action<ProcessRuleDto> change)
+    {
+        if (!_shell.RememberPriorityChanges || row.IsSystem)
+        {
+            await _hub.RunAsync(command, row.Pid, argument, done);
+            return;
+        }
+        if (!await _hub.RunAsync(command, row.Pid, argument)) return;
+        await RememberAsync(row, what, _ => true, change, kept: $"{done} · KEPT: set again whenever {row.Name} starts.");
     }
 
     [RelayCommand]
@@ -321,7 +342,8 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
     {
         if (Selected is not { } row) return Task.CompletedTask;
         bool enable = !row.IsEfficiencyMode;
-        return _hub.RunAsync(CommandTypes.SetEfficiencyMode, row.Pid, enable, $"{row.Name} · ECO {(enable ? "ON" : "OFF")}");
+        return SetAsync(row, CommandTypes.SetEfficiencyMode, enable, $"{row.Name} · ECO {(enable ? "ON" : "OFF")}",
+            $"ECO {(enable ? "ON" : "OFF")}", r => r.EfficiencyMode = enable);
     }
 
     [RelayCommand]
@@ -482,7 +504,7 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
     /// forgetting: <paramref name="has"/> then says whether the rule keeps that setting, and a rule left with nothing to
     /// do is deleted.
     /// </summary>
-    private async Task RememberAsync(ProcessRow row, string? what, Func<ProcessRuleDto, bool> has, Action<ProcessRuleDto> change)
+    private async Task RememberAsync(ProcessRow row, string? what, Func<ProcessRuleDto, bool> has, Action<ProcessRuleDto> change, string? kept = null)
     {
         var rules = await _hub.QueryAsync<List<ProcessRuleDto>>(CommandTypes.GetProcessRules);
         if (rules == null) return;
@@ -497,8 +519,22 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
 
         var rule = existing != null ? DtoCopy.Clone(existing) : new ProcessRuleDto { ProcessName = RuleText.Display(row.Name) };
         change(rule);
+        // Kept means kept: if the program (a game resetting its own priority, say) changes it later, the engine puts it
+        // back. ProBalance and the boosts still lower or raise it for a while; the engine waits until they let go.
+        if (!forgetting) rule.ReapplyIfChanged = true;
 
-        if (forgetting && RuleEffects.All(rule, _logical).Count == 0)
+        // A change that undid the last thing the rule kept (all cores again, the cap removed): no rule is left to keep.
+        if (!forgetting && !HasEffect(rule))
+        {
+            if (existing == null)
+            {
+                _shell.Toaster.Show(kept ?? $"{row.Name} · {what}");
+                return;
+            }
+            forgetting = true;
+        }
+
+        if (forgetting && !HasEffect(rule))
         {
             if (await _hub.RunAsync(CommandTypes.DeleteProcessRule, argument: rule.Id,
                     success: $"{row.Name} · FORGOTTEN. Running copies keep what they have now."))
@@ -514,8 +550,16 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
         if (Selected == row) SelectedRule = saved;
         _shell.Toaster.Show(forgetting
             ? $"{row.Name} · FORGOTTEN. Running copies keep what they have now."
-            : $"{row.Name} · ALWAYS {what}. Set now, and again whenever it starts.");
+            : kept ?? $"{row.Name} · ALWAYS {what}. Set now, and again whenever it starts.");
         _hub.RefreshNow();
+    }
+
+    /// <summary>Whether the rule does anything besides re-applying (which alone does nothing).</summary>
+    private bool HasEffect(ProcessRuleDto rule)
+    {
+        var check = DtoCopy.Clone(rule);
+        check.ReapplyIfChanged = false;
+        return RuleEffects.All(check, _logical).Count > 0;
     }
 
     [RelayCommand]

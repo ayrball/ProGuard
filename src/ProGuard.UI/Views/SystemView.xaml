@@ -564,7 +564,7 @@
                         <TextBlock Text="ALWAYS START AS ADMINISTRATOR" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>
                     <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,8,0,22"
-                               Text="ProGuard asks for administrator rights (a UAC prompt) each time it starts, including at sign-in, so Realtime and High I/O priority always work. Say no and it opens with standard rights."/>
+                               Text="ProGuard asks for administrator rights (a UAC prompt) each time it starts, including at sign-in, so Realtime and High I/O priority always work. Say no and it opens with standard rights. The installer turns this on for everyone unless told not to; this switch is your own choice."/>
                     <CheckBox Style="{StaticResource Switch}"
                               IsChecked="{Binding DataContext.RememberPriorityChanges, RelativeSource={RelativeSource AncestorType=Window}}">
                         <TextBlock Text="REMEMBER CHANGES TO PROGRAMS" FontWeight="Bold" FontSize="15"/>

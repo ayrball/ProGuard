@@ -160,6 +160,15 @@ public class UiElevationTests
         Assert.Empty(Toasts(shell));
     }
 
+    [Theory]
+    [InlineData(null, null, false)] // nothing chosen, not installed (a build run from source)
+    [InlineData(null, 1, true)]     // the installer's default
+    [InlineData(null, 0, false)]    // installed with START_AS_ADMIN=0
+    [InlineData(0, 1, false)]       // the user turned it off: their choice wins
+    [InlineData(1, 0, true)]        // and the other way round
+    public void AlwaysElevate_TheUsersChoiceWins_ThenTheInstallersDefault(int? user, int? machine, bool expected) =>
+        Assert.Equal(expected, ElevationLauncher.AlwaysElevateFrom(user, machine));
+
     [Fact]
     public void PageArguments_RoundTripThroughPageFrom()
     {

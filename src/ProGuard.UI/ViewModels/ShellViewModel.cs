@@ -48,6 +48,29 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private bool _windowSettingsRequested;
     private readonly IElevationLauncher _elevation;
+    private readonly IUiPreferences _preferences;
+
+    /// <summary>
+    /// "Remember changes": priorities, efficiency mode, cores and CPU caps set on the Processes page are kept in the
+    /// program's rule, so they come back whenever it starts. This user's own choice; on unless turned off.
+    /// </summary>
+    public bool RememberPriorityChanges
+    {
+        get => _preferences.RememberPriorityChanges;
+        set
+        {
+            if (value == _preferences.RememberPriorityChanges) return;
+            try
+            {
+                _preferences.RememberPriorityChanges = value;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or global::System.Security.SecurityException or global::System.IO.IOException)
+            {
+                Toaster.Show($"Windows wouldn't save that: {ex.Message}", isError: true);
+            }
+            OnPropertyChanged();
+        }
+    }
 
     /// <summary>True while this window runs with standard rights: "Restart as administrator" is offered.</summary>
     public bool CanRestartElevated => !_elevation.IsElevated;
@@ -82,10 +105,12 @@ public sealed partial class ShellViewModel : ObservableObject
     // Ticks on its own, so the header clock keeps time while the engine is offline and no snapshots arrive.
     private readonly DispatcherTimer _clockTimer;
 
-    public ShellViewModel(EngineHub hub, Toaster toaster, IconCache icons, IStartupRegistration? startup = null, IElevationLauncher? elevation = null)
+    public ShellViewModel(EngineHub hub, Toaster toaster, IconCache icons, IStartupRegistration? startup = null, IElevationLauncher? elevation = null,
+        IUiPreferences? preferences = null)
     {
         Hub = hub;
         Toaster = toaster;
+        _preferences = preferences ?? new MemoryUiPreferences();
         _elevation = elevation ?? new ElevationLauncher();
         if (CanRestartElevated) toaster.Elevate = () => RestartElevatedCommand.Execute(null);
 

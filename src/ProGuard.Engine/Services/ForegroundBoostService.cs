@@ -30,6 +30,9 @@ public class ForegroundBoostService : IDisposable
         }
     }
 
+    /// <summary>The process boosted to Above Normal right now, or 0.</summary>
+    public int BoostedPid => Volatile.Read(ref _lastBoostedPid);
+
     public ForegroundBoostService(ILogger<ForegroundBoostService> logger, IProBalanceEngine proBalance, IForegroundTracker foreground)
     {
         _logger = logger;

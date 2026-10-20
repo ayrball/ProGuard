@@ -27,6 +27,7 @@ public sealed partial class AffinityDialogViewModel : ObservableObject
     private readonly EngineHub _hub;
     private readonly ShellViewModel _shell;
     private readonly ProcessRow _row;
+    private readonly int _logical;
 
     public string Title => _row.Name.ToUpperInvariant();
     public ObservableCollection<CoreToggle> Cores { get; } = new();
@@ -38,6 +39,7 @@ public sealed partial class AffinityDialogViewModel : ObservableObject
         _hub = hub;
         _shell = shell;
         _row = row;
+        _logical = logical;
 
         int count = Math.Clamp(logical, 1, 64);
         long mask = row.AffinityMask == 0 ? -1 : row.AffinityMask;
@@ -76,7 +78,11 @@ public sealed partial class AffinityDialogViewModel : ObservableObject
     private async Task ApplyAsync()
     {
         _shell.CloseDialog();
-        await _hub.RunAsync(CommandTypes.SetAffinity, _row.Pid, Mask, $"{_row.Name} · {Summary}");
+        long mask = Mask;
+        // Every core again: the rule stops naming cores rather than naming all of them.
+        bool all = Cores.All(c => c.IsOn) && Cores.Count >= Math.Min(_logical, 64);
+        await _shell.Processes.SetAsync(_row, CommandTypes.SetAffinity, mask, $"{_row.Name} · {Summary}", $"CORES {Summary}",
+            r => r.AffinityMask = all ? null : mask);
     }
 }
 
@@ -112,13 +118,16 @@ public sealed partial class CpuLimitDialogViewModel : ObservableObject
     private async Task ApplyAsync()
     {
         _shell.CloseDialog();
-        await _hub.RunAsync(CommandTypes.SetCpuLimit, _row.Pid, Math.Clamp(Whole, 1, 99), $"{_row.Name} capped at {Whole}%");
+        int cap = Math.Clamp(Whole, 1, 99);
+        await _shell.Processes.SetAsync(_row, CommandTypes.SetCpuLimit, cap, $"{_row.Name} capped at {cap}%", $"CAP {cap}%",
+            r => r.CpuLimitPercent = cap);
     }
 
     [RelayCommand]
     private async Task RemoveAsync()
     {
         _shell.CloseDialog();
-        await _hub.RunAsync(CommandTypes.RemoveCpuLimit, _row.Pid, success: $"{_row.Name} uncapped");
+        await _shell.Processes.SetAsync(_row, CommandTypes.RemoveCpuLimit, null, $"{_row.Name} uncapped", "UNCAPPED",
+            r => r.CpuLimitPercent = null);
     }
 }

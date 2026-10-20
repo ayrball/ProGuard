@@ -59,7 +59,7 @@ public partial class App : Application
         var toaster = new Toaster(Dispatcher);
         var client = new EngineClient();
         _hub = new EngineHub(client, Dispatcher, toaster);
-        var shell = new ShellViewModel(_hub, toaster, new IconCache(Dispatcher), elevation: elevation) { Quit = Quit };
+        var shell = new ShellViewModel(_hub, toaster, new IconCache(Dispatcher), elevation: elevation, preferences: new RegistryUiPreferences()) { Quit = Quit };
         // Restarted as administrator from another copy: back on the page it was showing.
         if (ElevationLauncher.PageFrom(e.Args) is { } page) shell.GoTo(page);
         if (elevationProblem != null) toaster.Show(elevationProblem, isError: true);

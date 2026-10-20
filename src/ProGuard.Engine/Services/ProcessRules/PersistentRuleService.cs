@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using Microsoft.Extensions.Logging;
@@ -13,7 +14,8 @@ namespace ProGuard.Engine.Services.ProcessRules;
 /// Applies a rule's persistent per-process defaults (I/O and memory priority, efficiency mode, priority boost, CPU Sets,
 /// GPU priority and GPU preference) when <see cref="ProcessGovernor"/> sees the process start, and, for rules with
 /// <see cref="ProcessRule.ReapplyIfChanged"/>, re-checks them at the process poll interval and puts back any that
-/// something else changed. Every apply is logged; failures are logged and returned, never thrown.
+/// something else changed. The re-check covers the rule's CPU priority too (see <see cref="PriorityAccess"/>), which is
+/// otherwise applied once as the process starts. Every apply is logged; failures are logged and returned, never thrown.
 /// </summary>
 public sealed class PersistentRuleService : IDisposable
 {
@@ -28,6 +30,21 @@ public sealed class PersistentRuleService : IDisposable
     private Timer? _timer;
     private TimeSpan _timerInterval;
     private int _sweeping;
+
+    /// <summary>The name CPU priority goes by in results and logs.</summary>
+    public const string CpuPrioritySetting = "CPU priority";
+
+    /// <summary>
+    /// Reads and sets CPU priority for the re-apply check. Null (as in tests that don't need it) leaves CPU priority to
+    /// the start of the process only.
+    /// </summary>
+    public IRuleProcessAccess? PriorityAccess { get; set; }
+
+    /// <summary>
+    /// True while something else holds the process's CPU priority for now: a ProBalance restraint, a startup boost or
+    /// Foreground Boost. The re-apply check leaves it alone then; each of those puts the priority back itself.
+    /// </summary>
+    public Func<int, bool>? PriorityHeld { get; set; }
 
     public PersistentRuleService(ILogger<PersistentRuleService> logger, IProcessTuningNative native, IProcessMonitor monitor, IRuleStore ruleStore)
         : this(logger, CreateAppliers(native), monitor, ruleStore)
@@ -87,6 +104,7 @@ public sealed class PersistentRuleService : IDisposable
 
                 var target = new ProcessTarget(process.Pid, process.Name, process.FilePath);
                 reapplied += Apply(rule, target, onlyIfChanged: true).Count(r => r.Outcome == RuleApplyOutcome.Applied);
+                reapplied += ReapplyPriority(rule, target);
             }
         }
         catch (Exception ex)
@@ -99,6 +117,35 @@ public sealed class PersistentRuleService : IDisposable
             FollowPollingInterval();
         }
         return reapplied;
+    }
+
+    /// <summary>Puts back the rule's CPU priority if the process (or anything but ProGuard) changed it. Returns 1 when it did.</summary>
+    private int ReapplyPriority(ProcessRule rule, ProcessTarget target)
+    {
+        if (rule.PriorityClass is not int value || PriorityAccess is not { } access) return 0;
+        var wanted = (ProcessPriorityClass)value;
+        if (!Enum.IsDefined(wanted) || PriorityHeld?.Invoke(target.Pid) == true) return 0;
+
+        RuleApplyResult result;
+        try
+        {
+            if (access.GetPriorityClass(target.Pid) is not { } current)
+            {
+                Record(new RuleApplyResult(CpuPrioritySetting, RuleApplyOutcome.Skipped, "current value can't be read"), target, reapply: true);
+                return 0;
+            }
+            if (current == wanted) return 0;
+            result = access.SetPriorityClass(target.Pid, wanted)
+                ? new RuleApplyResult(CpuPrioritySetting, RuleApplyOutcome.Applied, $"{wanted} (was {current})")
+                : new RuleApplyResult(CpuPrioritySetting, RuleApplyOutcome.Failed, "Windows refused the change");
+        }
+        catch (Exception ex)
+        {
+            result = new RuleApplyResult(CpuPrioritySetting, RuleApplyOutcome.Failed, ex.Message);
+        }
+
+        Record(result, target, reapply: true);
+        return result.Outcome == RuleApplyOutcome.Applied ? 1 : 0;
     }
 
     /// <summary>Drops what is remembered about <paramref name="pid"/> once it exits, so a reused pid starts clean.</summary>

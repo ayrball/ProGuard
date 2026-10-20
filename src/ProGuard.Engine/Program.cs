@@ -83,11 +83,21 @@ public class Program
                 services.AddSingleton<IProcessTuningNative, Win32ProcessTuning>();
                 // Factory: both constructors are resolvable (IEnumerable<IProcessRuleApplier> resolves to empty),
                 // which the container rejects as ambiguous. The native one builds the real appliers.
-                services.AddSingleton(sp => new PersistentRuleService(
-                    sp.GetRequiredService<ILogger<PersistentRuleService>>(),
-                    sp.GetRequiredService<IProcessTuningNative>(),
-                    sp.GetRequiredService<IProcessMonitor>(),
-                    sp.GetRequiredService<IRuleStore>()));
+                services.AddSingleton(sp =>
+                {
+                    var persistent = new PersistentRuleService(
+                        sp.GetRequiredService<ILogger<PersistentRuleService>>(),
+                        sp.GetRequiredService<IProcessTuningNative>(),
+                        sp.GetRequiredService<IProcessMonitor>(),
+                        sp.GetRequiredService<IRuleStore>());
+                    // Re-applying a rule's CPU priority must not fight what holds it for a while: those put it back.
+                    var proBalance = sp.GetRequiredService<IProBalanceEngine>();
+                    var startupBoost = sp.GetRequiredService<StartupBoostService>();
+                    var foregroundBoost = sp.GetRequiredService<ForegroundBoostService>();
+                    persistent.PriorityAccess = sp.GetRequiredService<IRuleProcessAccess>();
+                    persistent.PriorityHeld = pid => proBalance.RestrainedPids.Contains(pid) || startupBoost.IsBoosting(pid) || foregroundBoost.BoostedPid == pid;
+                    return persistent;
+                });
 
                 services.AddSingleton(sp => new LaunchPriorityService(sp.GetRequiredService<ILogger<LaunchPriorityService>>()));
 

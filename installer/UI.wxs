@@ -16,6 +16,8 @@
     <!-- The checkboxes edit private copies; Next writes the public properties as 1 or 0. -->
     <SetProperty Id="StartAtSignInCheck" Value="1" After="KeepStartAtSignInOff_UI" Sequence="ui"
                  Condition="START_AT_SIGNIN = &quot;1&quot;" />
+    <SetProperty Id="StartAsAdminCheck" Value="1" After="KeepStartAsAdminOff_UI" Sequence="ui"
+                 Condition="START_AS_ADMIN = &quot;1&quot;" />
     <SetProperty Id="RemoveDataCheck" Value="1" After="AppSearch" Sequence="ui" Condition="REMOVE_DATA = &quot;1&quot;" />
 
     <UI Id="ProGuardUI">
@@ -50,15 +52,19 @@
         <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
         <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
         <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Options" />
-        <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="Choose whether ProGuard opens when you sign in." />
-        <Control Id="StartAtSignIn" Type="CheckBox" X="20" Y="60" Width="330" Height="17" Property="StartAtSignInCheck" CheckBoxValue="1"
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="Choose how ProGuard starts." />
+        <Control Id="StartAtSignIn" Type="CheckBox" X="20" Y="52" Width="330" Height="17" Property="StartAtSignInCheck" CheckBoxValue="1"
                  Text="&amp;Start ProGuard in the notification area when I sign in" />
-        <Control Id="StartAtSignInNote" Type="Text" X="37" Y="79" Width="313" Height="40" NoPrefix="yes"
+        <Control Id="StartAtSignInNote" Type="Text" X="37" Y="70" Width="313" Height="30" NoPrefix="yes"
                  Text="The ProGuard engine runs as a service and always starts with Windows. This only adds the tray icon for your account. Anyone can change it later in ProGuard's System page." />
-        <Control Id="LassoTitle" Type="Text" X="20" Y="135" Width="330" Height="13" NoPrefix="yes"
+        <Control Id="StartAsAdmin" Type="CheckBox" X="20" Y="106" Width="330" Height="17" Property="StartAsAdminCheck" CheckBoxValue="1"
+                 Text="Start ProGuard with &amp;administrator rights (recommended)" />
+        <Control Id="StartAsAdminNote" Type="Text" X="37" Y="124" Width="313" Height="30" NoPrefix="yes"
+                 Text="ProGuard asks with a UAC prompt each time it starts, so Realtime and High I/O priority work for everyone. Each user can turn it off in ProGuard's System page." />
+        <Control Id="LassoTitle" Type="Text" X="20" Y="162" Width="330" Height="13" NoPrefix="yes"
                  HideCondition="NOT PROCESS_LASSO_FOUND" ShowCondition="PROCESS_LASSO_FOUND"
                  Text="{\WixUI_Font_Title}Process Lasso is installed" />
-        <Control Id="LassoWarning" Type="Text" X="20" Y="150" Width="330" Height="50" NoPrefix="yes"
+        <Control Id="LassoWarning" Type="Text" X="20" Y="177" Width="330" Height="52" NoPrefix="yes"
                  HideCondition="NOT PROCESS_LASSO_FOUND" ShowCondition="PROCESS_LASSO_FOUND"
                  Text="Both programs adjust the same processes and will fight over them. ProGuard won't remove or change Process Lasso: uninstall it yourself, or at least stop its ProcessGovernor service, before relying on ProGuard." />
       </Dialog>
@@ -94,7 +100,9 @@
       <Publish Dialog="OptionsDlg" Control="Back" Event="NewDialog" Value="LicenseAgreementDlg" />
       <Publish Dialog="OptionsDlg" Control="Next" Property="START_AT_SIGNIN" Value="1" Order="1" Condition="StartAtSignInCheck" />
       <Publish Dialog="OptionsDlg" Control="Next" Property="START_AT_SIGNIN" Value="0" Order="2" Condition="NOT StartAtSignInCheck" />
-      <Publish Dialog="OptionsDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Order="3" />
+      <Publish Dialog="OptionsDlg" Control="Next" Property="START_AS_ADMIN" Value="1" Order="3" Condition="StartAsAdminCheck" />
+      <Publish Dialog="OptionsDlg" Control="Next" Property="START_AS_ADMIN" Value="0" Order="4" Condition="NOT StartAsAdminCheck" />
+      <Publish Dialog="OptionsDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Order="5" />
 
       <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="OptionsDlg" Order="1" Condition="NOT Installed" />
       <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Order="2"

@@ -5,6 +5,9 @@
   Public properties (msiexec ... NAME=value):
     START_AT_SIGNIN=0|1  Start the UI in the tray when the installing user signs in (default 1; on upgrade, the
                          current setting is kept).
+    START_AS_ADMIN=0|1   Every user's ProGuard window asks for administrator rights (a UAC prompt) when it starts, so
+                         Realtime and High I/O priority work without "Restart as administrator" (default 1; on upgrade,
+                         the current setting is kept). Each user can still change it on the System page.
     REMOVE_DATA=1        On uninstall, also delete %ProgramData%\ProGuard (database, rules, logs). Kept by default.
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
@@ -27,6 +30,17 @@
     <Property Id="ARPHELPLINK" Value="https://github.com/ayrball/ProGuard/issues" />
 
     <Property Id="START_AT_SIGNIN" Value="1" Secure="yes" />
+    <Property Id="START_AS_ADMIN" Value="1" Secure="yes" />
+
+    <!-- The UI's "Always start as administrator" (ElevationLauncher) reads this as the default for users who haven't
+         chosen. Upgrading keeps what was installed before. -->
+    <Property Id="EXISTING_START_AS_ADMIN">
+      <RegistrySearch Root="HKLM" Key="Software\ProGuard" Name="StartAsAdministrator" Type="raw" />
+    </Property>
+    <SetProperty Action="KeepStartAsAdminOff_UI" Id="START_AS_ADMIN" Value="0" After="AppSearch" Sequence="ui"
+                 Condition="WIX_UPGRADE_DETECTED AND EXISTING_START_AS_ADMIN = &quot;#0&quot;" />
+    <SetProperty Action="KeepStartAsAdminOff" Id="START_AS_ADMIN" Value="0" After="AppSearch" Sequence="execute"
+                 Condition="WIX_UPGRADE_DETECTED AND EXISTING_START_AS_ADMIN = &quot;#0&quot; AND UILevel &lt; 4" />
     <Property Id="REMOVE_DATA" Secure="yes" />
 
     <!-- The UI's own "start with Windows" switch (RunKeyStartup) reads and writes this same value, so the installer
@@ -67,6 +81,7 @@
     <Feature Id="ProGuard" Title="ProGuard" AllowAbsent="no">
       <ComponentGroupRef Id="ProgramFiles" />
       <ComponentRef Id="StartAtSignIn" />
+      <ComponentRef Id="StartAsAdministrator" />
     </Feature>
 
     <ComponentGroup Id="ProgramFiles" Directory="INSTALLFOLDER">
@@ -102,6 +117,12 @@
         <Exclude Files="$(var.StagingDir)\ProGuard.UI.exe" />
       </Files>
     </ComponentGroup>
+
+    <!-- HKLM: the default for every user, so a copy handed out starts elevated without anyone looking for "Restart as
+         administrator". Each user's own choice (HKCU, same name) overrides it. -->
+    <Component Id="StartAsAdministrator" Directory="INSTALLFOLDER">
+      <RegistryValue Root="HKLM" Key="Software\ProGuard" Name="StartAsAdministrator" Type="integer" Value="[START_AS_ADMIN]" KeyPath="yes" />
+    </Component>
 
     <!-- HKCU, not HKLM: see docs/installer.md. Written for the user who runs the installer. -->
     <Component Id="StartAtSignIn" Directory="INSTALLFOLDER" Condition="START_AT_SIGNIN = &quot;1&quot;">

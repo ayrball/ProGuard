@@ -41,6 +41,9 @@ public sealed class StartupBoostService : IDisposable
 
     public int ActiveBoostCount { get { lock (_gate) return _boosts.Count; } }
 
+    /// <summary>Whether <paramref name="pid"/> is boosted right now (its priority is the boost's until it ends).</summary>
+    public bool IsBoosting(int pid) { lock (_gate) return _boosts.ContainsKey(pid); }
+
     public void Start()
     {
         _timer ??= _time.CreateTimer(_ => SafeTick(), null, CheckInterval, CheckInterval);

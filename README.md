@@ -22,7 +22,7 @@ notification area when I sign in" (on by default; you can change it later in Pro
 is installed, the installer warns you, since the two fight over the same processes; it never touches Process Lasso.
 
 Silent install from an elevated prompt: `msiexec /i ProGuard-<version>-x64.msi /qn` (add `START_AT_SIGNIN=0` to skip
-the tray icon at sign-in).
+the tray icon at sign-in, or `START_AS_ADMIN=0` so the window doesn't ask for administrator rights each time it starts).
 
 **Upgrade:** run the newer MSI. It stops the service, replaces the files and starts the service again, keeping your
 settings, rules and logs (`C:\ProgramData\ProGuard`) and your start-at-sign-in choice.

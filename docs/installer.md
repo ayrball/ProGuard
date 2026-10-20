@@ -47,8 +47,14 @@ takes it as the `ProductVersion` MSBuild property. CI builds use `0.0.<run numbe
 | Start at sign-in | Optional, on by default: `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, value `ProGuard.UI` = `"C:\Program Files\ProGuard\ProGuard.UI.exe" --tray` |
 | Data | `%ProgramData%\ProGuard` belongs to the engine, which creates it. The MSI doesn't install or remove it, except on uninstall with `REMOVE_DATA=1`. |
 
-Properties: `START_AT_SIGNIN=0|1` (default 1), `REMOVE_DATA=1` (uninstall only). The dialogs set the same properties:
-Options (install) has the start-at-sign-in checkbox; Remove (in the maintenance dialogs) has the delete-data checkbox.
+Properties: `START_AT_SIGNIN=0|1` (default 1), `START_AS_ADMIN=0|1` (default 1), `REMOVE_DATA=1` (uninstall only). The
+dialogs set the same properties: Options (install) has the start-at-sign-in and administrator-rights checkboxes; Remove (in
+the maintenance dialogs) has the delete-data checkbox.
+
+`START_AS_ADMIN` writes `HKLM\Software\ProGuard`, value `StartAsAdministrator` (DWORD), the machine-wide default for the
+UI's "Always start as administrator". A copy handed out then starts elevated (after a UAC prompt) without its users
+looking for "Restart as administrator". Each user's own choice on the System page is written to the same name under HKCU
+and wins. Upgrading keeps the installed value (an earlier 0 stays 0), and uninstalling removes it.
 
 ### Why start-at-sign-in uses HKCU, not HKLM
 

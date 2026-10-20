@@ -43,9 +43,29 @@ public sealed class ElevationLauncher : IElevationLauncher
     /// <summary>Command-line switch naming the page the new copy opens on.</summary>
     public const string PageArgument = "--page";
 
-    /// <summary>Where the "Always start as administrator" choice is kept: this user's own, like starting at sign-in.</summary>
+    /// <summary>
+    /// Where the "Always start as administrator" choice is kept: this user's own under HKCU, like starting at sign-in.
+    /// The installer writes the same value under HKLM as the default for every user who hasn't chosen (see
+    /// <see cref="AlwaysElevateFrom"/>).
+    /// </summary>
     public const string SettingsKeyPath = @"Software\ProGuard";
     public const string AlwaysElevateValue = "StartAsAdministrator";
+
+    /// <summary>The user's own choice wins; without one, the installer's default for the machine; without that, off.</summary>
+    public static bool AlwaysElevateFrom(int? user, int? machine) => user is int u ? u != 0 : machine is int m && m != 0;
+
+    private static int? ReadValue(RegistryKey hive)
+    {
+        try
+        {
+            using var key = hive.OpenSubKey(SettingsKeyPath);
+            return key?.GetValue(AlwaysElevateValue) is int value ? value : null;
+        }
+        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException)
+        {
+            return null;
+        }
+    }
 
     private const int ErrorCancelled = 1223; // ERROR_CANCELLED: the user declined the UAC prompt
 
@@ -59,23 +79,12 @@ public sealed class ElevationLauncher : IElevationLauncher
 
     public bool AlwaysElevate
     {
-        get
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(SettingsKeyPath);
-                return key?.GetValue(AlwaysElevateValue) is int on && on != 0;
-            }
-            catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException)
-            {
-                return false;
-            }
-        }
+        get => AlwaysElevateFrom(ReadValue(Registry.CurrentUser), ReadValue(Registry.LocalMachine));
         set
         {
+            // Written either way, so turning it off holds even where the installer made it the default.
             using var key = Registry.CurrentUser.CreateSubKey(SettingsKeyPath, writable: true);
-            if (value) key.SetValue(AlwaysElevateValue, 1, RegistryValueKind.DWord);
-            else key.DeleteValue(AlwaysElevateValue, throwOnMissingValue: false);
+            key.SetValue(AlwaysElevateValue, value ? 1 : 0, RegistryValueKind.DWord);
         }
     }
 

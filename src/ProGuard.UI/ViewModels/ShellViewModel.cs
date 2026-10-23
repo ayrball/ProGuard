@@ -49,6 +49,7 @@ public sealed partial class ShellViewModel : ObservableObject
     private bool _windowSettingsRequested;
     private readonly IElevationLauncher _elevation;
     private readonly IUiPreferences _preferences;
+    private readonly IStartupRegistration? _startup;
 
     /// <summary>
     /// "Remember changes": priorities, efficiency mode, cores and CPU caps set on the Processes page are kept in the
@@ -94,6 +95,12 @@ public sealed partial class ShellViewModel : ObservableObject
                 Toaster.Show($"Windows wouldn't save that: {ex.Message}", isError: true);
             }
             OnPropertyChanged();
+            // Starting at sign-in switches between the Run key and the no-prompt task to match (elevated copies only).
+            try { _startup?.Reconcile(); }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidOperationException or global::System.IO.IOException or global::System.Security.SecurityException)
+            {
+                Toaster.Show($"Windows wouldn't change how ProGuard starts at sign-in: {ex.Message}", isError: true);
+            }
             if (value && _elevation.AlwaysElevate && CanRestartElevated)
                 Toaster.Show("From now on ProGuard starts as administrator, after a UAC prompt. Restart as administrator now to use it straight away.");
         }
@@ -111,6 +118,7 @@ public sealed partial class ShellViewModel : ObservableObject
         Hub = hub;
         Toaster = toaster;
         _preferences = preferences ?? new MemoryUiPreferences();
+        _startup = startup;
         _elevation = elevation ?? new ElevationLauncher();
         if (CanRestartElevated) toaster.Elevate = () => RestartElevatedCommand.Execute(null);
 

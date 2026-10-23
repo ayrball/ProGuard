@@ -155,10 +155,20 @@
     <CustomAction Id="RemoveRunValue" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred"
                   Impersonate="yes" Return="ignore" />
 
+    <!-- An elevated UI with "Always start as administrator" starts at sign-in through a scheduled task per user
+         (SignInStartup), which Windows Installer doesn't know about. On uninstall, remove them all, for every user, as
+         LocalSystem. -->
+    <SetProperty Id="RemoveSignInTasks" Before="RemoveSignInTasks" Sequence="execute"
+                 Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -Command &quot;Get-ScheduledTask -TaskPath '\ProGuard\' -EA 0 | Unregister-ScheduledTask -Confirm:$false; exit 0&quot;" />
+    <CustomAction Id="RemoveSignInTasks" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred"
+                  Impersonate="no" Return="ignore" />
+
     <InstallExecuteSequence>
       <Custom Action="ConfigureEngineRecovery" After="InstallServices" Condition="$Engine = 3" />
       <Custom Action="StopProGuardProcesses" After="StopServices" Condition="Installed OR WIX_UPGRADE_DETECTED" />
       <Custom Action="RemoveRunValue" After="RemoveRegistryValues"
+              Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+      <Custom Action="RemoveSignInTasks" After="RemoveRunValue"
               Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
     </InstallExecuteSequence>
 

@@ -13,6 +13,8 @@ administrator rights. It is an open-source alternative to Process Lasso, built i
 
 ![ProGuard's Overview page](docs/images/overview.png)
 
+*Rendered with `tools/ProGuard.Preview` against its stand-in engine, which is why the processes are sample ones.*
+
 **[Download the latest release](https://github.com/ayrball/ProGuard/releases/latest)**: an MSI installer or a
 portable zip, 64-bit Windows 10 or 11, no .NET install needed.
 

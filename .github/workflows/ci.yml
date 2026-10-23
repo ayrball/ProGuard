@@ -30,10 +30,10 @@ jobs:
       - uses: actions/setup-dotnet@v6
         id: dotnet
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
-      # The image's newest SDK (10.x) would otherwise build the solution; use the .NET 8 SDK developers use.
-      - name: Pin the .NET 8 SDK
+      # Build with exactly the SDK set up above (the image may carry a newer one); overwrites the repo's global.json.
+      - name: Pin the .NET 10 SDK
         run: dotnet new globaljson --sdk-version ${{ steps.dotnet.outputs.dotnet-version }} --force
 
       # No packages.lock.json in the repo, so cache on the project files that list the packages.
@@ -84,7 +84,7 @@ jobs:
       # Renders every page and dialog of the UI against the stand-in engine, so reviewers can see UI changes.
       - name: Render UI preview
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        run: tools/ProGuard.Preview/bin/Release/net8.0-windows/ProGuard.Preview.exe artifacts/preview --mode all
+        run: tools/ProGuard.Preview/bin/Release/net10.0-windows/ProGuard.Preview.exe artifacts/preview --mode all
 
       - name: Upload UI preview
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -106,9 +106,9 @@ jobs:
       - uses: actions/setup-dotnet@v6
         id: dotnet
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
-      - name: Pin the .NET 8 SDK
+      - name: Pin the .NET 10 SDK
         run: dotnet new globaljson --sdk-version ${{ steps.dotnet.outputs.dotnet-version }} --force
 
       - uses: actions/cache@v6

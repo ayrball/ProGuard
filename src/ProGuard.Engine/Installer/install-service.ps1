@@ -14,7 +14,7 @@
 #>
 param(
     [switch]$Uninstall,
-    [string]$SourceDir = (Join-Path $PSScriptRoot "..\bin\Release\net8.0-windows\win-x64\publish"),
+    [string]$SourceDir = (Join-Path $PSScriptRoot "..\bin\Release\net10.0-windows\win-x64\publish"),
     [string]$InstallDir = (Join-Path $env:ProgramFiles "ProGuard\Engine")
 )
 

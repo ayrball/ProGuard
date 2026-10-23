@@ -38,7 +38,7 @@ nothing installed. Its README.txt covers both. How the installer works and how t
 
 ## Requirements
 
-Windows 10/11 and the .NET 8 SDK.
+Windows 10/11 and the .NET 10 SDK (pinned by `global.json`).
 
 ## Build, run, test
 

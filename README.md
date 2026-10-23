@@ -9,7 +9,7 @@ temporarily lowers the priority of the programs responsible so whatever you are 
 applies the rules you set for individual programs every time they run, watches for programs that misbehave
 (Watchdog), trims memory when RAM is tight (SmartTrim) and switches power plans to match what you are doing
 (Performance Mode, IdleSaver). A WPF window shows what the engine is doing and lets you change it, with or without
-administrator rights. It is an open-source alternative to Process Lasso, built in C# on .NET 8.
+administrator rights. It is an open-source alternative to Process Lasso, built in C# on .NET 10.
 
 ![ProGuard's Overview page](docs/images/overview.png)
 
@@ -109,7 +109,7 @@ The builds are not code-signed yet, so Windows SmartScreen warns about an unknow
 
 ## Build, run, test
 
-Windows 10/11 and the .NET 8 SDK.
+Windows 10/11 and the .NET 10 SDK (pinned by `global.json`).
 
 ```powershell
 dotnet build ProGuard.sln

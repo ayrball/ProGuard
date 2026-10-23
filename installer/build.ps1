@@ -10,7 +10,7 @@
     5. SIGNING HOOK: signs the MSI.
     6. With -Portable: <OutDir>\ProGuard-<version>-portable-win-x64.zip, the same exes plus start/stop scripts.
 
-    Needs the .NET 8 SDK only: the WiX Toolset comes from NuGet.
+    Needs the .NET 10 SDK only: the WiX Toolset comes from NuGet.
 .PARAMETER Version
     "1.2.3", "v1.2.3" or "1.2.3-beta.1". The exes get it as their version; the MSI gets the 1.2.3 part (Windows
     Installer versions are numeric). Default: the v* tag on HEAD, else 0.0.<number of commits>, so successive local

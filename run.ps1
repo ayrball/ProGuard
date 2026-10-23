@@ -15,12 +15,12 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 $sln = Join-Path $root "ProGuard.sln"
-$engineDir = Join-Path $root "src\ProGuard.Engine\bin\Debug\net8.0-windows\win-x64"
+$engineDir = Join-Path $root "src\ProGuard.Engine\bin\Debug\net10.0-windows\win-x64"
 $enginePath = Join-Path $engineDir "ProGuard.Engine.exe"
-$uiDir = Join-Path $root "src\ProGuard.UI\bin\Debug\net8.0-windows"
+$uiDir = Join-Path $root "src\ProGuard.UI\bin\Debug\net10.0-windows"
 $uiPath = Join-Path $uiDir "ProGuard.UI.exe"
 $previewProject = Join-Path $root "tools\ProGuard.Preview"
-$previewPath = Join-Path $previewProject "bin\Debug\net8.0-windows\ProGuard.Preview.exe"
+$previewPath = Join-Path $previewProject "bin\Debug\net10.0-windows\ProGuard.Preview.exe"
 
 if ($Preview) {
     # Always build the tool: it renders the UI as it is now, and an up-to-date build costs a second.

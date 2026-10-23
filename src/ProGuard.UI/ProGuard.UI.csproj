@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
@@ -13,8 +13,9 @@
     <AssemblyName>ProGuard.UI</AssemblyName>
     <ApplicationIcon>Assets\proguard-icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <!-- WPF declares its DPI mode in the manifest; WinForms (tray icon only) would rather it came from code. -->
-    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+    <!-- WPF declares its DPI mode in the manifest; WinForms (tray icon only) would rather it came from code.
+         WFAC010 on .NET 8, renamed WFO0003 on .NET 10. -->
+    <NoWarn>$(NoWarn);WFAC010;WFO0003</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

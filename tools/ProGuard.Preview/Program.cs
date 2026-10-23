@@ -107,7 +107,7 @@ internal static class Program
 
         var engine = new StandInEngine(pipe, callerIsAdministrator: !standard).Start();
         Console.WriteLine($"Stand-in engine ({(standard ? "standard user" : "administrator")}) listening on pipe '{pipe}'. Ctrl+C to stop.");
-        Console.WriteLine($"Run the UI against it:  $env:PROGUARD_PIPE='{pipe}'; .\\src\\ProGuard.UI\\bin\\Debug\\net8.0-windows\\ProGuard.UI.exe");
+        Console.WriteLine($"Run the UI against it:  $env:PROGUARD_PIPE='{pipe}'; .\\src\\ProGuard.UI\\bin\\Debug\\net10.0-windows\\ProGuard.UI.exe");
         done.Wait();
         engine.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(2));
         return 0;

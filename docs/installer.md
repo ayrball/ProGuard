@@ -11,7 +11,7 @@ the zip.
 .\installer\build.ps1 -Version 1.2.0 -Portable
 ```
 
-Only the .NET 8 SDK is needed; WiX comes from NuGet. Output goes to `artifacts\installer\`:
+Only the .NET 10 SDK is needed; WiX comes from NuGet. Output goes to `artifacts\installer\`:
 
 | File | What |
 | --- | --- |

@@ -59,6 +59,7 @@ internal sealed class Renderer
     public Renderer(RenderOptions options)
     {
         _options = options;
+        App.SkipStartup = true; // this tool hosts the UI itself; the real startup would claim the single instance and exit
         _app = new App();
         _app.InitializeComponent();
         _app.ShutdownMode = ShutdownMode.OnExplicitShutdown;

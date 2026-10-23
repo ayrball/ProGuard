@@ -20,9 +20,17 @@ public partial class App : Application
     // engine starts normally sends it; this one covers a session without one and stays quiet while the agent runs.
     private readonly ForegroundReporter _foregroundReporter = new(yieldToSessionAgent: true);
 
+    /// <summary>
+    /// Set by a host that builds the UI itself (tools/ProGuard.Preview) before constructing the App. WPF queues
+    /// Startup from the Application constructor, so it fires inside any message pump, Run() or not; without this
+    /// the single-instance check would hand over to a ProGuard window already open in the session and shut down.
+    /// </summary>
+    public static bool SkipStartup { get; set; }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        if (SkipStartup) return;
 
         // Started at sign-in (see RunKeyStartup): go straight to the tray rather than opening a window.
         bool trayStart = e.Args.Contains(RunKeyStartup.TrayArgument, StringComparer.OrdinalIgnoreCase);

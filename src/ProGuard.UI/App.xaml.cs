@@ -59,7 +59,15 @@ public partial class App : Application
         var toaster = new Toaster(Dispatcher);
         var client = new EngineClient();
         _hub = new EngineHub(client, Dispatcher, toaster);
-        var shell = new ShellViewModel(_hub, toaster, new IconCache(Dispatcher), elevation: elevation, preferences: new RegistryUiPreferences()) { Quit = Quit };
+        var startup = new SignInStartup(elevation);
+        var shell = new ShellViewModel(_hub, toaster, new IconCache(Dispatcher), startup, elevation, new RegistryUiPreferences()) { Quit = Quit };
+        // An elevated copy keeps start-at-sign-in on the no-prompt task while "Always start as administrator" is on
+        // (and back on the Run key when it isn't): an installer upgrade, for one, adds the Run key again.
+        try { startup.Reconcile(); }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidOperationException or IOException or System.Security.SecurityException)
+        {
+            LogError(ex);
+        }
         // Restarted as administrator from another copy: back on the page it was showing.
         if (ElevationLauncher.PageFrom(e.Args) is { } page) shell.GoTo(page);
         if (elevationProblem != null) toaster.Show(elevationProblem, isError: true);

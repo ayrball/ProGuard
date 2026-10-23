@@ -51,6 +51,16 @@ Properties: `START_AT_SIGNIN=0|1` (default 1), `START_AS_ADMIN=0|1` (default 1),
 dialogs set the same properties: Options (install) has the start-at-sign-in and administrator-rights checkboxes; Remove (in
 the maintenance dialogs) has the delete-data checkbox.
 
+**Start at sign-in without a UAC prompt.** While the window runs elevated and "Always start as administrator" is on,
+it moves start-at-sign-in from the Run value to a per-user scheduled task, `\ProGuard\Start at sign-in <user SID>`
+(`SignInStartup`). The task runs `ProGuard.UI.exe --tray` at that user's sign-in with their highest rights, so there's no
+UAC prompt. It has no time limit and normal priority (scheduled tasks otherwise run below normal and stop after three
+days). Every elevated start reconciles the two: an upgrade that writes the Run value again has it removed, and turning
+"Always start as administrator" off moves start-at-sign-in back to the Run value. The first elevated start after
+installing (the finish page's "Open ProGuard now", after its UAC prompt) creates the task, so the first sign-in is already
+prompt-free. Opening ProGuard from the Start menu still asks. On uninstall, `RemoveSignInTasks` removes every task under
+`\ProGuard\` for all users, as LocalSystem; the empty folder may stay in Task Scheduler.
+
 `START_AS_ADMIN` writes `HKLM\Software\ProGuard`, value `StartAsAdministrator` (DWORD), the machine-wide default for the
 UI's "Always start as administrator". A copy handed out then starts elevated (after a UAC prompt) without its users
 looking for "Restart as administrator". Each user's own choice on the System page is written to the same name under HKCU

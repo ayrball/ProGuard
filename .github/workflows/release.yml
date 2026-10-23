@@ -96,7 +96,9 @@ jobs:
             artifacts/installer/SHA256SUMS.txt
           if-no-files-found: error
 
-      - name: Create the GitHub Release
+      # A release drafted by hand for this tag (release notes written first, published afterwards) already exists when
+      # publishing it creates the tag: then this build's files replace its attachments. Otherwise the release is created.
+      - name: Create or update the GitHub Release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -105,7 +107,13 @@ jobs:
           PRERELEASE: ${{ steps.version.outputs.prerelease }}
         run: |
           $files = @(Get-ChildItem artifacts/installer/*.msi, artifacts/installer/*.zip, artifacts/installer/SHA256SUMS.txt).FullName
-          $flags = @("--title", "ProGuard $env:VERSION", "--generate-notes", "--verify-tag")
-          if ($env:PRERELEASE -eq "true") { $flags += "--prerelease" }
-          gh release create $env:TAG @files @flags
-          if ($LASTEXITCODE -ne 0) { throw "gh release create failed ($LASTEXITCODE)." }
+          gh release view $env:TAG --json tagName *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:TAG @files --clobber
+            if ($LASTEXITCODE -ne 0) { throw "gh release upload failed ($LASTEXITCODE)." }
+          } else {
+            $flags = @("--title", "ProGuard $env:VERSION", "--generate-notes", "--verify-tag")
+            if ($env:PRERELEASE -eq "true") { $flags += "--prerelease" }
+            gh release create $env:TAG @files @flags
+            if ($LASTEXITCODE -ne 0) { throw "gh release create failed ($LASTEXITCODE)." }
+          }

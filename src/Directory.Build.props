@@ -1,0 +1,7 @@
+<Project>
+  <!-- The version every ProGuard assembly carries. installer/build.ps1 and the release workflow override it with
+       -p:Version=<tag>, so a built installer always says what its tag says; this is what a plain dotnet build reports. -->
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+</Project>

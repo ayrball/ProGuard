@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Management;
+using System.Runtime.InteropServices;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -74,20 +75,33 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
     {
         _logger.LogInformation("Stopping Process Monitor");
         _refreshTimer?.Change(Timeout.Infinite, 0);
-        
+
         if (_startWatcher != null)
         {
-            _startWatcher.Stop();
             _startWatcher.EventArrived -= OnProcessStarted;
+            StopWatcher(_startWatcher);
         }
-        
+
         if (_stopWatcher != null)
         {
-            _stopWatcher.Stop();
             _stopWatcher.EventArrived -= OnProcessStopped;
+            StopWatcher(_stopWatcher);
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Cancels a WMI event subscription. When Windows is shutting down the WMI service may already be gone, and Stop
+    /// throws "The RPC server is unavailable": there is nothing left to cancel then, so that is logged and ignored.
+    /// </summary>
+    private void StopWatcher(ManagementEventWatcher watcher)
+    {
+        try { watcher.Stop(); }
+        catch (Exception ex) when (ex is COMException or ManagementException or InvalidOperationException)
+        {
+            _logger.LogDebug(ex, "WMI event watcher already gone while stopping (Windows shutting down?)");
+        }
     }
 
     private void OnProcessStarted(object sender, EventArrivedEventArgs e)

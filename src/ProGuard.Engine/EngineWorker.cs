@@ -141,21 +141,35 @@ public class EngineWorker : BackgroundService
 
         _logger.LogInformation("ProGuard.Engine stopping at: {time}", System.DateTimeOffset.Now);
         
-        _pipeServer.Stop();
-        _sessionAgents?.Stop();
-        _foregroundPipeServer.Stop();
-        _foregroundBoostService.Stop();
+        // Each step on its own: one that fails (at Windows shutdown, services this depends on may already be gone) must
+        // not skip the ones after it, such as putting the user's power plan back or releasing the timer resolution.
+        StopStep("pipe server", _pipeServer.Stop);
+        StopStep("session agents", () => _sessionAgents?.Stop());
+        StopStep("foreground pipe server", _foregroundPipeServer.Stop);
+        StopStep("Foreground Boost", _foregroundBoostService.Stop);
 
-        await _processGovernor.StopAsync(stoppingToken);
-        await _watchdogService.StopAsync(stoppingToken);
-        _autoPerformanceMode.Stop();
-        await _powerManager.StopAsync(stoppingToken);
-        await _smartTrimService.StopAsync(stoppingToken);
-        await _cpuAffinityLimiter.StopAsync(stoppingToken);
-        await _cpuLimiter.StopAsync(stoppingToken);
-        await _proBalanceEngine.StopAsync(stoppingToken);
-        _coreParking?.Stop();
-        await _processMonitor.StopAsync(stoppingToken);
-        _timerResolution?.Release();
+        await StopStepAsync("Process Governor", () => _processGovernor.StopAsync(stoppingToken));
+        await StopStepAsync("Watchdog", () => _watchdogService.StopAsync(stoppingToken));
+        StopStep("automatic Performance Mode", _autoPerformanceMode.Stop);
+        await StopStepAsync("Power Manager", () => _powerManager.StopAsync(stoppingToken));
+        await StopStepAsync("SmartTrim", () => _smartTrimService.StopAsync(stoppingToken));
+        await StopStepAsync("CPU Limiter (affinity)", () => _cpuAffinityLimiter.StopAsync(stoppingToken));
+        await StopStepAsync("CPU Limiter", () => _cpuLimiter.StopAsync(stoppingToken));
+        await StopStepAsync("ProBalance", () => _proBalanceEngine.StopAsync(stoppingToken));
+        StopStep("core parking", () => _coreParking?.Stop());
+        await StopStepAsync("Process Monitor", () => _processMonitor.StopAsync(stoppingToken));
+        StopStep("timer resolution", () => _timerResolution?.Release());
+    }
+
+    private void StopStep(string what, Action step)
+    {
+        try { step(); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Stopping {What} failed; carrying on with the rest of shutdown", what); }
+    }
+
+    private async Task StopStepAsync(string what, Func<Task> step)
+    {
+        try { await step(); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Stopping {What} failed; carrying on with the rest of shutdown", what); }
     }
 }

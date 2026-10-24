@@ -1,5 +1,6 @@
 <Window x:Class="ProGuard.UI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:r="clr-namespace:ProGuard.UI.Resources"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:ProGuard.UI.ViewModels"
         xmlns:views="clr-namespace:ProGuard.UI.Views"
@@ -53,7 +54,7 @@
                 <!-- Wordmark: a solid volt block, the one big flood of colour that frames everything else. -->
                 <Border Background="{StaticResource VoltBrush}">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="24,0,0,0">
-                        <TextBlock Text="PROGUARD" Foreground="{StaticResource InkBrush}" FontWeight="Bold" FontStretch="Condensed" FontSize="34"
+                        <TextBlock Text="{x:Static r:Strings.Proguard}" Foreground="{StaticResource InkBrush}" FontWeight="Bold" FontStretch="Condensed" FontSize="34"
                                    VerticalAlignment="Center"/>
                         <Rectangle Width="10" Height="10" Fill="{StaticResource InkBrush}" Margin="8,14,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
@@ -68,9 +69,9 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
                     <TextBlock Text="{Binding Clock}" FontFamily="{StaticResource Mono}" FontSize="13" Opacity="0.6" VerticalAlignment="Center" Margin="0,0,22,0"
                                Height="34" Padding="0,9,0,0"/>
-                    <Button Style="{StaticResource Btn.Chrome}" Content="&#xE921;" Click="OnMinimize" ToolTip="Minimise" AutomationProperties.Name="Minimise"/>
-                    <Button x:Name="MaxButton" Style="{StaticResource Btn.Chrome}" Content="&#xE922;" Click="OnMaximize" ToolTip="Maximise" AutomationProperties.Name="Maximise"/>
-                    <Button Style="{StaticResource Btn.Chrome}" Content="&#xE8BB;" Click="OnClose" ToolTip="Close" AutomationProperties.Name="Close"/>
+                    <Button Style="{StaticResource Btn.Chrome}" Content="&#xE921;" Click="OnMinimize" ToolTip="{x:Static r:Strings.Minimise}" AutomationProperties.Name="Minimise"/>
+                    <Button x:Name="MaxButton" Style="{StaticResource Btn.Chrome}" Content="&#xE922;" Click="OnMaximize" ToolTip="{x:Static r:Strings.Maximise}" AutomationProperties.Name="Maximise"/>
+                    <Button Style="{StaticResource Btn.Chrome}" Content="&#xE8BB;" Click="OnClose" ToolTip="{x:Static r:Strings.Close}" AutomationProperties.Name="Close"/>
                 </StackPanel>
             </Grid>
 
@@ -102,28 +103,28 @@
                                 </Style>
                             </Border.Style>
                             <StackPanel>
-                                <TextBlock Text="ENGINE" Style="{StaticResource Text.Label}"/>
+                                <TextBlock Text="{x:Static r:Strings.Engine}" Style="{StaticResource Text.Label}"/>
                                 <TextBlock FontWeight="Bold" FontStretch="Condensed" FontSize="30" Margin="0,2,0,0">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="ONLINE"/>
+                                            <Setter Property="Text" Value="{x:Static r:Strings.Online}"/>
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding Hub.IsOffline}" Value="True">
-                                                    <Setter Property="Text" Value="OFFLINE"/>
+                                                    <Setter Property="Text" Value="{x:Static r:Strings.Offline}"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
                                     </TextBlock.Style>
                                 </TextBlock>
-                                <TextBlock Text="{Binding Hub.Snapshot.Processes.Count, StringFormat='{}{0} PROCESSES WATCHED'}" FontFamily="{StaticResource Mono}"
+                                <TextBlock Text="{Binding Hub.Snapshot.Processes.Count, StringFormat={x:Static r:Strings.N0ProcessesWatched}}" FontFamily="{StaticResource Mono}"
                                            FontSize="10.5" Opacity="0.6" Margin="0,4,0,0"
                                            Visibility="{Binding Hub.IsOnline, Converter={StaticResource VisibleWhen}}"/>
                                 <!-- Standard rights: the engine refuses what only an administrator may do. Hidden while
                                      offline, when the card turns volt and an outline button would vanish into it. -->
                                 <ContentControl Focusable="False" Visibility="{Binding Hub.IsOnline, Converter={StaticResource VisibleWhen}}">
-                                    <Button Style="{StaticResource Btn.Outline}" Content="RESTART AS ADMIN" Command="{Binding RestartElevatedCommand}"
+                                    <Button Style="{StaticResource Btn.Outline}" Content="{x:Static r:Strings.RestartAsAdmin}" Command="{Binding RestartElevatedCommand}"
                                             AutomationProperties.Name="Restart as administrator" FontSize="11.5" Padding="10,7" Margin="0,12,0,0"
-                                            HorizontalAlignment="Left" ToolTip="Open ProGuard again with administrator rights, on this page"
+                                            HorizontalAlignment="Left" ToolTip="{x:Static r:Strings.OpenProguardAgainWithAdministratorRights}"
                                             Visibility="{Binding CanRestartElevated, Converter={StaticResource VisibleWhen}}"/>
                                 </ContentControl>
                             </StackPanel>
@@ -139,14 +140,14 @@
                     <!-- Offline state: takes over the page area until the engine answers. -->
                     <Grid Background="{StaticResource InkBrush}" Visibility="{Binding Hub.IsOffline, Converter={StaticResource VisibleWhen}}">
                         <StackPanel VerticalAlignment="Center" Margin="56,0">
-                            <TextBlock Text="NO SIGNAL" Style="{StaticResource Text.Label}" FontSize="14"/>
+                            <TextBlock Text="{x:Static r:Strings.NoSignal}" Style="{StaticResource Text.Label}" FontSize="14"/>
                             <!-- BlockLineHeight: the 130 px lines start below the kicker instead of reaching up into it. -->
-                            <TextBlock Text="ENGINE&#x0a;OFFLINE" Style="{StaticResource Text.Hero}" FontSize="150" LineHeight="130"
+                            <TextBlock Text="{x:Static r:Strings.EngineOffline}" Style="{StaticResource Text.Hero}" FontSize="150" LineHeight="130"
                                        LineStackingStrategy="BlockLineHeight" Margin="0,18,0,0"/>
                             <Rectangle Height="6" Fill="{StaticResource VoltBrush}" Width="220" HorizontalAlignment="Left" Margin="0,26,0,24"/>
                             <TextBlock Style="{StaticResource Text.Body}" FontSize="17" MaxWidth="620" HorizontalAlignment="Left" Opacity="0.8"
-                                       Text="ProGuard's engine does the actual work: watching processes, applying rules, balancing load. Start ProGuard.Engine (run.ps1 starts both) and this screen will clear by itself."/>
-                            <TextBlock Text="RETRYING EVERY 2 SECONDS" FontFamily="{StaticResource Mono}" FontSize="11.5" Opacity="0.5" Margin="0,22,0,0"/>
+                                       Text="{x:Static r:Strings.ProguardsEngineDoesTheActualWork}"/>
+                            <TextBlock Text="{x:Static r:Strings.RetryingEvery2Seconds}" FontFamily="{StaticResource Mono}" FontSize="11.5" Opacity="0.5" Margin="0,22,0,0"/>
                         </StackPanel>
                     </Grid>
 
@@ -217,13 +218,13 @@
                     <TextBlock Text="{Binding StatusLine}" FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.6" VerticalAlignment="Center"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <TextBlock FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.6"
-                                   Text="{Binding Hub.Snapshot.CpuPercent, StringFormat='CPU {0:0}%'}"/>
+                                   Text="{Binding Hub.Snapshot.CpuPercent, StringFormat={x:Static r:Strings.Cpu00}}"/>
                         <TextBlock FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.3" Text="  ·  "/>
                         <TextBlock FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.6"
-                                   Text="{Binding Hub.Snapshot.MemoryPercent, StringFormat='MEM {0:0}%'}"/>
+                                   Text="{Binding Hub.Snapshot.MemoryPercent, StringFormat={x:Static r:Strings.Mem00}}"/>
                         <TextBlock FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.3" Text="  ·  "/>
                         <TextBlock FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.6"
-                                   Text="{Binding Hub.Snapshot.ProBalanceRestrained, StringFormat='{}{0} BALANCED'}"/>
+                                   Text="{Binding Hub.Snapshot.ProBalanceRestrained, StringFormat={x:Static r:Strings.N0Balanced}}"/>
                     </StackPanel>
                 </Grid>
             </Border>

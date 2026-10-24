@@ -1,5 +1,6 @@
 <UserControl x:Class="ProGuard.UI.Views.ProfileNameDialog"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:r="clr-namespace:ProGuard.UI.Resources"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <UserControl.Resources>
         <ResourceDictionary Source="Dialogs.xaml"/>
@@ -7,14 +8,14 @@
     <StackPanel Width="520">
         <TextBlock Text="{Binding Kicker}" Style="{StaticResource Dialog.Kicker}"/>
         <TextBlock Text="{Binding Title}" Style="{StaticResource Dialog.Title}"/>
-        <TextBlock Text="PROFILE NAME" Style="{StaticResource Text.Label}" Margin="0,24,0,6"/>
+        <TextBlock Text="{x:Static r:Strings.ProfileName}" Style="{StaticResource Text.Label}" Margin="0,24,0,6"/>
         <TextBox x:Name="NameBox" Style="{StaticResource Field}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" FontSize="17"
                  AutomationProperties.Name="PROFILE NAME" MaxLength="80"/>
         <TextBlock Text="{Binding Hint}" FontFamily="{StaticResource Mono}" FontSize="11" FontWeight="Bold" Margin="0,8,0,0" MinHeight="14"/>
         <TextBlock Style="{StaticResource Text.Body}" Opacity="0.7" Margin="0,14,0,26" TextWrapping="Wrap"
-                   Text="A profile holds the process rules, the Watchdog rules and every engine setting as they are now."/>
+                   Text="{x:Static r:Strings.AProfileHoldsTheProcessRules}"/>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Style="{StaticResource Btn.Ghost}" Content="CANCEL" Margin="0,0,10,0" Padding="20,12" IsCancel="True"
+            <Button Style="{StaticResource Btn.Ghost}" Content="{x:Static r:Strings.Cancel}" Margin="0,0,10,0" Padding="20,12" IsCancel="True"
                     Command="{Binding DataContext.CloseDialogCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
             <Button Style="{StaticResource Btn.Solid}" Content="{Binding ConfirmText}" Command="{Binding ConfirmCommand}" Padding="22,12" FontSize="14" IsDefault="True"/>
         </StackPanel>

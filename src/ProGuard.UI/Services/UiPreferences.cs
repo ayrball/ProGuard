@@ -14,18 +14,45 @@ public interface IUiPreferences
     /// so they come back whenever it starts. On unless the user turns it off.
     /// </summary>
     bool RememberPriorityChanges { get; set; }
+
+    /// <summary>The window's language as a culture name ("de"), or empty for Windows' own display language.</summary>
+    string Language { get; set; }
 }
 
 /// <summary>Kept in memory only: the default for tests and the preview tool.</summary>
 public sealed class MemoryUiPreferences : IUiPreferences
 {
     public bool RememberPriorityChanges { get; set; } = true;
+    public string Language { get; set; } = string.Empty;
 }
 
 /// <summary>Kept under <c>HKCU\Software\ProGuard</c>.</summary>
 public sealed class RegistryUiPreferences : IUiPreferences
 {
     public const string RememberValue = "RememberPriorityChanges";
+    public const string LanguageValue = "Language";
+
+    public string Language
+    {
+        get
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(ElevationLauncher.SettingsKeyPath);
+                return key?.GetValue(LanguageValue) as string ?? string.Empty;
+            }
+            catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException)
+            {
+                return string.Empty;
+            }
+        }
+        set
+        {
+            using var key = Registry.CurrentUser.CreateSubKey(ElevationLauncher.SettingsKeyPath, writable: true);
+            if (string.IsNullOrEmpty(value)) key.DeleteValue(LanguageValue, throwOnMissingValue: false);
+            else key.SetValue(LanguageValue, value, RegistryValueKind.String);
+        }
+    }
 
     public bool RememberPriorityChanges
     {

@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using ProGuard.Shared.Contracts;
 using ProGuard.Shared.Messages;
 using ProGuard.UI.Services;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -22,14 +23,14 @@ public sealed class ActivityRow
         Time = entry.TimestampUtc.ToLocalTime().ToString("HH:mm:ss");
         Kind = entry.Kind switch
         {
-            ActivityKind.Restrained => "BALANCED",
-            ActivityKind.Restored => "RESTORED",
-            ActivityKind.Rule => "RULE",
-            ActivityKind.Watchdog => "WATCHDOG",
-            ActivityKind.Power => "POWER",
-            ActivityKind.Memory => "MEMORY",
-            ActivityKind.Manual => "YOU",
-            _ => "ENGINE"
+            ActivityKind.Restrained => Strings.Balanced,
+            ActivityKind.Restored => Strings.Act_Restored,
+            ActivityKind.Rule => Strings.Rule,
+            ActivityKind.Watchdog => Strings.Watchdog,
+            ActivityKind.Power => Strings.Power,
+            ActivityKind.Memory => Strings.Memory,
+            ActivityKind.Manual => Strings.Act_You,
+            _ => Strings.Engine
         };
         Process = string.IsNullOrEmpty(entry.ProcessName) ? "—" : Fmt.Exe(entry.ProcessName).ToUpperInvariant();
     }
@@ -45,15 +46,15 @@ public sealed partial class ActivityViewModel : ObservableObject, IPage
 
     public IReadOnlyList<Choice<ActivityKind?>> Kinds { get; } = new Choice<ActivityKind?>[]
     {
-        new("ALL", null),
-        new("BALANCED", ActivityKind.Restrained),
-        new("RESTORED", ActivityKind.Restored),
-        new("RULES", ActivityKind.Rule),
-        new("WATCHDOG", ActivityKind.Watchdog),
-        new("POWER", ActivityKind.Power),
-        new("MEMORY", ActivityKind.Memory),
-        new("YOU", ActivityKind.Manual),
-        new("ENGINE", ActivityKind.System),
+        new(Strings.All, null),
+        new(Strings.Balanced, ActivityKind.Restrained),
+        new(Strings.Act_Restored, ActivityKind.Restored),
+        new(Strings.Rules, ActivityKind.Rule),
+        new(Strings.Watchdog, ActivityKind.Watchdog),
+        new(Strings.Power, ActivityKind.Power),
+        new(Strings.Memory, ActivityKind.Memory),
+        new(Strings.Act_You, ActivityKind.Manual),
+        new(Strings.Engine, ActivityKind.System),
     };
 
     public ObservableCollection<ActivityRow> Entries { get; } = new();
@@ -94,11 +95,11 @@ public sealed partial class ActivityViewModel : ObservableObject, IPage
     private void ClearLog()
     {
         if (_shell == null) return;
-        _shell.Confirm("CLEAR THE LOG?",
-            "Empties the activity log for everyone: ProBalance and power-plan actions, Watchdog events and what users changed. This can't be undone.", "CLEAR LOG",
+        _shell.Confirm(Strings.Act_ClearTitle,
+            Strings.Act_ClearWarning, Strings.ClearLog,
             async () =>
             {
-                if (await _hub.RunAsync(ClearActionLog, success: "ACTIVITY LOG CLEARED"))
+                if (await _hub.RunAsync(ClearActionLog, success: Strings.Act_Cleared))
                 {
                     _all = new List<ActivityEntry>();
                     Rebuild();

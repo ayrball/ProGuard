@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using ProGuard.Shared.Contracts;
 using ProGuard.Shared.Messages;
 using ProGuard.UI.Services;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -45,7 +46,7 @@ public sealed partial class CpuTuningRow : ObservableObject
     {
         _owner = owner;
         Setting = setting;
-        ClassLabel = !perClass ? string.Empty : setting.EfficiencyClass > 0 ? "P-CORES" : "E-CORES";
+        ClassLabel = !perClass ? string.Empty : setting.EfficiencyClass > 0 ? Strings.PCores : Strings.ECores;
         foreach (var choice in setting.Choices) Choices.Add(new ChoiceOption<uint>(choice.Name.ToUpperInvariant(), choice.Value, false));
     }
 
@@ -59,10 +60,10 @@ public sealed partial class CpuTuningRow : ObservableObject
             Value = dc ? setting.Dc : setting.Ac;
             HiddenInWindows = setting.Hidden;
             var live = dc ? setting.LiveDc : setting.LiveAc;
-            LiveNote = live is { } l && l != (uint)Value ? $"PROBALANCE HOLDS {Format(l)} WHILE IT RESTRAINS" : string.Empty;
+            LiveNote = live is { } l && l != (uint)Value ? string.Format(Strings.Tune_ProBalanceHolds, Format(l)) : string.Empty;
             var parts = new List<string>();
-            if ((dc ? setting.DefaultDc : setting.DefaultAc) is { } d) parts.Add("WINDOWS DEFAULT " + Format(d));
-            if ((dc ? setting.OriginalDc : setting.OriginalAc) is { } o) parts.Add("BEFORE PROGUARD " + Format(o));
+            if ((dc ? setting.DefaultDc : setting.DefaultAc) is { } d) parts.Add(string.Format(Strings.Tune_WindowsDefault, Format(d)));
+            if ((dc ? setting.OriginalDc : setting.OriginalAc) is { } o) parts.Add(string.Format(Strings.Tune_BeforeProGuard, Format(o)));
             Reference = string.Join("  ·  ", parts);
             Refresh();
         }
@@ -124,7 +125,7 @@ public sealed partial class CoreParkGroup : ObservableObject
         Loads = Indexes.Select(i => i < allLoads.Count ? allLoads[i] : 0).ToArray();
         Parked = Indexes.Select(i => i < allParked.Count && allParked[i]).ToArray();
         int unparked = Parked.Count(p => !p);
-        Summary = allParked.Count == 0 ? "PARKING STATE UNAVAILABLE" : $"{unparked} OF {Indexes.Count} UNPARKED";
+        Summary = allParked.Count == 0 ? Strings.Tune_ParkingUnavailable : string.Format(Strings.Tune_Unparked, unparked, Indexes.Count);
     }
 }
 
@@ -154,9 +155,9 @@ public sealed partial class CpuTuningViewModel : ObservableObject, IPage
 
     public IReadOnlyList<CpuTuningPreset> Presets { get; } = new[]
     {
-        new CpuTuningPreset(CpuTuningPresets.DisableParking, "DISABLE PARKING", "Every core stays unparked, plugged in and on battery."),
-        new CpuTuningPreset(CpuTuningPresets.BalancedParking, "BALANCED PARKING", "Parking as Windows' Balanced plan does it. Frequency left alone."),
-        new CpuTuningPreset(CpuTuningPresets.WindowsDefaults, "WINDOWS DEFAULTS", "Every setting back to Windows' own value for this plan."),
+        new CpuTuningPreset(CpuTuningPresets.DisableParking, Strings.Tune_DisableParking, Strings.Tune_DisableParkingBlurb),
+        new CpuTuningPreset(CpuTuningPresets.BalancedParking, Strings.Tune_BalancedParking, Strings.Tune_BalancedParkingBlurb),
+        new CpuTuningPreset(CpuTuningPresets.WindowsDefaults, Strings.Tune_WindowsDefaults, Strings.Tune_WindowsDefaultsBlurb),
     };
 
     [ObservableProperty] private bool isLoaded;
@@ -210,12 +211,12 @@ public sealed partial class CpuTuningViewModel : ObservableObject, IPage
         if (classes.Count > 1)
         {
             // Higher efficiency class = faster cores.
-            CoreGroups.Add(new CoreParkGroup("P-CORES", group0.Where(s => s.EfficiencyClass == classes[0]).Select(s => s.LogicalProcessorIndex).ToList()));
-            CoreGroups.Add(new CoreParkGroup("E-CORES", group0.Where(s => s.EfficiencyClass != classes[0]).Select(s => s.LogicalProcessorIndex).ToList()));
+            CoreGroups.Add(new CoreParkGroup(Strings.PCores, group0.Where(s => s.EfficiencyClass == classes[0]).Select(s => s.LogicalProcessorIndex).ToList()));
+            CoreGroups.Add(new CoreParkGroup(Strings.ECores, group0.Where(s => s.EfficiencyClass != classes[0]).Select(s => s.LogicalProcessorIndex).ToList()));
         }
         else
         {
-            CoreGroups.Add(new CoreParkGroup("ALL CORES", group0.Select(s => s.LogicalProcessorIndex).ToList()));
+            CoreGroups.Add(new CoreParkGroup(Strings.Tune_AllCores, group0.Select(s => s.LogicalProcessorIndex).ToList()));
         }
     }
 
@@ -223,7 +224,7 @@ public sealed partial class CpuTuningViewModel : ObservableObject, IPage
     {
         IsAdministrator = snapshot.CallerIsAdministrator;
         if (!_coresLoaded && CoreGroups.Count == 0 && snapshot.CoreCpuPercent.Count > 0)
-            CoreGroups.Add(new CoreParkGroup("ALL CORES", Enumerable.Range(0, snapshot.CoreCpuPercent.Count).ToList()));
+            CoreGroups.Add(new CoreParkGroup(Strings.Tune_AllCores, Enumerable.Range(0, snapshot.CoreCpuPercent.Count).ToList()));
         foreach (var group in CoreGroups) group.Apply(snapshot.CoreCpuPercent, snapshot.CoreParked);
         UpdateWarning();
     }
@@ -238,8 +239,8 @@ public sealed partial class CpuTuningViewModel : ObservableObject, IPage
         IsActivePlan = tuning.IsActivePlan;
         HasOriginals = tuning.HasOriginals;
         OriginalsNote = tuning.OriginalsTakenUtc is { } taken
-            ? $"PROGUARD KEPT THIS PLAN'S VALUES FROM {taken.ToLocalTime():d MMM yyyy HH:mm} BEFORE ITS FIRST CHANGE".ToUpperInvariant()
-            : "PROGUARD HASN'T CHANGED THIS PLAN";
+            ? string.Format(Strings.Tune_OriginalsKept, taken.ToLocalTime()).ToUpper(CultureInfo.CurrentCulture)
+            : Strings.Tune_NoOriginals;
         ParkingOverrideActive = tuning.ParkingOverrideActive;
 
         Plans.Clear();
@@ -282,10 +283,10 @@ public sealed partial class CpuTuningViewModel : ObservableObject, IPage
     private void UpdateWarning()
     {
         if (!IsLoaded) return;
-        var scope = $"CHANGES APPLY TO THE WHOLE MACHINE, FOR EVERY USER, AND ONLY TO THE {PlanName} PLAN";
-        Warning = !IsAdministrator ? "READ ONLY · CHANGING A POWER PLAN NEEDS ADMINISTRATOR RIGHTS. " + scope + "."
-            : IsActivePlan ? scope + ". THEY TAKE EFFECT AT ONCE."
-            : scope + ". IT ISN'T THE ACTIVE PLAN: THEY TAKE EFFECT WHEN WINDOWS SWITCHES TO IT.";
+        var scope = string.Format(Strings.Tune_Scope, PlanName);
+        Warning = string.Format(!IsAdministrator ? Strings.Tune_ReadOnly
+            : IsActivePlan ? Strings.Tune_ActivePlan
+            : Strings.Tune_InactivePlan, scope);
     }
 
     partial void OnIsDcChanged(bool value)
@@ -346,14 +347,14 @@ public sealed partial class CpuTuningViewModel : ObservableObject, IPage
     {
         var info = Presets.FirstOrDefault(p => p.Id == preset);
         if (info == null) return;
-        Confirm(info.Label, $"{info.Blurb} Applies to the {PlanName} power plan for every user of this PC. You can revert to the values before ProGuard's first change at any time.",
-            "APPLY", new CpuTuningArgument { PlanId = PlanId, Preset = preset });
+        Confirm(info.Label, string.Format(Strings.Tune_PresetConfirm, info.Blurb, PlanName),
+            Strings.Apply, new CpuTuningArgument { PlanId = PlanId, Preset = preset });
     }
 
     [RelayCommand]
     private void Revert() =>
-        Confirm("REVERT", $"Put every CPU setting of the {PlanName} power plan back to what it was before ProGuard first changed it.",
-            "REVERT", new CpuTuningArgument { PlanId = PlanId, Preset = CpuTuningPresets.Revert });
+        Confirm(Strings.Revert, string.Format(Strings.Tune_RevertConfirm, PlanName),
+            Strings.Revert, new CpuTuningArgument { PlanId = PlanId, Preset = CpuTuningPresets.Revert });
 
     private void Confirm(string title, string message, string confirm, CpuTuningArgument argument)
     {

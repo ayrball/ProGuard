@@ -23,6 +23,16 @@ public static class Strings
 
     public static string ACeilingWindowsEnforcesOnThe => Get(nameof(ACeilingWindowsEnforcesOnThe));
 
+    public static string Act_Cleared => Get(nameof(Act_Cleared));
+
+    public static string Act_ClearTitle => Get(nameof(Act_ClearTitle));
+
+    public static string Act_ClearWarning => Get(nameof(Act_ClearWarning));
+
+    public static string Act_Restored => Get(nameof(Act_Restored));
+
+    public static string Act_You => Get(nameof(Act_You));
+
     public static string Active => Get(nameof(Active));
 
     public static string Activity => Get(nameof(Activity));
@@ -122,6 +132,12 @@ public static class Strings
     public static string ClosingOrMinimisingTheWindowHides => Get(nameof(ClosingOrMinimisingTheWindowHides));
 
     public static string CommandLine => Get(nameof(CommandLine));
+
+    public static string Config_ExportTitle => Get(nameof(Config_ExportTitle));
+
+    public static string Config_FileFilter => Get(nameof(Config_FileFilter));
+
+    public static string Config_ImportTitle => Get(nameof(Config_ImportTitle));
 
     public static string ConfineToChosenCores => Get(nameof(ConfineToChosenCores));
 
@@ -256,6 +272,10 @@ public static class Strings
     public static string EfficiencyModeEco => Get(nameof(EfficiencyModeEco));
 
     public static string EGChromeExe => Get(nameof(EGChromeExe));
+
+    public static string Elev_Failed => Get(nameof(Elev_Failed));
+
+    public static string Elev_NoPath => Get(nameof(Elev_NoPath));
 
     public static string EmptiesTheActivityLogForEveryone => Get(nameof(EmptiesTheActivityLogForEveryone));
 
@@ -420,6 +440,60 @@ public static class Strings
     public static string LoadSwitcher => Get(nameof(LoadSwitcher));
 
     public static string LogPassesThatFindNothingTo => Get(nameof(LogPassesThatFindNothingTo));
+
+    public static string Logs_15Min => Get(nameof(Logs_15Min));
+
+    public static string Logs_1Hour => Get(nameof(Logs_1Hour));
+
+    public static string Logs_24Hours => Get(nameof(Logs_24Hours));
+
+    public static string Logs_7Days => Get(nameof(Logs_7Days));
+
+    public static string Logs_ActionLog => Get(nameof(Logs_ActionLog));
+
+    public static string Logs_Actions => Get(nameof(Logs_Actions));
+
+    public static string Logs_AllSources => Get(nameof(Logs_AllSources));
+
+    public static string Logs_AnyTime => Get(nameof(Logs_AnyTime));
+
+    public static string Logs_Cleared => Get(nameof(Logs_Cleared));
+
+    public static string Logs_ClearTitle => Get(nameof(Logs_ClearTitle));
+
+    public static string Logs_ClearWarning => Get(nameof(Logs_ClearWarning));
+
+    public static string Logs_ClipboardBusy => Get(nameof(Logs_ClipboardBusy));
+
+    public static string Logs_CouldntSaveExport => Get(nameof(Logs_CouldntSaveExport));
+
+    public static string Logs_Critical => Get(nameof(Logs_Critical));
+
+    public static string Logs_Debug => Get(nameof(Logs_Debug));
+
+    public static string Logs_EngineLog => Get(nameof(Logs_EngineLog));
+
+    public static string Logs_Entries => Get(nameof(Logs_Entries));
+
+    public static string Logs_Error => Get(nameof(Logs_Error));
+
+    public static string Logs_ExportDialogTitle => Get(nameof(Logs_ExportDialogTitle));
+
+    public static string Logs_Exported => Get(nameof(Logs_Exported));
+
+    public static string Logs_ExportedNewest => Get(nameof(Logs_ExportedNewest));
+
+    public static string Logs_ExportFilter => Get(nameof(Logs_ExportFilter));
+
+    public static string Logs_Info => Get(nameof(Logs_Info));
+
+    public static string Logs_OneEntry => Get(nameof(Logs_OneEntry));
+
+    public static string Logs_RowCopied => Get(nameof(Logs_RowCopied));
+
+    public static string Logs_Trace => Get(nameof(Logs_Trace));
+
+    public static string Logs_Warn => Get(nameof(Logs_Warn));
 
     public static string Low => Get(nameof(Low));
 
@@ -703,6 +777,82 @@ public static class Strings
 
     public static string ProcessOrPid => Get(nameof(ProcessOrPid));
 
+    public static string Prof_AtMost60 => Get(nameof(Prof_AtMost60));
+
+    public static string Prof_Changes => Get(nameof(Prof_Changes));
+
+    public static string Prof_ConfigImported => Get(nameof(Prof_ConfigImported));
+
+    public static string Prof_CouldntRead => Get(nameof(Prof_CouldntRead));
+
+    public static string Prof_CouldntWrite => Get(nameof(Prof_CouldntWrite));
+
+    public static string Prof_Deleted => Get(nameof(Prof_Deleted));
+
+    public static string Prof_DeleteTitle => Get(nameof(Prof_DeleteTitle));
+
+    public static string Prof_DeleteWarning => Get(nameof(Prof_DeleteWarning));
+
+    public static string Prof_Detail => Get(nameof(Prof_Detail));
+
+    public static string Prof_ExportedTo => Get(nameof(Prof_ExportedTo));
+
+    public static string Prof_GiveItAName => Get(nameof(Prof_GiveItAName));
+
+    public static string Prof_Import => Get(nameof(Prof_Import));
+
+    public static string Prof_ImportConfig => Get(nameof(Prof_ImportConfig));
+
+    public static string Prof_ImportNote => Get(nameof(Prof_ImportNote));
+
+    public static string Prof_ImportTitle => Get(nameof(Prof_ImportTitle));
+
+    public static string Prof_KeptAutomatically => Get(nameof(Prof_KeptAutomatically));
+
+    public static string Prof_MachineValues => Get(nameof(Prof_MachineValues));
+
+    public static string Prof_MachineValuesToast => Get(nameof(Prof_MachineValuesToast));
+
+    public static string Prof_NameReserved => Get(nameof(Prof_NameReserved));
+
+    public static string Prof_NameTaken => Get(nameof(Prof_NameTaken));
+
+    public static string Prof_NewProfile => Get(nameof(Prof_NewProfile));
+
+    public static string Prof_NothingChanges => Get(nameof(Prof_NothingChanges));
+
+    public static string Prof_OneChange => Get(nameof(Prof_OneChange));
+
+    public static string Prof_OneMachineValue => Get(nameof(Prof_OneMachineValue));
+
+    public static string Prof_OneMachineValueToast => Get(nameof(Prof_OneMachineValueToast));
+
+    public static string Prof_OneRule => Get(nameof(Prof_OneRule));
+
+    public static string Prof_RenamedTo => Get(nameof(Prof_RenamedTo));
+
+    public static string Prof_RenameProfile => Get(nameof(Prof_RenameProfile));
+
+    public static string Prof_Replaces => Get(nameof(Prof_Replaces));
+
+    public static string Prof_Rules => Get(nameof(Prof_Rules));
+
+    public static string Prof_Save => Get(nameof(Prof_Save));
+
+    public static string Prof_Saved => Get(nameof(Prof_Saved));
+
+    public static string Prof_SavedAs => Get(nameof(Prof_SavedAs));
+
+    public static string Prof_SwitchedTo => Get(nameof(Prof_SwitchedTo));
+
+    public static string Prof_SwitchNote => Get(nameof(Prof_SwitchNote));
+
+    public static string Prof_SwitchProfile => Get(nameof(Prof_SwitchProfile));
+
+    public static string Prof_SwitchToTitle => Get(nameof(Prof_SwitchToTitle));
+
+    public static string Prof_TooLarge => Get(nameof(Prof_TooLarge));
+
     public static string ProfileName => Get(nameof(ProfileName));
 
     public static string ProfilesBackup => Get(nameof(ProfilesBackup));
@@ -961,6 +1111,10 @@ public static class Strings
 
     public static string ShowsWhatTheFileWouldChange => Get(nameof(ShowsWhatTheFileWouldChange));
 
+    public static string SignIn_NeedsAdmin => Get(nameof(SignIn_NeedsAdmin));
+
+    public static string SignIn_Refused => Get(nameof(SignIn_Refused));
+
     public static string Smarttrim => Get(nameof(Smarttrim));
 
     public static string Source => Get(nameof(Source));
@@ -996,6 +1150,110 @@ public static class Strings
     public static string SwitchWindowsPowerPlansByHand => Get(nameof(SwitchWindowsPowerPlansByHand));
 
     public static string Sys => Get(nameof(Sys));
+
+    public static string Sys_After => Get(nameof(Sys_After));
+
+    public static string Sys_AtHighLoad => Get(nameof(Sys_AtHighLoad));
+
+    public static string Sys_AtLowLoad => Get(nameof(Sys_AtLowLoad));
+
+    public static string Sys_AverageOver => Get(nameof(Sys_AverageOver));
+
+    public static string Sys_DefaultBalanced => Get(nameof(Sys_DefaultBalanced));
+
+    public static string Sys_DefaultHighPerformance => Get(nameof(Sys_DefaultHighPerformance));
+
+    public static string Sys_DefaultPowerSaver => Get(nameof(Sys_DefaultPowerSaver));
+
+    public static string Sys_DontAsk => Get(nameof(Sys_DontAsk));
+
+    public static string Sys_Every => Get(nameof(Sys_Every));
+
+    public static string Sys_Finest => Get(nameof(Sys_Finest));
+
+    public static string Sys_Freed => Get(nameof(Sys_Freed));
+
+    public static string Sys_FreeRamBelow => Get(nameof(Sys_FreeRamBelow));
+
+    public static string Sys_HighAbove => Get(nameof(Sys_HighAbove));
+
+    public static string Sys_HighMustBeAboveLow => Get(nameof(Sys_HighMustBeAboveLow));
+
+    public static string Sys_LeaveIt => Get(nameof(Sys_LeaveIt));
+
+    public static string Sys_LowBelow => Get(nameof(Sys_LowBelow));
+
+    public static string Sys_MissingPlan => Get(nameof(Sys_MissingPlan));
+
+    public static string Sys_NeverFor => Get(nameof(Sys_NeverFor));
+
+    public static string Sys_NeverTrimThese => Get(nameof(Sys_NeverTrimThese));
+
+    public static string Sys_NoneRestricted => Get(nameof(Sys_NoneRestricted));
+
+    public static string Sys_OnlyWhenRamAtLeast => Get(nameof(Sys_OnlyWhenRamAtLeast));
+
+    public static string Sys_OtherPowerMode => Get(nameof(Sys_OtherPowerMode));
+
+    public static string Sys_PauseAfterIdleFor => Get(nameof(Sys_PauseAfterIdleFor));
+
+    public static string Sys_PowerModeBalanced => Get(nameof(Sys_PowerModeBalanced));
+
+    public static string Sys_PowerModeOtherPlan => Get(nameof(Sys_PowerModeOtherPlan));
+
+    public static string Sys_PowerModeSet => Get(nameof(Sys_PowerModeSet));
+
+    public static string Sys_PowerPlanSet => Get(nameof(Sys_PowerPlanSet));
+
+    public static string Sys_Purging => Get(nameof(Sys_Purging));
+
+    public static string Sys_RefreshEvery => Get(nameof(Sys_RefreshEvery));
+
+    public static string Sys_Samples => Get(nameof(Sys_Samples));
+
+    public static string Sys_Sensitivity1 => Get(nameof(Sys_Sensitivity1));
+
+    public static string Sys_Sensitivity2 => Get(nameof(Sys_Sensitivity2));
+
+    public static string Sys_Sensitivity3 => Get(nameof(Sys_Sensitivity3));
+
+    public static string Sys_Sensitivity4 => Get(nameof(Sys_Sensitivity4));
+
+    public static string Sys_Sensitivity5 => Get(nameof(Sys_Sensitivity5));
+
+    public static string Sys_StayAtLeast => Get(nameof(Sys_StayAtLeast));
+
+    public static string Sys_TimerGlobal => Get(nameof(Sys_TimerGlobal));
+
+    public static string Sys_TimerHolds => Get(nameof(Sys_TimerHolds));
+
+    public static string Sys_TimerLeftToWindows => Get(nameof(Sys_TimerLeftToWindows));
+
+    public static string Sys_TimerNotAsking => Get(nameof(Sys_TimerNotAsking));
+
+    public static string Sys_TimerNotGranted => Get(nameof(Sys_TimerNotGranted));
+
+    public static string Sys_TimerPerProgram => Get(nameof(Sys_TimerPerProgram));
+
+    public static string Sys_TimerResolution => Get(nameof(Sys_TimerResolution));
+
+    public static string Sys_TimerSet => Get(nameof(Sys_TimerSet));
+
+    public static string Sys_TrimAll => Get(nameof(Sys_TrimAll));
+
+    public static string Sys_TrimAllTitle => Get(nameof(Sys_TrimAllTitle));
+
+    public static string Sys_TrimAllWarning => Get(nameof(Sys_TrimAllWarning));
+
+    public static string Sys_TurnOnAutomaticallyFor => Get(nameof(Sys_TurnOnAutomaticallyFor));
+
+    public static string Sys_WhenTheEngineStarts => Get(nameof(Sys_WhenTheEngineStarts));
+
+    public static string Sys_WhileAwayUse => Get(nameof(Sys_WhileAwayUse));
+
+    public static string Sys_WorkingSetAbove => Get(nameof(Sys_WorkingSetAbove));
+
+    public static string Sys_WouldntChangeStartup => Get(nameof(Sys_WouldntChangeStartup));
 
     public static string System => Get(nameof(System));
 
@@ -1068,6 +1326,46 @@ public static class Strings
     public static string TrimRam => Get(nameof(TrimRam));
 
     public static string TrimsWorkingSetsAndPurgesThe => Get(nameof(TrimsWorkingSetsAndPurgesThe));
+
+    public static string Tune_ActivePlan => Get(nameof(Tune_ActivePlan));
+
+    public static string Tune_AllCores => Get(nameof(Tune_AllCores));
+
+    public static string Tune_BalancedParking => Get(nameof(Tune_BalancedParking));
+
+    public static string Tune_BalancedParkingBlurb => Get(nameof(Tune_BalancedParkingBlurb));
+
+    public static string Tune_BeforeProGuard => Get(nameof(Tune_BeforeProGuard));
+
+    public static string Tune_DisableParking => Get(nameof(Tune_DisableParking));
+
+    public static string Tune_DisableParkingBlurb => Get(nameof(Tune_DisableParkingBlurb));
+
+    public static string Tune_InactivePlan => Get(nameof(Tune_InactivePlan));
+
+    public static string Tune_NoOriginals => Get(nameof(Tune_NoOriginals));
+
+    public static string Tune_OriginalsKept => Get(nameof(Tune_OriginalsKept));
+
+    public static string Tune_ParkingUnavailable => Get(nameof(Tune_ParkingUnavailable));
+
+    public static string Tune_PresetConfirm => Get(nameof(Tune_PresetConfirm));
+
+    public static string Tune_ProBalanceHolds => Get(nameof(Tune_ProBalanceHolds));
+
+    public static string Tune_ReadOnly => Get(nameof(Tune_ReadOnly));
+
+    public static string Tune_RevertConfirm => Get(nameof(Tune_RevertConfirm));
+
+    public static string Tune_Scope => Get(nameof(Tune_Scope));
+
+    public static string Tune_Unparked => Get(nameof(Tune_Unparked));
+
+    public static string Tune_WindowsDefault => Get(nameof(Tune_WindowsDefault));
+
+    public static string Tune_WindowsDefaults => Get(nameof(Tune_WindowsDefaults));
+
+    public static string Tune_WindowsDefaultsBlurb => Get(nameof(Tune_WindowsDefaultsBlurb));
 
     public static string TurningOnByItself => Get(nameof(TurningOnByItself));
 

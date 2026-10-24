@@ -7,6 +7,7 @@ using ProGuard.Shared.Contracts;
 using ProGuard.Shared.Messages;
 using ProGuard.Shared.Profiles;
 using ProGuard.UI.Services;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -23,12 +24,11 @@ public sealed class ProfileRow
     public ProfileRow(ConfigProfileDto profile)
     {
         Profile = profile;
-        var saved = profile.SavedUtc == default ? "" : " · SAVED " + profile.SavedUtc.ToLocalTime().ToString("d MMM HH:mm", CultureInfo.InvariantCulture).ToUpperInvariant();
-        Detail = $"{Count(profile.ProcessRuleCount, "RULE")} · {profile.WatchdogRuleCount} WATCHDOG{saved}"
-                 + (profile.Automatic ? " · KEPT AUTOMATICALLY" : "");
+        var saved = profile.SavedUtc == default ? "" : string.Format(Strings.Prof_Saved, profile.SavedUtc.ToLocalTime().ToString("d MMM HH:mm", CultureInfo.CurrentCulture).ToUpperInvariant());
+        var rules = string.Format(profile.ProcessRuleCount == 1 ? Strings.Prof_OneRule : Strings.Prof_Rules, profile.ProcessRuleCount);
+        Detail = string.Format(Strings.Prof_Detail, rules, profile.WatchdogRuleCount, saved)
+                 + (profile.Automatic ? Strings.Prof_KeptAutomatically : "");
     }
-
-    private static string Count(int n, string what) => $"{n} {what}{(n == 1 ? "" : "S")}";
 }
 
 /// <summary>
@@ -74,32 +74,32 @@ public sealed partial class ProfilesViewModel : ObservableObject
     /// <summary>"Save current as…".</summary>
     [RelayCommand]
     private void NewProfile() =>
-        _shell.ShowDialog(new ProfileNameDialogViewModel(_shell, "SAVE CURRENT AS", "NEW PROFILE", "SAVE", string.Empty,
+        _shell.ShowDialog(new ProfileNameDialogViewModel(_shell, Strings.SaveCurrentAs, Strings.Prof_NewProfile, Strings.Prof_Save, string.Empty,
             Profiles.Where(p => !p.Automatic).Select(p => p.Profile.Name).ToList(), SaveAsync));
 
     private async Task SaveAsync(string name)
     {
         if (await _hub.QueryAsync<ConfigProfileDto>(CommandTypes.SaveProfile, argument: name) is not { } saved) return;
-        _shell.Toaster.Show($"SAVED AS {saved.Name.ToUpperInvariant()}");
+        _shell.Toaster.Show(string.Format(Strings.Prof_SavedAs, saved.Name.ToUpperInvariant()));
         await LoadAsync();
     }
 
     [RelayCommand]
     private void RenameProfile(ProfileRow row) =>
-        _shell.ShowDialog(new ProfileNameDialogViewModel(_shell, "RENAME PROFILE", row.Name, "RENAME", row.Profile.Name,
+        _shell.ShowDialog(new ProfileNameDialogViewModel(_shell, Strings.Prof_RenameProfile, row.Name, Strings.Rename, row.Profile.Name,
             Profiles.Where(p => p.Id != row.Id).Select(p => p.Profile.Name).ToList(), async name =>
             {
                 if (await _hub.QueryAsync<ConfigProfileDto>(CommandTypes.RenameProfile, argument: new RenameProfileArgument { Id = row.Id, Name = name }) == null) return;
-                _shell.Toaster.Show($"RENAMED TO {name.ToUpperInvariant()}");
+                _shell.Toaster.Show(string.Format(Strings.Prof_RenamedTo, name.ToUpperInvariant()));
                 await LoadAsync();
             }) { ReplacesExisting = false });
 
     [RelayCommand]
     private void DeleteProfile(ProfileRow row) =>
-        _shell.Confirm($"DELETE {row.Name}?", "Only the saved profile goes. The rules and settings in force now stay as they are.", "DELETE",
+        _shell.Confirm(string.Format(Strings.Prof_DeleteTitle, row.Name), Strings.Prof_DeleteWarning, Strings.Delete,
             async () =>
             {
-                if (await _hub.RunAsync(CommandTypes.DeleteProfile, argument: row.Id, success: $"DELETED {row.Name}")) await LoadAsync();
+                if (await _hub.RunAsync(CommandTypes.DeleteProfile, argument: row.Id, success: string.Format(Strings.Prof_Deleted, row.Name))) await LoadAsync();
             });
 
     // ------------------------------------------------------------------ switching
@@ -109,19 +109,19 @@ public sealed partial class ProfilesViewModel : ObservableObject
     {
         var preview = await _hub.QueryAsync<ConfigPreviewDto>(CommandTypes.SwitchProfile, argument: new SwitchProfileArgument { Id = row.Id, Preview = true });
         if (preview == null) return;
-        _shell.ShowDialog(new ConfigPreviewDialogViewModel(_shell, preview, "SWITCH PROFILE", $"SWITCH TO {row.Name}?", "SWITCH",
-            "What is in force now is saved as \"Before switch\" first, so you can switch back.",
+        _shell.ShowDialog(new ConfigPreviewDialogViewModel(_shell, preview, Strings.Prof_SwitchProfile, string.Format(Strings.Prof_SwitchToTitle, row.Name), Strings.Switch,
+            Strings.Prof_SwitchNote,
             async () =>
             {
                 var done = await _hub.QueryAsync<ConfigPreviewDto>(CommandTypes.SwitchProfile, argument: new SwitchProfileArgument { Id = row.Id });
-                if (done != null) await AppliedAsync(done, $"SWITCHED TO {row.Name}");
+                if (done != null) await AppliedAsync(done, string.Format(Strings.Prof_SwitchedTo, row.Name));
             }));
     }
 
     private async Task AppliedAsync(ConfigPreviewDto result, string message)
     {
         var flagged = result.MachineSpecific.Count;
-        _shell.Toaster.Show(message + (flagged == 0 ? "" : $" · {flagged} MACHINE-SPECIFIC VALUE{(flagged == 1 ? "" : "S")} LEFT OUT"));
+        _shell.Toaster.Show(message + (flagged == 0 ? "" : string.Format(flagged == 1 ? Strings.Prof_OneMachineValueToast : Strings.Prof_MachineValuesToast, flagged)));
         _hub.RefreshNow();
         await LoadAsync();
         await _applied();
@@ -140,11 +140,11 @@ public sealed partial class ProfilesViewModel : ObservableObject
         try
         {
             await File.WriteAllTextAsync(path, ConfigDocuments.Serialize(document));
-            _shell.Toaster.Show($"EXPORTED TO {Path.GetFileName(path).ToUpperInvariant()}");
+            _shell.Toaster.Show(string.Format(Strings.Prof_ExportedTo, Path.GetFileName(path).ToUpperInvariant()));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
         {
-            _shell.Toaster.Show($"Couldn't write {path}: {ex.Message}", isError: true);
+            _shell.Toaster.Show(string.Format(Strings.Prof_CouldntWrite, path, ex.Message), isError: true);
         }
     }
 
@@ -160,14 +160,14 @@ public sealed partial class ProfilesViewModel : ObservableObject
             // Bytes, not characters, but a file this far over the limit is never a config.
             if (new FileInfo(path).Length > ConfigDocuments.MaxDocumentLength * 4L)
             {
-                _shell.Toaster.Show($"{Path.GetFileName(path)} is too large to be a ProGuard config.", isError: true);
+                _shell.Toaster.Show(string.Format(Strings.Prof_TooLarge, Path.GetFileName(path)), isError: true);
                 return;
             }
             text = await File.ReadAllTextAsync(path);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
         {
-            _shell.Toaster.Show($"Couldn't read {path}: {ex.Message}", isError: true);
+            _shell.Toaster.Show(string.Format(Strings.Prof_CouldntRead, path, ex.Message), isError: true);
             return;
         }
 
@@ -175,12 +175,12 @@ public sealed partial class ProfilesViewModel : ObservableObject
         var preview = await _hub.QueryAsync<ConfigPreviewDto>(CommandTypes.ImportConfig, argument: new ImportConfigArgument { Document = text, Preview = true });
         if (preview == null) return;
         var name = string.IsNullOrWhiteSpace(preview.Name) ? Path.GetFileName(path) : preview.Name;
-        _shell.ShowDialog(new ConfigPreviewDialogViewModel(_shell, preview, "IMPORT CONFIG", $"IMPORT {name.ToUpperInvariant()}?", "IMPORT",
-            "What is in force now is saved as \"Before import\" first, so you can switch back to it.",
+        _shell.ShowDialog(new ConfigPreviewDialogViewModel(_shell, preview, Strings.Prof_ImportConfig, string.Format(Strings.Prof_ImportTitle, name.ToUpperInvariant()), Strings.Prof_Import,
+            Strings.Prof_ImportNote,
             async () =>
             {
                 var done = await _hub.QueryAsync<ConfigPreviewDto>(CommandTypes.ImportConfig, argument: new ImportConfigArgument { Document = text });
-                if (done != null) await AppliedAsync(done, "CONFIG IMPORTED");
+                if (done != null) await AppliedAsync(done, Strings.Prof_ConfigImported);
             }));
     }
 }
@@ -221,11 +221,11 @@ public sealed partial class ProfileNameDialogViewModel : ObservableObject
     private static bool Reserved(string n) => string.Equals(n, "Before switch", StringComparison.OrdinalIgnoreCase) || string.Equals(n, "Before import", StringComparison.OrdinalIgnoreCase);
 
     public string Hint =>
-        Trimmed.Length == 0 ? "GIVE IT A NAME"
-        : Trimmed.Length > 60 ? "AT MOST 60 CHARACTERS"
-        : Reserved(Trimmed) ? "THAT NAME IS KEPT FOR THE AUTOMATIC COPY"
-        : Taken && ReplacesExisting ? "REPLACES THE PROFILE OF THAT NAME"
-        : Taken ? "ANOTHER PROFILE HAS THAT NAME"
+        Trimmed.Length == 0 ? Strings.Prof_GiveItAName
+        : Trimmed.Length > 60 ? Strings.Prof_AtMost60
+        : Reserved(Trimmed) ? Strings.Prof_NameReserved
+        : Taken && ReplacesExisting ? Strings.Prof_Replaces
+        : Taken ? Strings.Prof_NameTaken
         : string.Empty;
 
     private bool CanConfirm() => Trimmed.Length is > 0 and <= 60 && !Reserved(Trimmed) && (ReplacesExisting || !Taken);
@@ -274,9 +274,9 @@ public sealed partial class ConfigPreviewDialogViewModel : ObservableObject
         Blockers = preview.Refusals.Concat(preview.Problems).ToList();
         CanApply = preview.CanApply;
 
-        var parts = new List<string> { Changes.Count == 0 ? "NOTHING CHANGES" : $"{Changes.Count} CHANGE{(Changes.Count == 1 ? "" : "S")}" };
-        if (MachineSpecific.Count > 0) parts.Add($"{MachineSpecific.Count} MACHINE-SPECIFIC VALUE{(MachineSpecific.Count == 1 ? "" : "S")} LEFT OUT");
-        if (Blockers.Count > 0) parts.Add("CAN'T BE APPLIED");
+        var parts = new List<string> { Changes.Count == 0 ? Strings.Prof_NothingChanges : string.Format(Changes.Count == 1 ? Strings.Prof_OneChange : Strings.Prof_Changes, Changes.Count) };
+        if (MachineSpecific.Count > 0) parts.Add(string.Format(MachineSpecific.Count == 1 ? Strings.Prof_OneMachineValue : Strings.Prof_MachineValues, MachineSpecific.Count));
+        if (Blockers.Count > 0) parts.Add(Strings.CantBeApplied);
         Summary = string.Join(" · ", parts);
     }
 

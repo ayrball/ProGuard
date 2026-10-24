@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using ProGuard.Shared.Contracts;
 using ProGuard.Shared.Messages;
 using ProGuard.UI.Services;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -79,35 +80,35 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
 
     // ProBalance. ProBalanceCpuThreshold/RecoveryThreshold have no control: the engine's ProBalance follows Process
     // Lasso's timing (set through the sensitivity) and ignores them, so they go back exactly as stored.
-    public NumberField IdlePauseMs { get; } = new("PAUSE AFTER IDLE FOR", "MS", 1000, 3_600_000);
+    public NumberField IdlePauseMs { get; } = new(Strings.Sys_PauseAfterIdleFor, "MS", 1000, 3_600_000);
 
     // SmartTrim
-    public NumberField TrimInterval { get; } = new("EVERY", "MIN", 0.5, 1440, integer: false, scale: 60);
-    public NumberField TrimThresholdMb { get; } = new("WORKING SET ABOVE", "MB", 1, 1_048_576);
-    public NumberField TrimMinRamLoad { get; } = new("ONLY WHEN RAM IS AT LEAST", "%", 0, 100);
-    public ListField TrimExclusions { get; } = new("NEVER TRIM THESE", ',', ';');
-    public NumberField StandbyFreeRamMb { get; } = new("FREE RAM BELOW", "MB", 0, 1_048_576);
+    public NumberField TrimInterval { get; } = new(Strings.Sys_Every, Strings.Unit_Min, 0.5, 1440, integer: false, scale: 60);
+    public NumberField TrimThresholdMb { get; } = new(Strings.Sys_WorkingSetAbove, "MB", 1, 1_048_576);
+    public NumberField TrimMinRamLoad { get; } = new(Strings.Sys_OnlyWhenRamAtLeast, "%", 0, 100);
+    public ListField TrimExclusions { get; } = new(Strings.Sys_NeverTrimThese, ',', ';');
+    public NumberField StandbyFreeRamMb { get; } = new(Strings.Sys_FreeRamBelow, "MB", 0, 1_048_576);
 
     // IdleSaver
-    public NumberField IdleTimeout { get; } = new("AFTER", "MIN", 1, 1440);
-    public PlanPicker IdlePlan { get; } = new("WHILE AWAY, USE", "DEFAULT · POWER SAVER");
+    public NumberField IdleTimeout { get; } = new(Strings.Sys_After, Strings.Unit_Min, 1, 1440);
+    public PlanPicker IdlePlan { get; } = new(Strings.Sys_WhileAwayUse, Strings.Sys_DefaultPowerSaver);
 
     // Performance Mode
-    public PlanPicker PerformancePlan { get; } = new("SWITCH TO", "DEFAULT · HIGH PERFORMANCE");
-    public ListField AutoProcesses { get; } = new("TURN ON AUTOMATICALLY FOR", ';');
-    public ListField AutoExclusions { get; } = new("NEVER FOR", ';');
+    public PlanPicker PerformancePlan { get; } = new(Strings.SwitchTo, Strings.Sys_DefaultHighPerformance);
+    public ListField AutoProcesses { get; } = new(Strings.Sys_TurnOnAutomaticallyFor, ';');
+    public ListField AutoExclusions { get; } = new(Strings.Sys_NeverFor, ';');
 
     // Load switcher
-    public NumberField LowLoad { get; } = new("LOW BELOW", "%", 0, 100, integer: false);
-    public NumberField HighLoad { get; } = new("HIGH ABOVE", "%", 0, 100, integer: false);
-    public NumberField AveragingSamples { get; } = new("AVERAGE OVER", "SAMPLES", 1, 600);
-    public NumberField MinimumTimeInPlanMs { get; } = new("STAY AT LEAST", "MS", 0, 3_600_000);
-    public PlanPicker LowPlan { get; } = new("AT LOW LOAD", "DEFAULT · BALANCED");
-    public PlanPicker HighPlan { get; } = new("AT HIGH LOAD", "DEFAULT · HIGH PERFORMANCE");
+    public NumberField LowLoad { get; } = new(Strings.Sys_LowBelow, "%", 0, 100, integer: false);
+    public NumberField HighLoad { get; } = new(Strings.Sys_HighAbove, "%", 0, 100, integer: false);
+    public NumberField AveragingSamples { get; } = new(Strings.Sys_AverageOver, Strings.Sys_Samples, 1, 600);
+    public NumberField MinimumTimeInPlanMs { get; } = new(Strings.Sys_StayAtLeast, "MS", 0, 3_600_000);
+    public PlanPicker LowPlan { get; } = new(Strings.Sys_AtLowLoad, Strings.Sys_DefaultBalanced);
+    public PlanPicker HighPlan { get; } = new(Strings.Sys_AtHighLoad, Strings.Sys_DefaultHighPerformance);
 
     // Power and general
-    public PlanPicker StartWithPlan { get; } = new("WHEN THE ENGINE STARTS", "LEAVE IT");
-    public NumberField PollingInterval { get; } = new("REFRESH EVERY", "MS", 250, 60_000);
+    public PlanPicker StartWithPlan { get; } = new(Strings.Sys_WhenTheEngineStarts, Strings.Sys_LeaveIt);
+    public NumberField PollingInterval { get; } = new(Strings.Sys_RefreshEvery, "MS", 250, 60_000);
 
     [ObservableProperty] private bool isLoaded;
     [ObservableProperty] private bool isAdministrator = true;
@@ -171,11 +172,11 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
 
     public string SensitivityDescription => SensitivityLevel switch
     {
-        <= 2 => "STEPS IN ONLY WHEN THE MACHINE IS PINNED",
-        <= 4 => "STEPS IN UNDER HEAVY LOAD",
-        <= 6 => "BALANCED — STEPS IN WHEN THINGS GET BUSY",
-        <= 8 => "STEPS IN EARLY",
-        _ => "STEPS IN AT THE FIRST SIGN OF CONTENTION"
+        <= 2 => Strings.Sys_Sensitivity1,
+        <= 4 => Strings.Sys_Sensitivity2,
+        <= 6 => Strings.Sys_Sensitivity3,
+        <= 8 => Strings.Sys_Sensitivity4,
+        _ => Strings.Sys_Sensitivity5
     };
 
     /// <summary>How long a burst of typing waits before saving. Tests set it to zero.</summary>
@@ -327,11 +328,11 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
             PowerModes.Add(new ChoiceOption<Guid>(mode.Name.ToUpperInvariant(), mode.Id, power.PowerModeSupported && mode.Id == power.PowerModeId));
         // A mode the slider no longer offers (Windows 10's "Better performance") is shown rather than hidden.
         if (power.PowerModeSupported && power.PowerModes.All(m => m.Id != power.PowerModeId))
-            PowerModes.Add(new ChoiceOption<Guid>("OTHER · " + power.PowerModeId.ToString()[..8].ToUpperInvariant(), power.PowerModeId, true));
+            PowerModes.Add(new ChoiceOption<Guid>(string.Format(Strings.Sys_OtherPowerMode, power.PowerModeId.ToString()[..8].ToUpperInvariant()), power.PowerModeId, true));
         var active = power.Plans.FirstOrDefault(p => p.Id == power.ActivePlanId);
         PowerModeNote = active == null || active.Id == BalancedPlan
-            ? "Windows tunes the Balanced plan with this, as its own power mode setting does."
-            : $"Windows applies the power mode only under the Balanced plan; {active.Name} is active now.";
+            ? Strings.Sys_PowerModeBalanced
+            : string.Format(Strings.Sys_PowerModeOtherPlan, active.Name);
 
         foreach (var picker in new[] { IdlePlan, PerformancePlan, LowPlan, HighPlan, StartWithPlan }) picker.SetPlans(power.Plans);
     }
@@ -423,7 +424,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     private void RefreshCoreSummary()
     {
         int on = RestraintCores.Count(c => c.IsOn);
-        RestraintCoresSummary = on == 0 ? "NONE PICKED — NOTHING IS RESTRICTED" : $"{on} OF {RestraintCores.Count} THREADS";
+        RestraintCoresSummary = on == 0 ? Strings.Sys_NoneRestricted : string.Format(Strings.Cores_OfThreads, on, RestraintCores.Count);
     }
 
     private void SetCores(Func<int, bool> on)
@@ -447,7 +448,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     private void CheckLoadSwitcher()
     {
         var (low, high) = EffectiveThresholds();
-        LoadSwitcherError = high <= low ? "HIGH MUST BE ABOVE LOW — THESE TWO AREN'T SAVED UNTIL IT IS" : string.Empty;
+        LoadSwitcherError = high <= low ? Strings.Sys_HighMustBeAboveLow : string.Empty;
     }
 
     // ------------------------------------------------------------------ saving
@@ -474,7 +475,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException or InvalidOperationException)
         {
-            _shell.Toaster.Show($"Windows wouldn't change the startup entry: {ex.Message}", isError: true);
+            _shell.Toaster.Show(string.Format(Strings.Sys_WouldntChangeStartup, ex.Message), isError: true, offerElevation: ex is UnauthorizedAccessException);
             _startupRefused = 2; // the revert below raises one notification, the refused change itself the other
             _loading = true;
             try { StartWithWindows = !value; }
@@ -622,13 +623,13 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
         TimerOptions.Clear();
         var choices = TimerChoices(t).ToList();
         foreach (var value in choices)
-            TimerOptions.Add(new ChoiceOption<int>(value == 0 ? "DON'T ASK" : value == t.Maximum ? $"FINEST · {TimerMs(value)}" : TimerMs(value), value, value == t.Requested));
+            TimerOptions.Add(new ChoiceOption<int>(value == 0 ? Strings.Sys_DontAsk : value == t.Maximum ? string.Format(Strings.Sys_Finest, TimerMs(value)) : TimerMs(value), value, value == t.Requested));
         // A stored value that isn't one of the steps stays shown, so it is never changed by accident.
-        if (!choices.Contains(t.Requested)) TimerOptions.Add(new ChoiceOption<int>($"SET · {TimerMs(t.Requested)}", t.Requested, true));
+        if (!choices.Contains(t.Requested)) TimerOptions.Add(new ChoiceOption<int>(string.Format(Strings.Sys_TimerSet, TimerMs(t.Requested)), t.Requested, true));
 
-        TimerStatusText = t.Requested == 0 ? "THE ENGINE ISN'T ASKING FOR A RESOLUTION"
-            : t.Held > 0 ? $"THE ENGINE HOLDS {TimerMs(t.Held)}"
-            : "WINDOWS DIDN'T GRANT THE REQUEST";
+        TimerStatusText = t.Requested == 0 ? Strings.Sys_TimerNotAsking
+            : t.Held > 0 ? string.Format(Strings.Sys_TimerHolds, TimerMs(t.Held))
+            : Strings.Sys_TimerNotGranted;
     }
 
     /// <summary>Asks the engine for a timer resolution (administrators only), saving it as the setting.</summary>
@@ -637,14 +638,14 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     {
         if (option.IsOn || !IsAdministrator) return Task.CompletedTask;
         return SetTimerAsync(new TimerResolutionArgument { Resolution = option.Value },
-            option.Value == 0 ? "TIMER RESOLUTION · LEFT TO WINDOWS" : $"TIMER RESOLUTION · {TimerMs(option.Value)}");
+            option.Value == 0 ? Strings.Sys_TimerLeftToWindows : string.Format(Strings.Sys_TimerResolution, TimerMs(option.Value)));
     }
 
     partial void OnTimerGlobalRequestsChanged(bool value)
     {
         if (_loading || _timer == null) return;
         _ = SetTimerAsync(new TimerResolutionArgument { Resolution = _timer.Requested, GlobalRequests = value },
-            value ? "TIMER REQUESTS GLOBAL AFTER RESTART" : "TIMER REQUESTS PER PROGRAM AFTER RESTART");
+            value ? Strings.Sys_TimerGlobal : Strings.Sys_TimerPerProgram);
     }
 
     private async Task SetTimerAsync(TimerResolutionArgument argument, string success)
@@ -674,7 +675,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     private async Task SetPerformanceModeAsync(bool enabled)
     {
         bool ok = await _hub.RunAsync(enabled ? CommandTypes.EnablePerformanceMode : CommandTypes.DisablePerformanceMode,
-            success: enabled ? "PERFORMANCE MODE ON" : "PERFORMANCE MODE OFF");
+            success: enabled ? Strings.Shell_PerformanceModeOn : Strings.Shell_PerformanceModeOff);
         // Success shows the new plan; failure puts the switch back where the engine says it is.
         await RefreshPowerAsync();
         if (!ok) _shell.Hub.RefreshNow();
@@ -686,7 +687,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     private async Task PickPowerModeAsync(ChoiceOption<Guid> mode)
     {
         if (mode.IsOn) return;
-        if (await _hub.RunAsync(CommandTypes.SetPowerMode, argument: mode.Value, success: $"POWER MODE · {mode.Label}"))
+        if (await _hub.RunAsync(CommandTypes.SetPowerMode, argument: mode.Value, success: string.Format(Strings.Sys_PowerModeSet, mode.Label)))
             foreach (var m in PowerModes) m.IsOn = ReferenceEquals(m, mode);
         else await RefreshPowerAsync();
     }
@@ -695,7 +696,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     private async Task ActivatePlanAsync(PowerPlanRow plan)
     {
         if (plan.IsActive) return;
-        if (await _hub.RunAsync(CommandTypes.SetPowerPlan, argument: plan.Id, success: $"POWER PLAN · {plan.Name}"))
+        if (await _hub.RunAsync(CommandTypes.SetPowerPlan, argument: plan.Id, success: string.Format(Strings.Sys_PowerPlanSet, plan.Name)))
         {
             _activePlan = plan.Id;
             foreach (var p in Plans) p.IsActive = p.Id == plan.Id;
@@ -706,11 +707,11 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     [RelayCommand]
     private void TrimAll()
     {
-        _shell.Confirm("TRIM EVERY PROCESS?", "Pushes every process's idle memory out to the page file. RAM frees up at once, but apps may feel sluggish for a moment as they page back in.", "TRIM ALL",
+        _shell.Confirm(Strings.Sys_TrimAllTitle, Strings.Sys_TrimAllWarning, Strings.Sys_TrimAll,
             async () =>
             {
                 if (await _hub.QueryAsync<long?>(CommandTypes.TrimWorkingSet) is not { } freed) return;
-                _shell.Toaster.Show($"FREED {Fmt.Bytes(freed)}");
+                _shell.Toaster.Show(string.Format(Strings.Sys_Freed, Fmt.Bytes(freed)));
                 _hub.RefreshNow();
             });
     }
@@ -722,7 +723,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     [RelayCommand(CanExecute = nameof(CanPurgeNow))]
     private async Task PurgeNowAsync()
     {
-        PurgeSummary = "PURGING…";
+        PurgeSummary = Strings.Sys_Purging;
         var result = await _shell.PurgeNowAsync();
         PurgeSummary = result == null ? string.Empty : Fmt.PurgeSummary(result);
     }

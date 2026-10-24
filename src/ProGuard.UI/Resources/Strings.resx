@@ -24,6 +24,21 @@
   <data name="AboveNormal" xml:space="preserve">
     <value>Above normal</value>
   </data>
+  <data name="Act_ClearTitle" xml:space="preserve">
+    <value>CLEAR THE LOG?</value>
+  </data>
+  <data name="Act_ClearWarning" xml:space="preserve">
+    <value>Empties the activity log for everyone: ProBalance and power-plan actions, Watchdog events and what users changed. This can't be undone.</value>
+  </data>
+  <data name="Act_Cleared" xml:space="preserve">
+    <value>ACTIVITY LOG CLEARED</value>
+  </data>
+  <data name="Act_Restored" xml:space="preserve">
+    <value>RESTORED</value>
+  </data>
+  <data name="Act_You" xml:space="preserve">
+    <value>YOU</value>
+  </data>
   <data name="Active" xml:space="preserve">
     <value>ACTIVE</value>
   </data>
@@ -174,6 +189,15 @@ QUIET.</value>
   </data>
   <data name="CommandLine" xml:space="preserve">
     <value>COMMAND LINE</value>
+  </data>
+  <data name="Config_ExportTitle" xml:space="preserve">
+    <value>Export ProGuard config</value>
+  </data>
+  <data name="Config_FileFilter" xml:space="preserve">
+    <value>ProGuard config (*{0})|*{0}|JSON files (*.json)|*.json|All files (*.*)|*.*</value>
+  </data>
+  <data name="Config_ImportTitle" xml:space="preserve">
+    <value>Import ProGuard config</value>
   </data>
   <data name="ConfineToChosenCores" xml:space="preserve">
     <value>CONFINE TO CHOSEN CORES</value>
@@ -372,6 +396,12 @@ QUIET.</value>
   </data>
   <data name="EfficiencyModeEco" xml:space="preserve">
     <value>EFFICIENCY MODE (ECO)</value>
+  </data>
+  <data name="Elev_Failed" xml:space="preserve">
+    <value>Windows couldn't start an administrator copy of ProGuard: {0}</value>
+  </data>
+  <data name="Elev_NoPath" xml:space="preserve">
+    <value>Windows didn't say where ProGuard is running from, so it can't be restarted.</value>
   </data>
   <data name="EmptiesTheActivityLogForEveryone" xml:space="preserve">
     <value>Empties the activity log for everyone (administrators only)</value>
@@ -619,6 +649,87 @@ OFFLINE</value>
   </data>
   <data name="LogPassesThatFindNothingTo" xml:space="preserve">
     <value>LOG PASSES THAT FIND NOTHING TO TRIM</value>
+  </data>
+  <data name="Logs_15Min" xml:space="preserve">
+    <value>15 MIN</value>
+  </data>
+  <data name="Logs_1Hour" xml:space="preserve">
+    <value>1 HOUR</value>
+  </data>
+  <data name="Logs_24Hours" xml:space="preserve">
+    <value>24 HOURS</value>
+  </data>
+  <data name="Logs_7Days" xml:space="preserve">
+    <value>7 DAYS</value>
+  </data>
+  <data name="Logs_ActionLog" xml:space="preserve">
+    <value>ACTION LOG</value>
+  </data>
+  <data name="Logs_Actions" xml:space="preserve">
+    <value>ACTIONS</value>
+  </data>
+  <data name="Logs_AllSources" xml:space="preserve">
+    <value>ALL SOURCES</value>
+  </data>
+  <data name="Logs_AnyTime" xml:space="preserve">
+    <value>ANY TIME</value>
+  </data>
+  <data name="Logs_ClearTitle" xml:space="preserve">
+    <value>CLEAR THE ACTION LOG?</value>
+  </data>
+  <data name="Logs_ClearWarning" xml:space="preserve">
+    <value>Deletes the logged ProBalance, CPU Limiter and power-plan actions for everyone. The engine log is kept. This can't be undone.</value>
+  </data>
+  <data name="Logs_Cleared" xml:space="preserve">
+    <value>ACTION LOG CLEARED</value>
+  </data>
+  <data name="Logs_ClipboardBusy" xml:space="preserve">
+    <value>The clipboard is busy. Try again.</value>
+  </data>
+  <data name="Logs_CouldntSaveExport" xml:space="preserve">
+    <value>Couldn't save the export: {0}</value>
+  </data>
+  <data name="Logs_Critical" xml:space="preserve">
+    <value>CRITICAL</value>
+  </data>
+  <data name="Logs_Debug" xml:space="preserve">
+    <value>DEBUG</value>
+  </data>
+  <data name="Logs_EngineLog" xml:space="preserve">
+    <value>ENGINE LOG</value>
+  </data>
+  <data name="Logs_Entries" xml:space="preserve">
+    <value>{0:N0} ENTRIES</value>
+  </data>
+  <data name="Logs_Error" xml:space="preserve">
+    <value>ERROR</value>
+  </data>
+  <data name="Logs_ExportDialogTitle" xml:space="preserve">
+    <value>Export log</value>
+  </data>
+  <data name="Logs_ExportFilter" xml:space="preserve">
+    <value>CSV file (*.csv)|*.csv|All files (*.*)|*.*</value>
+  </data>
+  <data name="Logs_Exported" xml:space="preserve">
+    <value>EXPORTED {0} · {1}</value>
+  </data>
+  <data name="Logs_ExportedNewest" xml:space="preserve">
+    <value>EXPORTED THE NEWEST {0} · MORE MATCHED THAN ONE EXPORT HOLDS</value>
+  </data>
+  <data name="Logs_Info" xml:space="preserve">
+    <value>INFO</value>
+  </data>
+  <data name="Logs_OneEntry" xml:space="preserve">
+    <value>1 ENTRY</value>
+  </data>
+  <data name="Logs_RowCopied" xml:space="preserve">
+    <value>ROW COPIED</value>
+  </data>
+  <data name="Logs_Trace" xml:space="preserve">
+    <value>TRACE</value>
+  </data>
+  <data name="Logs_Warn" xml:space="preserve">
+    <value>WARN</value>
   </data>
   <data name="Low" xml:space="preserve">
     <value>Low</value>
@@ -1048,6 +1159,120 @@ LOGGED.</value>
   <data name="ProcessesInYourSession" xml:space="preserve">
     <value>Processes in your session</value>
   </data>
+  <data name="Prof_AtMost60" xml:space="preserve">
+    <value>AT MOST 60 CHARACTERS</value>
+  </data>
+  <data name="Prof_Changes" xml:space="preserve">
+    <value>{0} CHANGES</value>
+  </data>
+  <data name="Prof_ConfigImported" xml:space="preserve">
+    <value>CONFIG IMPORTED</value>
+  </data>
+  <data name="Prof_CouldntRead" xml:space="preserve">
+    <value>Couldn't read {0}: {1}</value>
+  </data>
+  <data name="Prof_CouldntWrite" xml:space="preserve">
+    <value>Couldn't write {0}: {1}</value>
+  </data>
+  <data name="Prof_DeleteTitle" xml:space="preserve">
+    <value>DELETE {0}?</value>
+  </data>
+  <data name="Prof_DeleteWarning" xml:space="preserve">
+    <value>Only the saved profile goes. The rules and settings in force now stay as they are.</value>
+  </data>
+  <data name="Prof_Deleted" xml:space="preserve">
+    <value>DELETED {0}</value>
+  </data>
+  <data name="Prof_Detail" xml:space="preserve">
+    <value>{0} · {1} WATCHDOG{2}</value>
+  </data>
+  <data name="Prof_ExportedTo" xml:space="preserve">
+    <value>EXPORTED TO {0}</value>
+  </data>
+  <data name="Prof_GiveItAName" xml:space="preserve">
+    <value>GIVE IT A NAME</value>
+  </data>
+  <data name="Prof_Import" xml:space="preserve">
+    <value>IMPORT</value>
+  </data>
+  <data name="Prof_ImportConfig" xml:space="preserve">
+    <value>IMPORT CONFIG</value>
+  </data>
+  <data name="Prof_ImportNote" xml:space="preserve">
+    <value>What is in force now is saved as "Before import" first, so you can switch back to it.</value>
+  </data>
+  <data name="Prof_ImportTitle" xml:space="preserve">
+    <value>IMPORT {0}?</value>
+  </data>
+  <data name="Prof_KeptAutomatically" xml:space="preserve">
+    <value> · KEPT AUTOMATICALLY</value>
+  </data>
+  <data name="Prof_MachineValues" xml:space="preserve">
+    <value>{0} MACHINE-SPECIFIC VALUES LEFT OUT</value>
+  </data>
+  <data name="Prof_MachineValuesToast" xml:space="preserve">
+    <value> · {0} MACHINE-SPECIFIC VALUES LEFT OUT</value>
+  </data>
+  <data name="Prof_NameReserved" xml:space="preserve">
+    <value>THAT NAME IS KEPT FOR THE AUTOMATIC COPY</value>
+  </data>
+  <data name="Prof_NameTaken" xml:space="preserve">
+    <value>ANOTHER PROFILE HAS THAT NAME</value>
+  </data>
+  <data name="Prof_NewProfile" xml:space="preserve">
+    <value>NEW PROFILE</value>
+  </data>
+  <data name="Prof_NothingChanges" xml:space="preserve">
+    <value>NOTHING CHANGES</value>
+  </data>
+  <data name="Prof_OneChange" xml:space="preserve">
+    <value>1 CHANGE</value>
+  </data>
+  <data name="Prof_OneMachineValue" xml:space="preserve">
+    <value>1 MACHINE-SPECIFIC VALUE LEFT OUT</value>
+  </data>
+  <data name="Prof_OneMachineValueToast" xml:space="preserve">
+    <value> · 1 MACHINE-SPECIFIC VALUE LEFT OUT</value>
+  </data>
+  <data name="Prof_OneRule" xml:space="preserve">
+    <value>1 RULE</value>
+  </data>
+  <data name="Prof_RenameProfile" xml:space="preserve">
+    <value>RENAME PROFILE</value>
+  </data>
+  <data name="Prof_RenamedTo" xml:space="preserve">
+    <value>RENAMED TO {0}</value>
+  </data>
+  <data name="Prof_Replaces" xml:space="preserve">
+    <value>REPLACES THE PROFILE OF THAT NAME</value>
+  </data>
+  <data name="Prof_Rules" xml:space="preserve">
+    <value>{0} RULES</value>
+  </data>
+  <data name="Prof_Save" xml:space="preserve">
+    <value>SAVE</value>
+  </data>
+  <data name="Prof_Saved" xml:space="preserve">
+    <value> · SAVED {0}</value>
+  </data>
+  <data name="Prof_SavedAs" xml:space="preserve">
+    <value>SAVED AS {0}</value>
+  </data>
+  <data name="Prof_SwitchNote" xml:space="preserve">
+    <value>What is in force now is saved as "Before switch" first, so you can switch back.</value>
+  </data>
+  <data name="Prof_SwitchProfile" xml:space="preserve">
+    <value>SWITCH PROFILE</value>
+  </data>
+  <data name="Prof_SwitchToTitle" xml:space="preserve">
+    <value>SWITCH TO {0}?</value>
+  </data>
+  <data name="Prof_SwitchedTo" xml:space="preserve">
+    <value>SWITCHED TO {0}</value>
+  </data>
+  <data name="Prof_TooLarge" xml:space="preserve">
+    <value>{0} is too large to be a ProGuard config.</value>
+  </data>
   <data name="ProfileName" xml:space="preserve">
     <value>PROFILE NAME</value>
   </data>
@@ -1435,6 +1660,12 @@ LOGGED.</value>
   <data name="ShowsWhatTheFileWouldChange" xml:space="preserve">
     <value>Shows what the file would change before anything is applied</value>
   </data>
+  <data name="SignIn_NeedsAdmin" xml:space="preserve">
+    <value>ProGuard starts at sign-in through a task that only an administrator can remove. Restart ProGuard as administrator to turn this off.</value>
+  </data>
+  <data name="SignIn_Refused" xml:space="preserve">
+    <value>Task Scheduler refused the change.</value>
+  </data>
   <data name="Smarttrim" xml:space="preserve">
     <value>SMARTTRIM</value>
   </data>
@@ -1488,6 +1719,162 @@ LOGGED.</value>
   </data>
   <data name="Sys" xml:space="preserve">
     <value>SYS</value>
+  </data>
+  <data name="Sys_After" xml:space="preserve">
+    <value>AFTER</value>
+  </data>
+  <data name="Sys_AtHighLoad" xml:space="preserve">
+    <value>AT HIGH LOAD</value>
+  </data>
+  <data name="Sys_AtLowLoad" xml:space="preserve">
+    <value>AT LOW LOAD</value>
+  </data>
+  <data name="Sys_AverageOver" xml:space="preserve">
+    <value>AVERAGE OVER</value>
+  </data>
+  <data name="Sys_DefaultBalanced" xml:space="preserve">
+    <value>DEFAULT · BALANCED</value>
+  </data>
+  <data name="Sys_DefaultHighPerformance" xml:space="preserve">
+    <value>DEFAULT · HIGH PERFORMANCE</value>
+  </data>
+  <data name="Sys_DefaultPowerSaver" xml:space="preserve">
+    <value>DEFAULT · POWER SAVER</value>
+  </data>
+  <data name="Sys_DontAsk" xml:space="preserve">
+    <value>DON'T ASK</value>
+  </data>
+  <data name="Sys_Every" xml:space="preserve">
+    <value>EVERY</value>
+  </data>
+  <data name="Sys_Finest" xml:space="preserve">
+    <value>FINEST · {0}</value>
+  </data>
+  <data name="Sys_FreeRamBelow" xml:space="preserve">
+    <value>FREE RAM BELOW</value>
+  </data>
+  <data name="Sys_Freed" xml:space="preserve">
+    <value>FREED {0}</value>
+  </data>
+  <data name="Sys_HighAbove" xml:space="preserve">
+    <value>HIGH ABOVE</value>
+  </data>
+  <data name="Sys_HighMustBeAboveLow" xml:space="preserve">
+    <value>HIGH MUST BE ABOVE LOW — THESE TWO AREN'T SAVED UNTIL IT IS</value>
+  </data>
+  <data name="Sys_LeaveIt" xml:space="preserve">
+    <value>LEAVE IT</value>
+  </data>
+  <data name="Sys_LowBelow" xml:space="preserve">
+    <value>LOW BELOW</value>
+  </data>
+  <data name="Sys_MissingPlan" xml:space="preserve">
+    <value>MISSING PLAN {0}</value>
+  </data>
+  <data name="Sys_NeverFor" xml:space="preserve">
+    <value>NEVER FOR</value>
+  </data>
+  <data name="Sys_NeverTrimThese" xml:space="preserve">
+    <value>NEVER TRIM THESE</value>
+  </data>
+  <data name="Sys_NoneRestricted" xml:space="preserve">
+    <value>NONE PICKED — NOTHING IS RESTRICTED</value>
+  </data>
+  <data name="Sys_OnlyWhenRamAtLeast" xml:space="preserve">
+    <value>ONLY WHEN RAM IS AT LEAST</value>
+  </data>
+  <data name="Sys_OtherPowerMode" xml:space="preserve">
+    <value>OTHER · {0}</value>
+  </data>
+  <data name="Sys_PauseAfterIdleFor" xml:space="preserve">
+    <value>PAUSE AFTER IDLE FOR</value>
+  </data>
+  <data name="Sys_PowerModeBalanced" xml:space="preserve">
+    <value>Windows tunes the Balanced plan with this, as its own power mode setting does.</value>
+  </data>
+  <data name="Sys_PowerModeOtherPlan" xml:space="preserve">
+    <value>Windows applies the power mode only under the Balanced plan; {0} is active now.</value>
+  </data>
+  <data name="Sys_PowerModeSet" xml:space="preserve">
+    <value>POWER MODE · {0}</value>
+  </data>
+  <data name="Sys_PowerPlanSet" xml:space="preserve">
+    <value>POWER PLAN · {0}</value>
+  </data>
+  <data name="Sys_Purging" xml:space="preserve">
+    <value>PURGING…</value>
+  </data>
+  <data name="Sys_RefreshEvery" xml:space="preserve">
+    <value>REFRESH EVERY</value>
+  </data>
+  <data name="Sys_Samples" xml:space="preserve">
+    <value>SAMPLES</value>
+  </data>
+  <data name="Sys_Sensitivity1" xml:space="preserve">
+    <value>STEPS IN ONLY WHEN THE MACHINE IS PINNED</value>
+  </data>
+  <data name="Sys_Sensitivity2" xml:space="preserve">
+    <value>STEPS IN UNDER HEAVY LOAD</value>
+  </data>
+  <data name="Sys_Sensitivity3" xml:space="preserve">
+    <value>BALANCED — STEPS IN WHEN THINGS GET BUSY</value>
+  </data>
+  <data name="Sys_Sensitivity4" xml:space="preserve">
+    <value>STEPS IN EARLY</value>
+  </data>
+  <data name="Sys_Sensitivity5" xml:space="preserve">
+    <value>STEPS IN AT THE FIRST SIGN OF CONTENTION</value>
+  </data>
+  <data name="Sys_StayAtLeast" xml:space="preserve">
+    <value>STAY AT LEAST</value>
+  </data>
+  <data name="Sys_TimerGlobal" xml:space="preserve">
+    <value>TIMER REQUESTS GLOBAL AFTER RESTART</value>
+  </data>
+  <data name="Sys_TimerHolds" xml:space="preserve">
+    <value>THE ENGINE HOLDS {0}</value>
+  </data>
+  <data name="Sys_TimerLeftToWindows" xml:space="preserve">
+    <value>TIMER RESOLUTION · LEFT TO WINDOWS</value>
+  </data>
+  <data name="Sys_TimerNotAsking" xml:space="preserve">
+    <value>THE ENGINE ISN'T ASKING FOR A RESOLUTION</value>
+  </data>
+  <data name="Sys_TimerNotGranted" xml:space="preserve">
+    <value>WINDOWS DIDN'T GRANT THE REQUEST</value>
+  </data>
+  <data name="Sys_TimerPerProgram" xml:space="preserve">
+    <value>TIMER REQUESTS PER PROGRAM AFTER RESTART</value>
+  </data>
+  <data name="Sys_TimerResolution" xml:space="preserve">
+    <value>TIMER RESOLUTION · {0}</value>
+  </data>
+  <data name="Sys_TimerSet" xml:space="preserve">
+    <value>SET · {0}</value>
+  </data>
+  <data name="Sys_TrimAll" xml:space="preserve">
+    <value>TRIM ALL</value>
+  </data>
+  <data name="Sys_TrimAllTitle" xml:space="preserve">
+    <value>TRIM EVERY PROCESS?</value>
+  </data>
+  <data name="Sys_TrimAllWarning" xml:space="preserve">
+    <value>Pushes every process's idle memory out to the page file. RAM frees up at once, but apps may feel sluggish for a moment as they page back in.</value>
+  </data>
+  <data name="Sys_TurnOnAutomaticallyFor" xml:space="preserve">
+    <value>TURN ON AUTOMATICALLY FOR</value>
+  </data>
+  <data name="Sys_WhenTheEngineStarts" xml:space="preserve">
+    <value>WHEN THE ENGINE STARTS</value>
+  </data>
+  <data name="Sys_WhileAwayUse" xml:space="preserve">
+    <value>WHILE AWAY, USE</value>
+  </data>
+  <data name="Sys_WorkingSetAbove" xml:space="preserve">
+    <value>WORKING SET ABOVE</value>
+  </data>
+  <data name="Sys_WouldntChangeStartup" xml:space="preserve">
+    <value>Windows wouldn't change the startup entry: {0}</value>
   </data>
   <data name="System" xml:space="preserve">
     <value>SYSTEM</value>
@@ -1596,6 +1983,66 @@ LOGGED.</value>
   </data>
   <data name="TrimsWorkingSetsAndPurgesThe" xml:space="preserve">
     <value>Trims working sets and purges the standby list (and the file cache, if switched on)</value>
+  </data>
+  <data name="Tune_ActivePlan" xml:space="preserve">
+    <value>{0}. THEY TAKE EFFECT AT ONCE.</value>
+  </data>
+  <data name="Tune_AllCores" xml:space="preserve">
+    <value>ALL CORES</value>
+  </data>
+  <data name="Tune_BalancedParking" xml:space="preserve">
+    <value>BALANCED PARKING</value>
+  </data>
+  <data name="Tune_BalancedParkingBlurb" xml:space="preserve">
+    <value>Parking as Windows' Balanced plan does it. Frequency left alone.</value>
+  </data>
+  <data name="Tune_BeforeProGuard" xml:space="preserve">
+    <value>BEFORE PROGUARD {0}</value>
+  </data>
+  <data name="Tune_DisableParking" xml:space="preserve">
+    <value>DISABLE PARKING</value>
+  </data>
+  <data name="Tune_DisableParkingBlurb" xml:space="preserve">
+    <value>Every core stays unparked, plugged in and on battery.</value>
+  </data>
+  <data name="Tune_InactivePlan" xml:space="preserve">
+    <value>{0}. IT ISN'T THE ACTIVE PLAN: THEY TAKE EFFECT WHEN WINDOWS SWITCHES TO IT.</value>
+  </data>
+  <data name="Tune_NoOriginals" xml:space="preserve">
+    <value>PROGUARD HASN'T CHANGED THIS PLAN</value>
+  </data>
+  <data name="Tune_OriginalsKept" xml:space="preserve">
+    <value>PROGUARD KEPT THIS PLAN'S VALUES FROM {0:d MMM yyyy HH:mm} BEFORE ITS FIRST CHANGE</value>
+  </data>
+  <data name="Tune_ParkingUnavailable" xml:space="preserve">
+    <value>PARKING STATE UNAVAILABLE</value>
+  </data>
+  <data name="Tune_PresetConfirm" xml:space="preserve">
+    <value>{0} Applies to the {1} power plan for every user of this PC. You can revert to the values before ProGuard's first change at any time.</value>
+  </data>
+  <data name="Tune_ProBalanceHolds" xml:space="preserve">
+    <value>PROBALANCE HOLDS {0} WHILE IT RESTRAINS</value>
+  </data>
+  <data name="Tune_ReadOnly" xml:space="preserve">
+    <value>READ ONLY · CHANGING A POWER PLAN NEEDS ADMINISTRATOR RIGHTS. {0}.</value>
+  </data>
+  <data name="Tune_RevertConfirm" xml:space="preserve">
+    <value>Put every CPU setting of the {0} power plan back to what it was before ProGuard first changed it.</value>
+  </data>
+  <data name="Tune_Scope" xml:space="preserve">
+    <value>CHANGES APPLY TO THE WHOLE MACHINE, FOR EVERY USER, AND ONLY TO THE {0} PLAN</value>
+  </data>
+  <data name="Tune_Unparked" xml:space="preserve">
+    <value>{0} OF {1} UNPARKED</value>
+  </data>
+  <data name="Tune_WindowsDefault" xml:space="preserve">
+    <value>WINDOWS DEFAULT {0}</value>
+  </data>
+  <data name="Tune_WindowsDefaults" xml:space="preserve">
+    <value>WINDOWS DEFAULTS</value>
+  </data>
+  <data name="Tune_WindowsDefaultsBlurb" xml:space="preserve">
+    <value>Every setting back to Windows' own value for this plan.</value>
   </data>
   <data name="TurningOnByItself" xml:space="preserve">
     <value>TURNING ON BY ITSELF</value>

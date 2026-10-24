@@ -107,6 +107,36 @@ public sealed partial class ShellViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// The languages the window comes in, by culture name, with each one's own name for itself. Text a translation lacks
+    /// falls back to English. Adding a language: a Strings.&lt;culture&gt;.resx beside Strings.resx, a line here, and the
+    /// culture in the UI project's SatelliteResourceLanguages.
+    /// </summary>
+    public static IReadOnlyList<(string Culture, string Name)> SupportedLanguages { get; } = new[]
+    {
+        ("en", "ENGLISH"),
+    };
+
+    /// <summary>Windows' own display language, then each translation. Picking one takes effect the next time ProGuard starts.</summary>
+    public IReadOnlyList<ChoiceOption<string>> Languages { get; }
+
+    [RelayCommand]
+    private void PickLanguage(ChoiceOption<string> option)
+    {
+        if (option.Value == _preferences.Language) return;
+        try
+        {
+            _preferences.Language = option.Value;
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or global::System.Security.SecurityException or global::System.IO.IOException)
+        {
+            Toaster.Show(string.Format(Strings.Shell_WouldntSave, ex.Message), isError: true);
+            return;
+        }
+        foreach (var language in Languages) language.IsOn = ReferenceEquals(language, option);
+        Toaster.Show(Strings.Lang_NextStart);
+    }
+
     /// <summary>Closes the app for good (not just to the tray). Set by the app; tests leave it, or record it.</summary>
     public Action? Quit { get; set; }
 
@@ -119,6 +149,10 @@ public sealed partial class ShellViewModel : ObservableObject
         Hub = hub;
         Toaster = toaster;
         _preferences = preferences ?? new MemoryUiPreferences();
+        var chosen = _preferences.Language;
+        Languages = new[] { new ChoiceOption<string>(Strings.Lang_WindowsDefault, string.Empty, chosen.Length == 0) }
+            .Concat(SupportedLanguages.Select(l => new ChoiceOption<string>(l.Name, l.Culture, string.Equals(chosen, l.Culture, StringComparison.OrdinalIgnoreCase))))
+            .ToList();
         _startup = startup;
         _elevation = elevation ?? new ElevationLauncher();
         if (CanRestartElevated) toaster.Elevate = () => RestartElevatedCommand.Execute(null);

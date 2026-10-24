@@ -614,6 +614,12 @@ OFFLINE</value>
   <data name="KeepRunningInTheTray" xml:space="preserve">
     <value>KEEP RUNNING IN THE TRAY</value>
   </data>
+  <data name="Lang_NextStart" xml:space="preserve">
+    <value>ProGuard switches to that language the next time it starts.</value>
+  </data>
+  <data name="Lang_WindowsDefault" xml:space="preserve">
+    <value>WINDOWS DEFAULT</value>
+  </data>
   <data name="LeaveAlone" xml:space="preserve">
     <value>LEAVE ALONE</value>
   </data>

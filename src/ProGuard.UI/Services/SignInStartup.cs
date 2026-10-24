@@ -5,6 +5,7 @@ using System.Security;
 using System.Security.Principal;
 using System.Text;
 using System.Xml.Linq;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.Services;
 
@@ -59,7 +60,7 @@ public sealed class SchtasksScheduler : ITaskScheduler
         if (message.StartsWith("ERROR:", StringComparison.OrdinalIgnoreCase)) message = message[6..].Trim();
         return message.Contains("denied", StringComparison.OrdinalIgnoreCase)
             ? new UnauthorizedAccessException(message)
-            : new InvalidOperationException(message.Length > 0 ? message : "Task Scheduler refused the change.");
+            : new InvalidOperationException(message.Length > 0 ? message : Strings.SignIn_Refused);
     }
 
     private static (int Exit, string Output, string Error) Run(params string[] arguments)
@@ -154,7 +155,7 @@ public sealed class SignInStartup : IStartupRegistration
         _runKey.Disable();
         if (!TaskExists) return;
         if (!_elevation.IsElevated)
-            throw new UnauthorizedAccessException("ProGuard starts at sign-in through a task that only an administrator can remove. Restart ProGuard as administrator to turn this off.");
+            throw new UnauthorizedAccessException(Strings.SignIn_NeedsAdmin);
         _tasks.Delete(TaskName);
     }
 

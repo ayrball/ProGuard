@@ -3,6 +3,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ProGuard.Shared.Contracts;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -232,7 +233,7 @@ public sealed partial class PlanPicker : ObservableObject
             Options.Add(new PlanOption(plan.Name.ToUpperInvariant(), plan.Id.ToString(), on));
         }
 
-        if (!known) Options.Add(new PlanOption($"MISSING PLAN {Value}", Value, true));
+        if (!known) Options.Add(new PlanOption(string.Format(Strings.Sys_MissingPlan, Value), Value, true));
     }
 
     private static bool Matches(string? stored, Guid id) => Guid.TryParse(stored, out var guid) && guid == id;

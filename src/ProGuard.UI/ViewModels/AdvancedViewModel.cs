@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using ProGuard.UI.Services;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -34,8 +35,8 @@ public sealed partial class AdvancedViewModel : ObservableObject, IPage
         Sections = new[]
         {
             // Sub-sections:
-            new AdvancedSection("LOGS", "ENGINE LOG AND ACTION LOG, NEWEST FIRST", Logs),
-            new AdvancedSection("CPU TUNING", "CORE PARKING AND CPU FREQUENCY, PER POWER PLAN", CpuTuning),
+            new AdvancedSection(Strings.Advanced_Logs, Strings.Advanced_LogsBlurb, Logs),
+            new AdvancedSection(Strings.Advanced_CpuTuning, Strings.Advanced_CpuTuningBlurb, CpuTuning),
         };
         currentSection = Sections[0];
     }

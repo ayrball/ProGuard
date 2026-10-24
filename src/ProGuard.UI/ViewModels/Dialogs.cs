@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using ProGuard.Shared.Contracts;
 using ProGuard.Shared.Messages;
 using ProGuard.UI.Services;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -57,7 +58,7 @@ public sealed partial class AffinityDialogViewModel : ObservableObject
     private void Refresh()
     {
         int on = Cores.Count(c => c.IsOn);
-        Summary = on == 0 ? "PICK AT LEAST ONE" : $"{on} OF {Cores.Count} THREADS";
+        Summary = on == 0 ? Strings.PickAtLeastOne : string.Format(Strings.Cores_OfThreads, on, Cores.Count);
         ApplyCommand.NotifyCanExecuteChanged();
     }
 
@@ -81,7 +82,7 @@ public sealed partial class AffinityDialogViewModel : ObservableObject
         long mask = Mask;
         // Every core again: the rule stops naming cores rather than naming all of them.
         bool all = Cores.All(c => c.IsOn) && Cores.Count >= Math.Min(_logical, 64);
-        await _shell.Processes.SetAsync(_row, CommandTypes.SetAffinity, mask, $"{_row.Name} · {Summary}", $"CORES {Summary}",
+        await _shell.Processes.SetAsync(_row, CommandTypes.SetAffinity, mask, string.Format(Strings.Proc_NameWhat, _row.Name, Summary), string.Format(Strings.Dialog_Cores, Summary),
             r => r.AffinityMask = all ? null : mask);
     }
 }
@@ -119,7 +120,7 @@ public sealed partial class CpuLimitDialogViewModel : ObservableObject
     {
         _shell.CloseDialog();
         int cap = Math.Clamp(Whole, 1, 99);
-        await _shell.Processes.SetAsync(_row, CommandTypes.SetCpuLimit, cap, $"{_row.Name} capped at {cap}%", $"CAP {cap}%",
+        await _shell.Processes.SetAsync(_row, CommandTypes.SetCpuLimit, cap, string.Format(Strings.Dialog_CappedAt, _row.Name, cap), string.Format(Strings.Dialog_Cap, cap),
             r => r.CpuLimitPercent = cap);
     }
 
@@ -127,7 +128,7 @@ public sealed partial class CpuLimitDialogViewModel : ObservableObject
     private async Task RemoveAsync()
     {
         _shell.CloseDialog();
-        await _shell.Processes.SetAsync(_row, CommandTypes.RemoveCpuLimit, null, $"{_row.Name} uncapped", "UNCAPPED",
+        await _shell.Processes.SetAsync(_row, CommandTypes.RemoveCpuLimit, null, string.Format(Strings.Dialog_Uncapped, _row.Name), Strings.Dialog_UncappedUpper,
             r => r.CpuLimitPercent = null);
     }
 }

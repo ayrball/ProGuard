@@ -31,6 +31,14 @@ public static class Strings
 
     public static string Advanced => Get(nameof(Advanced));
 
+    public static string Advanced_CpuTuning => Get(nameof(Advanced_CpuTuning));
+
+    public static string Advanced_CpuTuningBlurb => Get(nameof(Advanced_CpuTuningBlurb));
+
+    public static string Advanced_Logs => Get(nameof(Advanced_Logs));
+
+    public static string Advanced_LogsBlurb => Get(nameof(Advanced_LogsBlurb));
+
     public static string AdvancedPriorities => Get(nameof(AdvancedPriorities));
 
     public static string All => Get(nameof(All));
@@ -48,6 +56,8 @@ public static class Strings
     public static string Always => Get(nameof(Always));
 
     public static string AlwaysStartAsAdministrator => Get(nameof(AlwaysStartAsAdministrator));
+
+    public static string App_SomethingWentWrong => Get(nameof(App_SomethingWentWrong));
 
     public static string Apply => Get(nameof(Apply));
 
@@ -69,6 +79,8 @@ public static class Strings
 
     public static string AtLowLoadGoBackTo => Get(nameof(AtLowLoadGoBackTo));
 
+    public static string Auto => Get(nameof(Auto));
+
     public static string AvoidSmt => Get(nameof(AvoidSmt));
 
     public static string BackToThisPlansValuesBefore => Get(nameof(BackToThisPlansValuesBefore));
@@ -84,6 +96,8 @@ public static class Strings
     public static string Below => Get(nameof(Below));
 
     public static string BelowNormal => Get(nameof(BelowNormal));
+
+    public static string BelowNormalUpper => Get(nameof(BelowNormalUpper));
 
     public static string BlockIt => Get(nameof(BlockIt));
 
@@ -121,6 +135,8 @@ public static class Strings
 
     public static string Cores => Get(nameof(Cores));
 
+    public static string Cores_OfThreads => Get(nameof(Cores_OfThreads));
+
     public static string Cores2 => Get(nameof(Cores2));
 
     public static string Cores3 => Get(nameof(Cores3));
@@ -155,6 +171,26 @@ public static class Strings
 
     public static string CpuLoad => Get(nameof(CpuLoad));
 
+    public static string CpuSet_Core => Get(nameof(CpuSet_Core));
+
+    public static string CpuSet_CoreKind => Get(nameof(CpuSet_CoreKind));
+
+    public static string CpuSet_ECore => Get(nameof(CpuSet_ECore));
+
+    public static string CpuSet_Id => Get(nameof(CpuSet_Id));
+
+    public static string CpuSet_IdParked => Get(nameof(CpuSet_IdParked));
+
+    public static string CpuSet_Missing => Get(nameof(CpuSet_Missing));
+
+    public static string CpuSet_MissingOne => Get(nameof(CpuSet_MissingOne));
+
+    public static string CpuSet_NonePicked => Get(nameof(CpuSet_NonePicked));
+
+    public static string CpuSet_PCore => Get(nameof(CpuSet_PCore));
+
+    public static string CpuSet_Summary => Get(nameof(CpuSet_Summary));
+
     public static string CpuSet0 => Get(nameof(CpuSet0));
 
     public static string CpuSetIdsCoresThisPc => Get(nameof(CpuSetIdsCoresThisPc));
@@ -184,6 +220,16 @@ public static class Strings
     public static string Detail => Get(nameof(Detail));
 
     public static string DetectGamesFromWhereTheyreInstalled => Get(nameof(DetectGamesFromWhereTheyreInstalled));
+
+    public static string Dialog_Cap => Get(nameof(Dialog_Cap));
+
+    public static string Dialog_CappedAt => Get(nameof(Dialog_CappedAt));
+
+    public static string Dialog_Cores => Get(nameof(Dialog_Cores));
+
+    public static string Dialog_Uncapped => Get(nameof(Dialog_Uncapped));
+
+    public static string Dialog_UncappedUpper => Get(nameof(Dialog_UncappedUpper));
 
     public static string DontRepeatFor => Get(nameof(DontRepeatFor));
 
@@ -249,6 +295,24 @@ public static class Strings
 
     public static string FirstHalf => Get(nameof(FirstHalf));
 
+    public static string Fmt_MemoryPurged => Get(nameof(Fmt_MemoryPurged));
+
+    public static string Fmt_PurgeOneProblem => Get(nameof(Fmt_PurgeOneProblem));
+
+    public static string Fmt_PurgeProblems => Get(nameof(Fmt_PurgeProblems));
+
+    public static string Fmt_SetBy => Get(nameof(Fmt_SetBy));
+
+    public static string Fmt_SetByIdleSaver => Get(nameof(Fmt_SetByIdleSaver));
+
+    public static string Fmt_SetByLoadSwitcher => Get(nameof(Fmt_SetByLoadSwitcher));
+
+    public static string Fmt_SetByPerformanceMode => Get(nameof(Fmt_SetByPerformanceMode));
+
+    public static string Fmt_SetByYou => Get(nameof(Fmt_SetByYou));
+
+    public static string Fmt_SetWhenEngineStarted => Get(nameof(Fmt_SetWhenEngineStarted));
+
     public static string Focus => Get(nameof(Focus));
 
     public static string FocusBoost => Get(nameof(FocusBoost));
@@ -284,6 +348,8 @@ public static class Strings
     public static string HighAdministrator => Get(nameof(HighAdministrator));
 
     public static string HighNeedsAdmin => Get(nameof(HighNeedsAdmin));
+
+    public static string HighPerf => Get(nameof(HighPerf));
 
     public static string HowLong => Get(nameof(HowLong));
 
@@ -371,6 +437,8 @@ public static class Strings
 
     public static string Medium => Get(nameof(Medium));
 
+    public static string Medium2 => Get(nameof(Medium2));
+
     public static string Mem00 => Get(nameof(Mem00));
 
     public static string Memory => Get(nameof(Memory));
@@ -431,6 +499,8 @@ public static class Strings
 
     public static string Normal => Get(nameof(Normal));
 
+    public static string Normal2 => Get(nameof(Normal2));
+
     public static string NoRulesYet => Get(nameof(NoRulesYet));
 
     public static string NoSignal => Get(nameof(NoSignal));
@@ -450,6 +520,8 @@ public static class Strings
     public static string OfTheWholeMachine => Get(nameof(OfTheWholeMachine));
 
     public static string OfTheWholeMachineAHard => Get(nameof(OfTheWholeMachineAHard));
+
+    public static string On => Get(nameof(On));
 
     public static string OnAutomaticallyAListedProgramOr => Get(nameof(OnAutomaticallyAListedProgramOr));
 
@@ -483,6 +555,14 @@ public static class Strings
 
     public static string OtherwiseOnlyCopiesInTheSame => Get(nameof(OtherwiseOnlyCopiesInTheSame));
 
+    public static string Overview => Get(nameof(Overview));
+
+    public static string Overview_MemoryOf => Get(nameof(Overview_MemoryOf));
+
+    public static string Overview_PausedIdle => Get(nameof(Overview_PausedIdle));
+
+    public static string Overview_Restraints => Get(nameof(Overview_Restraints));
+
     public static string Parent => Get(nameof(Parent));
 
     public static string Pause => Get(nameof(Pause));
@@ -507,6 +587,8 @@ public static class Strings
 
     public static string PickALineToReadAll => Get(nameof(PickALineToReadAll));
 
+    public static string PickAtLeastOne => Get(nameof(PickAtLeastOne));
+
     public static string Pid => Get(nameof(Pid));
 
     public static string Pid0 => Get(nameof(Pid0));
@@ -520,6 +602,8 @@ public static class Strings
     public static string PowerMode => Get(nameof(PowerMode));
 
     public static string PowerPlan => Get(nameof(PowerPlan));
+
+    public static string PowerSaving => Get(nameof(PowerSaving));
 
     public static string Presets => Get(nameof(Presets));
 
@@ -540,6 +624,76 @@ public static class Strings
     public static string ProbalanceOff => Get(nameof(ProbalanceOff));
 
     public static string ProbalanceWontLowerItsPriorityEven => Get(nameof(ProbalanceWontLowerItsPriorityEven));
+
+    public static string Proc_Always => Get(nameof(Proc_Always));
+
+    public static string Proc_AlwaysRealtime => Get(nameof(Proc_AlwaysRealtime));
+
+    public static string Proc_AlwaysRealtimeTitle => Get(nameof(Proc_AlwaysRealtimeTitle));
+
+    public static string Proc_AlwaysRealtimeWarning => Get(nameof(Proc_AlwaysRealtimeWarning));
+
+    public static string Proc_Eco => Get(nameof(Proc_Eco));
+
+    public static string Proc_EcoSet => Get(nameof(Proc_EcoSet));
+
+    public static string Proc_Ended => Get(nameof(Proc_Ended));
+
+    public static string Proc_EndIt => Get(nameof(Proc_EndIt));
+
+    public static string Proc_EndSystemTitle => Get(nameof(Proc_EndSystemTitle));
+
+    public static string Proc_EndSystemWarning => Get(nameof(Proc_EndSystemWarning));
+
+    public static string Proc_EndTreeChildren => Get(nameof(Proc_EndTreeChildren));
+
+    public static string Proc_EndTreeNoChildren => Get(nameof(Proc_EndTreeNoChildren));
+
+    public static string Proc_EndTreeOneChild => Get(nameof(Proc_EndTreeOneChild));
+
+    public static string Proc_EndTreeTitle => Get(nameof(Proc_EndTreeTitle));
+
+    public static string Proc_Forgotten => Get(nameof(Proc_Forgotten));
+
+    public static string Proc_Freed => Get(nameof(Proc_Freed));
+
+    public static string Proc_Io => Get(nameof(Proc_Io));
+
+    public static string Proc_IoHighNeedsAdmin => Get(nameof(Proc_IoHighNeedsAdmin));
+
+    public static string Proc_IoSet => Get(nameof(Proc_IoSet));
+
+    public static string Proc_Kept => Get(nameof(Proc_Kept));
+
+    public static string Proc_Limit => Get(nameof(Proc_Limit));
+
+    public static string Proc_Memory => Get(nameof(Proc_Memory));
+
+    public static string Proc_MemorySet => Get(nameof(Proc_MemorySet));
+
+    public static string Proc_NameWhat => Get(nameof(Proc_NameWhat));
+
+    public static string Proc_NoLocation => Get(nameof(Proc_NoLocation));
+
+    public static string Proc_NothingKept => Get(nameof(Proc_NothingKept));
+
+    public static string Proc_Paused => Get(nameof(Proc_Paused));
+
+    public static string Proc_Priority => Get(nameof(Proc_Priority));
+
+    public static string Proc_RealtimeNeedsAdmin => Get(nameof(Proc_RealtimeNeedsAdmin));
+
+    public static string Proc_RealtimeTitle => Get(nameof(Proc_RealtimeTitle));
+
+    public static string Proc_RealtimeWarning => Get(nameof(Proc_RealtimeWarning));
+
+    public static string Proc_Resumed => Get(nameof(Proc_Resumed));
+
+    public static string Proc_SetRealtime => Get(nameof(Proc_SetRealtime));
+
+    public static string Proc_SetTo => Get(nameof(Proc_SetTo));
+
+    public static string Proc_TreeEnded => Get(nameof(Proc_TreeEnded));
 
     public static string Process => Get(nameof(Process));
 
@@ -575,6 +729,8 @@ public static class Strings
 
     public static string Realtime => Get(nameof(Realtime));
 
+    public static string Realtime2 => Get(nameof(Realtime2));
+
     public static string ReApplyIfChanged => Get(nameof(ReApplyIfChanged));
 
     public static string RememberChangesToPrograms => Get(nameof(RememberChangesToPrograms));
@@ -606,6 +762,8 @@ public static class Strings
     public static string RightNow => Get(nameof(RightNow));
 
     public static string Rule => Get(nameof(Rule));
+
+    public static string Rule_PriorityClassNumber => Get(nameof(Rule_PriorityClassNumber));
 
     public static string Rules => Get(nameof(Rules));
 
@@ -645,6 +803,22 @@ public static class Strings
 
     public static string SetsThePowerPlansCoreParking => Get(nameof(SetsThePowerPlansCoreParking));
 
+    public static string Shell_AlwaysAdminOn => Get(nameof(Shell_AlwaysAdminOn));
+
+    public static string Shell_Connecting => Get(nameof(Shell_Connecting));
+
+    public static string Shell_ElevationFailed => Get(nameof(Shell_ElevationFailed));
+
+    public static string Shell_PerformanceModeOff => Get(nameof(Shell_PerformanceModeOff));
+
+    public static string Shell_PerformanceModeOn => Get(nameof(Shell_PerformanceModeOn));
+
+    public static string Shell_Status => Get(nameof(Shell_Status));
+
+    public static string Shell_WouldntChangeSignIn => Get(nameof(Shell_WouldntChangeSignIn));
+
+    public static string Shell_WouldntSave => Get(nameof(Shell_WouldntSave));
+
     public static string ShowingTheActionLogOnlyThe => Get(nameof(ShowingTheActionLogOnlyThe));
 
     public static string Shown => Get(nameof(Shown));
@@ -660,6 +834,8 @@ public static class Strings
     public static string Source => Get(nameof(Source));
 
     public static string SplitsTheCoresBetweenRunningCopies => Get(nameof(SplitsTheCoresBetweenRunningCopies));
+
+    public static string StandardRights => Get(nameof(StandardRights));
 
     public static string StandbyList => Get(nameof(StandbyList));
 
@@ -735,6 +911,20 @@ public static class Strings
 
     public static string TotalCpu => Get(nameof(TotalCpu));
 
+    public static string Tray_Exit => Get(nameof(Tray_Exit));
+
+    public static string Tray_Hide => Get(nameof(Tray_Hide));
+
+    public static string Tray_NeedsAdmin => Get(nameof(Tray_NeedsAdmin));
+
+    public static string Tray_Off => Get(nameof(Tray_Off));
+
+    public static string Tray_On => Get(nameof(Tray_On));
+
+    public static string Tray_Show => Get(nameof(Tray_Show));
+
+    public static string Tray_Tooltip => Get(nameof(Tray_Tooltip));
+
     public static string Trim => Get(nameof(Trim));
 
     public static string TrimAutomatically => Get(nameof(TrimAutomatically));
@@ -753,6 +943,10 @@ public static class Strings
 
     public static string UnderARule => Get(nameof(UnderARule));
 
+    public static string Unit_Min => Get(nameof(Unit_Min));
+
+    public static string Unit_Sec => Get(nameof(Unit_Sec));
+
     public static string UnparkEveryCore => Get(nameof(UnparkEveryCore));
 
     public static string User => Get(nameof(User));
@@ -762,6 +956,8 @@ public static class Strings
     public static string UsingAnyCpuRightNow => Get(nameof(UsingAnyCpuRightNow));
 
     public static string VeryLow => Get(nameof(VeryLow));
+
+    public static string VeryLow2 => Get(nameof(VeryLow2));
 
     public static string VLow => Get(nameof(VLow));
 

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -74,12 +75,12 @@ internal static class RuleText
     }
 
     public static string PriorityName(int priorityClass) =>
-        Enum.IsDefined(typeof(ProcessPriorityClass), priorityClass) ? Fmt.Priority((ProcessPriorityClass)priorityClass) : $"CLASS {priorityClass}";
+        Enum.IsDefined(typeof(ProcessPriorityClass), priorityClass) ? Fmt.Priority((ProcessPriorityClass)priorityClass) : string.Format(Strings.Rule_PriorityClassNumber, priorityClass);
 
     /// <summary>The cores in a mask as ranges: 0-3, 0,2,4-5.</summary>
     public static string CoreRange(long mask)
     {
-        if (mask == 0) return "NONE";
+        if (mask == 0) return Strings.None;
         var parts = new List<string>();
         int i = 0;
         while (i < 64)
@@ -95,38 +96,38 @@ internal static class RuleText
 
     public static string IoPriorityName(int value) => value switch
     {
-        0 => "VERY LOW",
-        1 => "LOW",
-        2 => "NORMAL",
-        3 => "HIGH",
+        0 => Strings.VeryLow2,
+        1 => Strings.Low2,
+        2 => Strings.Normal2,
+        3 => Strings.High2,
         _ => value.ToString(CultureInfo.InvariantCulture)
     };
 
     public static string MemoryPriorityName(int value) => value switch
     {
-        1 => "VERY LOW",
-        2 => "LOW",
-        3 => "MEDIUM",
-        4 => "BELOW NORMAL",
-        5 => "NORMAL",
+        1 => Strings.VeryLow2,
+        2 => Strings.Low2,
+        3 => Strings.Medium2,
+        4 => Strings.BelowNormalUpper,
+        5 => Strings.Normal2,
         _ => value.ToString(CultureInfo.InvariantCulture)
     };
 
     public static string GpuPriorityName(int value) => value switch
     {
-        0 => "IDLE",
-        1 => "LOW",
-        2 => "NORMAL",
-        3 => "ABOVE",
-        4 => "HIGH",
+        0 => Strings.Idle2,
+        1 => Strings.Low2,
+        2 => Strings.Normal2,
+        3 => Strings.Above,
+        4 => Strings.High2,
         _ => value.ToString(CultureInfo.InvariantCulture)
     };
 
     public static string GpuPreferenceName(int value) => value switch
     {
-        0 => "AUTO",
-        1 => "POWER SAVING",
-        2 => "HIGH PERF",
+        0 => Strings.Auto,
+        1 => Strings.PowerSaving,
+        2 => Strings.HighPerf,
         _ => value.ToString(CultureInfo.InvariantCulture)
     };
 }
@@ -184,7 +185,7 @@ public sealed partial class CorePicker : ObservableObject
     private void Refresh()
     {
         int on = Cores.Count(c => c.IsOn);
-        Summary = on == 0 ? "PICK AT LEAST ONE" : $"{on} OF {Cores.Count} THREADS";
+        Summary = on == 0 ? Strings.PickAtLeastOne : string.Format(Strings.Cores_OfThreads, on, Cores.Count);
     }
 
     private void Set(Func<int, bool> on)
@@ -204,7 +205,7 @@ public sealed partial class DurationInput : ObservableObject
 {
     private bool _busy;
 
-    public IReadOnlyList<Choice<bool>> Units { get; } = new[] { new Choice<bool>("SEC", false), new Choice<bool>("MIN", true) };
+    public IReadOnlyList<Choice<bool>> Units { get; } = new[] { new Choice<bool>(Strings.Unit_Sec, false), new Choice<bool>(Strings.Unit_Min, true) };
     public IReadOnlyList<Choice<int>> Presets { get; }
 
     [ObservableProperty] private string text = "0";

@@ -5,6 +5,7 @@ using ProGuard.Shared.Client;
 using ProGuard.Shared.Reporting;
 using ProGuard.UI.Services;
 using ProGuard.UI.ViewModels;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI;
 
@@ -125,7 +126,7 @@ public partial class App : Application
         // Keep the app alive and tell the user, but leave a trace for diagnosis.
         LogError(e.Exception);
 
-        (MainWindow?.DataContext as ShellViewModel)?.Toaster.Show($"Something went wrong: {e.Exception.Message}", isError: true);
+        (MainWindow?.DataContext as ShellViewModel)?.Toaster.Show(string.Format(Strings.App_SomethingWentWrong, e.Exception.Message), isError: true);
         e.Handled = true;
     }
 

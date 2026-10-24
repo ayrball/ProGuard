@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Input;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.Services;
 
@@ -25,21 +26,25 @@ public sealed class Toaster
     /// </summary>
     public Action? Elevate { get; set; }
 
-    public const string ElevateText = "RESTART AS ADMIN";
+    public static string ElevateText => Strings.RestartAsAdmin;
 
     public Toaster(Dispatcher dispatcher) => _dispatcher = dispatcher;
 
-    /// <summary>Whether <paramref name="message"/> says the user needs administrator rights for what they tried.</summary>
+    /// <summary>
+    /// Whether <paramref name="message"/> says the user needs administrator rights for what they tried. Only for the
+    /// engine's refusals, which are always in English; the window's own messages say so explicitly (offerElevation).
+    /// </summary>
     public static bool NeedsAdministrator(string message) =>
         message.Contains("as administrator", StringComparison.OrdinalIgnoreCase)
         || message.Contains("needs administrator rights", StringComparison.OrdinalIgnoreCase);
 
-    public void Show(string message, bool isError = false)
+    /// <param name="offerElevation">Add the Restart as administrator button. Null: only if <paramref name="message"/> is one of the engine's English refusals.</param>
+    public void Show(string message, bool isError = false, bool? offerElevation = null)
     {
         _dispatcher.BeginInvoke(() =>
         {
             Toast toast = new(message, isError);
-            if (Elevate is { } elevate && NeedsAdministrator(message))
+            if (Elevate is { } elevate && (offerElevation ?? NeedsAdministrator(message)))
             {
                 toast = toast with
                 {

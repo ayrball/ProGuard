@@ -3,6 +3,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ProGuard.Shared.Contracts;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -25,10 +26,10 @@ public sealed partial class CpuSetItem : ObservableObject
     public string Label { get; }
 
     /// <summary>"CORE 3 · P-CORE", or just the core on a CPU whose cores are all alike.</summary>
-    public string Detail => IsHybrid ? $"CORE {Core} · {(IsFast ? "P-CORE" : "E-CORE")}" : $"CORE {Core}";
+    public string Detail => IsHybrid ? string.Format(Strings.CpuSet_CoreKind, Core, IsFast ? Strings.CpuSet_PCore : Strings.CpuSet_ECore) : string.Format(Strings.CpuSet_Core, Core);
 
     /// <summary>"ID 259", plus "PARKED" when Windows has the processor asleep.</summary>
-    public string Footer => IsParked ? $"ID {Id} · PARKED" : $"ID {Id}";
+    public string Footer => IsParked ? string.Format(Strings.CpuSet_IdParked, Id) : string.Format(Strings.CpuSet_Id, Id);
 
     [ObservableProperty] private bool isOn;
 
@@ -119,9 +120,9 @@ public sealed partial class CpuSetDialogViewModel : ObservableObject
     {
         int on = Sets.Count(s => s.IsOn);
         var text = on == 0
-            ? "NONE PICKED · APPLYING CLEARS THE PROGRAM'S CPU SETS"
-            : $"{on} OF {Sets.Count} · IDS {Ids}";
-        if (_missing > 0) text += $" · {_missing} SAVED ID{(_missing == 1 ? "" : "S")} NOT ON THIS MACHINE";
+            ? Strings.CpuSet_NonePicked
+            : string.Format(Strings.CpuSet_Summary, on, Sets.Count, Ids);
+        if (_missing > 0) text += string.Format(_missing == 1 ? Strings.CpuSet_MissingOne : Strings.CpuSet_Missing, _missing);
         Summary = text;
     }
 

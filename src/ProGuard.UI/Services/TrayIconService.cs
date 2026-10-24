@@ -5,6 +5,7 @@ using ProGuard.Shared.Contracts;
 using ProGuard.UI.ViewModels;
 using Drawing = System.Drawing;
 using WinForms = System.Windows.Forms;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.Services;
 
@@ -38,14 +39,14 @@ public sealed class TrayIconService : IDisposable
         _showWindow = showWindow;
         _exit = exit;
 
-        _showItem = new WinForms.ToolStripMenuItem("SHOW PROGUARD", null, (_, _) => _toggleWindow());
-        _performanceItem = new WinForms.ToolStripMenuItem("PERFORMANCE MODE", null, async (_, _) => await TogglePerformanceModeAsync()) { CheckOnClick = false };
-        _purgeItem = new WinForms.ToolStripMenuItem("PURGE NOW", null, async (_, _) => await PurgeNowAsync());
-        _elevateItem = new WinForms.ToolStripMenuItem("RESTART AS ADMINISTRATOR", null, (_, _) => _shell.RestartElevatedCommand.Execute(null))
+        _showItem = new WinForms.ToolStripMenuItem(Strings.Tray_Show, null, (_, _) => _toggleWindow());
+        _performanceItem = new WinForms.ToolStripMenuItem(Strings.PerformanceMode, null, async (_, _) => await TogglePerformanceModeAsync()) { CheckOnClick = false };
+        _purgeItem = new WinForms.ToolStripMenuItem(Strings.PurgeNow, null, async (_, _) => await PurgeNowAsync());
+        _elevateItem = new WinForms.ToolStripMenuItem(Strings.RestartAsAdministrator, null, (_, _) => _shell.RestartElevatedCommand.Execute(null))
         {
             Visible = _shell.CanRestartElevated,
         };
-        var exitItem = new WinForms.ToolStripMenuItem("EXIT", null, (_, _) => _exit());
+        var exitItem = new WinForms.ToolStripMenuItem(Strings.Tray_Exit, null, (_, _) => _exit());
 
         _menu = new WinForms.ContextMenuStrip
         {
@@ -103,20 +104,20 @@ public sealed class TrayIconService : IDisposable
     private void RefreshMenu()
     {
         var window = Application.Current?.MainWindow;
-        _showItem.Text = window is { IsVisible: true } ? "HIDE PROGUARD" : "SHOW PROGUARD";
+        _showItem.Text = window is { IsVisible: true } ? Strings.Tray_Hide : Strings.Tray_Show;
 
         var snapshot = _shell.Hub.Snapshot;
         _performanceItem.Checked = snapshot?.PerformanceModeActive == true;
         _performanceItem.Enabled = snapshot != null;
         // Purge now needs administrator rights; the engine would refuse anyone else.
         _purgeItem.Enabled = snapshot?.CallerIsAdministrator == true;
-        _purgeItem.ToolTipText = _purgeItem.Enabled ? string.Empty : "Needs administrator rights";
+        _purgeItem.ToolTipText = _purgeItem.Enabled ? string.Empty : Strings.Tray_NeedsAdmin;
     }
 
     private void OnSnapshot(EngineSnapshot snapshot)
     {
         // The notification-area tooltip is limited to 63 characters.
-        var text = $"PROGUARD · CPU {snapshot.CpuPercent:0}% · MEM {snapshot.MemoryPercent:0}%";
+        var text = string.Format(Strings.Tray_Tooltip, snapshot.CpuPercent, snapshot.MemoryPercent);
         if (_icon.Text != text) _icon.Text = text;
     }
 
@@ -124,7 +125,7 @@ public sealed class TrayIconService : IDisposable
     {
         if (await _shell.TogglePerformanceModeAsync() is bool on)
         {
-            ShowBalloon("PERFORMANCE MODE", on ? "On." : "Off.");
+            ShowBalloon(Strings.PerformanceMode, on ? Strings.Tray_On : Strings.Tray_Off);
         }
     }
 
@@ -132,7 +133,7 @@ public sealed class TrayIconService : IDisposable
     {
         if (await _shell.PurgeNowAsync() is { } result)
         {
-            ShowBalloon("PURGE NOW", Fmt.PurgeSummary(result), warning: result.Errors.Count > 0);
+            ShowBalloon(Strings.PurgeNow, Fmt.PurgeSummary(result), warning: result.Errors.Count > 0);
         }
     }
 

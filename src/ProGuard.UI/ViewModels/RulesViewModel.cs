@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using ProGuard.Shared.Contracts;
 using ProGuard.Shared.Messages;
 using ProGuard.UI.Services;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -25,55 +26,55 @@ internal static class RuleEffects
         switch (section)
         {
             case RuleSection.Basics:
-                if (d.DisallowExecution) parts.Add("BLOCKED");
-                if (d.KeepRunning) parts.Add("KEEP RUNNING");
-                if (d.PriorityClass is { } p) parts.Add($"PRIORITY {RuleText.PriorityName(p)}");
-                if (d.AffinityMask is { } m) parts.Add($"CORES {Fmt.Affinity(m, logical)}");
-                if (d.ExcludeFromProBalance) parts.Add("PROBALANCE OFF");
+                if (d.DisallowExecution) parts.Add(Strings.Rule_Blocked);
+                if (d.KeepRunning) parts.Add(Strings.Rule_KeepRunning);
+                if (d.PriorityClass is { } p) parts.Add(string.Format(Strings.Proc_Priority, RuleText.PriorityName(p)));
+                if (d.AffinityMask is { } m) parts.Add(string.Format(Strings.Dialog_Cores, Fmt.Affinity(m, logical)));
+                if (d.ExcludeFromProBalance) parts.Add(Strings.ProbalanceOff);
                 break;
 
             case RuleSection.Cpu:
-                if (d.CpuLimitPercent is { } cap) parts.Add($"CAP {EditorNumbers.Text(cap)}%");
+                if (d.CpuLimitPercent is { } cap) parts.Add(string.Format(Strings.Dialog_Cap, EditorNumbers.Text(cap)));
                 if (d.CpuLimitThresholdPercent is { } threshold)
                 {
                     int cores = d.CpuLimitCoresToRemove ?? RuleText.DefaultLimiterCores;
                     int seconds = d.CpuLimitDurationSeconds ?? RuleText.DefaultLimiterDurationSeconds;
-                    parts.Add($"LIMITER ≥{EditorNumbers.Text(threshold)}% →-{cores} {(cores == 1 ? "CORE" : "CORES")} {RuleText.Duration(seconds)}");
+                    parts.Add(string.Format(cores == 1 ? Strings.Rule_LimiterOneCore : Strings.Rule_LimiterCores, EditorNumbers.Text(threshold), cores, RuleText.Duration(seconds)));
                 }
                 if (d.CpuSetIds is { } sets)
                 {
                     int count = sets.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
-                    parts.Add(count == 0 ? "CPU SETS CLEARED" : $"CPU SETS {count}");
+                    parts.Add(count == 0 ? Strings.Rule_CpuSetsCleared : string.Format(Strings.Rule_CpuSets, count));
                 }
                 break;
 
             case RuleSection.Instances:
-                if (d.MaxInstances is { } max) parts.Add($"MAX {max}{(d.MaxInstancesAllSessions ? " (ALL SESSIONS)" : "")}");
+                if (d.MaxInstances is { } max) parts.Add(string.Format(d.MaxInstancesAllSessions ? Strings.Rule_MaxAllSessions : Strings.Rule_Max, max));
                 if (d.InstanceBalancerMode is { } mode)
                 {
                     parts.Add(mode == BalancerMode.FixedCoresPerInstance
-                        ? $"BALANCE FIXED {d.InstanceBalancerCoresPerInstance ?? RuleText.DefaultCoresPerInstance}"
-                        : "BALANCE EQUAL");
-                    if (d.InstanceBalancerAvoidSmt) parts.Add("AVOID SMT");
-                    if (d.InstanceBalancerReservedCores is > 0 and var reserved) parts.Add($"RESERVE {reserved}");
-                    if (d.InstanceBalancerMinCpuPercent is > 0 and var minCpu) parts.Add($"BALANCE ≥{EditorNumbers.Text(minCpu)}% CPU");
+                        ? string.Format(Strings.Rule_BalanceFixed, d.InstanceBalancerCoresPerInstance ?? RuleText.DefaultCoresPerInstance)
+                        : Strings.Rule_BalanceEqual);
+                    if (d.InstanceBalancerAvoidSmt) parts.Add(Strings.AvoidSmt);
+                    if (d.InstanceBalancerReservedCores is > 0 and var reserved) parts.Add(string.Format(Strings.Rule_Reserve, reserved));
+                    if (d.InstanceBalancerMinCpuPercent is > 0 and var minCpu) parts.Add(string.Format(Strings.Rule_BalanceMinCpu, EditorNumbers.Text(minCpu)));
                 }
                 break;
 
             case RuleSection.Boost:
                 if (d.StartupBoostPriorityClass is { } boost)
-                    parts.Add($"BOOST {RuleText.PriorityName(boost)} {RuleText.Duration(d.StartupBoostSeconds ?? RuleText.DefaultBoostSeconds)}");
+                    parts.Add(string.Format(Strings.Rule_Boost, RuleText.PriorityName(boost), RuleText.Duration(d.StartupBoostSeconds ?? RuleText.DefaultBoostSeconds)));
                 break;
 
             case RuleSection.Advanced:
-                if (d.IoPriority is { } io) parts.Add($"I/O {RuleText.IoPriorityName(io)}");
-                if (d.MemoryPriority is { } mem) parts.Add($"MEMORY {RuleText.MemoryPriorityName(mem)}");
-                if (d.EfficiencyMode is { } eco) parts.Add(eco ? "ECO ON" : "ECO OFF");
-                if (d.DisablePriorityBoost is { } noBoost) parts.Add(noBoost ? "THREAD BOOST OFF" : "THREAD BOOST ON");
-                if (d.GpuPriority is { } gpu) parts.Add($"GPU {RuleText.GpuPriorityName(gpu)}");
-                if (d.GpuPreference is { } pref) parts.Add($"GPU PREF {RuleText.GpuPreferenceName(pref)}");
-                if (d.ReapplyIfChanged) parts.Add("RE-APPLY");
-                if (d.ApplyPrioritiesAtCreation) parts.Add("AT LAUNCH");
+                if (d.IoPriority is { } io) parts.Add(string.Format(Strings.Proc_Io, RuleText.IoPriorityName(io)));
+                if (d.MemoryPriority is { } mem) parts.Add(string.Format(Strings.Proc_Memory, RuleText.MemoryPriorityName(mem)));
+                if (d.EfficiencyMode is { } eco) parts.Add(eco ? Strings.Rule_EcoOn : Strings.Rule_EcoOff);
+                if (d.DisablePriorityBoost is { } noBoost) parts.Add(noBoost ? Strings.Rule_ThreadBoostOff : Strings.Rule_ThreadBoostOn);
+                if (d.GpuPriority is { } gpu) parts.Add(string.Format(Strings.Rule_Gpu, RuleText.GpuPriorityName(gpu)));
+                if (d.GpuPreference is { } pref) parts.Add(string.Format(Strings.Rule_GpuPref, RuleText.GpuPreferenceName(pref)));
+                if (d.ReapplyIfChanged) parts.Add(Strings.Rule_Reapply);
+                if (d.ApplyPrioritiesAtCreation) parts.Add(Strings.Rule_AtLaunch);
                 break;
         }
         return parts;
@@ -93,7 +94,7 @@ public sealed class RuleRow
     {
         Dto = dto;
         var effects = RuleEffects.All(dto, logical);
-        if (effects.Count == 0) effects.Add("NO EFFECT");
+        if (effects.Count == 0) effects.Add(Strings.Rule_NoEffect);
         Effects = effects;
     }
 }
@@ -110,23 +111,23 @@ public sealed partial class RuleEditor : ObservableObject
 
     public int Id { get; init; }
     public bool IsNew => Id == 0;
-    public string Heading => IsNew ? "NEW RULE" : "EDIT RULE";
+    public string Heading => IsNew ? Strings.Rule_NewRule : Strings.Rule_EditRule;
 
     // ---- the choices on offer (a stored value that isn't one of them is added, so loading never changes it) ----
     public IReadOnlyList<Choice<ProcessPriorityClass?>> Priorities { get; }
     public IReadOnlyList<Choice<ProcessPriorityClass?>> BoostPriorities { get; }
     public IReadOnlyList<Choice<BalancerMode?>> BalancerModes { get; } = new Choice<BalancerMode?>[]
     {
-        new("OFF", null),
-        new("EQUAL", BalancerMode.EqualCoresPerInstance),
-        new("FIXED", BalancerMode.FixedCoresPerInstance),
+        new(Strings.Off, null),
+        new(Strings.Rule_Equal, BalancerMode.EqualCoresPerInstance),
+        new(Strings.Rule_Fixed, BalancerMode.FixedCoresPerInstance),
     };
     public IReadOnlyList<Choice<int?>> IoPriorities { get; }
     public IReadOnlyList<Choice<int?>> MemoryPriorities { get; }
     public IReadOnlyList<Choice<int?>> GpuPriorities { get; }
     public IReadOnlyList<Choice<int?>> GpuPreferences { get; }
-    public IReadOnlyList<Choice<bool?>> EfficiencyModes { get; } = new Choice<bool?>[] { new("LEAVE", null), new("ON", true), new("OFF", false) };
-    public IReadOnlyList<Choice<bool?>> ThreadBoosts { get; } = new Choice<bool?>[] { new("LEAVE", null), new("DISABLE", true), new("ALLOW", false) };
+    public IReadOnlyList<Choice<bool?>> EfficiencyModes { get; } = new Choice<bool?>[] { new(Strings.Rule_Leave, null), new(Strings.On, true), new(Strings.Off, false) };
+    public IReadOnlyList<Choice<bool?>> ThreadBoosts { get; } = new Choice<bool?>[] { new(Strings.Rule_Leave, null), new(Strings.Rule_Disable, true), new(Strings.Rule_Allow, false) };
 
     public CorePicker CorePicker { get; }
     public ObservableCollection<CoreToggle> Cores => CorePicker.Cores;
@@ -181,8 +182,8 @@ public sealed partial class RuleEditor : ObservableObject
     public bool CanSetAtLaunch => !IsRestricted;
 
     /// <summary>What the engine refuses a standard user. Shown as one line in the editor while <see cref="IsRestricted"/>.</summary>
-    public const string LimitsHint =
-        "STANDARD RIGHTS. THE ENGINE REFUSES: SYSTEM PROGRAMS AND PROGUARD ITSELF, REALTIME PRIORITY, HIGH I/O PRIORITY, PRIORITIES AT LAUNCH, RULES FOR PROGRAMS YOU COULDN'T CHANGE OR END YOURSELF, AND CHANGING RULES YOU COULDN'T HAVE MADE.";
+    public static string LimitsHint =>
+        Strings.Rule_LimitsHint;
     public string RestrictionHint => LimitsHint;
 
     // ---- collapsed-section summaries ----
@@ -197,19 +198,19 @@ public sealed partial class RuleEditor : ObservableObject
     public bool BalancerFixed => Balancer.Value == BalancerMode.FixedCoresPerInstance;
     public bool BoostOn => BoostPriority.Value.HasValue;
 
-    public string CpuSetsText => CpuSetIds == null ? "LEAVE ALONE"
-        : CpuSetIds.Trim().Length == 0 ? "CLEARED: NO CPU SET RESTRICTION"
-        : $"{CpuSetCount(CpuSetIds)} CPU SETS · IDS {CpuSetIds.Trim()}";
+    public string CpuSetsText => CpuSetIds == null ? Strings.LeaveAlone
+        : CpuSetIds.Trim().Length == 0 ? Strings.Rule_CpuSetsNone
+        : string.Format(Strings.Rule_CpuSetsIds, CpuSetCount(CpuSetIds), CpuSetIds.Trim());
 
     public RuleEditor(int logical, ProcessRuleDto? from = null)
     {
         _logical = logical;
-        var priorities = PriorityChoices("LEAVE");
-        var boostPriorities = PriorityChoices("OFF");
-        var io = IntChoices("LEAVE", RuleText.IoPriorityName, 0, 3, adminFrom: 3);
-        var memory = IntChoices("LEAVE", RuleText.MemoryPriorityName, 1, 5);
-        var gpu = IntChoices("LEAVE", RuleText.GpuPriorityName, 0, 4);
-        var preference = IntChoices("LEAVE", RuleText.GpuPreferenceName, 0, 2);
+        var priorities = PriorityChoices(Strings.Rule_Leave);
+        var boostPriorities = PriorityChoices(Strings.Off);
+        var io = IntChoices(Strings.Rule_Leave, RuleText.IoPriorityName, 0, 3, adminFrom: 3);
+        var memory = IntChoices(Strings.Rule_Leave, RuleText.MemoryPriorityName, 1, 5);
+        var gpu = IntChoices(Strings.Rule_Leave, RuleText.GpuPriorityName, 0, 4);
+        var preference = IntChoices(Strings.Rule_Leave, RuleText.GpuPreferenceName, 0, 2);
 
         if (from != null)
         {
@@ -293,11 +294,11 @@ public sealed partial class RuleEditor : ObservableObject
         try
         {
             TryBuild(out var draft, out _);
-            BasicsSummary = Summarise(draft, RuleSection.Basics, "NOTHING SET");
-            CpuSummary = Summarise(draft, RuleSection.Cpu, "NO LIMITS");
-            InstancesSummary = Summarise(draft, RuleSection.Instances, "NO LIMITS");
-            BoostSummary = Summarise(draft, RuleSection.Boost, "OFF");
-            AdvancedSummary = Summarise(draft, RuleSection.Advanced, "UNCHANGED");
+            BasicsSummary = Summarise(draft, RuleSection.Basics, Strings.Rule_NothingSet);
+            CpuSummary = Summarise(draft, RuleSection.Cpu, Strings.Rule_NoLimits);
+            InstancesSummary = Summarise(draft, RuleSection.Instances, Strings.Rule_NoLimits);
+            BoostSummary = Summarise(draft, RuleSection.Boost, Strings.Off);
+            AdvancedSummary = Summarise(draft, RuleSection.Advanced, Strings.Rule_Unchanged);
         }
         finally
         {
@@ -348,18 +349,18 @@ public sealed partial class RuleEditor : ObservableObject
 
         // ---- basics
         var name = ProcessName.Trim();
-        if (name.Length == 0) Fail("Name the program the rule is for, e.g. chrome.exe.");
+        if (name.Length == 0) Fail(Strings.Rule_NeedName);
         d.ProcessName = RuleText.Display(name);
 
         d.PriorityClass = (int?)Priority.Value;
         if (d.PriorityClass is { } pc && !Enum.IsDefined(typeof(ProcessPriorityClass), pc))
-            Fail($"Priority {pc} isn't a Windows priority class. Pick one of the priority buttons.");
+            Fail(string.Format(Strings.Rule_BadPriority, pc));
 
         if (AffinityEnabled)
         {
             if (!CorePicker.AnyOn)
             {
-                Fail("Pick at least one core, or switch off \"Keep it on certain cores\".");
+                Fail(Strings.Rule_NeedCore);
                 d.AffinityMask = null;
             }
             else d.AffinityMask = CorePicker.MaskKeeping(_original.AffinityMask);
@@ -370,7 +371,7 @@ public sealed partial class RuleEditor : ObservableObject
         d.DisallowExecution = DisallowExecution;
         d.KeepRunning = KeepRunning;
         if (DisallowExecution && KeepRunning)
-            Fail("A rule can't both block a program and keep it running. Switch one of them off.");
+            Fail(Strings.Rule_BlockAndKeep);
 
         // ---- cpu: hard cap
         d.CpuLimitPercent = LimitEnabled ? Math.Clamp(LimitWhole, 1, 99) : null;
@@ -391,24 +392,24 @@ public sealed partial class RuleEditor : ObservableObject
             else
             {
                 d.CpuLimitThresholdPercent = null;
-                Fail("The CPU Limiter threshold is a percentage above 0 and up to 100, e.g. 40. Empty it to switch the limiter off.");
+                Fail(Strings.Rule_BadThreshold);
             }
             d.CpuLimitOverThresholdSeconds = OptionalInt(LimiterSeconds, 0, 86400,
-                "The CPU Limiter's \"over for\" time is a whole number of seconds, 0 or more.");
+                Strings.Rule_BadOverFor);
             d.CpuLimitCoresToRemove = OptionalInt(LimiterCores, 1, maxRemove,
-                _logical > 1 ? $"The CPU Limiter can remove 1 to {maxRemove} cores on this {_logical}-thread machine."
-                             : "The CPU Limiter needs at least 1 core to remove.");
+                _logical > 1 ? string.Format(Strings.Rule_BadCoresToRemove, maxRemove, _logical)
+                             : Strings.Rule_NeedCoreToRemove);
             d.CpuLimitDurationSeconds = OptionalInt(LimiterDuration, 1, 86400,
-                "The CPU Limiter's duration is a whole number of seconds, 1 or more.");
+                Strings.Rule_BadDuration);
         }
 
         // ---- cpu: CPU Sets
         d.CpuSetIds = CpuSetIds;
         if (!string.IsNullOrWhiteSpace(CpuSetIds) && !CpuSetDialogViewModel.TryParseIds(CpuSetIds, out _))
-            Fail("CPU Sets has to be a comma-separated list of CPU Set IDs. Use Pick to choose them.");
+            Fail(Strings.Rule_BadCpuSets);
 
         // ---- instances
-        d.MaxInstances = OptionalInt(MaxInstances, 1, 100000, "Max instances is a whole number of 1 or more. Leave it empty for no limit.");
+        d.MaxInstances = OptionalInt(MaxInstances, 1, 100000, Strings.Rule_BadMaxInstances);
         d.MaxInstancesAllSessions = MaxInstancesAllSessions;
 
         d.InstanceBalancerMode = Balancer.Value;
@@ -416,12 +417,12 @@ public sealed partial class RuleEditor : ObservableObject
         {
             if (mode == BalancerMode.FixedCoresPerInstance)
                 d.InstanceBalancerCoresPerInstance = OptionalInt(BalancerCores, 1, Math.Max(1, _logical),
-                    $"Cores per instance is a whole number from 1 to {Math.Max(1, _logical)}.");
+                    string.Format(Strings.Rule_BadCoresPerInstance, Math.Max(1, _logical)));
             d.InstanceBalancerAvoidSmt = BalancerAvoidSmt;
             d.InstanceBalancerReservedCores = OptionalInt(BalancerReserved, 0, Math.Max(0, _logical - 1),
-                _logical > 1 ? $"Reserved cores is a whole number from 0 to {_logical - 1}: at least one core has to stay free for the instances."
-                             : "There is only one core, so none can be reserved.");
-            d.InstanceBalancerMinCpuPercent = OptionalPercent(BalancerMinCpu, 0, 100, "The minimum CPU is a percentage from 0 to 100.");
+                _logical > 1 ? string.Format(Strings.Rule_BadReserved, _logical - 1)
+                             : Strings.Rule_OneCoreNoReserve);
+            d.InstanceBalancerMinCpuPercent = OptionalPercent(BalancerMinCpu, 0, 100, Strings.Rule_BadMinCpu);
         }
 
         // ---- startup boost
@@ -429,8 +430,8 @@ public sealed partial class RuleEditor : ObservableObject
         if (d.StartupBoostPriorityClass is { } boost)
         {
             if (!Enum.IsDefined(typeof(ProcessPriorityClass), boost))
-                Fail($"Startup boost priority {boost} isn't a Windows priority class. Pick one of the buttons.");
-            d.StartupBoostSeconds = OptionalInt(BoostSeconds, 1, 3600, "A startup boost lasts 1 to 3600 seconds.");
+                Fail(string.Format(Strings.Rule_BadBoostPriority, boost));
+            d.StartupBoostSeconds = OptionalInt(BoostSeconds, 1, 3600, Strings.Rule_BadBoostSeconds);
         }
 
         // ---- advanced priorities
@@ -443,19 +444,19 @@ public sealed partial class RuleEditor : ObservableObject
         d.ReapplyIfChanged = ReapplyIfChanged;
         d.ApplyPrioritiesAtCreation = ApplyAtLaunch;
 
-        if (d.IoPriority is < 0 or > 3) Fail("I/O priority is 0 (very low) to 3 (high). Pick one of the buttons.");
-        if (d.MemoryPriority is < 1 or > 5) Fail("Memory priority is 1 (very low) to 5 (normal). Pick one of the buttons.");
-        if (d.GpuPriority is < 0 or > 4) Fail("GPU priority is 0 (idle) to 4 (high). Pick one of the buttons.");
-        if (d.GpuPreference is < 0 or > 2) Fail("GPU preference is 0 (let Windows decide) to 2 (high performance). Pick one of the buttons.");
+        if (d.IoPriority is < 0 or > 3) Fail(Strings.Rule_BadIo);
+        if (d.MemoryPriority is < 1 or > 5) Fail(Strings.Rule_BadMemory);
+        if (d.GpuPriority is < 0 or > 4) Fail(Strings.Rule_BadGpu);
+        if (d.GpuPreference is < 0 or > 2) Fail(Strings.Rule_BadGpuPref);
 
         if (d.ApplyPrioritiesAtCreation)
         {
             if (!RuleText.IsPlainProgramName(d.ProcessName))
-                Fail("Priorities at launch need a plain program name such as game.exe: Windows can't match a pattern or a path there.");
+                Fail(Strings.Rule_LaunchNeedsPlainName);
             else if (d.PriorityClass == (int)ProcessPriorityClass.RealTime)
-                Fail("Windows doesn't apply Realtime priority at launch. Pick another priority, or switch off \"Set at launch\".");
+                Fail(Strings.Rule_LaunchNoRealtime);
             else if (d.PriorityClass == null && d.IoPriority == null && d.MemoryPriority == null)
-                Fail("\"Set at launch\" needs a priority, I/O priority or memory priority to set. Pick one, or switch it off.");
+                Fail(Strings.Rule_LaunchNeedsSomething);
         }
 
         dto = d;
@@ -468,12 +469,12 @@ public sealed partial class RuleEditor : ObservableObject
     private static List<Choice<ProcessPriorityClass?>> PriorityChoices(string none) => new()
     {
         new(none, null),
-        new("IDLE", ProcessPriorityClass.Idle),
-        new("LOW", ProcessPriorityClass.BelowNormal),
-        new("NORMAL", ProcessPriorityClass.Normal),
-        new("ABOVE", ProcessPriorityClass.AboveNormal),
-        new("HIGH", ProcessPriorityClass.High),
-        new("REALTIME", ProcessPriorityClass.RealTime, AdminOnly: true),
+        new(Strings.Idle2, ProcessPriorityClass.Idle),
+        new(Strings.Low2, ProcessPriorityClass.BelowNormal),
+        new(Strings.Normal2, ProcessPriorityClass.Normal),
+        new(Strings.Above, ProcessPriorityClass.AboveNormal),
+        new(Strings.High2, ProcessPriorityClass.High),
+        new(Strings.Realtime2, ProcessPriorityClass.RealTime, AdminOnly: true),
     };
 
     /// <param name="adminFrom">Values from this one up are administrator-only (I/O priority High).</param>
@@ -499,7 +500,7 @@ public sealed partial class RuleEditor : ObservableObject
         if (current == null) return list[0];
         var found = list.FirstOrDefault(c => c.Value == current);
         if (found != null) return found;
-        var extra = new Choice<int?>($"OUT OF RANGE ({current})", current);
+        var extra = new Choice<int?>(string.Format(Strings.Rule_OutOfRange, current), current);
         list.Add(extra);
         return extra;
     }
@@ -589,12 +590,12 @@ public sealed partial class RulesViewModel : ObservableObject, IPage
         if (sets == null) return;
         if (sets.Count == 0)
         {
-            _shell.Toaster.Show("Windows reports no CPU Sets on this machine.", isError: true);
+            _shell.Toaster.Show(Strings.Rule_NoCpuSets, isError: true);
             return;
         }
 
         var program = editor.ProcessName.Trim();
-        _shell.ShowDialog(new CpuSetDialogViewModel(_shell, program.Length == 0 ? "THIS RULE" : RuleText.Display(program).ToUpperInvariant(),
+        _shell.ShowDialog(new CpuSetDialogViewModel(_shell, program.Length == 0 ? Strings.Rule_ThisRule : RuleText.Display(program).ToUpperInvariant(),
             sets, editor.CpuSetIds, ids => editor.CpuSetIds = ids));
     }
 
@@ -611,7 +612,7 @@ public sealed partial class RulesViewModel : ObservableObject, IPage
         var saved = await _hub.QueryAsync<ProcessRuleDto>(CommandTypes.SaveProcessRule, argument: dto);
         if (saved == null) return;
 
-        _shell.Toaster.Show($"RULE SAVED · {RuleText.Display(saved.ProcessName)}");
+        _shell.Toaster.Show(string.Format(Strings.Rule_Saved, RuleText.Display(saved.ProcessName)));
         Editor = null;
         await LoadAsync();
         _hub.RefreshNow();
@@ -620,10 +621,10 @@ public sealed partial class RulesViewModel : ObservableObject, IPage
     [RelayCommand]
     private void Delete(RuleRow row)
     {
-        _shell.Confirm("DELETE RULE?", $"{row.Name} goes back to running however Windows starts it. Processes already running keep their current settings.", "DELETE",
+        _shell.Confirm(Strings.Rule_DeleteTitle, string.Format(Strings.Rule_DeleteWarning, row.Name), Strings.Delete,
             async () =>
             {
-                if (await _hub.RunAsync(CommandTypes.DeleteProcessRule, argument: row.Dto.Id, success: $"RULE DELETED · {row.Name}"))
+                if (await _hub.RunAsync(CommandTypes.DeleteProcessRule, argument: row.Dto.Id, success: string.Format(Strings.Rule_Deleted, row.Name)))
                 {
                     if (Editor?.Id == row.Dto.Id) Editor = null;
                     await LoadAsync();

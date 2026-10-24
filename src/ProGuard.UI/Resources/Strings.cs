@@ -763,7 +763,139 @@ public static class Strings
 
     public static string Rule => Get(nameof(Rule));
 
+    public static string Rule_Allow => Get(nameof(Rule_Allow));
+
+    public static string Rule_AtLaunch => Get(nameof(Rule_AtLaunch));
+
+    public static string Rule_BadBoostPriority => Get(nameof(Rule_BadBoostPriority));
+
+    public static string Rule_BadBoostSeconds => Get(nameof(Rule_BadBoostSeconds));
+
+    public static string Rule_BadCoresPerInstance => Get(nameof(Rule_BadCoresPerInstance));
+
+    public static string Rule_BadCoresToRemove => Get(nameof(Rule_BadCoresToRemove));
+
+    public static string Rule_BadCpuSets => Get(nameof(Rule_BadCpuSets));
+
+    public static string Rule_BadDuration => Get(nameof(Rule_BadDuration));
+
+    public static string Rule_BadGpu => Get(nameof(Rule_BadGpu));
+
+    public static string Rule_BadGpuPref => Get(nameof(Rule_BadGpuPref));
+
+    public static string Rule_BadIo => Get(nameof(Rule_BadIo));
+
+    public static string Rule_BadMaxInstances => Get(nameof(Rule_BadMaxInstances));
+
+    public static string Rule_BadMemory => Get(nameof(Rule_BadMemory));
+
+    public static string Rule_BadMinCpu => Get(nameof(Rule_BadMinCpu));
+
+    public static string Rule_BadOverFor => Get(nameof(Rule_BadOverFor));
+
+    public static string Rule_BadPriority => Get(nameof(Rule_BadPriority));
+
+    public static string Rule_BadReserved => Get(nameof(Rule_BadReserved));
+
+    public static string Rule_BadThreshold => Get(nameof(Rule_BadThreshold));
+
+    public static string Rule_BalanceEqual => Get(nameof(Rule_BalanceEqual));
+
+    public static string Rule_BalanceFixed => Get(nameof(Rule_BalanceFixed));
+
+    public static string Rule_BalanceMinCpu => Get(nameof(Rule_BalanceMinCpu));
+
+    public static string Rule_BlockAndKeep => Get(nameof(Rule_BlockAndKeep));
+
+    public static string Rule_Blocked => Get(nameof(Rule_Blocked));
+
+    public static string Rule_Boost => Get(nameof(Rule_Boost));
+
+    public static string Rule_CpuSets => Get(nameof(Rule_CpuSets));
+
+    public static string Rule_CpuSetsCleared => Get(nameof(Rule_CpuSetsCleared));
+
+    public static string Rule_CpuSetsIds => Get(nameof(Rule_CpuSetsIds));
+
+    public static string Rule_CpuSetsNone => Get(nameof(Rule_CpuSetsNone));
+
+    public static string Rule_Deleted => Get(nameof(Rule_Deleted));
+
+    public static string Rule_DeleteTitle => Get(nameof(Rule_DeleteTitle));
+
+    public static string Rule_DeleteWarning => Get(nameof(Rule_DeleteWarning));
+
+    public static string Rule_Disable => Get(nameof(Rule_Disable));
+
+    public static string Rule_EcoOff => Get(nameof(Rule_EcoOff));
+
+    public static string Rule_EcoOn => Get(nameof(Rule_EcoOn));
+
+    public static string Rule_EditRule => Get(nameof(Rule_EditRule));
+
+    public static string Rule_Equal => Get(nameof(Rule_Equal));
+
+    public static string Rule_Fixed => Get(nameof(Rule_Fixed));
+
+    public static string Rule_Gpu => Get(nameof(Rule_Gpu));
+
+    public static string Rule_GpuPref => Get(nameof(Rule_GpuPref));
+
+    public static string Rule_KeepRunning => Get(nameof(Rule_KeepRunning));
+
+    public static string Rule_LaunchNeedsPlainName => Get(nameof(Rule_LaunchNeedsPlainName));
+
+    public static string Rule_LaunchNeedsSomething => Get(nameof(Rule_LaunchNeedsSomething));
+
+    public static string Rule_LaunchNoRealtime => Get(nameof(Rule_LaunchNoRealtime));
+
+    public static string Rule_Leave => Get(nameof(Rule_Leave));
+
+    public static string Rule_LimiterCores => Get(nameof(Rule_LimiterCores));
+
+    public static string Rule_LimiterOneCore => Get(nameof(Rule_LimiterOneCore));
+
+    public static string Rule_LimitsHint => Get(nameof(Rule_LimitsHint));
+
+    public static string Rule_Max => Get(nameof(Rule_Max));
+
+    public static string Rule_MaxAllSessions => Get(nameof(Rule_MaxAllSessions));
+
+    public static string Rule_NeedCore => Get(nameof(Rule_NeedCore));
+
+    public static string Rule_NeedCoreToRemove => Get(nameof(Rule_NeedCoreToRemove));
+
+    public static string Rule_NeedName => Get(nameof(Rule_NeedName));
+
+    public static string Rule_NewRule => Get(nameof(Rule_NewRule));
+
+    public static string Rule_NoCpuSets => Get(nameof(Rule_NoCpuSets));
+
+    public static string Rule_NoEffect => Get(nameof(Rule_NoEffect));
+
+    public static string Rule_NoLimits => Get(nameof(Rule_NoLimits));
+
+    public static string Rule_NothingSet => Get(nameof(Rule_NothingSet));
+
+    public static string Rule_OneCoreNoReserve => Get(nameof(Rule_OneCoreNoReserve));
+
+    public static string Rule_OutOfRange => Get(nameof(Rule_OutOfRange));
+
     public static string Rule_PriorityClassNumber => Get(nameof(Rule_PriorityClassNumber));
+
+    public static string Rule_Reapply => Get(nameof(Rule_Reapply));
+
+    public static string Rule_Reserve => Get(nameof(Rule_Reserve));
+
+    public static string Rule_Saved => Get(nameof(Rule_Saved));
+
+    public static string Rule_ThisRule => Get(nameof(Rule_ThisRule));
+
+    public static string Rule_ThreadBoostOff => Get(nameof(Rule_ThreadBoostOff));
+
+    public static string Rule_ThreadBoostOn => Get(nameof(Rule_ThreadBoostOn));
+
+    public static string Rule_Unchanged => Get(nameof(Rule_Unchanged));
 
     public static string Rules => Get(nameof(Rules));
 
@@ -962,6 +1094,120 @@ public static class Strings
     public static string VLow => Get(nameof(VLow));
 
     public static string Watchdog => Get(nameof(Watchdog));
+
+    public static string Wd_AtOnce => Get(nameof(Wd_AtOnce));
+
+    public static string Wd_BadCooldown => Get(nameof(Wd_BadCooldown));
+
+    public static string Wd_BadHowLong => Get(nameof(Wd_BadHowLong));
+
+    public static string Wd_BadInstances => Get(nameof(Wd_BadInstances));
+
+    public static string Wd_BadMemoryThreshold => Get(nameof(Wd_BadMemoryThreshold));
+
+    public static string Wd_BadRestore => Get(nameof(Wd_BadRestore));
+
+    public static string Wd_BadRunningLonger => Get(nameof(Wd_BadRunningLonger));
+
+    public static string Wd_BadThreshold => Get(nameof(Wd_BadThreshold));
+
+    public static string Wd_Continuously => Get(nameof(Wd_Continuously));
+
+    public static string Wd_Cooldown => Get(nameof(Wd_Cooldown));
+
+    public static string Wd_CooldownUntilClear => Get(nameof(Wd_CooldownUntilClear));
+
+    public static string Wd_CpuAbove => Get(nameof(Wd_CpuAbove));
+
+    public static string Wd_CpuAboveValue => Get(nameof(Wd_CpuAboveValue));
+
+    public static string Wd_CpuOver100 => Get(nameof(Wd_CpuOver100));
+
+    public static string Wd_Deleted => Get(nameof(Wd_Deleted));
+
+    public static string Wd_DeleteTitle => Get(nameof(Wd_DeleteTitle));
+
+    public static string Wd_DeleteWarning => Get(nameof(Wd_DeleteWarning));
+
+    public static string Wd_EditWatch => Get(nameof(Wd_EditWatch));
+
+    public static string Wd_For => Get(nameof(Wd_For));
+
+    public static string Wd_InstancesAbove => Get(nameof(Wd_InstancesAbove));
+
+    public static string Wd_InstancesAboveValue => Get(nameof(Wd_InstancesAboveValue));
+
+    public static string Wd_JustLogIt => Get(nameof(Wd_JustLogIt));
+
+    public static string Wd_Launch => Get(nameof(Wd_Launch));
+
+    public static string Wd_LaunchAProgram => Get(nameof(Wd_LaunchAProgram));
+
+    public static string Wd_LimitsHint => Get(nameof(Wd_LimitsHint));
+
+    public static string Wd_MemoryAbove => Get(nameof(Wd_MemoryAbove));
+
+    public static string Wd_MemoryAboveValue => Get(nameof(Wd_MemoryAboveValue));
+
+    public static string Wd_NeedCommandLine => Get(nameof(Wd_NeedCommandLine));
+
+    public static string Wd_NeedCore => Get(nameof(Wd_NeedCore));
+
+    public static string Wd_NeedIoPriority => Get(nameof(Wd_NeedIoPriority));
+
+    public static string Wd_NeedName => Get(nameof(Wd_NeedName));
+
+    public static string Wd_NeedPriority => Get(nameof(Wd_NeedPriority));
+
+    public static string Wd_Never => Get(nameof(Wd_Never));
+
+    public static string Wd_NewWatch => Get(nameof(Wd_NewWatch));
+
+    public static string Wd_NotifyMe => Get(nameof(Wd_NotifyMe));
+
+    public static string Wd_NotifyMeWith => Get(nameof(Wd_NotifyMeWith));
+
+    public static string Wd_Once => Get(nameof(Wd_Once));
+
+    public static string Wd_PrivateAboveValue => Get(nameof(Wd_PrivateAboveValue));
+
+    public static string Wd_PrivateBytes => Get(nameof(Wd_PrivateBytes));
+
+    public static string Wd_RestartIt => Get(nameof(Wd_RestartIt));
+
+    public static string Wd_RestoreFor => Get(nameof(Wd_RestoreFor));
+
+    public static string Wd_RunningLongerThan => Get(nameof(Wd_RunningLongerThan));
+
+    public static string Wd_RunningLongerThanValue => Get(nameof(Wd_RunningLongerThanValue));
+
+    public static string Wd_Saved => Get(nameof(Wd_Saved));
+
+    public static string Wd_Sentence => Get(nameof(Wd_Sentence));
+
+    public static string Wd_SetCores => Get(nameof(Wd_SetCores));
+
+    public static string Wd_SetCoresTo => Get(nameof(Wd_SetCoresTo));
+
+    public static string Wd_SetIoPriority => Get(nameof(Wd_SetIoPriority));
+
+    public static string Wd_SetIoPriorityTo => Get(nameof(Wd_SetIoPriorityTo));
+
+    public static string Wd_SetPriority => Get(nameof(Wd_SetPriority));
+
+    public static string Wd_SetPriorityTo => Get(nameof(Wd_SetPriorityTo));
+
+    public static string Wd_TrimMemory => Get(nameof(Wd_TrimMemory));
+
+    public static string Wd_TrimMemoryContinuously => Get(nameof(Wd_TrimMemoryContinuously));
+
+    public static string Wd_WatchArmed => Get(nameof(Wd_WatchArmed));
+
+    public static string Wd_WatchPaused => Get(nameof(Wd_WatchPaused));
+
+    public static string Wd_WhenItClears => Get(nameof(Wd_WhenItClears));
+
+    public static string Wd_WorkingSet => Get(nameof(Wd_WorkingSet));
 
     public static string What => Get(nameof(What));
 

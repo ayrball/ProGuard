@@ -1138,8 +1138,206 @@ LOGGED.</value>
   <data name="Rule" xml:space="preserve">
     <value>RULE</value>
   </data>
+  <data name="Rule_Allow" xml:space="preserve">
+    <value>ALLOW</value>
+  </data>
+  <data name="Rule_AtLaunch" xml:space="preserve">
+    <value>AT LAUNCH</value>
+  </data>
+  <data name="Rule_BadBoostPriority" xml:space="preserve">
+    <value>Startup boost priority {0} isn't a Windows priority class. Pick one of the buttons.</value>
+  </data>
+  <data name="Rule_BadBoostSeconds" xml:space="preserve">
+    <value>A startup boost lasts 1 to 3600 seconds.</value>
+  </data>
+  <data name="Rule_BadCoresPerInstance" xml:space="preserve">
+    <value>Cores per instance is a whole number from 1 to {0}.</value>
+  </data>
+  <data name="Rule_BadCoresToRemove" xml:space="preserve">
+    <value>The CPU Limiter can remove 1 to {0} cores on this {1}-thread machine.</value>
+  </data>
+  <data name="Rule_BadCpuSets" xml:space="preserve">
+    <value>CPU Sets has to be a comma-separated list of CPU Set IDs. Use Pick to choose them.</value>
+  </data>
+  <data name="Rule_BadDuration" xml:space="preserve">
+    <value>The CPU Limiter's duration is a whole number of seconds, 1 or more.</value>
+  </data>
+  <data name="Rule_BadGpu" xml:space="preserve">
+    <value>GPU priority is 0 (idle) to 4 (high). Pick one of the buttons.</value>
+  </data>
+  <data name="Rule_BadGpuPref" xml:space="preserve">
+    <value>GPU preference is 0 (let Windows decide) to 2 (high performance). Pick one of the buttons.</value>
+  </data>
+  <data name="Rule_BadIo" xml:space="preserve">
+    <value>I/O priority is 0 (very low) to 3 (high). Pick one of the buttons.</value>
+  </data>
+  <data name="Rule_BadMaxInstances" xml:space="preserve">
+    <value>Max instances is a whole number of 1 or more. Leave it empty for no limit.</value>
+  </data>
+  <data name="Rule_BadMemory" xml:space="preserve">
+    <value>Memory priority is 1 (very low) to 5 (normal). Pick one of the buttons.</value>
+  </data>
+  <data name="Rule_BadMinCpu" xml:space="preserve">
+    <value>The minimum CPU is a percentage from 0 to 100.</value>
+  </data>
+  <data name="Rule_BadOverFor" xml:space="preserve">
+    <value>The CPU Limiter's "over for" time is a whole number of seconds, 0 or more.</value>
+  </data>
+  <data name="Rule_BadPriority" xml:space="preserve">
+    <value>Priority {0} isn't a Windows priority class. Pick one of the priority buttons.</value>
+  </data>
+  <data name="Rule_BadReserved" xml:space="preserve">
+    <value>Reserved cores is a whole number from 0 to {0}: at least one core has to stay free for the instances.</value>
+  </data>
+  <data name="Rule_BadThreshold" xml:space="preserve">
+    <value>The CPU Limiter threshold is a percentage above 0 and up to 100, e.g. 40. Empty it to switch the limiter off.</value>
+  </data>
+  <data name="Rule_BalanceEqual" xml:space="preserve">
+    <value>BALANCE EQUAL</value>
+  </data>
+  <data name="Rule_BalanceFixed" xml:space="preserve">
+    <value>BALANCE FIXED {0}</value>
+  </data>
+  <data name="Rule_BalanceMinCpu" xml:space="preserve">
+    <value>BALANCE ≥{0}% CPU</value>
+  </data>
+  <data name="Rule_BlockAndKeep" xml:space="preserve">
+    <value>A rule can't both block a program and keep it running. Switch one of them off.</value>
+  </data>
+  <data name="Rule_Blocked" xml:space="preserve">
+    <value>BLOCKED</value>
+  </data>
+  <data name="Rule_Boost" xml:space="preserve">
+    <value>BOOST {0} {1}</value>
+  </data>
+  <data name="Rule_CpuSets" xml:space="preserve">
+    <value>CPU SETS {0}</value>
+  </data>
+  <data name="Rule_CpuSetsCleared" xml:space="preserve">
+    <value>CPU SETS CLEARED</value>
+  </data>
+  <data name="Rule_CpuSetsIds" xml:space="preserve">
+    <value>{0} CPU SETS · IDS {1}</value>
+  </data>
+  <data name="Rule_CpuSetsNone" xml:space="preserve">
+    <value>CLEARED: NO CPU SET RESTRICTION</value>
+  </data>
+  <data name="Rule_DeleteTitle" xml:space="preserve">
+    <value>DELETE RULE?</value>
+  </data>
+  <data name="Rule_DeleteWarning" xml:space="preserve">
+    <value>{0} goes back to running however Windows starts it. Processes already running keep their current settings.</value>
+  </data>
+  <data name="Rule_Deleted" xml:space="preserve">
+    <value>RULE DELETED · {0}</value>
+  </data>
+  <data name="Rule_Disable" xml:space="preserve">
+    <value>DISABLE</value>
+  </data>
+  <data name="Rule_EcoOff" xml:space="preserve">
+    <value>ECO OFF</value>
+  </data>
+  <data name="Rule_EcoOn" xml:space="preserve">
+    <value>ECO ON</value>
+  </data>
+  <data name="Rule_EditRule" xml:space="preserve">
+    <value>EDIT RULE</value>
+  </data>
+  <data name="Rule_Equal" xml:space="preserve">
+    <value>EQUAL</value>
+  </data>
+  <data name="Rule_Fixed" xml:space="preserve">
+    <value>FIXED</value>
+  </data>
+  <data name="Rule_Gpu" xml:space="preserve">
+    <value>GPU {0}</value>
+  </data>
+  <data name="Rule_GpuPref" xml:space="preserve">
+    <value>GPU PREF {0}</value>
+  </data>
+  <data name="Rule_KeepRunning" xml:space="preserve">
+    <value>KEEP RUNNING</value>
+  </data>
+  <data name="Rule_LaunchNeedsPlainName" xml:space="preserve">
+    <value>Priorities at launch need a plain program name such as game.exe: Windows can't match a pattern or a path there.</value>
+  </data>
+  <data name="Rule_LaunchNeedsSomething" xml:space="preserve">
+    <value>"Set at launch" needs a priority, I/O priority or memory priority to set. Pick one, or switch it off.</value>
+  </data>
+  <data name="Rule_LaunchNoRealtime" xml:space="preserve">
+    <value>Windows doesn't apply Realtime priority at launch. Pick another priority, or switch off "Set at launch".</value>
+  </data>
+  <data name="Rule_Leave" xml:space="preserve">
+    <value>LEAVE</value>
+  </data>
+  <data name="Rule_LimiterCores" xml:space="preserve">
+    <value>LIMITER ≥{0}% →-{1} CORES {2}</value>
+  </data>
+  <data name="Rule_LimiterOneCore" xml:space="preserve">
+    <value>LIMITER ≥{0}% →-1 CORE {2}</value>
+  </data>
+  <data name="Rule_LimitsHint" xml:space="preserve">
+    <value>STANDARD RIGHTS. THE ENGINE REFUSES: SYSTEM PROGRAMS AND PROGUARD ITSELF, REALTIME PRIORITY, HIGH I/O PRIORITY, PRIORITIES AT LAUNCH, RULES FOR PROGRAMS YOU COULDN'T CHANGE OR END YOURSELF, AND CHANGING RULES YOU COULDN'T HAVE MADE.</value>
+  </data>
+  <data name="Rule_Max" xml:space="preserve">
+    <value>MAX {0}</value>
+  </data>
+  <data name="Rule_MaxAllSessions" xml:space="preserve">
+    <value>MAX {0} (ALL SESSIONS)</value>
+  </data>
+  <data name="Rule_NeedCore" xml:space="preserve">
+    <value>Pick at least one core, or switch off "Keep it on certain cores".</value>
+  </data>
+  <data name="Rule_NeedCoreToRemove" xml:space="preserve">
+    <value>The CPU Limiter needs at least 1 core to remove.</value>
+  </data>
+  <data name="Rule_NeedName" xml:space="preserve">
+    <value>Name the program the rule is for, e.g. chrome.exe.</value>
+  </data>
+  <data name="Rule_NewRule" xml:space="preserve">
+    <value>NEW RULE</value>
+  </data>
+  <data name="Rule_NoCpuSets" xml:space="preserve">
+    <value>Windows reports no CPU Sets on this machine.</value>
+  </data>
+  <data name="Rule_NoEffect" xml:space="preserve">
+    <value>NO EFFECT</value>
+  </data>
+  <data name="Rule_NoLimits" xml:space="preserve">
+    <value>NO LIMITS</value>
+  </data>
+  <data name="Rule_NothingSet" xml:space="preserve">
+    <value>NOTHING SET</value>
+  </data>
+  <data name="Rule_OneCoreNoReserve" xml:space="preserve">
+    <value>There is only one core, so none can be reserved.</value>
+  </data>
+  <data name="Rule_OutOfRange" xml:space="preserve">
+    <value>OUT OF RANGE ({0})</value>
+  </data>
   <data name="Rule_PriorityClassNumber" xml:space="preserve">
     <value>CLASS {0}</value>
+  </data>
+  <data name="Rule_Reapply" xml:space="preserve">
+    <value>RE-APPLY</value>
+  </data>
+  <data name="Rule_Reserve" xml:space="preserve">
+    <value>RESERVE {0}</value>
+  </data>
+  <data name="Rule_Saved" xml:space="preserve">
+    <value>RULE SAVED · {0}</value>
+  </data>
+  <data name="Rule_ThisRule" xml:space="preserve">
+    <value>THIS RULE</value>
+  </data>
+  <data name="Rule_ThreadBoostOff" xml:space="preserve">
+    <value>THREAD BOOST OFF</value>
+  </data>
+  <data name="Rule_ThreadBoostOn" xml:space="preserve">
+    <value>THREAD BOOST ON</value>
+  </data>
+  <data name="Rule_Unchanged" xml:space="preserve">
+    <value>UNCHANGED</value>
   </data>
   <data name="Rules" xml:space="preserve">
     <value>RULES</value>
@@ -1437,6 +1635,177 @@ LOGGED.</value>
   </data>
   <data name="Watchdog" xml:space="preserve">
     <value>WATCHDOG</value>
+  </data>
+  <data name="Wd_AtOnce" xml:space="preserve">
+    <value>AT ONCE</value>
+  </data>
+  <data name="Wd_BadCooldown" xml:space="preserve">
+    <value>Cooldown: enter 0 or more seconds or minutes (0 waits for the condition to clear).</value>
+  </data>
+  <data name="Wd_BadHowLong" xml:space="preserve">
+    <value>How long: enter 0 or more seconds or minutes.</value>
+  </data>
+  <data name="Wd_BadInstances" xml:space="preserve">
+    <value>The instance count is a whole number of 1 or more.</value>
+  </data>
+  <data name="Wd_BadMemoryThreshold" xml:space="preserve">
+    <value>The memory threshold has to be a number of megabytes above zero.</value>
+  </data>
+  <data name="Wd_BadRestore" xml:space="preserve">
+    <value>Then restore after: enter 0 or more seconds or minutes (0 keeps the change).</value>
+  </data>
+  <data name="Wd_BadRunningLonger" xml:space="preserve">
+    <value>Running longer than: enter a time above zero, in seconds or minutes.</value>
+  </data>
+  <data name="Wd_BadThreshold" xml:space="preserve">
+    <value>The threshold has to be a number above zero.</value>
+  </data>
+  <data name="Wd_Continuously" xml:space="preserve">
+    <value>CONTINUOUSLY</value>
+  </data>
+  <data name="Wd_Cooldown" xml:space="preserve">
+    <value>COOLDOWN {0}</value>
+  </data>
+  <data name="Wd_CooldownUntilClear" xml:space="preserve">
+    <value>COOLDOWN UNTIL CLEAR</value>
+  </data>
+  <data name="Wd_CpuAbove" xml:space="preserve">
+    <value>CPU ABOVE</value>
+  </data>
+  <data name="Wd_CpuAboveValue" xml:space="preserve">
+    <value>CPU ABOVE {0}%</value>
+  </data>
+  <data name="Wd_CpuOver100" xml:space="preserve">
+    <value>CPU can't go above 100%.</value>
+  </data>
+  <data name="Wd_DeleteTitle" xml:space="preserve">
+    <value>DELETE WATCH?</value>
+  </data>
+  <data name="Wd_DeleteWarning" xml:space="preserve">
+    <value>ProGuard stops watching: {0}</value>
+  </data>
+  <data name="Wd_Deleted" xml:space="preserve">
+    <value>WATCH DELETED · {0}</value>
+  </data>
+  <data name="Wd_EditWatch" xml:space="preserve">
+    <value>EDIT WATCH</value>
+  </data>
+  <data name="Wd_For" xml:space="preserve">
+    <value>FOR {0}</value>
+  </data>
+  <data name="Wd_InstancesAbove" xml:space="preserve">
+    <value>INSTANCES ABOVE</value>
+  </data>
+  <data name="Wd_InstancesAboveValue" xml:space="preserve">
+    <value>INSTANCES ABOVE {0}</value>
+  </data>
+  <data name="Wd_JustLogIt" xml:space="preserve">
+    <value>JUST LOG IT</value>
+  </data>
+  <data name="Wd_Launch" xml:space="preserve">
+    <value>LAUNCH {0}</value>
+  </data>
+  <data name="Wd_LaunchAProgram" xml:space="preserve">
+    <value>LAUNCH A PROGRAM</value>
+  </data>
+  <data name="Wd_LimitsHint" xml:space="preserve">
+    <value>STANDARD RIGHTS. THE ENGINE REFUSES: SYSTEM PROGRAMS AND PROGUARD ITSELF, REALTIME PRIORITY, LAUNCH ACTIONS, ACTING ON PROGRAMS YOU COULDN'T CHANGE OR END YOURSELF, AND CHANGING WATCHES YOU COULDN'T HAVE MADE.</value>
+  </data>
+  <data name="Wd_MemoryAbove" xml:space="preserve">
+    <value>MEMORY ABOVE</value>
+  </data>
+  <data name="Wd_MemoryAboveValue" xml:space="preserve">
+    <value>MEMORY ABOVE {0} MB</value>
+  </data>
+  <data name="Wd_NeedCommandLine" xml:space="preserve">
+    <value>Type the command line to launch, e.g. "C:\Tools\app.exe" -quiet.</value>
+  </data>
+  <data name="Wd_NeedCore" xml:space="preserve">
+    <value>Pick at least one core to set.</value>
+  </data>
+  <data name="Wd_NeedIoPriority" xml:space="preserve">
+    <value>Pick the I/O priority to set.</value>
+  </data>
+  <data name="Wd_NeedName" xml:space="preserve">
+    <value>Name the program to watch, e.g. chrome.exe.</value>
+  </data>
+  <data name="Wd_NeedPriority" xml:space="preserve">
+    <value>Pick the priority to set.</value>
+  </data>
+  <data name="Wd_Never" xml:space="preserve">
+    <value>NEVER</value>
+  </data>
+  <data name="Wd_NewWatch" xml:space="preserve">
+    <value>NEW WATCH</value>
+  </data>
+  <data name="Wd_NotifyMe" xml:space="preserve">
+    <value>NOTIFY ME</value>
+  </data>
+  <data name="Wd_NotifyMeWith" xml:space="preserve">
+    <value>NOTIFY ME: {0}</value>
+  </data>
+  <data name="Wd_Once" xml:space="preserve">
+    <value>ONCE</value>
+  </data>
+  <data name="Wd_PrivateAboveValue" xml:space="preserve">
+    <value>MEMORY (PRIVATE) ABOVE {0} MB</value>
+  </data>
+  <data name="Wd_PrivateBytes" xml:space="preserve">
+    <value>PRIVATE BYTES</value>
+  </data>
+  <data name="Wd_RestartIt" xml:space="preserve">
+    <value>RESTART IT</value>
+  </data>
+  <data name="Wd_RestoreFor" xml:space="preserve">
+    <value> FOR {0}</value>
+  </data>
+  <data name="Wd_RunningLongerThan" xml:space="preserve">
+    <value>RUNNING LONGER THAN</value>
+  </data>
+  <data name="Wd_RunningLongerThanValue" xml:space="preserve">
+    <value>RUNNING LONGER THAN {0}</value>
+  </data>
+  <data name="Wd_Saved" xml:space="preserve">
+    <value>WATCH SAVED · {0}</value>
+  </data>
+  <data name="Wd_Sentence" xml:space="preserve">
+    <value>WHEN {0} · {1} · {2} → {3} · {4}</value>
+  </data>
+  <data name="Wd_SetCores" xml:space="preserve">
+    <value>SET CORES</value>
+  </data>
+  <data name="Wd_SetCoresTo" xml:space="preserve">
+    <value>SET CORES {0}{1}</value>
+  </data>
+  <data name="Wd_SetIoPriority" xml:space="preserve">
+    <value>SET I/O PRIORITY</value>
+  </data>
+  <data name="Wd_SetIoPriorityTo" xml:space="preserve">
+    <value>SET I/O PRIORITY {0}{1}</value>
+  </data>
+  <data name="Wd_SetPriority" xml:space="preserve">
+    <value>SET PRIORITY</value>
+  </data>
+  <data name="Wd_SetPriorityTo" xml:space="preserve">
+    <value>SET PRIORITY {0}{1}</value>
+  </data>
+  <data name="Wd_TrimMemory" xml:space="preserve">
+    <value>TRIM MEMORY</value>
+  </data>
+  <data name="Wd_TrimMemoryContinuously" xml:space="preserve">
+    <value>TRIM MEMORY CONTINUOUSLY</value>
+  </data>
+  <data name="Wd_WatchArmed" xml:space="preserve">
+    <value>{0} WATCH ARMED</value>
+  </data>
+  <data name="Wd_WatchPaused" xml:space="preserve">
+    <value>{0} WATCH PAUSED</value>
+  </data>
+  <data name="Wd_WhenItClears" xml:space="preserve">
+    <value>WHEN IT CLEARS</value>
+  </data>
+  <data name="Wd_WorkingSet" xml:space="preserve">
+    <value>WORKING SET</value>
   </data>
   <data name="What" xml:space="preserve">
     <value>WHAT</value>

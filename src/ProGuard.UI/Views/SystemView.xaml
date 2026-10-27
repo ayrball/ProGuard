@@ -552,6 +552,21 @@
                     </StackPanel>
                 </HeaderedContentControl.Header>
                 <StackPanel>
+                    <!-- The window's language; Windows' own unless the user picks one. -->
+                    <TextBlock Text="{x:Static r:Strings.Lang_Language}" Style="{StaticResource Text.Label}" Margin="0,0,0,8"/>
+                    <ItemsControl ItemsSource="{Binding DataContext.Languages, RelativeSource={RelativeSource AncestorType=Window}}" Focusable="False">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource Opt}" Content="{Binding Label}" AutomationProperties.Name="{Binding Label}"
+                                        Command="{Binding DataContext.PickLanguageCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}" ui:Seg.IsOn="{Binding IsOn, Mode=OneWay}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,8,0,26" Text="{x:Static r:Strings.Lang_Note}"/>
                     <!-- Only while this window has standard rights. -->
                     <StackPanel Margin="0,0,0,26"
                                 Visibility="{Binding DataContext.CanRestartElevated, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource VisibleWhen}}">

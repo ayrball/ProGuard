@@ -417,7 +417,11 @@ public static class Strings
 
     public static string KeepRunningInTheTray => Get(nameof(KeepRunningInTheTray));
 
+    public static string Lang_Language => Get(nameof(Lang_Language));
+
     public static string Lang_NextStart => Get(nameof(Lang_NextStart));
+
+    public static string Lang_Note => Get(nameof(Lang_Note));
 
     public static string Lang_WindowsDefault => Get(nameof(Lang_WindowsDefault));
 

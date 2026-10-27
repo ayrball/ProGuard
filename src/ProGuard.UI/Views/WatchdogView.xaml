@@ -1,5 +1,6 @@
 <UserControl x:Class="ProGuard.UI.Views.WatchdogView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:r="clr-namespace:ProGuard.UI.Resources"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <UserControl.Resources>
         <ResourceDictionary Source="Editors.xaml"/>
@@ -15,10 +16,10 @@
         </Grid.RowDefinitions>
 
         <DockPanel Grid.ColumnSpan="2" Margin="0,0,0,24">
-            <Button DockPanel.Dock="Right" Style="{StaticResource Btn.Solid}" Content="+ NEW WATCH" AutomationProperties.AutomationId="NewWatch" Command="{Binding NewCommand}" VerticalAlignment="Bottom"/>
+            <Button DockPanel.Dock="Right" Style="{StaticResource Btn.Solid}" Content="{x:Static r:Strings.NewWatch}" AutomationProperties.AutomationId="NewWatch" Command="{Binding NewCommand}" VerticalAlignment="Bottom"/>
             <StackPanel>
-                <TextBlock Text="WATCHDOG" Style="{StaticResource Text.Title}"/>
-                <TextBlock Text="IF THIS HAPPENS, DO THAT — CHECKED EVERY FEW SECONDS" Style="{StaticResource Text.Label}" Margin="0,6,0,0"/>
+                <TextBlock Text="{x:Static r:Strings.Watchdog}" Style="{StaticResource Text.Title}"/>
+                <TextBlock Text="{x:Static r:Strings.IfThisHappensDoThatChecked}" Style="{StaticResource Text.Label}" Margin="0,6,0,0"/>
             </StackPanel>
         </DockPanel>
 
@@ -39,15 +40,15 @@
                             </Border.Style>
                             <DockPanel>
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding Enabled}" Margin="0,0,18,0" ToolTip="Armed" AutomationProperties.Name="{Binding Name, StringFormat='ARMED {0}'}"/>
-                                    <Button Style="{StaticResource Btn.Outline}" Content="EDIT" Margin="0,0,8,0" Padding="16,8"
-                                            AutomationProperties.Name="{Binding Name, StringFormat='EDIT {0}'}"
+                                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding Enabled}" Margin="0,0,18,0" ToolTip="{x:Static r:Strings.Armed}" AutomationProperties.Name="{Binding Name, StringFormat={x:Static r:Strings.Armed0}}"/>
+                                    <Button Style="{StaticResource Btn.Outline}" Content="{x:Static r:Strings.Edit}" Margin="0,0,8,0" Padding="16,8"
+                                            AutomationProperties.Name="{Binding Name, StringFormat={x:Static r:Strings.Edit0}}"
                                             Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
-                                    <Button Style="{StaticResource Btn.Ghost}" Content="&#xE74D;" FontFamily="{StaticResource Glyphs}" FontWeight="Normal" ToolTip="Delete" AutomationProperties.Name="{Binding Name, StringFormat='DELETE {0}'}"
+                                    <Button Style="{StaticResource Btn.Ghost}" Content="&#xE74D;" FontFamily="{StaticResource Glyphs}" FontWeight="Normal" ToolTip="{x:Static r:Strings.Delete2}" AutomationProperties.Name="{Binding Name, StringFormat={x:Static r:Strings.Delete0}}"
                                             Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
                                 </StackPanel>
                                 <WrapPanel VerticalAlignment="Center" ToolTip="{Binding Sentence}">
-                                    <TextBlock Text="WHEN " Style="{StaticResource Text.H2}" Opacity="0.4"/>
+                                    <TextBlock Text="{x:Static r:Strings.When}" Style="{StaticResource Text.H2}" Opacity="0.4"/>
                                     <TextBlock Text="{Binding Name}" Style="{StaticResource Text.H2}"/>
                                     <TextBlock Text=" · " Style="{StaticResource Text.H2}" Opacity="0.4"/>
                                     <TextBlock Text="{Binding Condition}" Style="{StaticResource Text.H2}"/>
@@ -83,9 +84,9 @@
                     </Style.Triggers>
                 </Style>
             </StackPanel.Style>
-            <TextBlock Text="NOTHING&#x0a;IS BEING&#x0a;WATCHED." Style="{StaticResource Text.Hero}" FontSize="110" LineHeight="96" Opacity="0.2"/>
+            <TextBlock Text="{x:Static r:Strings.NothingIsBeingWatched}" Style="{StaticResource Text.Hero}" FontSize="110" LineHeight="96" Opacity="0.2"/>
             <TextBlock Style="{StaticResource Text.Body}" FontSize="16" MaxWidth="480" HorizontalAlignment="Left" Margin="0,22,0,0" Opacity="0.75"
-                       Text="Tell ProGuard what to do when a program misbehaves: drop a CPU hog to idle once it's been pinning the machine for 30 seconds, end a memory leak at 4 GB, or just log it."/>
+                       Text="{x:Static r:Strings.TellProguardWhatToDoWhen}"/>
         </StackPanel>
 
         <!-- ============================================================ sentence builder -->
@@ -99,18 +100,18 @@
                     <TextBlock Text="{Binding RestrictionHint}" Style="{StaticResource Text.Label}" FontSize="10.5" Opacity="0.8" TextWrapping="Wrap"/>
                 </Border>
                 <UniformGrid DockPanel.Dock="Bottom" Columns="2" Margin="20,0,20,20">
-                    <Button Style="{StaticResource Btn.Ghost}" Content="CANCEL" AutomationProperties.AutomationId="CancelWatch" Command="{Binding DataContext.CancelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
-                    <Button Style="{StaticResource Btn.Solid}" Content="SAVE WATCH" AutomationProperties.AutomationId="SaveWatch" Command="{Binding DataContext.SaveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                    <Button Style="{StaticResource Btn.Ghost}" Content="{x:Static r:Strings.Cancel}" AutomationProperties.AutomationId="CancelWatch" Command="{Binding DataContext.CancelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                    <Button Style="{StaticResource Btn.Solid}" Content="{x:Static r:Strings.SaveWatch}" AutomationProperties.AutomationId="SaveWatch" Command="{Binding DataContext.SaveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                 </UniformGrid>
                 <Border DockPanel.Dock="Bottom" Style="{StaticResource Ed.Hint}" BorderThickness="0,2,0,0" Margin="0,0,0,12">
                     <TextBlock Text="{Binding Preview}" AutomationProperties.AutomationId="WatchPreview" FontFamily="{StaticResource Mono}" FontSize="11" FontWeight="Bold" TextWrapping="Wrap"/>
                 </Border>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="20,18,20,18">
-                        <TextBlock Text="WHEN" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4"/>
-                        <TextBox Style="{StaticResource Field}" AutomationProperties.Name="PROGRAM" Tag="e.g. chrome.exe" Text="{Binding ProcessName, UpdateSourceTrigger=PropertyChanged}" FontSize="20" FontWeight="Bold"/>
+                        <TextBlock Text="{x:Static r:Strings.When2}" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4"/>
+                        <TextBox Style="{StaticResource Field}" AutomationProperties.Name="PROGRAM" Tag="{x:Static r:Strings.EGChromeExe}" Text="{Binding ProcessName, UpdateSourceTrigger=PropertyChanged}" FontSize="20" FontWeight="Bold"/>
 
-                        <TextBlock Text="IS" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4" Margin="0,16,0,6"/>
+                        <TextBlock Text="{x:Static r:Strings.Is}" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4" Margin="0,16,0,6"/>
                         <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="CONDITION" ItemsSource="{Binding Triggers}" SelectedItem="{Binding Trigger}"/>
 
                         <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="MEMORY MEASURE" ItemsSource="{Binding Metrics}" SelectedItem="{Binding Metric}" Margin="0,2,0,0"
@@ -123,55 +124,55 @@
                         </DockPanel>
                         <ContentControl Content="{Binding RunTime}" AutomationProperties.Name="RUN TIME" Margin="0,6,0,0" Visibility="{Binding IsRunTime, Converter={StaticResource VisibleWhen}}"/>
 
-                        <TextBlock Text="HOW LONG" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4" Margin="0,18,0,6"/>
+                        <TextBlock Text="{x:Static r:Strings.HowLong}" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4" Margin="0,18,0,6"/>
                         <ContentControl Content="{Binding Sustain}" AutomationProperties.Name="HOW LONG"/>
-                        <TextBlock Style="{StaticResource Ed.Note}" Text="It has to hold this long without a break before anything happens."/>
+                        <TextBlock Style="{StaticResource Ed.Note}" Text="{x:Static r:Strings.ItHasToHoldThisLong}"/>
 
-                        <TextBlock Text="THEN" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4" Margin="0,18,0,6"/>
+                        <TextBlock Text="{x:Static r:Strings.Then}" Style="{StaticResource Text.H2}" FontSize="18" Opacity="0.4" Margin="0,18,0,6"/>
                         <ListBox Style="{StaticResource Choices.Gated}" AutomationProperties.Name="THEN" ItemsSource="{Binding Responses}" SelectedItem="{Binding Response}"/>
 
                         <StackPanel Visibility="{Binding IsPriorityAction, Converter={StaticResource VisibleWhen}}">
-                            <TextBlock Text="TO PRIORITY" Style="{StaticResource Ed.Label}"/>
+                            <TextBlock Text="{x:Static r:Strings.ToPriority}" Style="{StaticResource Ed.Label}"/>
                             <ListBox Style="{StaticResource Choices.Gated}" AutomationProperties.Name="TO PRIORITY" ItemsSource="{Binding PriorityChoices}" SelectedItem="{Binding PriorityArg}"/>
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding IsIoAction, Converter={StaticResource VisibleWhen}}">
-                            <TextBlock Text="TO I/O PRIORITY" Style="{StaticResource Ed.Label}"/>
+                            <TextBlock Text="{x:Static r:Strings.ToIOPriority}" Style="{StaticResource Ed.Label}"/>
                             <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="TO I/O PRIORITY" ItemsSource="{Binding IoChoices}" SelectedItem="{Binding IoArg}"/>
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding IsAffinityAction, Converter={StaticResource VisibleWhen}}">
-                            <TextBlock Text="ONLY THESE CORES" Style="{StaticResource Ed.Label}"/>
+                            <TextBlock Text="{x:Static r:Strings.OnlyTheseCores}" Style="{StaticResource Ed.Label}"/>
                             <ContentControl Content="{Binding CorePicker}"/>
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding IsLaunch, Converter={StaticResource VisibleWhen}}">
-                            <TextBlock Text="COMMAND LINE" Style="{StaticResource Ed.Label}"/>
-                            <TextBox Style="{StaticResource Field}" Tag="&quot;C:\Tools\app.exe&quot; -quiet" AutomationProperties.Name="COMMAND LINE" Text="{Binding CommandLine, UpdateSourceTrigger=PropertyChanged}"
+                            <TextBlock Text="{x:Static r:Strings.CommandLine}" Style="{StaticResource Ed.Label}"/>
+                            <TextBox Style="{StaticResource Field}" Tag="{x:Static r:Strings.CToolsAppExeQuiet}" AutomationProperties.Name="COMMAND LINE" Text="{Binding CommandLine, UpdateSourceTrigger=PropertyChanged}"
                                      FontFamily="{StaticResource Mono}" FontSize="13"/>
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding IsNotify, Converter={StaticResource VisibleWhen}}">
-                            <TextBlock Text="MESSAGE (OPTIONAL)" Style="{StaticResource Ed.Label}"/>
-                            <TextBox Style="{StaticResource Field}" Tag="shown in the notification" AutomationProperties.Name="MESSAGE" Text="{Binding Message, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Text="{x:Static r:Strings.MessageOptional}" Style="{StaticResource Ed.Label}"/>
+                            <TextBox Style="{StaticResource Field}" Tag="{x:Static r:Strings.ShownInTheNotification}" AutomationProperties.Name="MESSAGE" Text="{Binding Message, UpdateSourceTrigger=PropertyChanged}"/>
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding IsTrim, Converter={StaticResource VisibleWhen}}">
-                            <TextBlock Text="TRIM" Style="{StaticResource Ed.Label}"/>
+                            <TextBlock Text="{x:Static r:Strings.Trim}" Style="{StaticResource Ed.Label}"/>
                             <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="TRIM" ItemsSource="{Binding TrimChoices}" SelectedItem="{Binding Trim}"/>
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding TakesRestore, Converter={StaticResource VisibleWhen}}">
-                            <TextBlock Text="THEN PUT IT BACK AFTER" Style="{StaticResource Ed.Label}"/>
+                            <TextBlock Text="{x:Static r:Strings.ThenPutItBackAfter}" Style="{StaticResource Ed.Label}"/>
                             <ContentControl Content="{Binding Restore}" AutomationProperties.Name="PUT IT BACK AFTER"/>
                         </StackPanel>
 
-                        <TextBlock Text="DON'T REPEAT FOR" Style="{StaticResource Ed.Label}" Margin="0,22,0,6"/>
+                        <TextBlock Text="{x:Static r:Strings.DontRepeatFor}" Style="{StaticResource Ed.Label}" Margin="0,22,0,6"/>
                         <ContentControl Content="{Binding Cooldown}" AutomationProperties.Name="DON'T REPEAT FOR"/>
-                        <TextBlock Style="{StaticResource Ed.Note}" Text="Per program. Once it has fired, it fires again only after this long or once the condition has cleared."/>
+                        <TextBlock Style="{StaticResource Ed.Note}" Text="{x:Static r:Strings.PerProgramOnceItHasFired}"/>
 
                         <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding Enabled}" Margin="0,18,0,0">
-                            <TextBlock Text="ARMED" FontWeight="Bold" FontSize="14"/>
+                            <TextBlock Text="{x:Static r:Strings.Armed2}" FontWeight="Bold" FontSize="14"/>
                         </CheckBox>
                     </StackPanel>
                 </ScrollViewer>

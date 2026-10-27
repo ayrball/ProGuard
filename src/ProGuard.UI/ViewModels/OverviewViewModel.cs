@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ProGuard.Shared.Contracts;
 using ProGuard.UI.Services;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -67,24 +68,24 @@ public sealed partial class OverviewViewModel : ObservableObject
         CoreLoads = s.CoreCpuPercent.ToArray();
 
         ResponsivenessGuardPaused = s.ResponsivenessGuardEnabled && s.ResponsivenessGuardPaused;
-        ResponsivenessGuardState = !s.ResponsivenessGuardEnabled ? "OFF" : s.ResponsivenessGuardPaused ? "PAUSED · IDLE" : "ARMED";
+        ResponsivenessGuardState = !s.ResponsivenessGuardEnabled ? Strings.Off : s.ResponsivenessGuardPaused ? Strings.Overview_PausedIdle : Strings.Armed2;
         RestraintsTotal = s.ResponsivenessGuardRestraintsTotal;
-        RestraintsText = $"{s.ResponsivenessGuardRestrained} NOW · {s.ResponsivenessGuardRestraintsTotal} TOTAL";
+        RestraintsText = string.Format(Strings.Overview_Restraints, s.ResponsivenessGuardRestrained, s.ResponsivenessGuardRestraintsTotal);
 
         PerformanceModeActive = s.PerformanceModeActive;
-        PerformanceModeText = s.PerformanceModeActive ? "ON" : "OFF";
+        PerformanceModeText = s.PerformanceModeActive ? Strings.On : Strings.Off;
         ActivePlan = string.IsNullOrEmpty(s.ActivePowerPlanName) ? "—" : s.ActivePowerPlanName.ToUpperInvariant();
         PlanOwner = Fmt.PlanOwner(s.PowerPlanOwner);
 
         Cpu = (int)Math.Round(s.CpuPercent);
         Memory = (int)Math.Round(s.MemoryPercent);
-        MemoryDetail = $"{Fmt.Bytes(s.TotalMemoryBytes - s.AvailableMemoryBytes)} OF {Fmt.Bytes(s.TotalMemoryBytes)}";
+        MemoryDetail = string.Format(Strings.Overview_MemoryOf, Fmt.Bytes(s.TotalMemoryBytes - s.AvailableMemoryBytes), Fmt.Bytes(s.TotalMemoryBytes));
         ProcessCount = s.Processes.Count;
         RestrainedCount = s.ResponsivenessGuardRestrained;
         RuledCount = s.Processes.Count(p => p.HasRule);
         LimitedCount = s.Processes.Count(p => p.CpuLimitPercent.HasValue);
         ResponsivenessGuardEnabled = s.ResponsivenessGuardEnabled;
-        CoresText = $"{s.LogicalProcessors} THREADS";
+        CoresText = string.Format(Strings.N0Threads, s.LogicalProcessors);
         IsElevated = s.CallerIsAdministrator;
 
         var fg = s.Processes.FirstOrDefault(p => p.Pid == s.ForegroundPid);

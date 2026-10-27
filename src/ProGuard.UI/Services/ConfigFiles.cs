@@ -1,6 +1,7 @@
 using System.IO;
 using Microsoft.Win32;
 using ProGuard.Shared.Profiles;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.Services;
 
@@ -17,13 +18,13 @@ public interface IConfigFiles
 /// <summary>The standard Save and Open dialogs, filtered to config files.</summary>
 public sealed class ConfigFileDialogs : IConfigFiles
 {
-    private const string Filter = "ProGuard config (*" + ConfigDocuments.FileExtension + ")|*" + ConfigDocuments.FileExtension + "|JSON files (*.json)|*.json|All files (*.*)|*.*";
+    private static string Filter => string.Format(Strings.Config_FileFilter, ConfigDocuments.FileExtension);
 
     public string? PickSavePath(string suggestedName)
     {
         var dialog = new SaveFileDialog
         {
-            Title = "Export ProGuard config",
+            Title = Strings.Config_ExportTitle,
             Filter = Filter,
             FileName = suggestedName,
             AddExtension = false,
@@ -37,7 +38,7 @@ public sealed class ConfigFileDialogs : IConfigFiles
     {
         var dialog = new OpenFileDialog
         {
-            Title = "Import ProGuard config",
+            Title = Strings.Config_ImportTitle,
             Filter = Filter,
             CheckFileExists = true,
             InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),

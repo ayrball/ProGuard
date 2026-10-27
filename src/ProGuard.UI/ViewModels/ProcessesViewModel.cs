@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using ProGuard.Shared.Contracts;
 using ProGuard.Shared.Messages;
 using ProGuard.UI.Services;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -92,7 +93,7 @@ public sealed partial class ProcessRow : ObservableObject
         if (CpuLimitPercent != s.CpuLimitPercent)
         {
             CpuLimitPercent = s.CpuLimitPercent;
-            LimitText = s.CpuLimitPercent is double l ? $"LIM {l:0.#}%" : string.Empty;
+            LimitText = s.CpuLimitPercent is double l ? string.Format(Strings.Proc_Limit, l) : string.Empty;
         }
         if (IsAffinityLimited != s.IsAffinityLimited) IsAffinityLimited = s.IsAffinityLimited;
         if (IoPriority != s.IoPriority)
@@ -284,13 +285,13 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
     {
         if (Selected is not { } row || !Enum.TryParse<ProcessPriorityClass>(level, out var priority)) return Task.CompletedTask;
 
-        Task Run() => SetAsync(row, CommandTypes.SetPriority, priority, $"{row.Name} → {Fmt.Priority(priority)}",
-            $"PRIORITY {Fmt.Priority(priority)}", r => r.PriorityClass = (int)priority);
+        Task Run() => SetAsync(row, CommandTypes.SetPriority, priority, string.Format(Strings.Proc_SetTo, row.Name, Fmt.Priority(priority)),
+            string.Format(Strings.Proc_Priority, Fmt.Priority(priority)), r => r.PriorityClass = (int)priority);
 
         if (priority == ProcessPriorityClass.RealTime)
         {
-            _shell.Confirm("REALTIME?", $"Realtime priority lets {row.Name} starve Windows itself, including your mouse and keyboard. Only use it for a process you trust to stay light.",
-                "SET REALTIME", Run);
+            _shell.Confirm(Strings.Proc_RealtimeTitle, string.Format(Strings.Proc_RealtimeWarning, row.Name),
+                Strings.Proc_SetRealtime, Run);
             return Task.CompletedTask;
         }
         return Run();
@@ -303,11 +304,11 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
         if (Selected is not { } row || !int.TryParse(level, out var hint) || hint is < 0 or > 3) return Task.CompletedTask;
         if (hint == 3 && !IsAdministrator)
         {
-            _shell.Toaster.Show("I/O priority High needs administrator rights. Restart ProGuard as administrator to use it.", isError: true);
+            _shell.Toaster.Show(Strings.Proc_IoHighNeedsAdmin, isError: true, offerElevation: true);
             return Task.CompletedTask;
         }
-        return SetAsync(row, CommandTypes.SetIoPriority, hint, $"{row.Name} · I/O {Fmt.IoPriority(hint)}",
-            $"I/O {Fmt.IoPriority(hint)}", r => r.IoPriority = hint);
+        return SetAsync(row, CommandTypes.SetIoPriority, hint, string.Format(Strings.Proc_IoSet, row.Name, Fmt.IoPriority(hint)),
+            string.Format(Strings.Proc_Io, Fmt.IoPriority(hint)), r => r.IoPriority = hint);
     }
 
     /// <summary>Memory (page) priority 1-5, very low .. normal.</summary>
@@ -315,8 +316,8 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
     private Task SetMemoryPriorityAsync(string level)
     {
         if (Selected is not { } row || !int.TryParse(level, out var value) || value is < 1 or > 5) return Task.CompletedTask;
-        return SetAsync(row, CommandTypes.SetMemoryPriority, value, $"{row.Name} · MEMORY {Fmt.MemoryPriority(value)}",
-            $"MEMORY {Fmt.MemoryPriority(value)}", r => r.MemoryPriority = value);
+        return SetAsync(row, CommandTypes.SetMemoryPriority, value, string.Format(Strings.Proc_MemorySet, row.Name, Fmt.MemoryPriority(value)),
+            string.Format(Strings.Proc_Memory, Fmt.MemoryPriority(value)), r => r.MemoryPriority = value);
     }
 
     /// <summary>
@@ -334,7 +335,7 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
             return;
         }
         if (!await _hub.RunAsync(command, row.Pid, argument)) return;
-        await RememberAsync(row, what, _ => true, change, kept: $"{done} · KEPT: set again whenever {row.Name} starts.");
+        await RememberAsync(row, what, _ => true, change, kept: string.Format(Strings.Proc_Kept, done, row.Name));
     }
 
     [RelayCommand]
@@ -342,8 +343,8 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
     {
         if (Selected is not { } row) return Task.CompletedTask;
         bool enable = !row.IsEfficiencyMode;
-        return SetAsync(row, CommandTypes.SetEfficiencyMode, enable, $"{row.Name} · ECO {(enable ? "ON" : "OFF")}",
-            $"ECO {(enable ? "ON" : "OFF")}", r => r.EfficiencyMode = enable);
+        return SetAsync(row, CommandTypes.SetEfficiencyMode, enable, string.Format(Strings.Proc_EcoSet, row.Name, enable ? Strings.On : Strings.Off),
+            string.Format(Strings.Proc_Eco, enable ? Strings.On : Strings.Off), r => r.EfficiencyMode = enable);
     }
 
     [RelayCommand]
@@ -351,8 +352,8 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
     {
         if (Selected is not { } row) return Task.CompletedTask;
         return row.IsSuspended
-            ? _hub.RunAsync(CommandTypes.ResumeProcess, row.Pid, success: $"{row.Name} resumed")
-            : _hub.RunAsync(CommandTypes.SuspendProcess, row.Pid, success: $"{row.Name} paused");
+            ? _hub.RunAsync(CommandTypes.ResumeProcess, row.Pid, success: string.Format(Strings.Proc_Resumed, row.Name))
+            : _hub.RunAsync(CommandTypes.SuspendProcess, row.Pid, success: string.Format(Strings.Proc_Paused, row.Name));
     }
 
     [RelayCommand]
@@ -361,7 +362,7 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
         if (Selected is not { } row) return;
         // Null when the engine refused or failed: QueryAsync has already said why.
         if (await _hub.QueryAsync<long?>(CommandTypes.TrimWorkingSet, row.Pid) is not { } freed) return;
-        _shell.Toaster.Show($"{row.Name} · freed {Fmt.Bytes(freed)}");
+        _shell.Toaster.Show(string.Format(Strings.Proc_Freed, row.Name, Fmt.Bytes(freed)));
         _hub.RefreshNow();
     }
 
@@ -369,11 +370,11 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
     private Task EndAsync()
     {
         if (Selected is not { } row) return Task.CompletedTask;
-        Task Run() => _hub.RunAsync(CommandTypes.TerminateProcess, row.Pid, success: $"{row.Name} ended");
+        Task Run() => _hub.RunAsync(CommandTypes.TerminateProcess, row.Pid, success: string.Format(Strings.Proc_Ended, row.Name));
 
         if (row.IsSystem)
         {
-            _shell.Confirm("END A SYSTEM PROCESS?", $"{row.Name} belongs to Windows or a service. Ending it can crash apps or the session.", "END IT", Run);
+            _shell.Confirm(Strings.Proc_EndSystemTitle, string.Format(Strings.Proc_EndSystemWarning, row.Name), Strings.Proc_EndIt, Run);
             return Task.CompletedTask;
         }
         return Run();
@@ -384,10 +385,11 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
     {
         if (Selected is not { } row) return;
         int children = CountDescendants(row.Pid);
-        _shell.Confirm("END THE WHOLE TREE?",
-            children == 0 ? $"{row.Name} has no child processes; only it will end." : $"{row.Name} and {children} process{(children == 1 ? "" : "es")} it started will end.",
-            "END TREE",
-            () => _hub.RunAsync(CommandTypes.TerminateProcessTree, row.Pid, success: $"{row.Name} tree ended"));
+        _shell.Confirm(Strings.Proc_EndTreeTitle,
+            children == 0 ? string.Format(Strings.Proc_EndTreeNoChildren, row.Name)
+                : string.Format(children == 1 ? Strings.Proc_EndTreeOneChild : Strings.Proc_EndTreeChildren, row.Name, children),
+            Strings.EndTree,
+            () => _hub.RunAsync(CommandTypes.TerminateProcessTree, row.Pid, success: string.Format(Strings.Proc_TreeEnded, row.Name)));
     }
 
     [RelayCommand]
@@ -457,16 +459,16 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
         if (level == Forget) return RememberAsync(row, null, r => r.PriorityClass != null, r => r.PriorityClass = null);
         if (!Enum.TryParse<ProcessPriorityClass>(level, out var priority) || !Enum.IsDefined(priority)) return Task.CompletedTask;
 
-        Task Run() => RememberAsync(row, $"PRIORITY {Fmt.Priority(priority)}", _ => true, r => r.PriorityClass = (int)priority);
+        Task Run() => RememberAsync(row, string.Format(Strings.Proc_Priority, Fmt.Priority(priority)), _ => true, r => r.PriorityClass = (int)priority);
         if (priority == ProcessPriorityClass.RealTime)
         {
             if (!IsAdministrator)
             {
-                _shell.Toaster.Show("Realtime priority needs administrator rights. Restart ProGuard as administrator to use it.", isError: true);
+                _shell.Toaster.Show(Strings.Proc_RealtimeNeedsAdmin, isError: true, offerElevation: true);
                 return Task.CompletedTask;
             }
-            _shell.Confirm("ALWAYS REALTIME?", $"{row.Name} will run at Realtime priority every time it starts. That lets it starve Windows itself, including your mouse and keyboard. Only use it for a program you trust to stay light.",
-                "ALWAYS REALTIME", Run);
+            _shell.Confirm(Strings.Proc_AlwaysRealtimeTitle, string.Format(Strings.Proc_AlwaysRealtimeWarning, row.Name),
+                Strings.Proc_AlwaysRealtime, Run);
             return Task.CompletedTask;
         }
         return Run();
@@ -481,10 +483,10 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
         if (!int.TryParse(level, out var hint) || hint is < 0 or > 3) return Task.CompletedTask;
         if (hint == 3 && !IsAdministrator)
         {
-            _shell.Toaster.Show("I/O priority High needs administrator rights. Restart ProGuard as administrator to use it.", isError: true);
+            _shell.Toaster.Show(Strings.Proc_IoHighNeedsAdmin, isError: true, offerElevation: true);
             return Task.CompletedTask;
         }
-        return RememberAsync(row, $"I/O {Fmt.IoPriority(hint)}", _ => true, r => r.IoPriority = hint);
+        return RememberAsync(row, string.Format(Strings.Proc_Io, Fmt.IoPriority(hint)), _ => true, r => r.IoPriority = hint);
     }
 
     /// <summary>Memory priority 1-5, or <see cref="Forget"/>.</summary>
@@ -494,7 +496,7 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
         if (Selected is not { } row) return Task.CompletedTask;
         if (level == Forget) return RememberAsync(row, null, r => r.MemoryPriority != null, r => r.MemoryPriority = null);
         if (!int.TryParse(level, out var value) || value is < 1 or > 5) return Task.CompletedTask;
-        return RememberAsync(row, $"MEMORY {Fmt.MemoryPriority(value)}", _ => true, r => r.MemoryPriority = value);
+        return RememberAsync(row, string.Format(Strings.Proc_Memory, Fmt.MemoryPriority(value)), _ => true, r => r.MemoryPriority = value);
     }
 
     /// <summary>
@@ -513,7 +515,7 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
         bool forgetting = what == null;
         if (forgetting && (existing == null || !has(existing)))
         {
-            _shell.Toaster.Show($"{row.Name} has nothing like that kept for it.");
+            _shell.Toaster.Show(string.Format(Strings.Proc_NothingKept, row.Name));
             return;
         }
 
@@ -528,7 +530,7 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
         {
             if (existing == null)
             {
-                _shell.Toaster.Show(kept ?? $"{row.Name} · {what}");
+                _shell.Toaster.Show(kept ?? string.Format(Strings.Proc_NameWhat, row.Name, what));
                 return;
             }
             forgetting = true;
@@ -537,7 +539,7 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
         if (forgetting && !HasEffect(rule))
         {
             if (await _hub.RunAsync(CommandTypes.DeleteProcessRule, argument: rule.Id,
-                    success: $"{row.Name} · FORGOTTEN. Running copies keep what they have now."))
+                    success: string.Format(Strings.Proc_Forgotten, row.Name)))
             {
                 if (Selected == row) SelectedRule = null;
                 _hub.RefreshNow();
@@ -549,8 +551,8 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
         if (saved == null) return;
         if (Selected == row) SelectedRule = saved;
         _shell.Toaster.Show(forgetting
-            ? $"{row.Name} · FORGOTTEN. Running copies keep what they have now."
-            : kept ?? $"{row.Name} · ALWAYS {what}. Set now, and again whenever it starts.");
+            ? string.Format(Strings.Proc_Forgotten, row.Name)
+            : kept ?? string.Format(Strings.Proc_Always, row.Name, what));
         _hub.RefreshNow();
     }
 
@@ -571,7 +573,7 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
         }
         else
         {
-            _shell.Toaster.Show("Windows won't reveal where this process lives.", isError: true);
+            _shell.Toaster.Show(Strings.Proc_NoLocation, isError: true);
         }
     }
 

@@ -16,6 +16,9 @@
     <!-- WPF declares its DPI mode in the manifest; WinForms (tray icon only) would rather it came from code.
          WFAC010 on .NET 8, renamed WFO0003 on .NET 10. -->
     <NoWarn>$(NoWarn);WFAC010;WFO0003</NoWarn>
+    <!-- The UI's text is in Resources\Strings.resx (English) and Strings.<culture>.resx (translations), with
+         Resources\Strings.cs generated from it by tools\i18n\Update-Strings.ps1. Only ship those languages' satellites. -->
+    <SatelliteResourceLanguages>en;es;de;fr;pt-BR</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>

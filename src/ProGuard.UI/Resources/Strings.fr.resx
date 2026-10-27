@@ -104,7 +104,7 @@ CALME.</value>
     <value>APPLIQUER À TOUS LES PROGRAMMES</value>
   </data>
   <data name="Apps" xml:space="preserve">
-    <value>APPLICATIONS</value>
+    <value>APPS</value>
   </data>
   <data name="Armed" xml:space="preserve">
     <value>Armée</value>
@@ -1728,6 +1728,12 @@ DE JOURNALISÉ.</value>
   </data>
   <data name="SwitchWindowsPowerPlansByHand" xml:space="preserve">
     <value>Changez de plan d'alimentation Windows à la main, et choisissez celui de départ.</value>
+  </data>
+  <data name="Switch_Off" xml:space="preserve">
+    <value>NON</value>
+  </data>
+  <data name="Switch_On" xml:space="preserve">
+    <value>OUI</value>
   </data>
   <data name="Sys" xml:space="preserve">
     <value>SYS</value>

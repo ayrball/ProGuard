@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ProGuard.Shared.Contracts;
 using ProGuard.UI.Services;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -67,24 +68,24 @@ public sealed partial class OverviewViewModel : ObservableObject
         CoreLoads = s.CoreCpuPercent.ToArray();
 
         ProBalancePaused = s.ProBalanceEnabled && s.ProBalancePaused;
-        ProBalanceState = !s.ProBalanceEnabled ? "OFF" : s.ProBalancePaused ? "PAUSED · IDLE" : "ARMED";
+        ProBalanceState = !s.ProBalanceEnabled ? Strings.Off : s.ProBalancePaused ? Strings.Overview_PausedIdle : Strings.Armed2;
         RestraintsTotal = s.ProBalanceRestraintsTotal;
-        RestraintsText = $"{s.ProBalanceRestrained} NOW · {s.ProBalanceRestraintsTotal} TOTAL";
+        RestraintsText = string.Format(Strings.Overview_Restraints, s.ProBalanceRestrained, s.ProBalanceRestraintsTotal);
 
         PerformanceModeActive = s.PerformanceModeActive;
-        PerformanceModeText = s.PerformanceModeActive ? "ON" : "OFF";
+        PerformanceModeText = s.PerformanceModeActive ? Strings.On : Strings.Off;
         ActivePlan = string.IsNullOrEmpty(s.ActivePowerPlanName) ? "—" : s.ActivePowerPlanName.ToUpperInvariant();
         PlanOwner = Fmt.PlanOwner(s.PowerPlanOwner);
 
         Cpu = (int)Math.Round(s.CpuPercent);
         Memory = (int)Math.Round(s.MemoryPercent);
-        MemoryDetail = $"{Fmt.Bytes(s.TotalMemoryBytes - s.AvailableMemoryBytes)} OF {Fmt.Bytes(s.TotalMemoryBytes)}";
+        MemoryDetail = string.Format(Strings.Overview_MemoryOf, Fmt.Bytes(s.TotalMemoryBytes - s.AvailableMemoryBytes), Fmt.Bytes(s.TotalMemoryBytes));
         ProcessCount = s.Processes.Count;
         RestrainedCount = s.ProBalanceRestrained;
         RuledCount = s.Processes.Count(p => p.HasRule);
         LimitedCount = s.Processes.Count(p => p.CpuLimitPercent.HasValue);
         ProBalanceEnabled = s.ProBalanceEnabled;
-        CoresText = $"{s.LogicalProcessors} THREADS";
+        CoresText = string.Format(Strings.N0Threads, s.LogicalProcessors);
         IsElevated = s.CallerIsAdministrator;
 
         var fg = s.Processes.FirstOrDefault(p => p.Pid == s.ForegroundPid);

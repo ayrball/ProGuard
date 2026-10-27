@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Security.Principal;
 using Microsoft.Win32;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.Services;
 
@@ -96,7 +97,7 @@ public sealed class ElevationLauncher : IElevationLauncher
         error = null;
         if (Environment.ProcessPath is not { } path)
         {
-            error = "Windows didn't say where ProGuard is running from, so it can't be restarted.";
+            error = Strings.Elev_NoPath;
             return ElevationOutcome.Failed;
         }
 
@@ -119,7 +120,7 @@ public sealed class ElevationLauncher : IElevationLauncher
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {
-            error = $"Windows couldn't start an administrator copy of ProGuard: {ex.Message}";
+            error = string.Format(Strings.Elev_Failed, ex.Message);
             return ElevationOutcome.Failed;
         }
     }

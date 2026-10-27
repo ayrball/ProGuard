@@ -1,10 +1,13 @@
+using System.Globalization;
 using System.IO;
 using System.Windows;
+using System.Windows.Markup;
 using System.Windows.Threading;
 using ProGuard.Shared.Client;
 using ProGuard.Shared.Reporting;
 using ProGuard.UI.Services;
 using ProGuard.UI.ViewModels;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI;
 
@@ -31,6 +34,10 @@ public partial class App : Application
     {
         base.OnStartup(e);
         if (SkipStartup) return;
+
+        // Before anything reads its text: the window's language is this user's choice, or Windows' own.
+        var preferences = new RegistryUiPreferences();
+        ApplyLanguage(preferences.Language);
 
         // Started at sign-in (see RunKeyStartup): go straight to the tray rather than opening a window.
         bool trayStart = e.Args.Contains(RunKeyStartup.TrayArgument, StringComparer.OrdinalIgnoreCase);
@@ -68,7 +75,7 @@ public partial class App : Application
         var client = new EngineClient();
         _hub = new EngineHub(client, Dispatcher, toaster);
         var startup = new SignInStartup(elevation);
-        var shell = new ShellViewModel(_hub, toaster, new IconCache(Dispatcher), startup, elevation, new RegistryUiPreferences()) { Quit = Quit };
+        var shell = new ShellViewModel(_hub, toaster, new IconCache(Dispatcher), startup, elevation, preferences) { Quit = Quit };
         // An elevated copy keeps start-at-sign-in on the no-prompt task while "Always start as administrator" is on
         // (and back on the Run key when it isn't): an installer upgrade, for one, adds the Run key again.
         try { startup.Reconcile(); }
@@ -104,6 +111,26 @@ public partial class App : Application
         _foregroundReporter.StartAsync(CancellationToken.None);
     }
 
+    /// <summary>
+    /// Sets the window's language: <paramref name="culture"/> ("de"), or Windows' display language when it is empty or not a
+    /// culture .NET knows. Also used for WPF's own formatting of numbers and dates in bindings.
+    /// </summary>
+    internal static void ApplyLanguage(string culture)
+    {
+        if (!string.IsNullOrWhiteSpace(culture))
+        {
+            try
+            {
+                var chosen = CultureInfo.GetCultureInfo(culture);
+                CultureInfo.DefaultThreadCurrentUICulture = chosen;
+                CultureInfo.CurrentUICulture = chosen;
+            }
+            catch (CultureNotFoundException) { }
+        }
+        FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement),
+            new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(CultureInfo.CurrentUICulture.IetfLanguageTag)));
+    }
+
     private void Quit()
     {
         if (MainWindow is MainWindow w) w.IsQuitting = true;
@@ -125,7 +152,7 @@ public partial class App : Application
         // Keep the app alive and tell the user, but leave a trace for diagnosis.
         LogError(e.Exception);
 
-        (MainWindow?.DataContext as ShellViewModel)?.Toaster.Show($"Something went wrong: {e.Exception.Message}", isError: true);
+        (MainWindow?.DataContext as ShellViewModel)?.Toaster.Show(string.Format(Strings.App_SomethingWentWrong, e.Exception.Message), isError: true);
         e.Handled = true;
     }
 

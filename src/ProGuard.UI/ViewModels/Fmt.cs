@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -19,12 +20,12 @@ internal static class Fmt
 
     public static string Priority(ProcessPriorityClass? priority) => priority switch
     {
-        ProcessPriorityClass.Idle => "IDLE",
-        ProcessPriorityClass.BelowNormal => "LOW",
-        ProcessPriorityClass.Normal => "NORMAL",
-        ProcessPriorityClass.AboveNormal => "ABOVE",
-        ProcessPriorityClass.High => "HIGH",
-        ProcessPriorityClass.RealTime => "REALTIME",
+        ProcessPriorityClass.Idle => Strings.Idle2,
+        ProcessPriorityClass.BelowNormal => Strings.Low2,
+        ProcessPriorityClass.Normal => Strings.Normal2,
+        ProcessPriorityClass.AboveNormal => Strings.Above,
+        ProcessPriorityClass.High => Strings.High2,
+        ProcessPriorityClass.RealTime => Strings.Realtime2,
         _ => "—"
     };
 
@@ -51,46 +52,46 @@ internal static class Fmt
         {
             if ((mask & (1L << i)) != 0) allowed++;
         }
-        return allowed == 0 || allowed >= logical ? "ALL" : $"{allowed}/{logical}";
+        return allowed == 0 || allowed >= logical ? Strings.All : $"{allowed}/{logical}";
     }
 
     /// <summary>The engine's one-line summary of a purge, plus the first thing that went wrong, if anything did.</summary>
     public static string PurgeSummary(ProGuard.Shared.Contracts.MemoryPurgeResultDto result)
     {
-        var text = string.IsNullOrWhiteSpace(result.Summary) ? "Memory purged." : result.Summary.Trim();
+        var text = string.IsNullOrWhiteSpace(result.Summary) ? Strings.Fmt_MemoryPurged : result.Summary.Trim();
         return result.Errors.Count == 0
             ? text
-            : $"{text} ({result.Errors.Count} problem{(result.Errors.Count == 1 ? "" : "s")}: {result.Errors[0]})";
+            : string.Format(result.Errors.Count == 1 ? Strings.Fmt_PurgeOneProblem : Strings.Fmt_PurgeProblems, text, result.Errors.Count, result.Errors[0]);
     }
 
     /// <summary>Who set the active power plan, as the engine names it, in words.</summary>
     public static string PlanOwner(string? owner) => owner switch
     {
-        "User" => "SET BY YOU",
-        "PerformanceMode" => "SET BY PERFORMANCE MODE",
-        "IdleSaver" => "SET BY IDLESAVER",
-        "LoadSwitcher" => "SET BY THE LOAD SWITCHER",
-        "StartWith" => "SET WHEN THE ENGINE STARTED",
+        "User" => Strings.Fmt_SetByYou,
+        "PerformanceMode" => Strings.Fmt_SetByPerformanceMode,
+        "IdleSaver" => Strings.Fmt_SetByIdleSaver,
+        "LoadSwitcher" => Strings.Fmt_SetByLoadSwitcher,
+        "StartWith" => Strings.Fmt_SetWhenEngineStarted,
         null or "" => "—",
-        _ => $"SET BY {owner.ToUpperInvariant()}"
+        _ => string.Format(Strings.Fmt_SetBy, owner.ToUpperInvariant())
     };
 
     public static string IoPriority(int? hint) => hint switch
     {
-        0 => "VERY LOW",
-        1 => "LOW",
-        2 => "NORMAL",
-        3 => "HIGH",
+        0 => Strings.VeryLow2,
+        1 => Strings.Low2,
+        2 => Strings.Normal2,
+        3 => Strings.High2,
         _ => "—"
     };
 
     public static string MemoryPriority(int? level) => level switch
     {
-        1 => "VERY LOW",
-        2 => "LOW",
-        3 => "MEDIUM",
-        4 => "BELOW NORMAL",
-        5 => "NORMAL",
+        1 => Strings.VeryLow2,
+        2 => Strings.Low2,
+        3 => Strings.Medium2,
+        4 => Strings.BelowNormalUpper,
+        5 => Strings.Normal2,
         _ => "—"
     };
 

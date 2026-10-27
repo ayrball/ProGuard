@@ -1,0 +1,2329 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="ACeilingWindowsEnforcesOnThe" xml:space="preserve">
+    <value>A ceiling Windows enforces on the program.</value>
+  </data>
+  <data name="AProfileHoldsTheProcessRules" xml:space="preserve">
+    <value>A profile holds the process rules, the Watchdog rules and every engine setting as they are now.</value>
+  </data>
+  <data name="Above" xml:space="preserve">
+    <value>ABOVE</value>
+  </data>
+  <data name="AboveNormal" xml:space="preserve">
+    <value>Above normal</value>
+  </data>
+  <data name="Act_ClearTitle" xml:space="preserve">
+    <value>CLEAR THE LOG?</value>
+  </data>
+  <data name="Act_ClearWarning" xml:space="preserve">
+    <value>Empties the activity log for everyone: ProBalance and power-plan actions, Watchdog events and what users changed. This can't be undone.</value>
+  </data>
+  <data name="Act_Cleared" xml:space="preserve">
+    <value>ACTIVITY LOG CLEARED</value>
+  </data>
+  <data name="Act_Restored" xml:space="preserve">
+    <value>RESTORED</value>
+  </data>
+  <data name="Act_You" xml:space="preserve">
+    <value>YOU</value>
+  </data>
+  <data name="Active" xml:space="preserve">
+    <value>ACTIVE</value>
+  </data>
+  <data name="Activity" xml:space="preserve">
+    <value>ACTIVITY</value>
+  </data>
+  <data name="Admin" xml:space="preserve">
+    <value>ADMIN</value>
+  </data>
+  <data name="Advanced" xml:space="preserve">
+    <value>ADVANCED</value>
+  </data>
+  <data name="AdvancedPriorities" xml:space="preserve">
+    <value>ADVANCED PRIORITIES</value>
+  </data>
+  <data name="Advanced_CpuTuning" xml:space="preserve">
+    <value>CPU TUNING</value>
+  </data>
+  <data name="Advanced_CpuTuningBlurb" xml:space="preserve">
+    <value>CORE PARKING AND CPU FREQUENCY, PER POWER PLAN</value>
+  </data>
+  <data name="Advanced_Logs" xml:space="preserve">
+    <value>LOGS</value>
+  </data>
+  <data name="Advanced_LogsBlurb" xml:space="preserve">
+    <value>ENGINE LOG AND ACTION LOG, NEWEST FIRST</value>
+  </data>
+  <data name="All" xml:space="preserve">
+    <value>ALL</value>
+  </data>
+  <data name="AllQuiet" xml:space="preserve">
+    <value>ALL
+QUIET.</value>
+  </data>
+  <data name="AlsoFlushTheSystemFileCache" xml:space="preserve">
+    <value>ALSO FLUSH THE SYSTEM FILE CACHE</value>
+  </data>
+  <data name="AlsoLowerIOPriority" xml:space="preserve">
+    <value>ALSO LOWER I/O PRIORITY</value>
+  </data>
+  <data name="AlsoSetThePowerModeTo" xml:space="preserve">
+    <value>ALSO SET THE POWER MODE TO BEST PERFORMANCE</value>
+  </data>
+  <data name="AlsoUseEfficiencyMode" xml:space="preserve">
+    <value>ALSO USE EFFICIENCY MODE</value>
+  </data>
+  <data name="Always" xml:space="preserve">
+    <value>Always</value>
+  </data>
+  <data name="AlwaysStartAsAdministrator" xml:space="preserve">
+    <value>ALWAYS START AS ADMINISTRATOR</value>
+  </data>
+  <data name="App_SomethingWentWrong" xml:space="preserve">
+    <value>Something went wrong: {0}</value>
+  </data>
+  <data name="Apply" xml:space="preserve">
+    <value>APPLY</value>
+  </data>
+  <data name="ApplyCap" xml:space="preserve">
+    <value>APPLY CAP</value>
+  </data>
+  <data name="ApplyToEveryProgram" xml:space="preserve">
+    <value>APPLY TO EVERY PROGRAM</value>
+  </data>
+  <data name="Apps" xml:space="preserve">
+    <value>APPS</value>
+  </data>
+  <data name="Armed" xml:space="preserve">
+    <value>Armed</value>
+  </data>
+  <data name="Armed0" xml:space="preserve">
+    <value>ARMED {0}</value>
+  </data>
+  <data name="Armed2" xml:space="preserve">
+    <value>ARMED</value>
+  </data>
+  <data name="AskWindowsFor" xml:space="preserve">
+    <value>ASK WINDOWS FOR</value>
+  </data>
+  <data name="AtLowLoadGoBackTo" xml:space="preserve">
+    <value>AT LOW LOAD, GO BACK TO THE PLAN FROM BEFORE</value>
+  </data>
+  <data name="Auto" xml:space="preserve">
+    <value>AUTO</value>
+  </data>
+  <data name="AvoidSmt" xml:space="preserve">
+    <value>AVOID SMT</value>
+  </data>
+  <data name="BackToThisPlansValuesBefore" xml:space="preserve">
+    <value>Back to this plan's values before ProGuard first changed it</value>
+  </data>
+  <data name="BalanceAutomatically" xml:space="preserve">
+    <value>BALANCE AUTOMATICALLY</value>
+  </data>
+  <data name="Balanced" xml:space="preserve">
+    <value>BALANCED</value>
+  </data>
+  <data name="BalancedNow" xml:space="preserve">
+    <value>BALANCED NOW</value>
+  </data>
+  <data name="Basics" xml:space="preserve">
+    <value>BASICS</value>
+  </data>
+  <data name="Below" xml:space="preserve">
+    <value>BELOW</value>
+  </data>
+  <data name="BelowNormal" xml:space="preserve">
+    <value>Below normal</value>
+  </data>
+  <data name="BelowNormalUpper" xml:space="preserve">
+    <value>BELOW NORMAL</value>
+  </data>
+  <data name="BlockIt" xml:space="preserve">
+    <value>BLOCK IT</value>
+  </data>
+  <data name="BoostTheFocusedApp" xml:space="preserve">
+    <value>BOOST THE FOCUSED APP</value>
+  </data>
+  <data name="CToolsAppExeQuiet" xml:space="preserve">
+    <value>"C:\Tools\app.exe" -quiet</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>CANCEL</value>
+  </data>
+  <data name="CantBeApplied" xml:space="preserve">
+    <value>CAN'T BE APPLIED</value>
+  </data>
+  <data name="Category" xml:space="preserve">
+    <value>CATEGORY</value>
+  </data>
+  <data name="Clear" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="ClearActionLog" xml:space="preserve">
+    <value>CLEAR ACTION LOG</value>
+  </data>
+  <data name="ClearLog" xml:space="preserve">
+    <value>CLEAR LOG</value>
+  </data>
+  <data name="ClearThem" xml:space="preserve">
+    <value>CLEAR THEM</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="ClosingOrMinimisingTheWindowHides" xml:space="preserve">
+    <value>Closing or minimising the window hides it to the tray instead. Quit from the tray menu.</value>
+  </data>
+  <data name="CommandLine" xml:space="preserve">
+    <value>COMMAND LINE</value>
+  </data>
+  <data name="Config_ExportTitle" xml:space="preserve">
+    <value>Export ProGuard config</value>
+  </data>
+  <data name="Config_FileFilter" xml:space="preserve">
+    <value>ProGuard config (*{0})|*{0}|JSON files (*.json)|*.json|All files (*.*)|*.*</value>
+  </data>
+  <data name="Config_ImportTitle" xml:space="preserve">
+    <value>Import ProGuard config</value>
+  </data>
+  <data name="ConfineToChosenCores" xml:space="preserve">
+    <value>CONFINE TO CHOSEN CORES</value>
+  </data>
+  <data name="Confirm" xml:space="preserve">
+    <value>CONFIRM</value>
+  </data>
+  <data name="Control" xml:space="preserve">
+    <value>CONTROL</value>
+  </data>
+  <data name="CopyRow" xml:space="preserve">
+    <value>COPY ROW</value>
+  </data>
+  <data name="CopyThisEntryToTheClipboard" xml:space="preserve">
+    <value>Copy this entry to the clipboard (Ctrl+C in the table)</value>
+  </data>
+  <data name="Cores" xml:space="preserve">
+    <value>CORES</value>
+  </data>
+  <data name="Cores2" xml:space="preserve">
+    <value>Cores…</value>
+  </data>
+  <data name="Cores3" xml:space="preserve">
+    <value>CORES…</value>
+  </data>
+  <data name="CoresARestrainedProcessMayUse" xml:space="preserve">
+    <value>CORES A RESTRAINED PROCESS MAY USE</value>
+  </data>
+  <data name="CoresLimited" xml:space="preserve">
+    <value>CORES LIMITED</value>
+  </data>
+  <data name="CoresNow" xml:space="preserve">
+    <value>CORES NOW</value>
+  </data>
+  <data name="CoresPerCopy" xml:space="preserve">
+    <value>CORES PER COPY</value>
+  </data>
+  <data name="Cores_OfThreads" xml:space="preserve">
+    <value>{0} OF {1} THREADS</value>
+  </data>
+  <data name="CountAllSessions" xml:space="preserve">
+    <value>COUNT ALL SESSIONS</value>
+  </data>
+  <data name="Cpu" xml:space="preserve">
+    <value>CPU %</value>
+  </data>
+  <data name="Cpu00" xml:space="preserve">
+    <value>CPU {0:0}%</value>
+  </data>
+  <data name="Cpu2" xml:space="preserve">
+    <value>CPU ▼</value>
+  </data>
+  <data name="Cpu3" xml:space="preserve">
+    <value>CPU</value>
+  </data>
+  <data name="CpuCap" xml:space="preserve">
+    <value>CPU CAP</value>
+  </data>
+  <data name="CpuCap2" xml:space="preserve">
+    <value>CPU cap…</value>
+  </data>
+  <data name="CpuCap3" xml:space="preserve">
+    <value>CPU CAP…</value>
+  </data>
+  <data name="CpuCapped" xml:space="preserve">
+    <value>CPU CAPPED</value>
+  </data>
+  <data name="CpuLimiter" xml:space="preserve">
+    <value>CPU LIMITER</value>
+  </data>
+  <data name="CpuLoad" xml:space="preserve">
+    <value>CPU LOAD</value>
+  </data>
+  <data name="CpuSet0" xml:space="preserve">
+    <value>CPU SET {0}</value>
+  </data>
+  <data name="CpuSetIdsCoresThisPc" xml:space="preserve">
+    <value>CPU Set IDs, cores this PC doesn't have and power plans that aren't installed only make sense on the PC they were saved on: they are left out when a profile or file is applied, and the preview lists each one.</value>
+  </data>
+  <data name="CpuSet_Core" xml:space="preserve">
+    <value>CORE {0}</value>
+  </data>
+  <data name="CpuSet_CoreKind" xml:space="preserve">
+    <value>CORE {0} · {1}</value>
+  </data>
+  <data name="CpuSet_ECore" xml:space="preserve">
+    <value>E-CORE</value>
+  </data>
+  <data name="CpuSet_Id" xml:space="preserve">
+    <value>ID {0}</value>
+  </data>
+  <data name="CpuSet_IdParked" xml:space="preserve">
+    <value>ID {0} · PARKED</value>
+  </data>
+  <data name="CpuSet_Missing" xml:space="preserve">
+    <value> · {0} SAVED IDS NOT ON THIS MACHINE</value>
+  </data>
+  <data name="CpuSet_MissingOne" xml:space="preserve">
+    <value> · 1 SAVED ID NOT ON THIS MACHINE</value>
+  </data>
+  <data name="CpuSet_NonePicked" xml:space="preserve">
+    <value>NONE PICKED · APPLYING CLEARS THE PROGRAM'S CPU SETS</value>
+  </data>
+  <data name="CpuSet_PCore" xml:space="preserve">
+    <value>P-CORE</value>
+  </data>
+  <data name="CpuSet_Summary" xml:space="preserve">
+    <value>{0} OF {1} · IDS {2}</value>
+  </data>
+  <data name="CpuSets" xml:space="preserve">
+    <value>CPU SETS</value>
+  </data>
+  <data name="Default1" xml:space="preserve">
+    <value>DEFAULT 1</value>
+  </data>
+  <data name="Default10" xml:space="preserve">
+    <value>DEFAULT 10</value>
+  </data>
+  <data name="Default30" xml:space="preserve">
+    <value>DEFAULT 30</value>
+  </data>
+  <data name="Default5" xml:space="preserve">
+    <value>DEFAULT 5</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>DELETE</value>
+  </data>
+  <data name="Delete0" xml:space="preserve">
+    <value>DELETE {0}</value>
+  </data>
+  <data name="Delete2" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="DeleteRule" xml:space="preserve">
+    <value>Delete rule</value>
+  </data>
+  <data name="DeletesTheLoggedProbalanceCpuLimiter" xml:space="preserve">
+    <value>Deletes the logged ProBalance, CPU Limiter and power-plan actions for everyone (administrators only)</value>
+  </data>
+  <data name="Detail" xml:space="preserve">
+    <value>DETAIL</value>
+  </data>
+  <data name="DetectGamesFromWhereTheyreInstalled" xml:space="preserve">
+    <value>DETECT GAMES FROM WHERE THEY'RE INSTALLED</value>
+  </data>
+  <data name="Dialog_Cap" xml:space="preserve">
+    <value>CAP {0}%</value>
+  </data>
+  <data name="Dialog_CappedAt" xml:space="preserve">
+    <value>{0} capped at {1}%</value>
+  </data>
+  <data name="Dialog_Cores" xml:space="preserve">
+    <value>CORES {0}</value>
+  </data>
+  <data name="Dialog_Uncapped" xml:space="preserve">
+    <value>{0} uncapped</value>
+  </data>
+  <data name="Dialog_UncappedUpper" xml:space="preserve">
+    <value>UNCAPPED</value>
+  </data>
+  <data name="DontRepeatFor" xml:space="preserve">
+    <value>DON'T REPEAT FOR</value>
+  </data>
+  <data name="DropOneRandomCore" xml:space="preserve">
+    <value>DROP ONE RANDOM CORE</value>
+  </data>
+  <data name="DynamicPriorityBoost" xml:space="preserve">
+    <value>DYNAMIC PRIORITY BOOST</value>
+  </data>
+  <data name="ECores" xml:space="preserve">
+    <value>E-CORES</value>
+  </data>
+  <data name="EGChromeExe" xml:space="preserve">
+    <value>e.g. chrome.exe</value>
+  </data>
+  <data name="EachCore" xml:space="preserve">
+    <value>EACH CORE</value>
+  </data>
+  <data name="Eco" xml:space="preserve">
+    <value>ECO ✓</value>
+  </data>
+  <data name="Eco2" xml:space="preserve">
+    <value>ECO</value>
+  </data>
+  <data name="EcoMode" xml:space="preserve">
+    <value>ECO MODE</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>EDIT</value>
+  </data>
+  <data name="Edit0" xml:space="preserve">
+    <value>EDIT {0}</value>
+  </data>
+  <data name="EfficiencyMode" xml:space="preserve">
+    <value>Efficiency mode</value>
+  </data>
+  <data name="EfficiencyModeEco" xml:space="preserve">
+    <value>EFFICIENCY MODE (ECO)</value>
+  </data>
+  <data name="Elev_Failed" xml:space="preserve">
+    <value>Windows couldn't start an administrator copy of ProGuard: {0}</value>
+  </data>
+  <data name="Elev_NoPath" xml:space="preserve">
+    <value>Windows didn't say where ProGuard is running from, so it can't be restarted.</value>
+  </data>
+  <data name="EmptiesTheActivityLogForEveryone" xml:space="preserve">
+    <value>Empties the activity log for everyone (administrators only)</value>
+  </data>
+  <data name="EndProcess" xml:space="preserve">
+    <value>End process</value>
+  </data>
+  <data name="EndProcess2" xml:space="preserve">
+    <value>END PROCESS</value>
+  </data>
+  <data name="EndProcessTree" xml:space="preserve">
+    <value>End process tree</value>
+  </data>
+  <data name="EndTree" xml:space="preserve">
+    <value>END TREE</value>
+  </data>
+  <data name="EndedTheMomentItStartsIncluding" xml:space="preserve">
+    <value>Ended the moment it starts, including copies running now.</value>
+  </data>
+  <data name="EngageForSteamGames" xml:space="preserve">
+    <value>ENGAGE FOR STEAM GAMES</value>
+  </data>
+  <data name="Engine" xml:space="preserve">
+    <value>ENGINE</value>
+  </data>
+  <data name="EngineOffline" xml:space="preserve">
+    <value>ENGINE
+OFFLINE</value>
+  </data>
+  <data name="EveryOther" xml:space="preserve">
+    <value>EVERY OTHER</value>
+  </data>
+  <data name="EveryOtherThreadOnMostCpus" xml:space="preserve">
+    <value>Every other thread: on most CPUs that is one thread per physical core.</value>
+  </data>
+  <data name="EverySoOftenBackgroundProgramsAbove" xml:space="preserve">
+    <value>Every so often, background programs above the threshold give idle memory back to Windows. Useful on machines short of RAM; unnecessary on most.</value>
+  </data>
+  <data name="EverythingProguardAndYouDidNewest" xml:space="preserve">
+    <value>EVERYTHING PROGUARD — AND YOU — DID, NEWEST FIRST</value>
+  </data>
+  <data name="Export" xml:space="preserve">
+    <value>EXPORT</value>
+  </data>
+  <data name="Export0" xml:space="preserve">
+    <value>EXPORT {0}</value>
+  </data>
+  <data name="ExportCsv" xml:space="preserve">
+    <value>EXPORT CSV</value>
+  </data>
+  <data name="ExportToFile" xml:space="preserve">
+    <value>EXPORT TO FILE</value>
+  </data>
+  <data name="FileCache" xml:space="preserve">
+    <value>FILE CACHE</value>
+  </data>
+  <data name="FirstHalf" xml:space="preserve">
+    <value>FIRST HALF</value>
+  </data>
+  <data name="Fmt_MemoryPurged" xml:space="preserve">
+    <value>Memory purged.</value>
+  </data>
+  <data name="Fmt_PurgeOneProblem" xml:space="preserve">
+    <value>{0} (1 problem: {2})</value>
+  </data>
+  <data name="Fmt_PurgeProblems" xml:space="preserve">
+    <value>{0} ({1} problems: {2})</value>
+  </data>
+  <data name="Fmt_SetBy" xml:space="preserve">
+    <value>SET BY {0}</value>
+  </data>
+  <data name="Fmt_SetByIdleSaver" xml:space="preserve">
+    <value>SET BY IDLESAVER</value>
+  </data>
+  <data name="Fmt_SetByLoadSwitcher" xml:space="preserve">
+    <value>SET BY THE LOAD SWITCHER</value>
+  </data>
+  <data name="Fmt_SetByPerformanceMode" xml:space="preserve">
+    <value>SET BY PERFORMANCE MODE</value>
+  </data>
+  <data name="Fmt_SetByYou" xml:space="preserve">
+    <value>SET BY YOU</value>
+  </data>
+  <data name="Fmt_SetWhenEngineStarted" xml:space="preserve">
+    <value>SET WHEN THE ENGINE STARTED</value>
+  </data>
+  <data name="Focus" xml:space="preserve">
+    <value>  ◀ FOCUS</value>
+  </data>
+  <data name="FocusBoost" xml:space="preserve">
+    <value>FOCUS BOOST</value>
+  </data>
+  <data name="FollowNewEntriesAsTheyAre" xml:space="preserve">
+    <value>Follow new entries as they are written, or hold the table still</value>
+  </data>
+  <data name="FollowsTheCpusLoadAFast" xml:space="preserve">
+    <value>Follows the CPU's load: a fast plan while it's busy, a calmer one while it isn't.</value>
+  </data>
+  <data name="ForSeconds" xml:space="preserve">
+    <value>FOR (SECONDS)</value>
+  </data>
+  <data name="ForSeconds1To3600" xml:space="preserve">
+    <value>FOR (SECONDS, 1 TO 3600)</value>
+  </data>
+  <data name="Forget" xml:space="preserve">
+    <value>Forget</value>
+  </data>
+  <data name="General" xml:space="preserve">
+    <value>GENERAL</value>
+  </data>
+  <data name="GpuPreference" xml:space="preserve">
+    <value>GPU PREFERENCE</value>
+  </data>
+  <data name="GpuPriority" xml:space="preserve">
+    <value>GPU PRIORITY</value>
+  </data>
+  <data name="HandOutOnlyTheFirstThread" xml:space="preserve">
+    <value>Hand out only the first thread of each physical core.</value>
+  </data>
+  <data name="HardCapItsCpu" xml:space="preserve">
+    <value>HARD CAP ITS CPU</value>
+  </data>
+  <data name="Heavy" xml:space="preserve">
+    <value>HEAVY</value>
+  </data>
+  <data name="Hidden" xml:space="preserve">
+    <value>HIDDEN</value>
+  </data>
+  <data name="High" xml:space="preserve">
+    <value>High</value>
+  </data>
+  <data name="High2" xml:space="preserve">
+    <value>HIGH</value>
+  </data>
+  <data name="HighAdministrator" xml:space="preserve">
+    <value>High (administrator)</value>
+  </data>
+  <data name="HighNeedsAdmin" xml:space="preserve">
+    <value>HIGH NEEDS ADMIN</value>
+  </data>
+  <data name="HighPerf" xml:space="preserve">
+    <value>HIGH PERF</value>
+  </data>
+  <data name="HowLong" xml:space="preserve">
+    <value>HOW LONG</value>
+  </data>
+  <data name="HowOftenWindowsClockTicksA" xml:space="preserve">
+    <value>How often Windows' clock ticks. A finer timer makes sleeps and frame pacing more precise, at the cost of more wake-ups and battery. The engine holds it while it runs.</value>
+  </data>
+  <data name="HowProguardFitsIntoYourWindows" xml:space="preserve">
+    <value>How ProGuard fits into your Windows session.</value>
+  </data>
+  <data name="HowTheEngineBehavesChangesApply" xml:space="preserve">
+    <value>HOW THE ENGINE BEHAVES. CHANGES APPLY THE MOMENT YOU MAKE THEM.</value>
+  </data>
+  <data name="IOPriority" xml:space="preserve">
+    <value>I/O priority</value>
+  </data>
+  <data name="IOPriority2" xml:space="preserve">
+    <value>I/O PRIORITY</value>
+  </data>
+  <data name="Idle" xml:space="preserve">
+    <value>Idle</value>
+  </data>
+  <data name="Idle2" xml:space="preserve">
+    <value>IDLE</value>
+  </data>
+  <data name="Idlesaver" xml:space="preserve">
+    <value>IDLESAVER</value>
+  </data>
+  <data name="IfThisHappensDoThatChecked" xml:space="preserve">
+    <value>IF THIS HAPPENS, DO THAT — CHECKED EVERY FEW SECONDS</value>
+  </data>
+  <data name="ImportFromFile" xml:space="preserve">
+    <value>IMPORT FROM FILE</value>
+  </data>
+  <data name="InFocus" xml:space="preserve">
+    <value>IN FOCUS</value>
+  </data>
+  <data name="InstalledPlans" xml:space="preserve">
+    <value>INSTALLED PLANS</value>
+  </data>
+  <data name="InstanceBalancer" xml:space="preserve">
+    <value>INSTANCE BALANCER</value>
+  </data>
+  <data name="Instances" xml:space="preserve">
+    <value>INSTANCES</value>
+  </data>
+  <data name="InsteadOfSwitchingToTheLow" xml:space="preserve">
+    <value>Instead of switching to the low-load plan, return to whatever plan was active before the switcher went high</value>
+  </data>
+  <data name="Is" xml:space="preserve">
+    <value>IS</value>
+  </data>
+  <data name="ItHasToHoldThisLong" xml:space="preserve">
+    <value>It has to hold this long without a break before anything happens.</value>
+  </data>
+  <data name="JumpsToAFastPowerPlan" xml:space="preserve">
+    <value>Jumps to a fast power plan and puts your previous plan back when you turn it off. It can switch itself on while a game runs.</value>
+  </data>
+  <data name="KeepFreeLowestCores" xml:space="preserve">
+    <value>KEEP FREE (LOWEST CORES)</value>
+  </data>
+  <data name="KeepItOnCertainCores" xml:space="preserve">
+    <value>KEEP IT ON CERTAIN CORES</value>
+  </data>
+  <data name="KeepItRunning" xml:space="preserve">
+    <value>KEEP IT RUNNING</value>
+  </data>
+  <data name="KeepRunningInTheTray" xml:space="preserve">
+    <value>KEEP RUNNING IN THE TRAY</value>
+  </data>
+  <data name="Lang_Language" xml:space="preserve">
+    <value>LANGUAGE</value>
+  </data>
+  <data name="Lang_NextStart" xml:space="preserve">
+    <value>ProGuard switches to that language the next time it starts.</value>
+  </data>
+  <data name="Lang_Note" xml:space="preserve">
+    <value>Takes effect the next time ProGuard starts. Messages that come from the engine, such as its refusals and the activity and engine logs, stay in English.</value>
+  </data>
+  <data name="Lang_WindowsDefault" xml:space="preserve">
+    <value>WINDOWS DEFAULT</value>
+  </data>
+  <data name="LeaveAlone" xml:space="preserve">
+    <value>LEAVE ALONE</value>
+  </data>
+  <data name="LeaveThePriorityClassAlone" xml:space="preserve">
+    <value>LEAVE THE PRIORITY CLASS ALONE</value>
+  </data>
+  <data name="LeftOut" xml:space="preserve">
+    <value>LEFT OUT</value>
+  </data>
+  <data name="Level" xml:space="preserve">
+    <value>LEVEL</value>
+  </data>
+  <data name="LitBlocksAreTheLogicalProcessors" xml:space="preserve">
+    <value>Lit blocks are the logical processors this program may run on.</value>
+  </data>
+  <data name="LitBlocksAreTheLogicalProcessors2" xml:space="preserve">
+    <value>Lit blocks are the logical processors Windows prefers for this program. Unlike core affinity this is a preference, so the program can still spill over when they are busy.</value>
+  </data>
+  <data name="Live" xml:space="preserve">
+    <value>● LIVE</value>
+  </data>
+  <data name="Live0New" xml:space="preserve">
+    <value>LIVE · {0} NEW</value>
+  </data>
+  <data name="LiveParkedCoresAreTheFaint" xml:space="preserve">
+    <value>LIVE · PARKED CORES ARE THE FAINT ONES</value>
+  </data>
+  <data name="LoadOlder" xml:space="preserve">
+    <value>LOAD OLDER</value>
+  </data>
+  <data name="LoadSwitcher" xml:space="preserve">
+    <value>LOAD SWITCHER</value>
+  </data>
+  <data name="LogPassesThatFindNothingTo" xml:space="preserve">
+    <value>LOG PASSES THAT FIND NOTHING TO TRIM</value>
+  </data>
+  <data name="Logs_15Min" xml:space="preserve">
+    <value>15 MIN</value>
+  </data>
+  <data name="Logs_1Hour" xml:space="preserve">
+    <value>1 HOUR</value>
+  </data>
+  <data name="Logs_24Hours" xml:space="preserve">
+    <value>24 HOURS</value>
+  </data>
+  <data name="Logs_7Days" xml:space="preserve">
+    <value>7 DAYS</value>
+  </data>
+  <data name="Logs_ActionLog" xml:space="preserve">
+    <value>ACTION LOG</value>
+  </data>
+  <data name="Logs_Actions" xml:space="preserve">
+    <value>ACTIONS</value>
+  </data>
+  <data name="Logs_AllSources" xml:space="preserve">
+    <value>ALL SOURCES</value>
+  </data>
+  <data name="Logs_AnyTime" xml:space="preserve">
+    <value>ANY TIME</value>
+  </data>
+  <data name="Logs_ClearTitle" xml:space="preserve">
+    <value>CLEAR THE ACTION LOG?</value>
+  </data>
+  <data name="Logs_ClearWarning" xml:space="preserve">
+    <value>Deletes the logged ProBalance, CPU Limiter and power-plan actions for everyone. The engine log is kept. This can't be undone.</value>
+  </data>
+  <data name="Logs_Cleared" xml:space="preserve">
+    <value>ACTION LOG CLEARED</value>
+  </data>
+  <data name="Logs_ClipboardBusy" xml:space="preserve">
+    <value>The clipboard is busy. Try again.</value>
+  </data>
+  <data name="Logs_CouldntSaveExport" xml:space="preserve">
+    <value>Couldn't save the export: {0}</value>
+  </data>
+  <data name="Logs_Critical" xml:space="preserve">
+    <value>CRITICAL</value>
+  </data>
+  <data name="Logs_Debug" xml:space="preserve">
+    <value>DEBUG</value>
+  </data>
+  <data name="Logs_EngineLog" xml:space="preserve">
+    <value>ENGINE LOG</value>
+  </data>
+  <data name="Logs_Entries" xml:space="preserve">
+    <value>{0:N0} ENTRIES</value>
+  </data>
+  <data name="Logs_Error" xml:space="preserve">
+    <value>ERROR</value>
+  </data>
+  <data name="Logs_ExportDialogTitle" xml:space="preserve">
+    <value>Export log</value>
+  </data>
+  <data name="Logs_ExportFilter" xml:space="preserve">
+    <value>CSV file (*.csv)|*.csv|All files (*.*)|*.*</value>
+  </data>
+  <data name="Logs_Exported" xml:space="preserve">
+    <value>EXPORTED {0} · {1}</value>
+  </data>
+  <data name="Logs_ExportedNewest" xml:space="preserve">
+    <value>EXPORTED THE NEWEST {0} · MORE MATCHED THAN ONE EXPORT HOLDS</value>
+  </data>
+  <data name="Logs_Info" xml:space="preserve">
+    <value>INFO</value>
+  </data>
+  <data name="Logs_OneEntry" xml:space="preserve">
+    <value>1 ENTRY</value>
+  </data>
+  <data name="Logs_RowCopied" xml:space="preserve">
+    <value>ROW COPIED</value>
+  </data>
+  <data name="Logs_Trace" xml:space="preserve">
+    <value>TRACE</value>
+  </data>
+  <data name="Logs_Warn" xml:space="preserve">
+    <value>WARN</value>
+  </data>
+  <data name="Low" xml:space="preserve">
+    <value>Low</value>
+  </data>
+  <data name="Low2" xml:space="preserve">
+    <value>LOW</value>
+  </data>
+  <data name="MakeARule" xml:space="preserve">
+    <value>Make a rule…</value>
+  </data>
+  <data name="MakeRule" xml:space="preserve">
+    <value>MAKE RULE</value>
+  </data>
+  <data name="Maximise" xml:space="preserve">
+    <value>Maximise</value>
+  </data>
+  <data name="Maximum" xml:space="preserve">
+    <value>MAXIMUM</value>
+  </data>
+  <data name="Med" xml:space="preserve">
+    <value>MED</value>
+  </data>
+  <data name="Medium" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="Medium2" xml:space="preserve">
+    <value>MEDIUM</value>
+  </data>
+  <data name="Mem00" xml:space="preserve">
+    <value>MEM {0:0}%</value>
+  </data>
+  <data name="Memory" xml:space="preserve">
+    <value>MEMORY</value>
+  </data>
+  <data name="Memory2" xml:space="preserve">
+    <value>MEMORY ▼</value>
+  </data>
+  <data name="MemoryPri" xml:space="preserve">
+    <value>MEMORY PRI.</value>
+  </data>
+  <data name="MemoryPriority" xml:space="preserve">
+    <value>Memory priority</value>
+  </data>
+  <data name="MemoryPriority2" xml:space="preserve">
+    <value>MEMORY PRIORITY</value>
+  </data>
+  <data name="Message" xml:space="preserve">
+    <value>MESSAGE</value>
+  </data>
+  <data name="MessageOptional" xml:space="preserve">
+    <value>MESSAGE (OPTIONAL)</value>
+  </data>
+  <data name="Minimise" xml:space="preserve">
+    <value>Minimise</value>
+  </data>
+  <data name="Minimum" xml:space="preserve">
+    <value>MINIMUM</value>
+  </data>
+  <data name="MostCopiesAtOnce" xml:space="preserve">
+    <value>MOST COPIES AT ONCE</value>
+  </data>
+  <data name="N0Balanced" xml:space="preserve">
+    <value>{0} BALANCED</value>
+  </data>
+  <data name="N0EntriesShown" xml:space="preserve">
+    <value>{0} ENTRIES SHOWN</value>
+  </data>
+  <data name="N0Presets" xml:space="preserve">
+    <value>{0} PRESETS</value>
+  </data>
+  <data name="N0ProcessesWatched" xml:space="preserve">
+    <value>{0} PROCESSES WATCHED</value>
+  </data>
+  <data name="N0Threads" xml:space="preserve">
+    <value>{0} THREADS</value>
+  </data>
+  <data name="N0Unit" xml:space="preserve">
+    <value>{0} UNIT</value>
+  </data>
+  <data name="N90Seconds" xml:space="preserve">
+    <value>90 SECONDS</value>
+  </data>
+  <data name="Name" xml:space="preserve">
+    <value>NAME</value>
+  </data>
+  <data name="NeedsAdministratorRights" xml:space="preserve">
+    <value>NEEDS ADMINISTRATOR RIGHTS</value>
+  </data>
+  <data name="NeverBalanceIt" xml:space="preserve">
+    <value>NEVER BALANCE IT</value>
+  </data>
+  <data name="NewRule" xml:space="preserve">
+    <value>+ NEW RULE</value>
+  </data>
+  <data name="NewWatch" xml:space="preserve">
+    <value>+ NEW WATCH</value>
+  </data>
+  <data name="NewerCopiesOverTheLimitAre" xml:space="preserve">
+    <value>Newer copies over the limit are ended.</value>
+  </data>
+  <data name="NoEntryMatchesTheseFiltersWiden" xml:space="preserve">
+    <value>No entry matches these filters. Widen the time range, turn more levels on, or reset the filters.</value>
+  </data>
+  <data name="NoLimit" xml:space="preserve">
+    <value>NO LIMIT</value>
+  </data>
+  <data name="NoProfilesYetSaveTheCurrent" xml:space="preserve">
+    <value>No profiles yet. Save the current configuration to start one.</value>
+  </data>
+  <data name="NoRulesYet" xml:space="preserve">
+    <value>NO
+RULES
+YET.</value>
+  </data>
+  <data name="NoSignal" xml:space="preserve">
+    <value>NO SIGNAL</value>
+  </data>
+  <data name="None" xml:space="preserve">
+    <value>NONE</value>
+  </data>
+  <data name="Norm" xml:space="preserve">
+    <value>NORM</value>
+  </data>
+  <data name="Normal" xml:space="preserve">
+    <value>Normal</value>
+  </data>
+  <data name="Normal2" xml:space="preserve">
+    <value>NORMAL</value>
+  </data>
+  <data name="NotTheActivePlan" xml:space="preserve">
+    <value>NOT THE ACTIVE PLAN</value>
+  </data>
+  <data name="NothingIsBeingWatched" xml:space="preserve">
+    <value>NOTHING
+IS BEING
+WATCHED.</value>
+  </data>
+  <data name="NothingLogged" xml:space="preserve">
+    <value>NOTHING
+LOGGED.</value>
+  </data>
+  <data name="Now" xml:space="preserve">
+    <value>NOW</value>
+  </data>
+  <data name="OfTheWholeMachine" xml:space="preserve">
+    <value>OF THE WHOLE MACHINE</value>
+  </data>
+  <data name="OfTheWholeMachineAHard" xml:space="preserve">
+    <value>OF THE WHOLE MACHINE — A HARD CEILING WINDOWS ENFORCES</value>
+  </data>
+  <data name="Off" xml:space="preserve">
+    <value>OFF</value>
+  </data>
+  <data name="Offline" xml:space="preserve">
+    <value>OFFLINE</value>
+  </data>
+  <data name="On" xml:space="preserve">
+    <value>ON</value>
+  </data>
+  <data name="OnAutomaticallyAListedProgramOr" xml:space="preserve">
+    <value>ON AUTOMATICALLY — A LISTED PROGRAM OR A GAME IS RUNNING</value>
+  </data>
+  <data name="OnBattery" xml:space="preserve">
+    <value>ON BATTERY</value>
+  </data>
+  <data name="OnSmtMachinesOneThreadPer" xml:space="preserve">
+    <value>On SMT machines, one thread per physical core</value>
+  </data>
+  <data name="OnSteersItToTheEfficient" xml:space="preserve">
+    <value>On steers it to the efficient cores. Off keeps it on the fast ones.</value>
+  </data>
+  <data name="OnePerCore" xml:space="preserve">
+    <value>ONE PER CORE</value>
+  </data>
+  <data name="OnePerLine" xml:space="preserve">
+    <value>ONE PER LINE</value>
+  </data>
+  <data name="Online" xml:space="preserve">
+    <value>ONLINE</value>
+  </data>
+  <data name="OnlyCopiesUsing" xml:space="preserve">
+    <value>ONLY COPIES USING (%)</value>
+  </data>
+  <data name="OnlyForTheMachineItWas" xml:space="preserve">
+    <value>ONLY FOR THE MACHINE IT WAS SAVED ON</value>
+  </data>
+  <data name="OnlyTheseCores" xml:space="preserve">
+    <value>ONLY THESE CORES</value>
+  </data>
+  <data name="OnlyWhilePerformanceModeIsOn" xml:space="preserve">
+    <value>ONLY WHILE PERFORMANCE MODE IS ON</value>
+  </data>
+  <data name="OpenFileLocation" xml:space="preserve">
+    <value>Open file location</value>
+  </data>
+  <data name="OpenFolder" xml:space="preserve">
+    <value>OPEN FOLDER</value>
+  </data>
+  <data name="OpenProguardAgainWithAdministratorRights" xml:space="preserve">
+    <value>Open ProGuard again with administrator rights, on this page</value>
+  </data>
+  <data name="OpenTheProcessTable" xml:space="preserve">
+    <value>Open the process table</value>
+  </data>
+  <data name="OtherwiseOnlyCopiesInTheSame" xml:space="preserve">
+    <value>Otherwise only copies in the same Windows session count.</value>
+  </data>
+  <data name="Overview" xml:space="preserve">
+    <value>OVERVIEW</value>
+  </data>
+  <data name="Overview_MemoryOf" xml:space="preserve">
+    <value>{0} OF {1}</value>
+  </data>
+  <data name="Overview_PausedIdle" xml:space="preserve">
+    <value>PAUSED · IDLE</value>
+  </data>
+  <data name="Overview_Restraints" xml:space="preserve">
+    <value>{0} NOW · {1} TOTAL</value>
+  </data>
+  <data name="PCores" xml:space="preserve">
+    <value>P-CORES</value>
+  </data>
+  <data name="Parent" xml:space="preserve">
+    <value>PARENT</value>
+  </data>
+  <data name="Pause" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="Pause2" xml:space="preserve">
+    <value>PAUSE</value>
+  </data>
+  <data name="PauseProbalanceWhenTheMachineIs" xml:space="preserve">
+    <value>PAUSE PROBALANCE WHEN THE MACHINE IS IDLE</value>
+  </data>
+  <data name="Paused" xml:space="preserve">
+    <value>❚❚ PAUSED</value>
+  </data>
+  <data name="Paused2" xml:space="preserve">
+    <value>PAUSED</value>
+  </data>
+  <data name="PausedNewEntriesWaitUntilYou" xml:space="preserve">
+    <value>PAUSED · NEW ENTRIES WAIT UNTIL YOU RESUME</value>
+  </data>
+  <data name="PerProgramOnceItHasFired" xml:space="preserve">
+    <value>Per program. Once it has fired, it fires again only after this long or once the condition has cleared.</value>
+  </data>
+  <data name="PerformanceMode" xml:space="preserve">
+    <value>PERFORMANCE MODE</value>
+  </data>
+  <data name="Pick" xml:space="preserve">
+    <value>PICK…</value>
+  </data>
+  <data name="PickALineToReadAll" xml:space="preserve">
+    <value>PICK A LINE TO READ ALL OF IT.</value>
+  </data>
+  <data name="PickAtLeastOne" xml:space="preserve">
+    <value>PICK AT LEAST ONE</value>
+  </data>
+  <data name="Pid" xml:space="preserve">
+    <value>PID</value>
+  </data>
+  <data name="Pid0" xml:space="preserve">
+    <value>PID {0}</value>
+  </data>
+  <data name="PinAProgramsPriorityCapIts" xml:space="preserve">
+    <value>Pin a program's priority, cap its CPU, keep it on certain cores, shield it from ProGuard's balancing, or stop it from running at all. Right-click any process and choose Make a rule, or start one here.</value>
+  </data>
+  <data name="PluggedIn" xml:space="preserve">
+    <value>PLUGGED IN</value>
+  </data>
+  <data name="Power" xml:space="preserve">
+    <value>POWER</value>
+  </data>
+  <data name="PowerMode" xml:space="preserve">
+    <value>POWER MODE</value>
+  </data>
+  <data name="PowerPlan" xml:space="preserve">
+    <value>POWER PLAN</value>
+  </data>
+  <data name="PowerSaving" xml:space="preserve">
+    <value>POWER SAVING</value>
+  </data>
+  <data name="Presets" xml:space="preserve">
+    <value>PRESETS</value>
+  </data>
+  <data name="Priority" xml:space="preserve">
+    <value>Priority</value>
+  </data>
+  <data name="Priority2" xml:space="preserve">
+    <value>PRIORITY</value>
+  </data>
+  <data name="PriorityIOAndMemoryPriority" xml:space="preserve">
+    <value>Priority, I/O and memory priority, efficiency mode, cores and CPU caps you set on the Processes page are kept in that program's rule, so they are set again whenever the program starts, and put back if the program changes them. Windows' own processes stay one-off. Off: changes last until the process exits; use Always in the right-click menu to keep one.</value>
+  </data>
+  <data name="Private" xml:space="preserve">
+    <value>PRIVATE</value>
+  </data>
+  <data name="Probalance" xml:space="preserve">
+    <value>PROBALANCE</value>
+  </data>
+  <data name="ProbalanceArmed" xml:space="preserve">
+    <value>PROBALANCE ARMED</value>
+  </data>
+  <data name="ProbalanceIsRestrainingAndHoldsEvery" xml:space="preserve">
+    <value>PROBALANCE IS RESTRAINING AND HOLDS EVERY CORE OF THIS PLAN UNPARKED. YOUR MIN CORES VALUES COME BACK WHEN IT LETS GO.</value>
+  </data>
+  <data name="ProbalanceOff" xml:space="preserve">
+    <value>PROBALANCE OFF</value>
+  </data>
+  <data name="ProbalanceWontLowerItsPriorityEven" xml:space="preserve">
+    <value>ProBalance won't lower its priority, even under load.</value>
+  </data>
+  <data name="Proc_Always" xml:space="preserve">
+    <value>{0} · ALWAYS {1}. Set now, and again whenever it starts.</value>
+  </data>
+  <data name="Proc_AlwaysRealtime" xml:space="preserve">
+    <value>ALWAYS REALTIME</value>
+  </data>
+  <data name="Proc_AlwaysRealtimeTitle" xml:space="preserve">
+    <value>ALWAYS REALTIME?</value>
+  </data>
+  <data name="Proc_AlwaysRealtimeWarning" xml:space="preserve">
+    <value>{0} will run at Realtime priority every time it starts. That lets it starve Windows itself, including your mouse and keyboard. Only use it for a program you trust to stay light.</value>
+  </data>
+  <data name="Proc_Eco" xml:space="preserve">
+    <value>ECO {0}</value>
+  </data>
+  <data name="Proc_EcoSet" xml:space="preserve">
+    <value>{0} · ECO {1}</value>
+  </data>
+  <data name="Proc_EndIt" xml:space="preserve">
+    <value>END IT</value>
+  </data>
+  <data name="Proc_EndSystemTitle" xml:space="preserve">
+    <value>END A SYSTEM PROCESS?</value>
+  </data>
+  <data name="Proc_EndSystemWarning" xml:space="preserve">
+    <value>{0} belongs to Windows or a service. Ending it can crash apps or the session.</value>
+  </data>
+  <data name="Proc_EndTreeChildren" xml:space="preserve">
+    <value>{0} and {1} processes it started will end.</value>
+  </data>
+  <data name="Proc_EndTreeNoChildren" xml:space="preserve">
+    <value>{0} has no child processes; only it will end.</value>
+  </data>
+  <data name="Proc_EndTreeOneChild" xml:space="preserve">
+    <value>{0} and 1 process it started will end.</value>
+  </data>
+  <data name="Proc_EndTreeTitle" xml:space="preserve">
+    <value>END THE WHOLE TREE?</value>
+  </data>
+  <data name="Proc_Ended" xml:space="preserve">
+    <value>{0} ended</value>
+  </data>
+  <data name="Proc_Forgotten" xml:space="preserve">
+    <value>{0} · FORGOTTEN. Running copies keep what they have now.</value>
+  </data>
+  <data name="Proc_Freed" xml:space="preserve">
+    <value>{0} · freed {1}</value>
+  </data>
+  <data name="Proc_Io" xml:space="preserve">
+    <value>I/O {0}</value>
+  </data>
+  <data name="Proc_IoHighNeedsAdmin" xml:space="preserve">
+    <value>I/O priority High needs administrator rights. Restart ProGuard as administrator to use it.</value>
+  </data>
+  <data name="Proc_IoSet" xml:space="preserve">
+    <value>{0} · I/O {1}</value>
+  </data>
+  <data name="Proc_Kept" xml:space="preserve">
+    <value>{0} · KEPT: set again whenever {1} starts.</value>
+  </data>
+  <data name="Proc_Limit" xml:space="preserve">
+    <value>LIM {0:0.#}%</value>
+  </data>
+  <data name="Proc_Memory" xml:space="preserve">
+    <value>MEMORY {0}</value>
+  </data>
+  <data name="Proc_MemorySet" xml:space="preserve">
+    <value>{0} · MEMORY {1}</value>
+  </data>
+  <data name="Proc_NameWhat" xml:space="preserve">
+    <value>{0} · {1}</value>
+  </data>
+  <data name="Proc_NoLocation" xml:space="preserve">
+    <value>Windows won't reveal where this process lives.</value>
+  </data>
+  <data name="Proc_NothingKept" xml:space="preserve">
+    <value>{0} has nothing like that kept for it.</value>
+  </data>
+  <data name="Proc_Paused" xml:space="preserve">
+    <value>{0} paused</value>
+  </data>
+  <data name="Proc_Priority" xml:space="preserve">
+    <value>PRIORITY {0}</value>
+  </data>
+  <data name="Proc_RealtimeNeedsAdmin" xml:space="preserve">
+    <value>Realtime priority needs administrator rights. Restart ProGuard as administrator to use it.</value>
+  </data>
+  <data name="Proc_RealtimeTitle" xml:space="preserve">
+    <value>REALTIME?</value>
+  </data>
+  <data name="Proc_RealtimeWarning" xml:space="preserve">
+    <value>Realtime priority lets {0} starve Windows itself, including your mouse and keyboard. Only use it for a process you trust to stay light.</value>
+  </data>
+  <data name="Proc_Resumed" xml:space="preserve">
+    <value>{0} resumed</value>
+  </data>
+  <data name="Proc_SetRealtime" xml:space="preserve">
+    <value>SET REALTIME</value>
+  </data>
+  <data name="Proc_SetTo" xml:space="preserve">
+    <value>{0} → {1}</value>
+  </data>
+  <data name="Proc_TreeEnded" xml:space="preserve">
+    <value>{0} tree ended</value>
+  </data>
+  <data name="Process" xml:space="preserve">
+    <value>PROCESS</value>
+  </data>
+  <data name="ProcessOrPid" xml:space="preserve">
+    <value>PROCESS OR PID</value>
+  </data>
+  <data name="Processes" xml:space="preserve">
+    <value>PROCESSES</value>
+  </data>
+  <data name="ProcessesInYourSession" xml:space="preserve">
+    <value>Processes in your session</value>
+  </data>
+  <data name="Prof_AtMost60" xml:space="preserve">
+    <value>AT MOST 60 CHARACTERS</value>
+  </data>
+  <data name="Prof_Changes" xml:space="preserve">
+    <value>{0} CHANGES</value>
+  </data>
+  <data name="Prof_ConfigImported" xml:space="preserve">
+    <value>CONFIG IMPORTED</value>
+  </data>
+  <data name="Prof_CouldntRead" xml:space="preserve">
+    <value>Couldn't read {0}: {1}</value>
+  </data>
+  <data name="Prof_CouldntWrite" xml:space="preserve">
+    <value>Couldn't write {0}: {1}</value>
+  </data>
+  <data name="Prof_DeleteTitle" xml:space="preserve">
+    <value>DELETE {0}?</value>
+  </data>
+  <data name="Prof_DeleteWarning" xml:space="preserve">
+    <value>Only the saved profile goes. The rules and settings in force now stay as they are.</value>
+  </data>
+  <data name="Prof_Deleted" xml:space="preserve">
+    <value>DELETED {0}</value>
+  </data>
+  <data name="Prof_Detail" xml:space="preserve">
+    <value>{0} · {1} WATCHDOG{2}</value>
+  </data>
+  <data name="Prof_ExportedTo" xml:space="preserve">
+    <value>EXPORTED TO {0}</value>
+  </data>
+  <data name="Prof_GiveItAName" xml:space="preserve">
+    <value>GIVE IT A NAME</value>
+  </data>
+  <data name="Prof_Import" xml:space="preserve">
+    <value>IMPORT</value>
+  </data>
+  <data name="Prof_ImportConfig" xml:space="preserve">
+    <value>IMPORT CONFIG</value>
+  </data>
+  <data name="Prof_ImportNote" xml:space="preserve">
+    <value>What is in force now is saved as "Before import" first, so you can switch back to it.</value>
+  </data>
+  <data name="Prof_ImportTitle" xml:space="preserve">
+    <value>IMPORT {0}?</value>
+  </data>
+  <data name="Prof_KeptAutomatically" xml:space="preserve">
+    <value> · KEPT AUTOMATICALLY</value>
+  </data>
+  <data name="Prof_MachineValues" xml:space="preserve">
+    <value>{0} MACHINE-SPECIFIC VALUES LEFT OUT</value>
+  </data>
+  <data name="Prof_MachineValuesToast" xml:space="preserve">
+    <value> · {0} MACHINE-SPECIFIC VALUES LEFT OUT</value>
+  </data>
+  <data name="Prof_NameReserved" xml:space="preserve">
+    <value>THAT NAME IS KEPT FOR THE AUTOMATIC COPY</value>
+  </data>
+  <data name="Prof_NameTaken" xml:space="preserve">
+    <value>ANOTHER PROFILE HAS THAT NAME</value>
+  </data>
+  <data name="Prof_NewProfile" xml:space="preserve">
+    <value>NEW PROFILE</value>
+  </data>
+  <data name="Prof_NothingChanges" xml:space="preserve">
+    <value>NOTHING CHANGES</value>
+  </data>
+  <data name="Prof_OneChange" xml:space="preserve">
+    <value>1 CHANGE</value>
+  </data>
+  <data name="Prof_OneMachineValue" xml:space="preserve">
+    <value>1 MACHINE-SPECIFIC VALUE LEFT OUT</value>
+  </data>
+  <data name="Prof_OneMachineValueToast" xml:space="preserve">
+    <value> · 1 MACHINE-SPECIFIC VALUE LEFT OUT</value>
+  </data>
+  <data name="Prof_OneRule" xml:space="preserve">
+    <value>1 RULE</value>
+  </data>
+  <data name="Prof_RenameProfile" xml:space="preserve">
+    <value>RENAME PROFILE</value>
+  </data>
+  <data name="Prof_RenamedTo" xml:space="preserve">
+    <value>RENAMED TO {0}</value>
+  </data>
+  <data name="Prof_Replaces" xml:space="preserve">
+    <value>REPLACES THE PROFILE OF THAT NAME</value>
+  </data>
+  <data name="Prof_Rules" xml:space="preserve">
+    <value>{0} RULES</value>
+  </data>
+  <data name="Prof_Save" xml:space="preserve">
+    <value>SAVE</value>
+  </data>
+  <data name="Prof_Saved" xml:space="preserve">
+    <value> · SAVED {0}</value>
+  </data>
+  <data name="Prof_SavedAs" xml:space="preserve">
+    <value>SAVED AS {0}</value>
+  </data>
+  <data name="Prof_SwitchNote" xml:space="preserve">
+    <value>What is in force now is saved as "Before switch" first, so you can switch back.</value>
+  </data>
+  <data name="Prof_SwitchProfile" xml:space="preserve">
+    <value>SWITCH PROFILE</value>
+  </data>
+  <data name="Prof_SwitchToTitle" xml:space="preserve">
+    <value>SWITCH TO {0}?</value>
+  </data>
+  <data name="Prof_SwitchedTo" xml:space="preserve">
+    <value>SWITCHED TO {0}</value>
+  </data>
+  <data name="Prof_TooLarge" xml:space="preserve">
+    <value>{0} is too large to be a ProGuard config.</value>
+  </data>
+  <data name="ProfileName" xml:space="preserve">
+    <value>PROFILE NAME</value>
+  </data>
+  <data name="ProfilesBackup" xml:space="preserve">
+    <value>PROFILES &amp; BACKUP</value>
+  </data>
+  <data name="Program" xml:space="preserve">
+    <value>PROGRAM</value>
+  </data>
+  <data name="ProgramNamesOrFullPathsWith" xml:space="preserve">
+    <value>Program names or full paths, with * as a wildcard. Performance Mode is on while any of them runs.</value>
+  </data>
+  <data name="Proguard" xml:space="preserve">
+    <value>PROGUARD</value>
+  </data>
+  <data name="ProguardAsksForAdministratorRightsA" xml:space="preserve">
+    <value>ProGuard asks for administrator rights (a UAC prompt) each time it starts, including at sign-in, so Realtime and High I/O priority always work. Say no and it opens with standard rights. The installer turns this on for everyone unless told not to; this switch is your own choice.</value>
+  </data>
+  <data name="ProguardsEngineDoesTheActualWork" xml:space="preserve">
+    <value>ProGuard's engine does the actual work: watching processes, applying rules, balancing load. Start ProGuard.Engine (run.ps1 starts both) and this screen will clear by itself.</value>
+  </data>
+  <data name="PurgeNeedsAdministratorRights" xml:space="preserve">
+    <value>PURGE NEEDS ADMINISTRATOR RIGHTS</value>
+  </data>
+  <data name="PurgeNow" xml:space="preserve">
+    <value>PURGE NOW</value>
+  </data>
+  <data name="PurgeTheStandbyListWhenFree" xml:space="preserve">
+    <value>PURGE THE STANDBY LIST WHEN FREE RAM IS LOW</value>
+  </data>
+  <data name="PutsTheseSettingsBackIfSomething" xml:space="preserve">
+    <value>Puts these settings back if something else changes them.</value>
+  </data>
+  <data name="RaisePriorityWhenItStarts" xml:space="preserve">
+    <value>RAISE PRIORITY WHEN IT STARTS</value>
+  </data>
+  <data name="ReApplyIfChanged" xml:space="preserve">
+    <value>RE-APPLY IF CHANGED</value>
+  </data>
+  <data name="Realtime" xml:space="preserve">
+    <value>Realtime</value>
+  </data>
+  <data name="Realtime2" xml:space="preserve">
+    <value>REALTIME</value>
+  </data>
+  <data name="RememberChangesToPrograms" xml:space="preserve">
+    <value>REMEMBER CHANGES TO PROGRAMS</value>
+  </data>
+  <data name="RemoveCap" xml:space="preserve">
+    <value>REMOVE CAP</value>
+  </data>
+  <data name="Rename" xml:space="preserve">
+    <value>RENAME</value>
+  </data>
+  <data name="Rename0" xml:space="preserve">
+    <value>RENAME {0}</value>
+  </data>
+  <data name="ResetFilters" xml:space="preserve">
+    <value>RESET FILTERS</value>
+  </data>
+  <data name="Responsiveness" xml:space="preserve">
+    <value>RESPONSIVENESS</value>
+  </data>
+  <data name="RestartAsAdmin" xml:space="preserve">
+    <value>RESTART AS ADMIN</value>
+  </data>
+  <data name="RestartAsAdministrator" xml:space="preserve">
+    <value>RESTART AS ADMINISTRATOR</value>
+  </data>
+  <data name="RestrainOnlyThroughTheExtraActions" xml:space="preserve">
+    <value>Restrain only through the extra actions below</value>
+  </data>
+  <data name="Resume" xml:space="preserve">
+    <value>Resume</value>
+  </data>
+  <data name="Resume2" xml:space="preserve">
+    <value>RESUME</value>
+  </data>
+  <data name="RetryingEvery2Seconds" xml:space="preserve">
+    <value>RETRYING EVERY 2 SECONDS</value>
+  </data>
+  <data name="Revert" xml:space="preserve">
+    <value>REVERT</value>
+  </data>
+  <data name="RightNow" xml:space="preserve">
+    <value>RIGHT NOW</value>
+  </data>
+  <data name="Rule" xml:space="preserve">
+    <value>RULE</value>
+  </data>
+  <data name="Rule_Allow" xml:space="preserve">
+    <value>ALLOW</value>
+  </data>
+  <data name="Rule_AtLaunch" xml:space="preserve">
+    <value>AT LAUNCH</value>
+  </data>
+  <data name="Rule_BadBoostPriority" xml:space="preserve">
+    <value>Startup boost priority {0} isn't a Windows priority class. Pick one of the buttons.</value>
+  </data>
+  <data name="Rule_BadBoostSeconds" xml:space="preserve">
+    <value>A startup boost lasts 1 to 3600 seconds.</value>
+  </data>
+  <data name="Rule_BadCoresPerInstance" xml:space="preserve">
+    <value>Cores per instance is a whole number from 1 to {0}.</value>
+  </data>
+  <data name="Rule_BadCoresToRemove" xml:space="preserve">
+    <value>The CPU Limiter can remove 1 to {0} cores on this {1}-thread machine.</value>
+  </data>
+  <data name="Rule_BadCpuSets" xml:space="preserve">
+    <value>CPU Sets has to be a comma-separated list of CPU Set IDs. Use Pick to choose them.</value>
+  </data>
+  <data name="Rule_BadDuration" xml:space="preserve">
+    <value>The CPU Limiter's duration is a whole number of seconds, 1 or more.</value>
+  </data>
+  <data name="Rule_BadGpu" xml:space="preserve">
+    <value>GPU priority is 0 (idle) to 4 (high). Pick one of the buttons.</value>
+  </data>
+  <data name="Rule_BadGpuPref" xml:space="preserve">
+    <value>GPU preference is 0 (let Windows decide) to 2 (high performance). Pick one of the buttons.</value>
+  </data>
+  <data name="Rule_BadIo" xml:space="preserve">
+    <value>I/O priority is 0 (very low) to 3 (high). Pick one of the buttons.</value>
+  </data>
+  <data name="Rule_BadMaxInstances" xml:space="preserve">
+    <value>Max instances is a whole number of 1 or more. Leave it empty for no limit.</value>
+  </data>
+  <data name="Rule_BadMemory" xml:space="preserve">
+    <value>Memory priority is 1 (very low) to 5 (normal). Pick one of the buttons.</value>
+  </data>
+  <data name="Rule_BadMinCpu" xml:space="preserve">
+    <value>The minimum CPU is a percentage from 0 to 100.</value>
+  </data>
+  <data name="Rule_BadOverFor" xml:space="preserve">
+    <value>The CPU Limiter's "over for" time is a whole number of seconds, 0 or more.</value>
+  </data>
+  <data name="Rule_BadPriority" xml:space="preserve">
+    <value>Priority {0} isn't a Windows priority class. Pick one of the priority buttons.</value>
+  </data>
+  <data name="Rule_BadReserved" xml:space="preserve">
+    <value>Reserved cores is a whole number from 0 to {0}: at least one core has to stay free for the instances.</value>
+  </data>
+  <data name="Rule_BadThreshold" xml:space="preserve">
+    <value>The CPU Limiter threshold is a percentage above 0 and up to 100, e.g. 40. Empty it to switch the limiter off.</value>
+  </data>
+  <data name="Rule_BalanceEqual" xml:space="preserve">
+    <value>BALANCE EQUAL</value>
+  </data>
+  <data name="Rule_BalanceFixed" xml:space="preserve">
+    <value>BALANCE FIXED {0}</value>
+  </data>
+  <data name="Rule_BalanceMinCpu" xml:space="preserve">
+    <value>BALANCE ≥{0}% CPU</value>
+  </data>
+  <data name="Rule_BlockAndKeep" xml:space="preserve">
+    <value>A rule can't both block a program and keep it running. Switch one of them off.</value>
+  </data>
+  <data name="Rule_Blocked" xml:space="preserve">
+    <value>BLOCKED</value>
+  </data>
+  <data name="Rule_Boost" xml:space="preserve">
+    <value>BOOST {0} {1}</value>
+  </data>
+  <data name="Rule_CpuSets" xml:space="preserve">
+    <value>CPU SETS {0}</value>
+  </data>
+  <data name="Rule_CpuSetsCleared" xml:space="preserve">
+    <value>CPU SETS CLEARED</value>
+  </data>
+  <data name="Rule_CpuSetsIds" xml:space="preserve">
+    <value>{0} CPU SETS · IDS {1}</value>
+  </data>
+  <data name="Rule_CpuSetsNone" xml:space="preserve">
+    <value>CLEARED: NO CPU SET RESTRICTION</value>
+  </data>
+  <data name="Rule_DeleteTitle" xml:space="preserve">
+    <value>DELETE RULE?</value>
+  </data>
+  <data name="Rule_DeleteWarning" xml:space="preserve">
+    <value>{0} goes back to running however Windows starts it. Processes already running keep their current settings.</value>
+  </data>
+  <data name="Rule_Deleted" xml:space="preserve">
+    <value>RULE DELETED · {0}</value>
+  </data>
+  <data name="Rule_Disable" xml:space="preserve">
+    <value>DISABLE</value>
+  </data>
+  <data name="Rule_EcoOff" xml:space="preserve">
+    <value>ECO OFF</value>
+  </data>
+  <data name="Rule_EcoOn" xml:space="preserve">
+    <value>ECO ON</value>
+  </data>
+  <data name="Rule_EditRule" xml:space="preserve">
+    <value>EDIT RULE</value>
+  </data>
+  <data name="Rule_Equal" xml:space="preserve">
+    <value>EQUAL</value>
+  </data>
+  <data name="Rule_Fixed" xml:space="preserve">
+    <value>FIXED</value>
+  </data>
+  <data name="Rule_Gpu" xml:space="preserve">
+    <value>GPU {0}</value>
+  </data>
+  <data name="Rule_GpuPref" xml:space="preserve">
+    <value>GPU PREF {0}</value>
+  </data>
+  <data name="Rule_KeepRunning" xml:space="preserve">
+    <value>KEEP RUNNING</value>
+  </data>
+  <data name="Rule_LaunchNeedsPlainName" xml:space="preserve">
+    <value>Priorities at launch need a plain program name such as game.exe: Windows can't match a pattern or a path there.</value>
+  </data>
+  <data name="Rule_LaunchNeedsSomething" xml:space="preserve">
+    <value>"Set at launch" needs a priority, I/O priority or memory priority to set. Pick one, or switch it off.</value>
+  </data>
+  <data name="Rule_LaunchNoRealtime" xml:space="preserve">
+    <value>Windows doesn't apply Realtime priority at launch. Pick another priority, or switch off "Set at launch".</value>
+  </data>
+  <data name="Rule_Leave" xml:space="preserve">
+    <value>LEAVE</value>
+  </data>
+  <data name="Rule_LimiterCores" xml:space="preserve">
+    <value>LIMITER ≥{0}% →-{1} CORES {2}</value>
+  </data>
+  <data name="Rule_LimiterOneCore" xml:space="preserve">
+    <value>LIMITER ≥{0}% →-1 CORE {2}</value>
+  </data>
+  <data name="Rule_LimitsHint" xml:space="preserve">
+    <value>STANDARD RIGHTS. THE ENGINE REFUSES: SYSTEM PROGRAMS AND PROGUARD ITSELF, REALTIME PRIORITY, HIGH I/O PRIORITY, PRIORITIES AT LAUNCH, RULES FOR PROGRAMS YOU COULDN'T CHANGE OR END YOURSELF, AND CHANGING RULES YOU COULDN'T HAVE MADE.</value>
+  </data>
+  <data name="Rule_Max" xml:space="preserve">
+    <value>MAX {0}</value>
+  </data>
+  <data name="Rule_MaxAllSessions" xml:space="preserve">
+    <value>MAX {0} (ALL SESSIONS)</value>
+  </data>
+  <data name="Rule_NeedCore" xml:space="preserve">
+    <value>Pick at least one core, or switch off "Keep it on certain cores".</value>
+  </data>
+  <data name="Rule_NeedCoreToRemove" xml:space="preserve">
+    <value>The CPU Limiter needs at least 1 core to remove.</value>
+  </data>
+  <data name="Rule_NeedName" xml:space="preserve">
+    <value>Name the program the rule is for, e.g. chrome.exe.</value>
+  </data>
+  <data name="Rule_NewRule" xml:space="preserve">
+    <value>NEW RULE</value>
+  </data>
+  <data name="Rule_NoCpuSets" xml:space="preserve">
+    <value>Windows reports no CPU Sets on this machine.</value>
+  </data>
+  <data name="Rule_NoEffect" xml:space="preserve">
+    <value>NO EFFECT</value>
+  </data>
+  <data name="Rule_NoLimits" xml:space="preserve">
+    <value>NO LIMITS</value>
+  </data>
+  <data name="Rule_NothingSet" xml:space="preserve">
+    <value>NOTHING SET</value>
+  </data>
+  <data name="Rule_OneCoreNoReserve" xml:space="preserve">
+    <value>There is only one core, so none can be reserved.</value>
+  </data>
+  <data name="Rule_OutOfRange" xml:space="preserve">
+    <value>OUT OF RANGE ({0})</value>
+  </data>
+  <data name="Rule_PriorityClassNumber" xml:space="preserve">
+    <value>CLASS {0}</value>
+  </data>
+  <data name="Rule_Reapply" xml:space="preserve">
+    <value>RE-APPLY</value>
+  </data>
+  <data name="Rule_Reserve" xml:space="preserve">
+    <value>RESERVE {0}</value>
+  </data>
+  <data name="Rule_Saved" xml:space="preserve">
+    <value>RULE SAVED · {0}</value>
+  </data>
+  <data name="Rule_ThisRule" xml:space="preserve">
+    <value>THIS RULE</value>
+  </data>
+  <data name="Rule_ThreadBoostOff" xml:space="preserve">
+    <value>THREAD BOOST OFF</value>
+  </data>
+  <data name="Rule_ThreadBoostOn" xml:space="preserve">
+    <value>THREAD BOOST ON</value>
+  </data>
+  <data name="Rule_Unchanged" xml:space="preserve">
+    <value>UNCHANGED</value>
+  </data>
+  <data name="Rules" xml:space="preserve">
+    <value>RULES</value>
+  </data>
+  <data name="SaveCurrentAs" xml:space="preserve">
+    <value>SAVE CURRENT AS</value>
+  </data>
+  <data name="SaveEveryEntryTheFiltersMatch" xml:space="preserve">
+    <value>Save every entry the filters match as a CSV file</value>
+  </data>
+  <data name="SavePowerWhileAway" xml:space="preserve">
+    <value>SAVE POWER WHILE AWAY</value>
+  </data>
+  <data name="SaveRule" xml:space="preserve">
+    <value>SAVE RULE</value>
+  </data>
+  <data name="SaveTheRulesWatchdogRulesAnd" xml:space="preserve">
+    <value>Save the rules, Watchdog rules and every setting under a name and switch between them, or move them to another PC as a file. A switch keeps what it replaced as BEFORE SWITCH.</value>
+  </data>
+  <data name="SaveWatch" xml:space="preserve">
+    <value>SAVE WATCH</value>
+  </data>
+  <data name="SavedProfiles" xml:space="preserve">
+    <value>SAVED PROFILES</value>
+  </data>
+  <data name="SearchNameOrPid" xml:space="preserve">
+    <value>SEARCH NAME OR PID</value>
+  </data>
+  <data name="SearchTheLog" xml:space="preserve">
+    <value>SEARCH THE LOG</value>
+  </data>
+  <data name="SecondHalf" xml:space="preserve">
+    <value>SECOND HALF</value>
+  </data>
+  <data name="Selected" xml:space="preserve">
+    <value>SELECTED</value>
+  </data>
+  <data name="SelectedEntry" xml:space="preserve">
+    <value>SELECTED ENTRY</value>
+  </data>
+  <data name="Sensitivity" xml:space="preserve">
+    <value>SENSITIVITY</value>
+  </data>
+  <data name="Sensitivity0" xml:space="preserve">
+    <value>SENSITIVITY {0}</value>
+  </data>
+  <data name="ServicesAndWindowsItself" xml:space="preserve">
+    <value>Services and Windows itself</value>
+  </data>
+  <data name="Session" xml:space="preserve">
+    <value>SESSION</value>
+  </data>
+  <data name="SetAtLaunch" xml:space="preserve">
+    <value>SET AT LAUNCH</value>
+  </data>
+  <data name="SetsThePowerPlansCoreParking" xml:space="preserve">
+    <value>Sets the power plan's core parking minimum to 100% so no core sleeps while a hog is held back, and puts it back afterwards.</value>
+  </data>
+  <data name="Shell_AlwaysAdminOn" xml:space="preserve">
+    <value>From now on ProGuard starts as administrator, after a UAC prompt. Restart as administrator now to use it straight away.</value>
+  </data>
+  <data name="Shell_Connecting" xml:space="preserve">
+    <value>CONNECTING</value>
+  </data>
+  <data name="Shell_ElevationFailed" xml:space="preserve">
+    <value>Windows couldn't start an administrator copy of ProGuard.</value>
+  </data>
+  <data name="Shell_PerformanceModeOff" xml:space="preserve">
+    <value>PERFORMANCE MODE OFF</value>
+  </data>
+  <data name="Shell_PerformanceModeOn" xml:space="preserve">
+    <value>PERFORMANCE MODE ON</value>
+  </data>
+  <data name="Shell_Status" xml:space="preserve">
+    <value>ENGINE ONLINE · {0} · UP {1}</value>
+  </data>
+  <data name="Shell_WouldntChangeSignIn" xml:space="preserve">
+    <value>Windows wouldn't change how ProGuard starts at sign-in: {0}</value>
+  </data>
+  <data name="Shell_WouldntSave" xml:space="preserve">
+    <value>Windows wouldn't save that: {0}</value>
+  </data>
+  <data name="ShowOrHideThisLevel" xml:space="preserve">
+    <value>Show or hide this level</value>
+  </data>
+  <data name="ShowingTheActionLogOnlyThe" xml:space="preserve">
+    <value>Showing the action log only. The engine log records every user's processes and accounts, so only administrators can read it: run ProGuard as administrator to see it.</value>
+  </data>
+  <data name="Shown" xml:space="preserve">
+    <value>SHOWN</value>
+  </data>
+  <data name="ShownInTheNotification" xml:space="preserve">
+    <value>shown in the notification</value>
+  </data>
+  <data name="ShowsWhatTheFileWouldChange" xml:space="preserve">
+    <value>Shows what the file would change before anything is applied</value>
+  </data>
+  <data name="SignIn_NeedsAdmin" xml:space="preserve">
+    <value>ProGuard starts at sign-in through a task that only an administrator can remove. Restart ProGuard as administrator to turn this off.</value>
+  </data>
+  <data name="SignIn_Refused" xml:space="preserve">
+    <value>Task Scheduler refused the change.</value>
+  </data>
+  <data name="Smarttrim" xml:space="preserve">
+    <value>SMARTTRIM</value>
+  </data>
+  <data name="Source" xml:space="preserve">
+    <value>SOURCE</value>
+  </data>
+  <data name="SplitsTheCoresBetweenRunningCopies" xml:space="preserve">
+    <value>Splits the cores between running copies of the program: an equal share each, or a fixed number each.</value>
+  </data>
+  <data name="StandardRights" xml:space="preserve">
+    <value>STANDARD RIGHTS</value>
+  </data>
+  <data name="StandbyList" xml:space="preserve">
+    <value>STANDBY LIST</value>
+  </data>
+  <data name="StandingOrdersAppliedEveryTimeA" xml:space="preserve">
+    <value>STANDING ORDERS, APPLIED EVERY TIME A PROGRAM STARTS</value>
+  </data>
+  <data name="StartWithWindows" xml:space="preserve">
+    <value>START WITH WINDOWS</value>
+  </data>
+  <data name="Started" xml:space="preserve">
+    <value>STARTED</value>
+  </data>
+  <data name="StartedAgainWithItsLastCommand" xml:space="preserve">
+    <value>Started again with its last command line whenever it exits.</value>
+  </data>
+  <data name="StartsProguardInTheTrayWhen" xml:space="preserve">
+    <value>Starts ProGuard in the tray when you sign in. The engine runs on its own either way.</value>
+  </data>
+  <data name="StartupBoost" xml:space="preserve">
+    <value>STARTUP BOOST</value>
+  </data>
+  <data name="StopTheRuleFromTouchingThe" xml:space="preserve">
+    <value>Stop the rule from touching the program's CPU Sets at all.</value>
+  </data>
+  <data name="Switch" xml:space="preserve">
+    <value>SWITCH</value>
+  </data>
+  <data name="SwitchPlansWithTheLoad" xml:space="preserve">
+    <value>SWITCH PLANS WITH THE LOAD</value>
+  </data>
+  <data name="SwitchTo" xml:space="preserve">
+    <value>SWITCH TO</value>
+  </data>
+  <data name="SwitchTo0" xml:space="preserve">
+    <value>SWITCH TO {0}</value>
+  </data>
+  <data name="SwitchWindowsPowerPlansByHand" xml:space="preserve">
+    <value>Switch Windows power plans by hand, and choose the one to start with.</value>
+  </data>
+  <data name="Sys" xml:space="preserve">
+    <value>SYS</value>
+  </data>
+  <data name="Sys_After" xml:space="preserve">
+    <value>AFTER</value>
+  </data>
+  <data name="Sys_AtHighLoad" xml:space="preserve">
+    <value>AT HIGH LOAD</value>
+  </data>
+  <data name="Sys_AtLowLoad" xml:space="preserve">
+    <value>AT LOW LOAD</value>
+  </data>
+  <data name="Sys_AverageOver" xml:space="preserve">
+    <value>AVERAGE OVER</value>
+  </data>
+  <data name="Sys_DefaultBalanced" xml:space="preserve">
+    <value>DEFAULT · BALANCED</value>
+  </data>
+  <data name="Sys_DefaultHighPerformance" xml:space="preserve">
+    <value>DEFAULT · HIGH PERFORMANCE</value>
+  </data>
+  <data name="Sys_DefaultPowerSaver" xml:space="preserve">
+    <value>DEFAULT · POWER SAVER</value>
+  </data>
+  <data name="Sys_DontAsk" xml:space="preserve">
+    <value>DON'T ASK</value>
+  </data>
+  <data name="Sys_Every" xml:space="preserve">
+    <value>EVERY</value>
+  </data>
+  <data name="Sys_Finest" xml:space="preserve">
+    <value>FINEST · {0}</value>
+  </data>
+  <data name="Sys_FreeRamBelow" xml:space="preserve">
+    <value>FREE RAM BELOW</value>
+  </data>
+  <data name="Sys_Freed" xml:space="preserve">
+    <value>FREED {0}</value>
+  </data>
+  <data name="Sys_HighAbove" xml:space="preserve">
+    <value>HIGH ABOVE</value>
+  </data>
+  <data name="Sys_HighMustBeAboveLow" xml:space="preserve">
+    <value>HIGH MUST BE ABOVE LOW — THESE TWO AREN'T SAVED UNTIL IT IS</value>
+  </data>
+  <data name="Sys_LeaveIt" xml:space="preserve">
+    <value>LEAVE IT</value>
+  </data>
+  <data name="Sys_LowBelow" xml:space="preserve">
+    <value>LOW BELOW</value>
+  </data>
+  <data name="Sys_MissingPlan" xml:space="preserve">
+    <value>MISSING PLAN {0}</value>
+  </data>
+  <data name="Sys_NeverFor" xml:space="preserve">
+    <value>NEVER FOR</value>
+  </data>
+  <data name="Sys_NeverTrimThese" xml:space="preserve">
+    <value>NEVER TRIM THESE</value>
+  </data>
+  <data name="Sys_NoneRestricted" xml:space="preserve">
+    <value>NONE PICKED — NOTHING IS RESTRICTED</value>
+  </data>
+  <data name="Sys_OnlyWhenRamAtLeast" xml:space="preserve">
+    <value>ONLY WHEN RAM IS AT LEAST</value>
+  </data>
+  <data name="Sys_OtherPowerMode" xml:space="preserve">
+    <value>OTHER · {0}</value>
+  </data>
+  <data name="Sys_PauseAfterIdleFor" xml:space="preserve">
+    <value>PAUSE AFTER IDLE FOR</value>
+  </data>
+  <data name="Sys_PowerModeBalanced" xml:space="preserve">
+    <value>Windows tunes the Balanced plan with this, as its own power mode setting does.</value>
+  </data>
+  <data name="Sys_PowerModeOtherPlan" xml:space="preserve">
+    <value>Windows applies the power mode only under the Balanced plan; {0} is active now.</value>
+  </data>
+  <data name="Sys_PowerModeSet" xml:space="preserve">
+    <value>POWER MODE · {0}</value>
+  </data>
+  <data name="Sys_PowerPlanSet" xml:space="preserve">
+    <value>POWER PLAN · {0}</value>
+  </data>
+  <data name="Sys_Purging" xml:space="preserve">
+    <value>PURGING…</value>
+  </data>
+  <data name="Sys_RefreshEvery" xml:space="preserve">
+    <value>REFRESH EVERY</value>
+  </data>
+  <data name="Sys_Samples" xml:space="preserve">
+    <value>SAMPLES</value>
+  </data>
+  <data name="Sys_Sensitivity1" xml:space="preserve">
+    <value>STEPS IN ONLY WHEN THE MACHINE IS PINNED</value>
+  </data>
+  <data name="Sys_Sensitivity2" xml:space="preserve">
+    <value>STEPS IN UNDER HEAVY LOAD</value>
+  </data>
+  <data name="Sys_Sensitivity3" xml:space="preserve">
+    <value>BALANCED — STEPS IN WHEN THINGS GET BUSY</value>
+  </data>
+  <data name="Sys_Sensitivity4" xml:space="preserve">
+    <value>STEPS IN EARLY</value>
+  </data>
+  <data name="Sys_Sensitivity5" xml:space="preserve">
+    <value>STEPS IN AT THE FIRST SIGN OF CONTENTION</value>
+  </data>
+  <data name="Sys_StayAtLeast" xml:space="preserve">
+    <value>STAY AT LEAST</value>
+  </data>
+  <data name="Sys_TimerGlobal" xml:space="preserve">
+    <value>TIMER REQUESTS GLOBAL AFTER RESTART</value>
+  </data>
+  <data name="Sys_TimerHolds" xml:space="preserve">
+    <value>THE ENGINE HOLDS {0}</value>
+  </data>
+  <data name="Sys_TimerLeftToWindows" xml:space="preserve">
+    <value>TIMER RESOLUTION · LEFT TO WINDOWS</value>
+  </data>
+  <data name="Sys_TimerNotAsking" xml:space="preserve">
+    <value>THE ENGINE ISN'T ASKING FOR A RESOLUTION</value>
+  </data>
+  <data name="Sys_TimerNotGranted" xml:space="preserve">
+    <value>WINDOWS DIDN'T GRANT THE REQUEST</value>
+  </data>
+  <data name="Sys_TimerPerProgram" xml:space="preserve">
+    <value>TIMER REQUESTS PER PROGRAM AFTER RESTART</value>
+  </data>
+  <data name="Sys_TimerResolution" xml:space="preserve">
+    <value>TIMER RESOLUTION · {0}</value>
+  </data>
+  <data name="Sys_TimerSet" xml:space="preserve">
+    <value>SET · {0}</value>
+  </data>
+  <data name="Sys_TrimAll" xml:space="preserve">
+    <value>TRIM ALL</value>
+  </data>
+  <data name="Sys_TrimAllTitle" xml:space="preserve">
+    <value>TRIM EVERY PROCESS?</value>
+  </data>
+  <data name="Sys_TrimAllWarning" xml:space="preserve">
+    <value>Pushes every process's idle memory out to the page file. RAM frees up at once, but apps may feel sluggish for a moment as they page back in.</value>
+  </data>
+  <data name="Sys_TurnOnAutomaticallyFor" xml:space="preserve">
+    <value>TURN ON AUTOMATICALLY FOR</value>
+  </data>
+  <data name="Sys_WhenTheEngineStarts" xml:space="preserve">
+    <value>WHEN THE ENGINE STARTS</value>
+  </data>
+  <data name="Sys_WhileAwayUse" xml:space="preserve">
+    <value>WHILE AWAY, USE</value>
+  </data>
+  <data name="Sys_WorkingSetAbove" xml:space="preserve">
+    <value>WORKING SET ABOVE</value>
+  </data>
+  <data name="Sys_WouldntChangeStartup" xml:space="preserve">
+    <value>Windows wouldn't change the startup entry: {0}</value>
+  </data>
+  <data name="System" xml:space="preserve">
+    <value>SYSTEM</value>
+  </data>
+  <data name="TakeAwayAnyCpuSetsThe" xml:space="preserve">
+    <value>Take away any CPU Sets the program has.</value>
+  </data>
+  <data name="TakeAwayCores" xml:space="preserve">
+    <value>TAKE AWAY (CORES)</value>
+  </data>
+  <data name="TakesCoresAwayFromTheProgram" xml:space="preserve">
+    <value>Takes cores away from the program while it hogs the CPU, then gives them back. Leave the threshold empty to switch it off.</value>
+  </data>
+  <data name="TakesEffectTheNextTimeThe" xml:space="preserve">
+    <value>Takes effect the next time the program starts.</value>
+  </data>
+  <data name="TakesOneCoreAwayFromThe" xml:space="preserve">
+    <value>Takes one core away from the process while it is restrained</value>
+  </data>
+  <data name="TellProguardWhatToDoWhen" xml:space="preserve">
+    <value>Tell ProGuard what to do when a program misbehaves: drop a CPU hog to idle once it's been pinning the machine for 30 seconds, end a memory leak at 4 GB, or just log it.</value>
+  </data>
+  <data name="TheActivePlan" xml:space="preserve">
+    <value>THE ACTIVE PLAN</value>
+  </data>
+  <data name="TheCoarsestTheTimerRunsAt" xml:space="preserve">
+    <value>The coarsest the timer runs at (Windows calls it the minimum resolution)</value>
+  </data>
+  <data name="TheCpuLimiterHasTakenCores" xml:space="preserve">
+    <value>The CPU Limiter has taken cores away from this process for now</value>
+  </data>
+  <data name="TheFinestTheTimerCanBe" xml:space="preserve">
+    <value>The finest the timer can be asked for (Windows calls it the maximum resolution)</value>
+  </data>
+  <data name="TheLoggerProbalanceengineIpcdispatcherOrFor" xml:space="preserve">
+    <value>The logger (ProBalanceEngine, IpcDispatcher...) or, for the action log, ProBalance, CpuLimiter or Power</value>
+  </data>
+  <data name="TheWindowYoureWorkingInRuns" xml:space="preserve">
+    <value>The window you're working in runs one step above normal priority, and drops back when you switch away.</value>
+  </data>
+  <data name="Then" xml:space="preserve">
+    <value>THEN</value>
+  </data>
+  <data name="ThenPutItBackAfter" xml:space="preserve">
+    <value>THEN PUT IT BACK AFTER</value>
+  </data>
+  <data name="ThenThePriorityGoesBackUnless" xml:space="preserve">
+    <value>Then the priority goes back, unless something else changed it meanwhile.</value>
+  </data>
+  <data name="ThisWindowHasStandardRightsSo" xml:space="preserve">
+    <value>This window has standard rights, so ProGuard refuses Realtime and High I/O priority, Purge now, CPU tuning and the timer resolution. The engine keeps running either way; restarting only reopens this window, on this page.</value>
+  </data>
+  <data name="Threads" xml:space="preserve">
+    <value>THREADS</value>
+  </data>
+  <data name="Time" xml:space="preserve">
+    <value>TIME</value>
+  </data>
+  <data name="Timer" xml:space="preserve">
+    <value>TIMER</value>
+  </data>
+  <data name="ToIOPriority" xml:space="preserve">
+    <value>TO I/O PRIORITY</value>
+  </data>
+  <data name="ToPriority" xml:space="preserve">
+    <value>TO PRIORITY</value>
+  </data>
+  <data name="TotalCpu" xml:space="preserve">
+    <value>TOTAL CPU</value>
+  </data>
+  <data name="Tray_Exit" xml:space="preserve">
+    <value>EXIT</value>
+  </data>
+  <data name="Tray_Hide" xml:space="preserve">
+    <value>HIDE PROGUARD</value>
+  </data>
+  <data name="Tray_NeedsAdmin" xml:space="preserve">
+    <value>Needs administrator rights</value>
+  </data>
+  <data name="Tray_Off" xml:space="preserve">
+    <value>Off.</value>
+  </data>
+  <data name="Tray_On" xml:space="preserve">
+    <value>On.</value>
+  </data>
+  <data name="Tray_Show" xml:space="preserve">
+    <value>SHOW PROGUARD</value>
+  </data>
+  <data name="Tray_Tooltip" xml:space="preserve">
+    <value>PROGUARD · CPU {0:0}% · MEM {1:0}%</value>
+  </data>
+  <data name="Trim" xml:space="preserve">
+    <value>TRIM</value>
+  </data>
+  <data name="TrimAutomatically" xml:space="preserve">
+    <value>TRIM AUTOMATICALLY</value>
+  </data>
+  <data name="TrimEverythingNow" xml:space="preserve">
+    <value>TRIM EVERYTHING NOW</value>
+  </data>
+  <data name="TrimMemory" xml:space="preserve">
+    <value>Trim memory</value>
+  </data>
+  <data name="TrimRam" xml:space="preserve">
+    <value>TRIM RAM</value>
+  </data>
+  <data name="TrimsWorkingSetsAndPurgesThe" xml:space="preserve">
+    <value>Trims working sets and purges the standby list (and the file cache, if switched on)</value>
+  </data>
+  <data name="Tune_ActivePlan" xml:space="preserve">
+    <value>{0}. THEY TAKE EFFECT AT ONCE.</value>
+  </data>
+  <data name="Tune_AllCores" xml:space="preserve">
+    <value>ALL CORES</value>
+  </data>
+  <data name="Tune_BalancedParking" xml:space="preserve">
+    <value>BALANCED PARKING</value>
+  </data>
+  <data name="Tune_BalancedParkingBlurb" xml:space="preserve">
+    <value>Parking as Windows' Balanced plan does it. Frequency left alone.</value>
+  </data>
+  <data name="Tune_BeforeProGuard" xml:space="preserve">
+    <value>BEFORE PROGUARD {0}</value>
+  </data>
+  <data name="Tune_DisableParking" xml:space="preserve">
+    <value>DISABLE PARKING</value>
+  </data>
+  <data name="Tune_DisableParkingBlurb" xml:space="preserve">
+    <value>Every core stays unparked, plugged in and on battery.</value>
+  </data>
+  <data name="Tune_InactivePlan" xml:space="preserve">
+    <value>{0}. IT ISN'T THE ACTIVE PLAN: THEY TAKE EFFECT WHEN WINDOWS SWITCHES TO IT.</value>
+  </data>
+  <data name="Tune_NoOriginals" xml:space="preserve">
+    <value>PROGUARD HASN'T CHANGED THIS PLAN</value>
+  </data>
+  <data name="Tune_OriginalsKept" xml:space="preserve">
+    <value>PROGUARD KEPT THIS PLAN'S VALUES FROM {0:d MMM yyyy HH:mm} BEFORE ITS FIRST CHANGE</value>
+  </data>
+  <data name="Tune_ParkingUnavailable" xml:space="preserve">
+    <value>PARKING STATE UNAVAILABLE</value>
+  </data>
+  <data name="Tune_PresetConfirm" xml:space="preserve">
+    <value>{0} Applies to the {1} power plan for every user of this PC. You can revert to the values before ProGuard's first change at any time.</value>
+  </data>
+  <data name="Tune_ProBalanceHolds" xml:space="preserve">
+    <value>PROBALANCE HOLDS {0} WHILE IT RESTRAINS</value>
+  </data>
+  <data name="Tune_ReadOnly" xml:space="preserve">
+    <value>READ ONLY · CHANGING A POWER PLAN NEEDS ADMINISTRATOR RIGHTS. {0}.</value>
+  </data>
+  <data name="Tune_RevertConfirm" xml:space="preserve">
+    <value>Put every CPU setting of the {0} power plan back to what it was before ProGuard first changed it.</value>
+  </data>
+  <data name="Tune_Scope" xml:space="preserve">
+    <value>CHANGES APPLY TO THE WHOLE MACHINE, FOR EVERY USER, AND ONLY TO THE {0} PLAN</value>
+  </data>
+  <data name="Tune_Unparked" xml:space="preserve">
+    <value>{0} OF {1} UNPARKED</value>
+  </data>
+  <data name="Tune_WindowsDefault" xml:space="preserve">
+    <value>WINDOWS DEFAULT {0}</value>
+  </data>
+  <data name="Tune_WindowsDefaults" xml:space="preserve">
+    <value>WINDOWS DEFAULTS</value>
+  </data>
+  <data name="Tune_WindowsDefaultsBlurb" xml:space="preserve">
+    <value>Every setting back to Windows' own value for this plan.</value>
+  </data>
+  <data name="TurningOnByItself" xml:space="preserve">
+    <value>TURNING ON BY ITSELF</value>
+  </data>
+  <data name="Unavailable0" xml:space="preserve">
+    <value>UNAVAILABLE · {0}</value>
+  </data>
+  <data name="UnderARule" xml:space="preserve">
+    <value>UNDER A RULE</value>
+  </data>
+  <data name="Unit_Min" xml:space="preserve">
+    <value>MIN</value>
+  </data>
+  <data name="Unit_Sec" xml:space="preserve">
+    <value>SEC</value>
+  </data>
+  <data name="UnparkEveryCore" xml:space="preserve">
+    <value>UNPARK EVERY CORE</value>
+  </data>
+  <data name="User" xml:space="preserve">
+    <value>USER</value>
+  </data>
+  <data name="Using500MbOrMore" xml:space="preserve">
+    <value>Using 500 MB or more</value>
+  </data>
+  <data name="UsingAnyCpuRightNow" xml:space="preserve">
+    <value>Using any CPU right now</value>
+  </data>
+  <data name="VLow" xml:space="preserve">
+    <value>V.LOW</value>
+  </data>
+  <data name="VeryLow" xml:space="preserve">
+    <value>Very low</value>
+  </data>
+  <data name="VeryLow2" xml:space="preserve">
+    <value>VERY LOW</value>
+  </data>
+  <data name="Watchdog" xml:space="preserve">
+    <value>WATCHDOG</value>
+  </data>
+  <data name="Wd_AtOnce" xml:space="preserve">
+    <value>AT ONCE</value>
+  </data>
+  <data name="Wd_BadCooldown" xml:space="preserve">
+    <value>Cooldown: enter 0 or more seconds or minutes (0 waits for the condition to clear).</value>
+  </data>
+  <data name="Wd_BadHowLong" xml:space="preserve">
+    <value>How long: enter 0 or more seconds or minutes.</value>
+  </data>
+  <data name="Wd_BadInstances" xml:space="preserve">
+    <value>The instance count is a whole number of 1 or more.</value>
+  </data>
+  <data name="Wd_BadMemoryThreshold" xml:space="preserve">
+    <value>The memory threshold has to be a number of megabytes above zero.</value>
+  </data>
+  <data name="Wd_BadRestore" xml:space="preserve">
+    <value>Then restore after: enter 0 or more seconds or minutes (0 keeps the change).</value>
+  </data>
+  <data name="Wd_BadRunningLonger" xml:space="preserve">
+    <value>Running longer than: enter a time above zero, in seconds or minutes.</value>
+  </data>
+  <data name="Wd_BadThreshold" xml:space="preserve">
+    <value>The threshold has to be a number above zero.</value>
+  </data>
+  <data name="Wd_Continuously" xml:space="preserve">
+    <value>CONTINUOUSLY</value>
+  </data>
+  <data name="Wd_Cooldown" xml:space="preserve">
+    <value>COOLDOWN {0}</value>
+  </data>
+  <data name="Wd_CooldownUntilClear" xml:space="preserve">
+    <value>COOLDOWN UNTIL CLEAR</value>
+  </data>
+  <data name="Wd_CpuAbove" xml:space="preserve">
+    <value>CPU ABOVE</value>
+  </data>
+  <data name="Wd_CpuAboveValue" xml:space="preserve">
+    <value>CPU ABOVE {0}%</value>
+  </data>
+  <data name="Wd_CpuOver100" xml:space="preserve">
+    <value>CPU can't go above 100%.</value>
+  </data>
+  <data name="Wd_DeleteTitle" xml:space="preserve">
+    <value>DELETE WATCH?</value>
+  </data>
+  <data name="Wd_DeleteWarning" xml:space="preserve">
+    <value>ProGuard stops watching: {0}</value>
+  </data>
+  <data name="Wd_Deleted" xml:space="preserve">
+    <value>WATCH DELETED · {0}</value>
+  </data>
+  <data name="Wd_EditWatch" xml:space="preserve">
+    <value>EDIT WATCH</value>
+  </data>
+  <data name="Wd_For" xml:space="preserve">
+    <value>FOR {0}</value>
+  </data>
+  <data name="Wd_InstancesAbove" xml:space="preserve">
+    <value>INSTANCES ABOVE</value>
+  </data>
+  <data name="Wd_InstancesAboveValue" xml:space="preserve">
+    <value>INSTANCES ABOVE {0}</value>
+  </data>
+  <data name="Wd_JustLogIt" xml:space="preserve">
+    <value>JUST LOG IT</value>
+  </data>
+  <data name="Wd_Launch" xml:space="preserve">
+    <value>LAUNCH {0}</value>
+  </data>
+  <data name="Wd_LaunchAProgram" xml:space="preserve">
+    <value>LAUNCH A PROGRAM</value>
+  </data>
+  <data name="Wd_LimitsHint" xml:space="preserve">
+    <value>STANDARD RIGHTS. THE ENGINE REFUSES: SYSTEM PROGRAMS AND PROGUARD ITSELF, REALTIME PRIORITY, LAUNCH ACTIONS, ACTING ON PROGRAMS YOU COULDN'T CHANGE OR END YOURSELF, AND CHANGING WATCHES YOU COULDN'T HAVE MADE.</value>
+  </data>
+  <data name="Wd_MemoryAbove" xml:space="preserve">
+    <value>MEMORY ABOVE</value>
+  </data>
+  <data name="Wd_MemoryAboveValue" xml:space="preserve">
+    <value>MEMORY ABOVE {0} MB</value>
+  </data>
+  <data name="Wd_NeedCommandLine" xml:space="preserve">
+    <value>Type the command line to launch, e.g. "C:\Tools\app.exe" -quiet.</value>
+  </data>
+  <data name="Wd_NeedCore" xml:space="preserve">
+    <value>Pick at least one core to set.</value>
+  </data>
+  <data name="Wd_NeedIoPriority" xml:space="preserve">
+    <value>Pick the I/O priority to set.</value>
+  </data>
+  <data name="Wd_NeedName" xml:space="preserve">
+    <value>Name the program to watch, e.g. chrome.exe.</value>
+  </data>
+  <data name="Wd_NeedPriority" xml:space="preserve">
+    <value>Pick the priority to set.</value>
+  </data>
+  <data name="Wd_Never" xml:space="preserve">
+    <value>NEVER</value>
+  </data>
+  <data name="Wd_NewWatch" xml:space="preserve">
+    <value>NEW WATCH</value>
+  </data>
+  <data name="Wd_NotifyMe" xml:space="preserve">
+    <value>NOTIFY ME</value>
+  </data>
+  <data name="Wd_NotifyMeWith" xml:space="preserve">
+    <value>NOTIFY ME: {0}</value>
+  </data>
+  <data name="Wd_Once" xml:space="preserve">
+    <value>ONCE</value>
+  </data>
+  <data name="Wd_PrivateAboveValue" xml:space="preserve">
+    <value>MEMORY (PRIVATE) ABOVE {0} MB</value>
+  </data>
+  <data name="Wd_PrivateBytes" xml:space="preserve">
+    <value>PRIVATE BYTES</value>
+  </data>
+  <data name="Wd_RestartIt" xml:space="preserve">
+    <value>RESTART IT</value>
+  </data>
+  <data name="Wd_RestoreFor" xml:space="preserve">
+    <value> FOR {0}</value>
+  </data>
+  <data name="Wd_RunningLongerThan" xml:space="preserve">
+    <value>RUNNING LONGER THAN</value>
+  </data>
+  <data name="Wd_RunningLongerThanValue" xml:space="preserve">
+    <value>RUNNING LONGER THAN {0}</value>
+  </data>
+  <data name="Wd_Saved" xml:space="preserve">
+    <value>WATCH SAVED · {0}</value>
+  </data>
+  <data name="Wd_Sentence" xml:space="preserve">
+    <value>WHEN {0} · {1} · {2} → {3} · {4}</value>
+  </data>
+  <data name="Wd_SetCores" xml:space="preserve">
+    <value>SET CORES</value>
+  </data>
+  <data name="Wd_SetCoresTo" xml:space="preserve">
+    <value>SET CORES {0}{1}</value>
+  </data>
+  <data name="Wd_SetIoPriority" xml:space="preserve">
+    <value>SET I/O PRIORITY</value>
+  </data>
+  <data name="Wd_SetIoPriorityTo" xml:space="preserve">
+    <value>SET I/O PRIORITY {0}{1}</value>
+  </data>
+  <data name="Wd_SetPriority" xml:space="preserve">
+    <value>SET PRIORITY</value>
+  </data>
+  <data name="Wd_SetPriorityTo" xml:space="preserve">
+    <value>SET PRIORITY {0}{1}</value>
+  </data>
+  <data name="Wd_TrimMemory" xml:space="preserve">
+    <value>TRIM MEMORY</value>
+  </data>
+  <data name="Wd_TrimMemoryContinuously" xml:space="preserve">
+    <value>TRIM MEMORY CONTINUOUSLY</value>
+  </data>
+  <data name="Wd_WatchArmed" xml:space="preserve">
+    <value>{0} WATCH ARMED</value>
+  </data>
+  <data name="Wd_WatchPaused" xml:space="preserve">
+    <value>{0} WATCH PAUSED</value>
+  </data>
+  <data name="Wd_WhenItClears" xml:space="preserve">
+    <value>WHEN IT CLEARS</value>
+  </data>
+  <data name="Wd_WorkingSet" xml:space="preserve">
+    <value>WORKING SET</value>
+  </data>
+  <data name="What" xml:space="preserve">
+    <value>WHAT</value>
+  </data>
+  <data name="WhatChanges" xml:space="preserve">
+    <value>WHAT CHANGES</value>
+  </data>
+  <data name="WhatItDoes" xml:space="preserve">
+    <value>WHAT IT DOES</value>
+  </data>
+  <data name="WhatRestraintDoes" xml:space="preserve">
+    <value>WHAT RESTRAINT DOES</value>
+  </data>
+  <data name="When" xml:space="preserve">
+    <value>WHEN </value>
+  </data>
+  <data name="When2" xml:space="preserve">
+    <value>WHEN</value>
+  </data>
+  <data name="WhenItUsesAtLeast" xml:space="preserve">
+    <value>WHEN IT USES AT LEAST (%)</value>
+  </data>
+  <data name="WhenProbalanceStepsInARule" xml:space="preserve">
+    <value>When ProBalance steps in, a rule or watch fires, or you change a process, it shows up here.</value>
+  </data>
+  <data name="WhenTheMachineIsOverloadedBackground" xml:space="preserve">
+    <value>When the machine is overloaded, background hogs get their priority lowered so whatever you're using stays responsive. Restored the moment things calm down.</value>
+  </data>
+  <data name="WhenYouveLeftTheKeyboardAnd" xml:space="preserve">
+    <value>When you've left the keyboard and mouse alone for a while, switch to a lower-power plan. Your plan comes back the moment you return.</value>
+  </data>
+  <data name="WhichLogicalProcessorsWindowsPrefersFor" xml:space="preserve">
+    <value>Which logical processors Windows prefers for the program. A preference, unlike core affinity.</value>
+  </data>
+  <data name="WhileAnythingIsRestrained" xml:space="preserve">
+    <value>WHILE ANYTHING IS RESTRAINED</value>
+  </data>
+  <data name="WhileYoureAway" xml:space="preserve">
+    <value>WHILE YOU'RE AWAY</value>
+  </data>
+  <data name="WhosWorkingHardest" xml:space="preserve">
+    <value>WHO'S WORKING HARDEST</value>
+  </data>
+  <data name="Windows11HonoursATimerRequest" xml:space="preserve">
+    <value>Windows 11 honours a timer request only for the program that made it. This switch (GlobalTimerResolutionRequests) makes requests system-wide again. Takes effect after a restart.</value>
+  </data>
+  <data name="WindowsPowerOptionsDoesntShowThis" xml:space="preserve">
+    <value>Windows' Power Options doesn't show this setting. ProGuard shows it there once it changes it.</value>
+  </data>
+  <data name="WindowsStartsTheProgramWithIts" xml:space="preserve">
+    <value>Windows starts the program with its priority, I/O and memory priority already set, instead of a moment later. Plain program names only.</value>
+  </data>
+  <data name="WriteTheConfigurationInForceTo" xml:space="preserve">
+    <value>Write the configuration in force to a file you can import on any PC</value>
+  </data>
+  <data name="YouAreRunningProguardWithoutAdministrator" xml:space="preserve">
+    <value>You are running ProGuard without administrator rights, so you can only change processes you own. Rules can't touch system programs or programs you couldn't change yourself, and Purge now, clearing the log, Realtime priority and High I/O priority need administrator rights. Restart ProGuard as administrator to lift these limits.</value>
+  </data>
+  <data name="YourPowerModeComesBackWhen" xml:space="preserve">
+    <value>Your power mode comes back when Performance Mode ends. Windows uses it only under the Balanced plan, so pick Balanced above for this to count.</value>
+  </data>
+</root>

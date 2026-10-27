@@ -1,5 +1,6 @@
 <UserControl x:Class="ProGuard.UI.Views.SystemView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:r="clr-namespace:ProGuard.UI.Resources"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="clr-namespace:ProGuard.UI.Controls"
              xmlns:vm="clr-namespace:ProGuard.UI.ViewModels">
@@ -84,7 +85,7 @@
             <Setter Property="Height" Value="88"/>
             <Setter Property="MaxWidth" Value="420"/>
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="Tag" Value="ONE PER LINE"/>
+            <Setter Property="Tag" Value="{x:Static r:Strings.OnePerLine}"/>
         </Style>
 
         <!-- Field templates: a NumberField, a ListField and a PlanPicker draw themselves. -->
@@ -145,28 +146,28 @@
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="0,0,16,0">
-            <TextBlock Text="SYSTEM" Style="{StaticResource Text.Title}"/>
-            <TextBlock Text="HOW THE ENGINE BEHAVES. CHANGES APPLY THE MOMENT YOU MAKE THEM." Style="{StaticResource Text.Label}" Margin="0,6,0,28"/>
+            <TextBlock Text="{x:Static r:Strings.System}" Style="{StaticResource Text.Title}"/>
+            <TextBlock Text="{x:Static r:Strings.HowTheEngineBehavesChangesApply}" Style="{StaticResource Text.Label}" Margin="0,6,0,28"/>
 
             <!-- ============================================================ A · ProBalance -->
             <HeaderedContentControl Style="{StaticResource Section}">
                 <HeaderedContentControl.Header>
                     <StackPanel>
                         <TextBlock Text="A" Style="{StaticResource SectionNumber}"/>
-                        <TextBlock Text="PROBALANCE" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{x:Static r:Strings.Probalance}" Style="{StaticResource SectionTitle}"/>
                         <TextBlock Style="{StaticResource SectionBlurb}"
-                                   Text="When the machine is overloaded, background hogs get their priority lowered so whatever you're using stays responsive. Restored the moment things calm down."/>
+                                   Text="{x:Static r:Strings.WhenTheMachineIsOverloadedBackground}"/>
                     </StackPanel>
                 </HeaderedContentControl.Header>
                 <StackPanel>
                     <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ProBalanceEnabled}">
-                        <TextBlock Text="BALANCE AUTOMATICALLY" FontWeight="Bold" FontSize="15"/>
+                        <TextBlock Text="{x:Static r:Strings.BalanceAutomatically}" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>
 
                     <StackPanel IsEnabled="{Binding ProBalanceEnabled}">
                         <DockPanel Margin="0,26,0,10">
                             <TextBlock DockPanel.Dock="Right" Text="{Binding SensitivityLevel, StringFormat='{}{0} / 10'}" FontFamily="{StaticResource Mono}" FontWeight="Bold" FontSize="16"/>
-                            <TextBlock Text="SENSITIVITY" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{x:Static r:Strings.Sensitivity}" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
                         </DockPanel>
                         <!-- Ten blocks; click one to set the level. Everything up to it lights up. -->
                         <ItemsControl ItemsSource="{Binding Sensitivity}">
@@ -177,7 +178,7 @@
                                 <DataTemplate>
                                     <Button Command="{Binding DataContext.SetSensitivityCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                             CommandParameter="{Binding Level}" Height="44" Margin="0,0,4,0" ToolTip="{Binding Level}"
-                                            AutomationProperties.Name="{Binding Level, StringFormat='SENSITIVITY {0}'}">
+                                            AutomationProperties.Name="{Binding Level, StringFormat={x:Static r:Strings.Sensitivity0}}">
                                         <Button.Style>
                                             <Style TargetType="Button" BasedOn="{StaticResource Btn.Base}">
                                                 <Setter Property="Background" Value="Transparent"/>
@@ -200,20 +201,20 @@
                         </ItemsControl>
                         <TextBlock Text="{Binding SensitivityDescription}" FontWeight="Bold" FontSize="13" Margin="0,10,0,0" Opacity="0.8"/>
 
-                        <TextBlock Text="WHAT RESTRAINT DOES" Style="{StaticResource Sub}"/>
+                        <TextBlock Text="{x:Static r:Strings.WhatRestraintDoes}" Style="{StaticResource Sub}"/>
                         <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding DoNotLowerPriorityClass}" Margin="0,0,0,0"
-                                  Content="LEAVE THE PRIORITY CLASS ALONE"
-                                  ToolTip="Restrain only through the extra actions below"/>
-                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding LowerIoPriority}" Content="ALSO LOWER I/O PRIORITY"/>
-                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding UseEfficiencyMode}" Content="ALSO USE EFFICIENCY MODE"/>
-                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding DropOneRandomCore}" Content="DROP ONE RANDOM CORE"
-                                  ToolTip="Takes one core away from the process while it is restrained"/>
-                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding RestrainByAffinity}" Content="CONFINE TO CHOSEN CORES"/>
+                                  Content="{x:Static r:Strings.LeaveThePriorityClassAlone}"
+                                  ToolTip="{x:Static r:Strings.RestrainOnlyThroughTheExtraActions}"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding LowerIoPriority}" Content="{x:Static r:Strings.AlsoLowerIOPriority}"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding UseEfficiencyMode}" Content="{x:Static r:Strings.AlsoUseEfficiencyMode}"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding DropOneRandomCore}" Content="{x:Static r:Strings.DropOneRandomCore}"
+                                  ToolTip="{x:Static r:Strings.TakesOneCoreAwayFromThe}"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding RestrainByAffinity}" Content="{x:Static r:Strings.ConfineToChosenCores}"/>
 
                         <StackPanel Margin="0,16,0,0" IsEnabled="{Binding RestrainByAffinity}">
                             <DockPanel Margin="0,0,0,8">
                                 <TextBlock DockPanel.Dock="Right" Text="{Binding RestraintCoresSummary}" FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.7" VerticalAlignment="Center"/>
-                                <TextBlock Text="CORES A RESTRAINED PROCESS MAY USE" Style="{StaticResource Text.Label}"/>
+                                <TextBlock Text="{x:Static r:Strings.CoresARestrainedProcessMayUse}" Style="{StaticResource Text.Label}"/>
                             </DockPanel>
                             <ItemsControl ItemsSource="{Binding RestraintCores}" Focusable="False">
                                 <ItemsControl.ItemsPanel>
@@ -221,27 +222,27 @@
                                 </ItemsControl.ItemsPanel>
                             </ItemsControl>
                             <WrapPanel Margin="0,6,0,0">
-                                <Button Style="{StaticResource Btn.Ghost}" Content="ALL" Command="{Binding CoresAllCommand}"/>
-                                <Button Style="{StaticResource Btn.Ghost}" Content="FIRST HALF" Command="{Binding CoresFirstHalfCommand}"/>
-                                <Button Style="{StaticResource Btn.Ghost}" Content="EVERY OTHER" Command="{Binding CoresEvenCommand}" ToolTip="On SMT machines, one thread per physical core"/>
-                                <Button Style="{StaticResource Btn.Ghost}" Content="NONE" Command="{Binding CoresNoneCommand}"/>
+                                <Button Style="{StaticResource Btn.Ghost}" Content="{x:Static r:Strings.All}" Command="{Binding CoresAllCommand}"/>
+                                <Button Style="{StaticResource Btn.Ghost}" Content="{x:Static r:Strings.FirstHalf}" Command="{Binding CoresFirstHalfCommand}"/>
+                                <Button Style="{StaticResource Btn.Ghost}" Content="{x:Static r:Strings.EveryOther}" Command="{Binding CoresEvenCommand}" ToolTip="{x:Static r:Strings.OnSmtMachinesOneThreadPer}"/>
+                                <Button Style="{StaticResource Btn.Ghost}" Content="{x:Static r:Strings.None}" Command="{Binding CoresNoneCommand}"/>
                             </WrapPanel>
                         </StackPanel>
 
-                        <TextBlock Text="WHILE ANYTHING IS RESTRAINED" Style="{StaticResource Sub}"/>
+                        <TextBlock Text="{x:Static r:Strings.WhileAnythingIsRestrained}" Style="{StaticResource Sub}"/>
                         <DockPanel>
                             <Border DockPanel.Dock="Right" Style="{StaticResource Tag}" VerticalAlignment="Center"
                                     Visibility="{Binding IsAdministrator, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}">
-                                <TextBlock Text="NEEDS ADMINISTRATOR RIGHTS" Style="{StaticResource Tag.Text}"/>
+                                <TextBlock Text="{x:Static r:Strings.NeedsAdministratorRights}" Style="{StaticResource Tag.Text}"/>
                             </Border>
                             <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding UnparkCoresWhileRestraining}" IsEnabled="{Binding IsAdministrator}"
-                                      Margin="0" HorizontalAlignment="Left" Content="UNPARK EVERY CORE"/>
+                                      Margin="0" HorizontalAlignment="Left" Content="{x:Static r:Strings.UnparkEveryCore}"/>
                         </DockPanel>
                         <TextBlock Style="{StaticResource Note}"
-                                   Text="Sets the power plan's core parking minimum to 100% so no core sleeps while a hog is held back, and puts it back afterwards."/>
+                                   Text="{x:Static r:Strings.SetsThePowerPlansCoreParking}"/>
 
-                        <TextBlock Text="WHILE YOU'RE AWAY" Style="{StaticResource Sub}"/>
-                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding PauseWhenIdle}" Margin="0,0,0,16" Content="PAUSE PROBALANCE WHEN THE MACHINE IS IDLE"/>
+                        <TextBlock Text="{x:Static r:Strings.WhileYoureAway}" Style="{StaticResource Sub}"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding PauseWhenIdle}" Margin="0,0,0,16" Content="{x:Static r:Strings.PauseProbalanceWhenTheMachineIs}"/>
                         <ContentControl Content="{Binding IdlePauseMs}" IsEnabled="{Binding PauseWhenIdle}" Focusable="False"/>
                     </StackPanel>
                 </StackPanel>
@@ -252,13 +253,13 @@
                 <HeaderedContentControl.Header>
                     <StackPanel>
                         <TextBlock Text="B" Style="{StaticResource SectionNumber}"/>
-                        <TextBlock Text="FOCUS BOOST" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{x:Static r:Strings.FocusBoost}" Style="{StaticResource SectionTitle}"/>
                         <TextBlock Style="{StaticResource SectionBlurb}"
-                                   Text="The window you're working in runs one step above normal priority, and drops back when you switch away."/>
+                                   Text="{x:Static r:Strings.TheWindowYoureWorkingInRuns}"/>
                     </StackPanel>
                 </HeaderedContentControl.Header>
                 <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ForegroundBoostEnabled}" VerticalAlignment="Top">
-                    <TextBlock Text="BOOST THE FOCUSED APP" FontWeight="Bold" FontSize="15"/>
+                    <TextBlock Text="{x:Static r:Strings.BoostTheFocusedApp}" FontWeight="Bold" FontSize="15"/>
                 </CheckBox>
             </HeaderedContentControl>
 
@@ -267,14 +268,14 @@
                 <HeaderedContentControl.Header>
                     <StackPanel>
                         <TextBlock Text="C" Style="{StaticResource SectionNumber}"/>
-                        <TextBlock Text="SMARTTRIM" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{x:Static r:Strings.Smarttrim}" Style="{StaticResource SectionTitle}"/>
                         <TextBlock Style="{StaticResource SectionBlurb}"
-                                   Text="Every so often, background programs above the threshold give idle memory back to Windows. Useful on machines short of RAM; unnecessary on most."/>
+                                   Text="{x:Static r:Strings.EverySoOftenBackgroundProgramsAbove}"/>
                     </StackPanel>
                 </HeaderedContentControl.Header>
                 <StackPanel>
                     <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding SmartTrimEnabled}">
-                        <TextBlock Text="TRIM AUTOMATICALLY" FontWeight="Bold" FontSize="15"/>
+                        <TextBlock Text="{x:Static r:Strings.TrimAutomatically}" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>
 
                     <StackPanel IsEnabled="{Binding SmartTrimEnabled}" Margin="0,26,0,0">
@@ -284,26 +285,26 @@
                             <ContentControl Content="{Binding TrimMinRamLoad}" Focusable="False"/>
                         </WrapPanel>
                         <ContentControl Content="{Binding TrimExclusions}" Focusable="False"/>
-                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding TrimLogNoAction}" Margin="0" Content="LOG PASSES THAT FIND NOTHING TO TRIM"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding TrimLogNoAction}" Margin="0" Content="{x:Static r:Strings.LogPassesThatFindNothingTo}"/>
                     </StackPanel>
 
-                    <TextBlock Text="STANDBY LIST" Style="{StaticResource Sub}"/>
-                    <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding StandbyPurgeEnabled}" Margin="0,0,0,16" Content="PURGE THE STANDBY LIST WHEN FREE RAM IS LOW"/>
+                    <TextBlock Text="{x:Static r:Strings.StandbyList}" Style="{StaticResource Sub}"/>
+                    <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding StandbyPurgeEnabled}" Margin="0,0,0,16" Content="{x:Static r:Strings.PurgeTheStandbyListWhenFree}"/>
                     <StackPanel IsEnabled="{Binding StandbyPurgeEnabled}">
                         <ContentControl Content="{Binding StandbyFreeRamMb}" Focusable="False"/>
-                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding StandbyOnlyInPerformanceMode}" Margin="0" Content="ONLY WHILE PERFORMANCE MODE IS ON"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding StandbyOnlyInPerformanceMode}" Margin="0" Content="{x:Static r:Strings.OnlyWhilePerformanceModeIsOn}"/>
                     </StackPanel>
 
-                    <TextBlock Text="FILE CACHE" Style="{StaticResource Sub}"/>
-                    <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding FileCachePurgeEnabled}" Margin="0" Content="ALSO FLUSH THE SYSTEM FILE CACHE"/>
+                    <TextBlock Text="{x:Static r:Strings.FileCache}" Style="{StaticResource Sub}"/>
+                    <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding FileCachePurgeEnabled}" Margin="0" Content="{x:Static r:Strings.AlsoFlushTheSystemFileCache}"/>
 
-                    <TextBlock Text="RIGHT NOW" Style="{StaticResource Sub}"/>
+                    <TextBlock Text="{x:Static r:Strings.RightNow}" Style="{StaticResource Sub}"/>
                     <WrapPanel>
-                        <Button Style="{StaticResource Btn.Solid}" Content="PURGE NOW" Command="{Binding PurgeNowCommand}" Margin="0,0,10,8"
-                                ToolTip="Trims working sets and purges the standby list (and the file cache, if switched on)"/>
-                        <Button Style="{StaticResource Btn.Outline}" Content="TRIM EVERYTHING NOW" Command="{Binding TrimAllCommand}" Margin="0,0,10,8"/>
+                        <Button Style="{StaticResource Btn.Solid}" Content="{x:Static r:Strings.PurgeNow}" Command="{Binding PurgeNowCommand}" Margin="0,0,10,8"
+                                ToolTip="{x:Static r:Strings.TrimsWorkingSetsAndPurgesThe}"/>
+                        <Button Style="{StaticResource Btn.Outline}" Content="{x:Static r:Strings.TrimEverythingNow}" Command="{Binding TrimAllCommand}" Margin="0,0,10,8"/>
                         <Border Style="{StaticResource Tag}" Margin="4,0,0,8" Visibility="{Binding IsAdministrator, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}">
-                            <TextBlock Text="PURGE NEEDS ADMINISTRATOR RIGHTS" Style="{StaticResource Tag.Text}"/>
+                            <TextBlock Text="{x:Static r:Strings.PurgeNeedsAdministratorRights}" Style="{StaticResource Tag.Text}"/>
                         </Border>
                     </WrapPanel>
                     <TextBlock Text="{Binding PurgeSummary}" FontWeight="SemiBold" FontSize="13.5" TextWrapping="Wrap" Margin="0,6,0,0"
@@ -316,14 +317,14 @@
                 <HeaderedContentControl.Header>
                     <StackPanel>
                         <TextBlock Text="D" Style="{StaticResource SectionNumber}"/>
-                        <TextBlock Text="IDLESAVER" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{x:Static r:Strings.Idlesaver}" Style="{StaticResource SectionTitle}"/>
                         <TextBlock Style="{StaticResource SectionBlurb}"
-                                   Text="When you've left the keyboard and mouse alone for a while, switch to a lower-power plan. Your plan comes back the moment you return."/>
+                                   Text="{x:Static r:Strings.WhenYouveLeftTheKeyboardAnd}"/>
                     </StackPanel>
                 </HeaderedContentControl.Header>
                 <StackPanel>
                     <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding IdleSaverEnabled}">
-                        <TextBlock Text="SAVE POWER WHILE AWAY" FontWeight="Bold" FontSize="15"/>
+                        <TextBlock Text="{x:Static r:Strings.SavePowerWhileAway}" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>
                     <StackPanel IsEnabled="{Binding IdleSaverEnabled}" Margin="0,26,0,0">
                         <ContentControl Content="{Binding IdleTimeout}" Focusable="False"/>
@@ -337,38 +338,38 @@
                 <HeaderedContentControl.Header>
                     <StackPanel>
                         <TextBlock Text="E" Style="{StaticResource SectionNumber}"/>
-                        <TextBlock Text="PERFORMANCE MODE" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{x:Static r:Strings.PerformanceMode}" Style="{StaticResource SectionTitle}"/>
                         <TextBlock Style="{StaticResource SectionBlurb}"
-                                   Text="Jumps to a fast power plan and puts your previous plan back when you turn it off. It can switch itself on while a game runs."/>
+                                   Text="{x:Static r:Strings.JumpsToAFastPowerPlan}"/>
                     </StackPanel>
                 </HeaderedContentControl.Header>
                 <StackPanel>
                     <DockPanel>
                         <Border DockPanel.Dock="Right" Style="{StaticResource Tag}" VerticalAlignment="Center"
                                 Visibility="{Binding PerformanceModeAutomatic, Converter={StaticResource VisibleWhen}}">
-                            <TextBlock Text="ON AUTOMATICALLY — A LISTED PROGRAM OR A GAME IS RUNNING" Style="{StaticResource Tag.Text}"/>
+                            <TextBlock Text="{x:Static r:Strings.OnAutomaticallyAListedProgramOr}" Style="{StaticResource Tag.Text}"/>
                         </Border>
                         <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding PerformanceMode}" HorizontalAlignment="Left">
-                            <TextBlock Text="PERFORMANCE MODE" FontWeight="Bold" FontSize="15"/>
+                            <TextBlock Text="{x:Static r:Strings.PerformanceMode}" FontWeight="Bold" FontSize="15"/>
                         </CheckBox>
                     </DockPanel>
 
-                    <TextBlock Text="WHAT IT DOES" Style="{StaticResource Sub}"/>
+                    <TextBlock Text="{x:Static r:Strings.WhatItDoes}" Style="{StaticResource Sub}"/>
                     <ContentControl Content="{Binding PerformancePlan}" Focusable="False"/>
                     <StackPanel Visibility="{Binding PowerModeSupported, Converter={StaticResource VisibleWhen}}">
                         <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding PerformanceSetsBestMode}" Margin="0,4,0,0"
-                                  Content="ALSO SET THE POWER MODE TO BEST PERFORMANCE"/>
+                                  Content="{x:Static r:Strings.AlsoSetThePowerModeTo}"/>
                         <TextBlock Style="{StaticResource Note}"
-                                   Text="Your power mode comes back when Performance Mode ends. Windows uses it only under the Balanced plan, so pick Balanced above for this to count."/>
+                                   Text="{x:Static r:Strings.YourPowerModeComesBackWhen}"/>
                     </StackPanel>
 
-                    <TextBlock Text="TURNING ON BY ITSELF" Style="{StaticResource Sub}" Margin="0,18,0,12"/>
+                    <TextBlock Text="{x:Static r:Strings.TurningOnByItself}" Style="{StaticResource Sub}" Margin="0,18,0,12"/>
                     <ContentControl Content="{Binding AutoProcesses}" Focusable="False"/>
                     <TextBlock Style="{StaticResource Note}" Margin="0,-8,0,16"
-                               Text="Program names or full paths, with * as a wildcard. Performance Mode is on while any of them runs."/>
+                               Text="{x:Static r:Strings.ProgramNamesOrFullPathsWith}"/>
                     <ContentControl Content="{Binding AutoExclusions}" Focusable="False"/>
-                    <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding DetectGames}" Margin="0" Content="DETECT GAMES FROM WHERE THEY'RE INSTALLED"/>
-                    <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding EngageForSteam}" Content="ENGAGE FOR STEAM GAMES"/>
+                    <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding DetectGames}" Margin="0" Content="{x:Static r:Strings.DetectGamesFromWhereTheyreInstalled}"/>
+                    <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding EngageForSteam}" Content="{x:Static r:Strings.EngageForSteamGames}"/>
                 </StackPanel>
             </HeaderedContentControl>
 
@@ -377,14 +378,14 @@
                 <HeaderedContentControl.Header>
                     <StackPanel>
                         <TextBlock Text="F" Style="{StaticResource SectionNumber}"/>
-                        <TextBlock Text="LOAD SWITCHER" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{x:Static r:Strings.LoadSwitcher}" Style="{StaticResource SectionTitle}"/>
                         <TextBlock Style="{StaticResource SectionBlurb}"
-                                   Text="Follows the CPU's load: a fast plan while it's busy, a calmer one while it isn't."/>
+                                   Text="{x:Static r:Strings.FollowsTheCpusLoadAFast}"/>
                     </StackPanel>
                 </HeaderedContentControl.Header>
                 <StackPanel>
                     <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding LoadSwitcherEnabled}">
-                        <TextBlock Text="SWITCH PLANS WITH THE LOAD" FontWeight="Bold" FontSize="15"/>
+                        <TextBlock Text="{x:Static r:Strings.SwitchPlansWithTheLoad}" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>
                     <StackPanel IsEnabled="{Binding LoadSwitcherEnabled}" Margin="0,26,0,0">
                         <WrapPanel>
@@ -399,8 +400,8 @@
                         </Border>
                         <ContentControl Content="{Binding LowPlan}" Focusable="False"/>
                         <ContentControl Content="{Binding HighPlan}" Focusable="False"/>
-                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding DeferLowPlan}" Content="AT LOW LOAD, GO BACK TO THE PLAN FROM BEFORE"
-                                  ToolTip="Instead of switching to the low-load plan, return to whatever plan was active before the switcher went high"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding DeferLowPlan}" Content="{x:Static r:Strings.AtLowLoadGoBackTo}"
+                                  ToolTip="{x:Static r:Strings.InsteadOfSwitchingToTheLow}"/>
                     </StackPanel>
                 </StackPanel>
             </HeaderedContentControl>
@@ -410,15 +411,15 @@
                 <HeaderedContentControl.Header>
                     <StackPanel>
                         <TextBlock Text="G" Style="{StaticResource SectionNumber}"/>
-                        <TextBlock Text="POWER" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{x:Static r:Strings.Power}" Style="{StaticResource SectionTitle}"/>
                         <TextBlock Style="{StaticResource SectionBlurb}"
-                                   Text="Switch Windows power plans by hand, and choose the one to start with."/>
+                                   Text="{x:Static r:Strings.SwitchWindowsPowerPlansByHand}"/>
                     </StackPanel>
                 </HeaderedContentControl.Header>
                 <StackPanel>
                     <DockPanel Margin="0,0,0,8">
                         <TextBlock DockPanel.Dock="Right" Text="{Binding PlanOwnerText}" FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.7" VerticalAlignment="Center"/>
-                        <TextBlock Text="INSTALLED PLANS" Style="{StaticResource Text.Label}"/>
+                        <TextBlock Text="{x:Static r:Strings.InstalledPlans}" Style="{StaticResource Text.Label}"/>
                     </DockPanel>
                     <ItemsControl ItemsSource="{Binding Plans}" Focusable="False" AutomationProperties.Name="INSTALLED PLANS">
                         <ItemsControl.ItemsPanel>
@@ -445,10 +446,10 @@
                                         <TextBlock FontSize="10" FontWeight="SemiBold" Opacity="0.7">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
-                                                    <Setter Property="Text" Value="SWITCH TO"/>
+                                                    <Setter Property="Text" Value="{x:Static r:Strings.SwitchTo}"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                                            <Setter Property="Text" Value="ACTIVE"/>
+                                                            <Setter Property="Text" Value="{x:Static r:Strings.Active}"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -462,7 +463,7 @@
                     </ItemsControl>
 
                     <StackPanel Visibility="{Binding PowerModeSupported, Converter={StaticResource VisibleWhen}}" Margin="0,22,0,0">
-                        <TextBlock Text="POWER MODE" Style="{StaticResource Text.Label}" Margin="0,0,0,8"/>
+                        <TextBlock Text="{x:Static r:Strings.PowerMode}" Style="{StaticResource Text.Label}" Margin="0,0,0,8"/>
                         <ItemsControl ItemsSource="{Binding PowerModes}" Focusable="False">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
@@ -488,23 +489,23 @@
                 <HeaderedContentControl.Header>
                     <StackPanel>
                         <TextBlock Text="H" Style="{StaticResource SectionNumber}"/>
-                        <TextBlock Text="TIMER" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{x:Static r:Strings.Timer}" Style="{StaticResource SectionTitle}"/>
                         <TextBlock Style="{StaticResource SectionBlurb}"
-                                   Text="How often Windows' clock ticks. A finer timer makes sleeps and frame pacing more precise, at the cost of more wake-ups and battery. The engine holds it while it runs."/>
+                                   Text="{x:Static r:Strings.HowOftenWindowsClockTicksA}"/>
                     </StackPanel>
                 </HeaderedContentControl.Header>
                 <StackPanel>
                     <UniformGrid Columns="3" HorizontalAlignment="Left" MinWidth="460">
                         <StackPanel Margin="0,0,24,0">
-                            <TextBlock Text="NOW" Style="{StaticResource Text.Label}"/>
+                            <TextBlock Text="{x:Static r:Strings.Now}" Style="{StaticResource Text.Label}"/>
                             <TextBlock Text="{Binding TimerCurrentText}" FontFamily="{StaticResource Mono}" FontWeight="Bold" FontSize="24"/>
                         </StackPanel>
-                        <StackPanel Margin="0,0,24,0" ToolTip="The coarsest the timer runs at (Windows calls it the minimum resolution)">
-                            <TextBlock Text="MINIMUM" Style="{StaticResource Text.Label}"/>
+                        <StackPanel Margin="0,0,24,0" ToolTip="{x:Static r:Strings.TheCoarsestTheTimerRunsAt}">
+                            <TextBlock Text="{x:Static r:Strings.Minimum}" Style="{StaticResource Text.Label}"/>
                             <TextBlock Text="{Binding TimerMinimumText}" FontFamily="{StaticResource Mono}" FontWeight="Bold" FontSize="24" Opacity="0.7"/>
                         </StackPanel>
-                        <StackPanel ToolTip="The finest the timer can be asked for (Windows calls it the maximum resolution)">
-                            <TextBlock Text="MAXIMUM" Style="{StaticResource Text.Label}"/>
+                        <StackPanel ToolTip="{x:Static r:Strings.TheFinestTheTimerCanBe}">
+                            <TextBlock Text="{x:Static r:Strings.Maximum}" Style="{StaticResource Text.Label}"/>
                             <TextBlock Text="{Binding TimerMaximumText}" FontFamily="{StaticResource Mono}" FontWeight="Bold" FontSize="24" Opacity="0.7"/>
                         </StackPanel>
                     </UniformGrid>
@@ -512,9 +513,9 @@
                     <DockPanel Margin="0,30,0,8">
                         <Border DockPanel.Dock="Right" Style="{StaticResource Tag}" VerticalAlignment="Center"
                                 Visibility="{Binding IsAdministrator, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}">
-                            <TextBlock Text="NEEDS ADMINISTRATOR RIGHTS" Style="{StaticResource Tag.Text}"/>
+                            <TextBlock Text="{x:Static r:Strings.NeedsAdministratorRights}" Style="{StaticResource Tag.Text}"/>
                         </Border>
-                        <TextBlock Text="ASK WINDOWS FOR" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{x:Static r:Strings.AskWindowsFor}" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
                     </DockPanel>
                     <ItemsControl ItemsSource="{Binding TimerOptions}" Focusable="False" IsEnabled="{Binding IsAdministrator}">
                         <ItemsControl.ItemsPanel>
@@ -533,9 +534,9 @@
 
                     <StackPanel Visibility="{Binding TimerGlobalSupported, Converter={StaticResource VisibleWhen}}">
                         <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding TimerGlobalRequests}" IsEnabled="{Binding IsAdministrator}"
-                                  Content="APPLY TO EVERY PROGRAM" Margin="0,22,0,0"/>
+                                  Content="{x:Static r:Strings.ApplyToEveryProgram}" Margin="0,22,0,0"/>
                         <TextBlock Style="{StaticResource Note}"
-                                   Text="Windows 11 honours a timer request only for the program that made it. This switch (GlobalTimerResolutionRequests) makes requests system-wide again. Takes effect after a restart."/>
+                                   Text="{x:Static r:Strings.Windows11HonoursATimerRequest}"/>
                     </StackPanel>
                 </StackPanel>
             </HeaderedContentControl>
@@ -545,40 +546,55 @@
                 <HeaderedContentControl.Header>
                     <StackPanel>
                         <TextBlock Text="I" Style="{StaticResource SectionNumber}"/>
-                        <TextBlock Text="GENERAL" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{x:Static r:Strings.General}" Style="{StaticResource SectionTitle}"/>
                         <TextBlock Style="{StaticResource SectionBlurb}"
-                                   Text="How ProGuard fits into your Windows session."/>
+                                   Text="{x:Static r:Strings.HowProguardFitsIntoYourWindows}"/>
                     </StackPanel>
                 </HeaderedContentControl.Header>
                 <StackPanel>
+                    <!-- The window's language; Windows' own unless the user picks one. -->
+                    <TextBlock Text="{x:Static r:Strings.Lang_Language}" Style="{StaticResource Text.Label}" Margin="0,0,0,8"/>
+                    <ItemsControl ItemsSource="{Binding DataContext.Languages, RelativeSource={RelativeSource AncestorType=Window}}" Focusable="False">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource Opt}" Content="{Binding Label}" AutomationProperties.Name="{Binding Label}"
+                                        Command="{Binding DataContext.PickLanguageCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}" ui:Seg.IsOn="{Binding IsOn, Mode=OneWay}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,8,0,26" Text="{x:Static r:Strings.Lang_Note}"/>
                     <!-- Only while this window has standard rights. -->
                     <StackPanel Margin="0,0,0,26"
                                 Visibility="{Binding DataContext.CanRestartElevated, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource VisibleWhen}}">
-                        <Button Style="{StaticResource Btn.Outline}" Content="RESTART AS ADMINISTRATOR" HorizontalAlignment="Left" Padding="18,10"
+                        <Button Style="{StaticResource Btn.Outline}" Content="{x:Static r:Strings.RestartAsAdministrator}" HorizontalAlignment="Left" Padding="18,10"
                                 Command="{Binding DataContext.RestartElevatedCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
                         <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap"
-                                   Text="This window has standard rights, so ProGuard refuses Realtime and High I/O priority, Purge now, CPU tuning and the timer resolution. The engine keeps running either way; restarting only reopens this window, on this page."/>
+                                   Text="{x:Static r:Strings.ThisWindowHasStandardRightsSo}"/>
                     </StackPanel>
                     <CheckBox Style="{StaticResource Switch}"
                               IsChecked="{Binding DataContext.AlwaysStartElevated, RelativeSource={RelativeSource AncestorType=Window}}">
-                        <TextBlock Text="ALWAYS START AS ADMINISTRATOR" FontWeight="Bold" FontSize="15"/>
+                        <TextBlock Text="{x:Static r:Strings.AlwaysStartAsAdministrator}" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>
                     <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,8,0,22"
-                               Text="ProGuard asks for administrator rights (a UAC prompt) each time it starts, including at sign-in, so Realtime and High I/O priority always work. Say no and it opens with standard rights. The installer turns this on for everyone unless told not to; this switch is your own choice."/>
+                               Text="{x:Static r:Strings.ProguardAsksForAdministratorRightsA}"/>
                     <CheckBox Style="{StaticResource Switch}"
                               IsChecked="{Binding DataContext.RememberPriorityChanges, RelativeSource={RelativeSource AncestorType=Window}}">
-                        <TextBlock Text="REMEMBER CHANGES TO PROGRAMS" FontWeight="Bold" FontSize="15"/>
+                        <TextBlock Text="{x:Static r:Strings.RememberChangesToPrograms}" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>
                     <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,8,0,22"
-                               Text="Priority, I/O and memory priority, efficiency mode, cores and CPU caps you set on the Processes page are kept in that program's rule, so they are set again whenever the program starts, and put back if the program changes them. Windows' own processes stay one-off. Off: changes last until the process exits; use Always in the right-click menu to keep one."/>
+                               Text="{x:Static r:Strings.PriorityIOAndMemoryPriority}"/>
                     <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding StartWithWindows}">
-                        <TextBlock Text="START WITH WINDOWS" FontWeight="Bold" FontSize="15"/>
+                        <TextBlock Text="{x:Static r:Strings.StartWithWindows}" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>
-                    <TextBlock Style="{StaticResource Note}" Text="Starts ProGuard in the tray when you sign in. The engine runs on its own either way."/>
+                    <TextBlock Style="{StaticResource Note}" Text="{x:Static r:Strings.StartsProguardInTheTrayWhen}"/>
                     <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding MinimizeToTray}" Margin="0,22,0,0">
-                        <TextBlock Text="KEEP RUNNING IN THE TRAY" FontWeight="Bold" FontSize="15"/>
+                        <TextBlock Text="{x:Static r:Strings.KeepRunningInTheTray}" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>
-                    <TextBlock Style="{StaticResource Note}" Text="Closing or minimising the window hides it to the tray instead. Quit from the tray menu."/>
+                    <TextBlock Style="{StaticResource Note}" Text="{x:Static r:Strings.ClosingOrMinimisingTheWindowHides}"/>
                     <ContentControl Content="{Binding PollingInterval}" Focusable="False" Margin="0,26,0,0"/>
                 </StackPanel>
             </HeaderedContentControl>
@@ -588,22 +604,22 @@
                 <HeaderedContentControl.Header>
                     <StackPanel>
                         <TextBlock Text="J" Style="{StaticResource SectionNumber}"/>
-                        <TextBlock Text="PROFILES &amp; BACKUP" Style="{StaticResource SectionTitle}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{x:Static r:Strings.ProfilesBackup}" Style="{StaticResource SectionTitle}" TextWrapping="Wrap"/>
                         <TextBlock Style="{StaticResource SectionBlurb}"
-                                   Text="Save the rules, Watchdog rules and every setting under a name and switch between them, or move them to another PC as a file. A switch keeps what it replaced as BEFORE SWITCH."/>
+                                   Text="{x:Static r:Strings.SaveTheRulesWatchdogRulesAnd}"/>
                     </StackPanel>
                 </HeaderedContentControl.Header>
                 <StackPanel DataContext="{Binding Profiles}">
                     <WrapPanel>
-                        <Button Style="{StaticResource Btn.Solid}" Content="SAVE CURRENT AS" Command="{Binding NewProfileCommand}" Margin="0,0,10,8"/>
-                        <Button Style="{StaticResource Btn.Outline}" Content="EXPORT TO FILE" Command="{Binding ExportCommand}" Margin="0,0,10,8"
-                                ToolTip="Write the configuration in force to a file you can import on any PC"/>
-                        <Button Style="{StaticResource Btn.Outline}" Content="IMPORT FROM FILE" Command="{Binding ImportCommand}" Margin="0,0,10,8"
-                                ToolTip="Shows what the file would change before anything is applied"/>
+                        <Button Style="{StaticResource Btn.Solid}" Content="{x:Static r:Strings.SaveCurrentAs}" Command="{Binding NewProfileCommand}" Margin="0,0,10,8"/>
+                        <Button Style="{StaticResource Btn.Outline}" Content="{x:Static r:Strings.ExportToFile}" Command="{Binding ExportCommand}" Margin="0,0,10,8"
+                                ToolTip="{x:Static r:Strings.WriteTheConfigurationInForceTo}"/>
+                        <Button Style="{StaticResource Btn.Outline}" Content="{x:Static r:Strings.ImportFromFile}" Command="{Binding ImportCommand}" Margin="0,0,10,8"
+                                ToolTip="{x:Static r:Strings.ShowsWhatTheFileWouldChange}"/>
                     </WrapPanel>
 
-                    <TextBlock Text="SAVED PROFILES" Style="{StaticResource Sub}"/>
-                    <TextBlock Style="{StaticResource Note}" Margin="0,0,0,0" Text="No profiles yet. Save the current configuration to start one."
+                    <TextBlock Text="{x:Static r:Strings.SavedProfiles}" Style="{StaticResource Sub}"/>
+                    <TextBlock Style="{StaticResource Note}" Margin="0,0,0,0" Text="{x:Static r:Strings.NoProfilesYetSaveTheCurrent}"
                                Visibility="{Binding HasProfiles, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}"/>
                     <ItemsControl ItemsSource="{Binding Profiles}" Focusable="False" AutomationProperties.Name="SAVED PROFILES">
                         <ItemsControl.ItemTemplate>
@@ -611,18 +627,18 @@
                                 <Border BorderBrush="{StaticResource VoltLineBrush}" BorderThickness="0,0,0,1" Padding="0,10" AutomationProperties.Name="{Binding Name}">
                                     <DockPanel>
                                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Button Style="{StaticResource Btn.Outline}" Content="SWITCH" Margin="0,0,6,0" Padding="16,8"
+                                            <Button Style="{StaticResource Btn.Outline}" Content="{x:Static r:Strings.Switch}" Margin="0,0,6,0" Padding="16,8"
                                                     Command="{Binding DataContext.Profiles.SwitchProfileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='SWITCH TO {0}'}"/>
-                                            <Button Style="{StaticResource Btn.Ghost}" Content="RENAME"
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat={x:Static r:Strings.SwitchTo0}}"/>
+                                            <Button Style="{StaticResource Btn.Ghost}" Content="{x:Static r:Strings.Rename}"
                                                     Command="{Binding DataContext.Profiles.RenameProfileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='RENAME {0}'}"/>
-                                            <Button Style="{StaticResource Btn.Ghost}" Content="EXPORT"
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat={x:Static r:Strings.Rename0}}"/>
+                                            <Button Style="{StaticResource Btn.Ghost}" Content="{x:Static r:Strings.Export}"
                                                     Command="{Binding DataContext.Profiles.ExportCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='EXPORT {0}'}"/>
-                                            <Button Style="{StaticResource Btn.Ghost}" Content="DELETE"
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat={x:Static r:Strings.Export0}}"/>
+                                            <Button Style="{StaticResource Btn.Ghost}" Content="{x:Static r:Strings.Delete}"
                                                     Command="{Binding DataContext.Profiles.DeleteProfileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='DELETE {0}'}"/>
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat={x:Static r:Strings.Delete0}}"/>
                                         </StackPanel>
                                         <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
                                             <TextBlock Text="{Binding Name}" FontSize="17" FontWeight="Bold" TextTrimming="CharacterEllipsis">
@@ -644,7 +660,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                     <TextBlock Style="{StaticResource Note}" Margin="0,12,0,0"
-                               Text="CPU Set IDs, cores this PC doesn't have and power plans that aren't installed only make sense on the PC they were saved on: they are left out when a profile or file is applied, and the preview lists each one."/>
+                               Text="{x:Static r:Strings.CpuSetIdsCoresThisPc}"/>
                 </StackPanel>
             </HeaderedContentControl>
         </StackPanel>

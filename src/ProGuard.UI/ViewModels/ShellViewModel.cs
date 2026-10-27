@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using ProGuard.Shared.Contracts;
 using ProGuard.Shared.Messages;
 using ProGuard.UI.Services;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -37,7 +38,7 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>A dialog view model shown over everything, or null.</summary>
     [ObservableProperty] private object? dialog;
 
-    [ObservableProperty] private string statusLine = "CONNECTING";
+    [ObservableProperty] private string statusLine = Strings.Shell_Connecting;
     [ObservableProperty] private string clock = string.Empty;
 
     /// <summary>
@@ -67,7 +68,7 @@ public sealed partial class ShellViewModel : ObservableObject
             }
             catch (Exception ex) when (ex is UnauthorizedAccessException or global::System.Security.SecurityException or global::System.IO.IOException)
             {
-                Toaster.Show($"Windows wouldn't save that: {ex.Message}", isError: true);
+                Toaster.Show(string.Format(Strings.Shell_WouldntSave, ex.Message), isError: true);
             }
             OnPropertyChanged();
         }
@@ -92,18 +93,48 @@ public sealed partial class ShellViewModel : ObservableObject
             }
             catch (Exception ex) when (ex is UnauthorizedAccessException or global::System.Security.SecurityException or global::System.IO.IOException)
             {
-                Toaster.Show($"Windows wouldn't save that: {ex.Message}", isError: true);
+                Toaster.Show(string.Format(Strings.Shell_WouldntSave, ex.Message), isError: true);
             }
             OnPropertyChanged();
             // Starting at sign-in switches between the Run key and the no-prompt task to match (elevated copies only).
             try { _startup?.Reconcile(); }
             catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidOperationException or global::System.IO.IOException or global::System.Security.SecurityException)
             {
-                Toaster.Show($"Windows wouldn't change how ProGuard starts at sign-in: {ex.Message}", isError: true);
+                Toaster.Show(string.Format(Strings.Shell_WouldntChangeSignIn, ex.Message), isError: true);
             }
             if (value && _elevation.AlwaysElevate && CanRestartElevated)
-                Toaster.Show("From now on ProGuard starts as administrator, after a UAC prompt. Restart as administrator now to use it straight away.");
+                Toaster.Show(Strings.Shell_AlwaysAdminOn, offerElevation: true);
         }
+    }
+
+    /// <summary>
+    /// The languages the window comes in, by culture name, with each one's own name for itself. Text a translation lacks
+    /// falls back to English. Adding a language: a Strings.&lt;culture&gt;.resx beside Strings.resx, a line here, and the
+    /// culture in the UI project's SatelliteResourceLanguages.
+    /// </summary>
+    public static IReadOnlyList<(string Culture, string Name)> SupportedLanguages { get; } = new[]
+    {
+        ("en", "ENGLISH"),
+    };
+
+    /// <summary>Windows' own display language, then each translation. Picking one takes effect the next time ProGuard starts.</summary>
+    public IReadOnlyList<ChoiceOption<string>> Languages { get; }
+
+    [RelayCommand]
+    private void PickLanguage(ChoiceOption<string> option)
+    {
+        if (option.Value == _preferences.Language) return;
+        try
+        {
+            _preferences.Language = option.Value;
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or global::System.Security.SecurityException or global::System.IO.IOException)
+        {
+            Toaster.Show(string.Format(Strings.Shell_WouldntSave, ex.Message), isError: true);
+            return;
+        }
+        foreach (var language in Languages) language.IsOn = ReferenceEquals(language, option);
+        Toaster.Show(Strings.Lang_NextStart);
     }
 
     /// <summary>Closes the app for good (not just to the tray). Set by the app; tests leave it, or record it.</summary>
@@ -118,6 +149,10 @@ public sealed partial class ShellViewModel : ObservableObject
         Hub = hub;
         Toaster = toaster;
         _preferences = preferences ?? new MemoryUiPreferences();
+        var chosen = _preferences.Language;
+        Languages = new[] { new ChoiceOption<string>(Strings.Lang_WindowsDefault, string.Empty, chosen.Length == 0) }
+            .Concat(SupportedLanguages.Select(l => new ChoiceOption<string>(l.Name, l.Culture, string.Equals(chosen, l.Culture, StringComparison.OrdinalIgnoreCase))))
+            .ToList();
         _startup = startup;
         _elevation = elevation ?? new ElevationLauncher();
         if (CanRestartElevated) toaster.Elevate = () => RestartElevatedCommand.Execute(null);
@@ -132,13 +167,13 @@ public sealed partial class ShellViewModel : ObservableObject
 
         Pages = new[]
         {
-            new PageItem("01", "OVERVIEW", Overview),
-            new PageItem("02", "PROCESSES", Processes),
-            new PageItem("03", "RULES", Rules),
-            new PageItem("04", "WATCHDOG", Watchdog),
-            new PageItem("05", "ACTIVITY", Activity),
-            new PageItem("06", "SYSTEM", System),
-            new PageItem("07", "ADVANCED", Advanced),
+            new PageItem("01", Strings.Overview, Overview),
+            new PageItem("02", Strings.Processes, Processes),
+            new PageItem("03", Strings.Rules, Rules),
+            new PageItem("04", Strings.Watchdog, Watchdog),
+            new PageItem("05", Strings.Activity, Activity),
+            new PageItem("06", Strings.System, System),
+            new PageItem("07", Strings.Advanced, Advanced),
         };
         currentPage = Pages[0];
 
@@ -191,7 +226,7 @@ public sealed partial class ShellViewModel : ObservableObject
                 Quit?.Invoke();
                 break;
             case ElevationOutcome.Failed:
-                Toaster.Show(error ?? "Windows couldn't start an administrator copy of ProGuard.", isError: true);
+                Toaster.Show(error ?? Strings.Shell_ElevationFailed, isError: true, offerElevation: false);
                 break;
             // Cancelled: the user said no at the prompt, which needs no comment.
         }
@@ -208,8 +243,8 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private void OnSnapshot(EngineSnapshot snapshot)
     {
-        var mode = snapshot.CallerIsAdministrator ? "ADMIN" : "STANDARD RIGHTS";
-        StatusLine = $"ENGINE ONLINE · {mode} · UP {Fmt.Uptime(snapshot.EngineUptime)}";
+        var mode = snapshot.CallerIsAdministrator ? Strings.Admin : Strings.StandardRights;
+        StatusLine = string.Format(Strings.Shell_Status, mode, Fmt.Uptime(snapshot.EngineUptime));
 
         // The tray behaviour needs MinimizeToTray before the System page has ever been opened.
         if (!_windowSettingsRequested)
@@ -250,7 +285,7 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         bool enable = Hub.Snapshot?.PerformanceModeActive != true;
         bool ok = await Hub.RunAsync(enable ? CommandTypes.EnablePerformanceMode : CommandTypes.DisablePerformanceMode,
-            success: enable ? "PERFORMANCE MODE ON" : "PERFORMANCE MODE OFF");
+            success: enable ? Strings.Shell_PerformanceModeOn : Strings.Shell_PerformanceModeOff);
         return ok ? enable : null;
     }
 }

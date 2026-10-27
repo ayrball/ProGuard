@@ -1,5 +1,6 @@
 <UserControl x:Class="ProGuard.UI.Views.RulesView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:r="clr-namespace:ProGuard.UI.Resources"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <UserControl.Resources>
         <ResourceDictionary Source="Editors.xaml"/>
@@ -15,10 +16,10 @@
         </Grid.RowDefinitions>
 
         <DockPanel Grid.ColumnSpan="2" Margin="0,0,0,24">
-            <Button DockPanel.Dock="Right" Style="{StaticResource Btn.Solid}" Content="+ NEW RULE" AutomationProperties.AutomationId="NewRule" Command="{Binding NewCommand}" VerticalAlignment="Bottom"/>
+            <Button DockPanel.Dock="Right" Style="{StaticResource Btn.Solid}" Content="{x:Static r:Strings.NewRule}" AutomationProperties.AutomationId="NewRule" Command="{Binding NewCommand}" VerticalAlignment="Bottom"/>
             <StackPanel>
-                <TextBlock Text="RULES" Style="{StaticResource Text.Title}"/>
-                <TextBlock Text="STANDING ORDERS, APPLIED EVERY TIME A PROGRAM STARTS" Style="{StaticResource Text.Label}" Margin="0,6,0,0"/>
+                <TextBlock Text="{x:Static r:Strings.Rules}" Style="{StaticResource Text.Title}"/>
+                <TextBlock Text="{x:Static r:Strings.StandingOrdersAppliedEveryTimeA}" Style="{StaticResource Text.Label}" Margin="0,6,0,0"/>
             </StackPanel>
         </DockPanel>
 
@@ -30,10 +31,10 @@
                         <Border BorderBrush="{StaticResource VoltLineBrush}" BorderThickness="0,0,0,2" Padding="0,16">
                             <DockPanel>
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Button Style="{StaticResource Btn.Outline}" Content="EDIT" Margin="0,0,8,0" Padding="16,8"
-                                            AutomationProperties.Name="{Binding Name, StringFormat='EDIT {0}'}"
+                                    <Button Style="{StaticResource Btn.Outline}" Content="{x:Static r:Strings.Edit}" Margin="0,0,8,0" Padding="16,8"
+                                            AutomationProperties.Name="{Binding Name, StringFormat={x:Static r:Strings.Edit0}}"
                                             Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
-                                    <Button Style="{StaticResource Btn.Ghost}" Content="&#xE74D;" FontFamily="{StaticResource Glyphs}" FontWeight="Normal" ToolTip="Delete rule" AutomationProperties.Name="{Binding Name, StringFormat='DELETE {0}'}"
+                                    <Button Style="{StaticResource Btn.Ghost}" Content="&#xE74D;" FontFamily="{StaticResource Glyphs}" FontWeight="Normal" ToolTip="{x:Static r:Strings.DeleteRule}" AutomationProperties.Name="{Binding Name, StringFormat={x:Static r:Strings.Delete0}}"
                                             Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
                                 </StackPanel>
                                 <StackPanel>
@@ -74,9 +75,9 @@
                     </Style.Triggers>
                 </Style>
             </StackPanel.Style>
-            <TextBlock Text="NO&#x0a;RULES&#x0a;YET." Style="{StaticResource Text.Hero}" FontSize="110" LineHeight="96" Opacity="0.2"/>
+            <TextBlock Text="{x:Static r:Strings.NoRulesYet}" Style="{StaticResource Text.Hero}" FontSize="110" LineHeight="96" Opacity="0.2"/>
             <TextBlock Style="{StaticResource Text.Body}" FontSize="16" MaxWidth="460" HorizontalAlignment="Left" Margin="0,22,0,0" Opacity="0.75"
-                       Text="Pin a program's priority, cap its CPU, keep it on certain cores, shield it from ProGuard's balancing, or stop it from running at all. Right-click any process and choose Make a rule, or start one here."/>
+                       Text="{x:Static r:Strings.PinAProgramsPriorityCapIts}"/>
         </StackPanel>
 
         <!-- ============================================================ editor -->
@@ -90,68 +91,68 @@
                     <TextBlock Text="{Binding RestrictionHint}" Style="{StaticResource Text.Label}" FontSize="10.5" Opacity="0.8" TextWrapping="Wrap"/>
                 </Border>
                 <UniformGrid DockPanel.Dock="Bottom" Columns="2" Margin="20,0,20,20">
-                    <Button Style="{StaticResource Btn.Ghost}" Content="CANCEL" AutomationProperties.AutomationId="CancelRule" Command="{Binding DataContext.CancelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
-                    <Button Style="{StaticResource Btn.Solid}" Content="SAVE RULE" AutomationProperties.AutomationId="SaveRule" Command="{Binding DataContext.SaveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                    <Button Style="{StaticResource Btn.Ghost}" Content="{x:Static r:Strings.Cancel}" AutomationProperties.AutomationId="CancelRule" Command="{Binding DataContext.CancelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                    <Button Style="{StaticResource Btn.Solid}" Content="{x:Static r:Strings.SaveRule}" AutomationProperties.AutomationId="SaveRule" Command="{Binding DataContext.SaveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                 </UniformGrid>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="20,18,20,18">
 
                         <!-- Basics -->
-                        <Expander Style="{StaticResource Section}" Header="BASICS" Tag="{Binding BasicsSummary}" IsExpanded="True">
+                        <Expander Style="{StaticResource Section}" Header="{x:Static r:Strings.Basics}" Tag="{Binding BasicsSummary}" IsExpanded="True">
                             <StackPanel>
-                                <TextBlock Text="PROGRAM" Style="{StaticResource Ed.Label}" Margin="0,8,0,0"/>
-                                <TextBox Style="{StaticResource Field}" AutomationProperties.Name="PROGRAM" Tag="e.g. chrome.exe" Text="{Binding ProcessName, UpdateSourceTrigger=PropertyChanged}" FontSize="20" FontWeight="Bold"/>
+                                <TextBlock Text="{x:Static r:Strings.Program}" Style="{StaticResource Ed.Label}" Margin="0,8,0,0"/>
+                                <TextBox Style="{StaticResource Field}" AutomationProperties.Name="PROGRAM" Tag="{x:Static r:Strings.EGChromeExe}" Text="{Binding ProcessName, UpdateSourceTrigger=PropertyChanged}" FontSize="20" FontWeight="Bold"/>
 
-                                <TextBlock Text="PRIORITY" Style="{StaticResource Ed.Label}"/>
+                                <TextBlock Text="{x:Static r:Strings.Priority2}" Style="{StaticResource Ed.Label}"/>
                                 <ListBox Style="{StaticResource Choices.Gated}" AutomationProperties.Name="PRIORITY" ItemsSource="{Binding Priorities}" SelectedItem="{Binding Priority}"/>
 
                                 <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding AffinityEnabled}" Margin="0,16,0,0">
-                                    <TextBlock Text="KEEP IT ON CERTAIN CORES" FontWeight="Bold" FontSize="14"/>
+                                    <TextBlock Text="{x:Static r:Strings.KeepItOnCertainCores}" FontWeight="Bold" FontSize="14"/>
                                 </CheckBox>
                                 <ContentControl Content="{Binding CorePicker}" Margin="0,10,0,0" Visibility="{Binding AffinityEnabled, Converter={StaticResource VisibleWhen}}"/>
 
                                 <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ExcludeFromProBalance}" AutomationProperties.Name="NEVER BALANCE IT" Margin="0,16,0,0">
                                     <StackPanel>
-                                        <TextBlock Text="NEVER BALANCE IT" FontWeight="Bold" FontSize="14"/>
-                                        <TextBlock Text="ProBalance won't lower its priority, even under load." Style="{StaticResource Ed.Note}" Margin="0"/>
+                                        <TextBlock Text="{x:Static r:Strings.NeverBalanceIt}" FontWeight="Bold" FontSize="14"/>
+                                        <TextBlock Text="{x:Static r:Strings.ProbalanceWontLowerItsPriorityEven}" Style="{StaticResource Ed.Note}" Margin="0"/>
                                     </StackPanel>
                                 </CheckBox>
 
                                 <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding DisallowExecution}" AutomationProperties.Name="BLOCK IT" Margin="0,16,0,0">
                                     <StackPanel>
-                                        <TextBlock Text="BLOCK IT" FontWeight="Bold" FontSize="14"/>
-                                        <TextBlock Text="Ended the moment it starts, including copies running now." Style="{StaticResource Ed.Note}" Margin="0"/>
+                                        <TextBlock Text="{x:Static r:Strings.BlockIt}" FontWeight="Bold" FontSize="14"/>
+                                        <TextBlock Text="{x:Static r:Strings.EndedTheMomentItStartsIncluding}" Style="{StaticResource Ed.Note}" Margin="0"/>
                                     </StackPanel>
                                 </CheckBox>
 
                                 <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding KeepRunning}" AutomationProperties.Name="KEEP IT RUNNING" Margin="0,16,0,0">
                                     <StackPanel>
-                                        <TextBlock Text="KEEP IT RUNNING" FontWeight="Bold" FontSize="14"/>
-                                        <TextBlock Text="Started again with its last command line whenever it exits." Style="{StaticResource Ed.Note}" Margin="0"/>
+                                        <TextBlock Text="{x:Static r:Strings.KeepItRunning}" FontWeight="Bold" FontSize="14"/>
+                                        <TextBlock Text="{x:Static r:Strings.StartedAgainWithItsLastCommand}" Style="{StaticResource Ed.Note}" Margin="0"/>
                                     </StackPanel>
                                 </CheckBox>
                             </StackPanel>
                         </Expander>
 
                         <!-- CPU -->
-                        <Expander Style="{StaticResource Section}" Header="CPU" Tag="{Binding CpuSummary}">
+                        <Expander Style="{StaticResource Section}" Header="{x:Static r:Strings.Cpu3}" Tag="{Binding CpuSummary}">
                             <StackPanel>
                                 <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding LimitEnabled}" AutomationProperties.Name="HARD CAP ITS CPU" Margin="0,14,0,0">
                                     <StackPanel>
-                                        <TextBlock Text="HARD CAP ITS CPU" FontWeight="Bold" FontSize="14"/>
-                                        <TextBlock Text="A ceiling Windows enforces on the program." Style="{StaticResource Ed.Note}" Margin="0"/>
+                                        <TextBlock Text="{x:Static r:Strings.HardCapItsCpu}" FontWeight="Bold" FontSize="14"/>
+                                        <TextBlock Text="{x:Static r:Strings.ACeilingWindowsEnforcesOnThe}" Style="{StaticResource Ed.Note}" Margin="0"/>
                                     </StackPanel>
                                 </CheckBox>
                                 <StackPanel Visibility="{Binding LimitEnabled, Converter={StaticResource VisibleWhen}}" Margin="0,10,0,0">
                                     <DockPanel>
                                         <TextBlock DockPanel.Dock="Right" Text="{Binding LimitWhole, StringFormat='{}{0}%'}" FontFamily="{StaticResource Mono}" FontSize="18" FontWeight="Bold"/>
-                                        <TextBlock Text="OF THE WHOLE MACHINE" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{x:Static r:Strings.OfTheWholeMachine}" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
                                     </DockPanel>
                                     <Slider Style="{StaticResource Slider}" AutomationProperties.Name="CPU CAP" Minimum="1" Maximum="99" Value="{Binding Limit}" SmallChange="1" LargeChange="5"/>
                                 </StackPanel>
 
-                                <TextBlock Text="CPU LIMITER" Style="{StaticResource Ed.Label}" Margin="0,22,0,0"/>
-                                <TextBlock Text="Takes cores away from the program while it hogs the CPU, then gives them back. Leave the threshold empty to switch it off."
+                                <TextBlock Text="{x:Static r:Strings.CpuLimiter}" Style="{StaticResource Ed.Label}" Margin="0,22,0,0"/>
+                                <TextBlock Text="{x:Static r:Strings.TakesCoresAwayFromTheProgram}"
                                            Style="{StaticResource Ed.Note}" Margin="0,0,0,8"/>
                                 <UniformGrid Columns="2">
                                     <UniformGrid.Style>
@@ -164,71 +165,71 @@
                                         </Style>
                                     </UniformGrid.Style>
                                     <StackPanel Margin="0,0,10,8">
-                                        <TextBlock Text="WHEN IT USES AT LEAST (%)" Style="{StaticResource Text.Label}"/>
-                                        <TextBox Style="{StaticResource Ed.Num}" Tag="OFF" AutomationProperties.Name="LIMITER THRESHOLD" Text="{Binding LimiterThreshold, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBlock Text="{x:Static r:Strings.WhenItUsesAtLeast}" Style="{StaticResource Text.Label}"/>
+                                        <TextBox Style="{StaticResource Ed.Num}" Tag="{x:Static r:Strings.Off}" AutomationProperties.Name="LIMITER THRESHOLD" Text="{Binding LimiterThreshold, UpdateSourceTrigger=PropertyChanged}"/>
                                     </StackPanel>
                                     <StackPanel Margin="0,0,0,8">
-                                        <TextBlock Text="FOR (SECONDS)" Style="{StaticResource Text.Label}"/>
-                                        <TextBox Style="{StaticResource Ed.Num}" Tag="DEFAULT 5" AutomationProperties.Name="LIMITER OVER SECONDS" Text="{Binding LimiterSeconds, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBlock Text="{x:Static r:Strings.ForSeconds}" Style="{StaticResource Text.Label}"/>
+                                        <TextBox Style="{StaticResource Ed.Num}" Tag="{x:Static r:Strings.Default5}" AutomationProperties.Name="LIMITER OVER SECONDS" Text="{Binding LimiterSeconds, UpdateSourceTrigger=PropertyChanged}"/>
                                     </StackPanel>
                                     <StackPanel Margin="0,0,10,0">
-                                        <TextBlock Text="TAKE AWAY (CORES)" Style="{StaticResource Text.Label}"/>
-                                        <TextBox Style="{StaticResource Ed.Num}" Tag="DEFAULT 1" AutomationProperties.Name="LIMITER CORES" Text="{Binding LimiterCores, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBlock Text="{x:Static r:Strings.TakeAwayCores}" Style="{StaticResource Text.Label}"/>
+                                        <TextBox Style="{StaticResource Ed.Num}" Tag="{x:Static r:Strings.Default1}" AutomationProperties.Name="LIMITER CORES" Text="{Binding LimiterCores, UpdateSourceTrigger=PropertyChanged}"/>
                                     </StackPanel>
                                     <StackPanel>
-                                        <TextBlock Text="FOR (SECONDS)" Style="{StaticResource Text.Label}"/>
-                                        <TextBox Style="{StaticResource Ed.Num}" Tag="DEFAULT 30" AutomationProperties.Name="LIMITER DURATION" Text="{Binding LimiterDuration, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBlock Text="{x:Static r:Strings.ForSeconds}" Style="{StaticResource Text.Label}"/>
+                                        <TextBox Style="{StaticResource Ed.Num}" Tag="{x:Static r:Strings.Default30}" AutomationProperties.Name="LIMITER DURATION" Text="{Binding LimiterDuration, UpdateSourceTrigger=PropertyChanged}"/>
                                     </StackPanel>
                                 </UniformGrid>
 
-                                <TextBlock Text="CPU SETS" Style="{StaticResource Ed.Label}" Margin="0,22,0,0"/>
-                                <TextBlock Text="Which logical processors Windows prefers for the program. A preference, unlike core affinity." Style="{StaticResource Ed.Note}" Margin="0,0,0,8"/>
+                                <TextBlock Text="{x:Static r:Strings.CpuSets}" Style="{StaticResource Ed.Label}" Margin="0,22,0,0"/>
+                                <TextBlock Text="{x:Static r:Strings.WhichLogicalProcessorsWindowsPrefersFor}" Style="{StaticResource Ed.Note}" Margin="0,0,0,8"/>
                                 <TextBlock Text="{Binding CpuSetsText}" FontFamily="{StaticResource Mono}" FontWeight="Bold" FontSize="12" TextWrapping="Wrap"/>
                                 <WrapPanel Margin="-10,6,0,0">
-                                    <Button Style="{StaticResource Btn.Ghost}" Content="PICK…" Command="{Binding DataContext.PickCpuSetsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
-                                    <Button Style="{StaticResource Btn.Ghost}" Content="CLEAR THEM" Command="{Binding ClearCpuSetsCommand}"
-                                            ToolTip="Take away any CPU Sets the program has."/>
-                                    <Button Style="{StaticResource Btn.Ghost}" Content="LEAVE ALONE" Command="{Binding LeaveCpuSetsCommand}"/>
+                                    <Button Style="{StaticResource Btn.Ghost}" Content="{x:Static r:Strings.Pick}" Command="{Binding DataContext.PickCpuSetsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                                    <Button Style="{StaticResource Btn.Ghost}" Content="{x:Static r:Strings.ClearThem}" Command="{Binding ClearCpuSetsCommand}"
+                                            ToolTip="{x:Static r:Strings.TakeAwayAnyCpuSetsThe}"/>
+                                    <Button Style="{StaticResource Btn.Ghost}" Content="{x:Static r:Strings.LeaveAlone}" Command="{Binding LeaveCpuSetsCommand}"/>
                                 </WrapPanel>
                             </StackPanel>
                         </Expander>
 
                         <!-- Instances -->
-                        <Expander Style="{StaticResource Section}" Header="INSTANCES" Tag="{Binding InstancesSummary}">
+                        <Expander Style="{StaticResource Section}" Header="{x:Static r:Strings.Instances}" Tag="{Binding InstancesSummary}">
                             <StackPanel>
-                                <TextBlock Text="MOST COPIES AT ONCE" Style="{StaticResource Ed.Label}" Margin="0,8,0,0"/>
-                                <TextBox Style="{StaticResource Ed.Num}" Tag="NO LIMIT" AutomationProperties.Name="MAX INSTANCES" Text="{Binding MaxInstances, UpdateSourceTrigger=PropertyChanged}"/>
-                                <TextBlock Text="Newer copies over the limit are ended." Style="{StaticResource Ed.Note}"/>
+                                <TextBlock Text="{x:Static r:Strings.MostCopiesAtOnce}" Style="{StaticResource Ed.Label}" Margin="0,8,0,0"/>
+                                <TextBox Style="{StaticResource Ed.Num}" Tag="{x:Static r:Strings.NoLimit}" AutomationProperties.Name="MAX INSTANCES" Text="{Binding MaxInstances, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Text="{x:Static r:Strings.NewerCopiesOverTheLimitAre}" Style="{StaticResource Ed.Note}"/>
                                 <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding MaxInstancesAllSessions}" AutomationProperties.Name="COUNT ALL SESSIONS" Margin="0,12,0,0">
                                     <StackPanel>
-                                        <TextBlock Text="COUNT ALL SESSIONS" FontWeight="Bold" FontSize="14"/>
-                                        <TextBlock Text="Otherwise only copies in the same Windows session count." Style="{StaticResource Ed.Note}" Margin="0"/>
+                                        <TextBlock Text="{x:Static r:Strings.CountAllSessions}" FontWeight="Bold" FontSize="14"/>
+                                        <TextBlock Text="{x:Static r:Strings.OtherwiseOnlyCopiesInTheSame}" Style="{StaticResource Ed.Note}" Margin="0"/>
                                     </StackPanel>
                                 </CheckBox>
 
-                                <TextBlock Text="INSTANCE BALANCER" Style="{StaticResource Ed.Label}" Margin="0,22,0,6"/>
+                                <TextBlock Text="{x:Static r:Strings.InstanceBalancer}" Style="{StaticResource Ed.Label}" Margin="0,22,0,6"/>
                                 <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="INSTANCE BALANCER" ItemsSource="{Binding BalancerModes}" SelectedItem="{Binding Balancer}"/>
                                 <TextBlock Style="{StaticResource Ed.Note}" Margin="0,0,0,4"
-                                           Text="Splits the cores between running copies of the program: an equal share each, or a fixed number each."/>
+                                           Text="{x:Static r:Strings.SplitsTheCoresBetweenRunningCopies}"/>
                                 <StackPanel Visibility="{Binding BalancerOn, Converter={StaticResource VisibleWhen}}">
                                     <StackPanel Visibility="{Binding BalancerFixed, Converter={StaticResource VisibleWhen}}">
-                                        <TextBlock Text="CORES PER COPY" Style="{StaticResource Ed.Label}"/>
-                                        <TextBox Style="{StaticResource Ed.Num}" Tag="DEFAULT 1" AutomationProperties.Name="CORES PER COPY" Text="{Binding BalancerCores, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBlock Text="{x:Static r:Strings.CoresPerCopy}" Style="{StaticResource Ed.Label}"/>
+                                        <TextBox Style="{StaticResource Ed.Num}" Tag="{x:Static r:Strings.Default1}" AutomationProperties.Name="CORES PER COPY" Text="{Binding BalancerCores, UpdateSourceTrigger=PropertyChanged}"/>
                                     </StackPanel>
                                     <UniformGrid Columns="2" Margin="0,4,0,0">
                                         <StackPanel Margin="0,0,10,0">
-                                            <TextBlock Text="KEEP FREE (LOWEST CORES)" Style="{StaticResource Ed.Label}"/>
-                                            <TextBox Style="{StaticResource Ed.Num}" Tag="NONE" AutomationProperties.Name="KEEP FREE" Text="{Binding BalancerReserved, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <TextBlock Text="{x:Static r:Strings.KeepFreeLowestCores}" Style="{StaticResource Ed.Label}"/>
+                                            <TextBox Style="{StaticResource Ed.Num}" Tag="{x:Static r:Strings.None}" AutomationProperties.Name="KEEP FREE" Text="{Binding BalancerReserved, UpdateSourceTrigger=PropertyChanged}"/>
                                         </StackPanel>
                                         <StackPanel>
-                                            <TextBlock Text="ONLY COPIES USING (%)" Style="{StaticResource Ed.Label}"/>
-                                            <TextBox Style="{StaticResource Ed.Num}" Tag="ALL" AutomationProperties.Name="ONLY COPIES USING" Text="{Binding BalancerMinCpu, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <TextBlock Text="{x:Static r:Strings.OnlyCopiesUsing}" Style="{StaticResource Ed.Label}"/>
+                                            <TextBox Style="{StaticResource Ed.Num}" Tag="{x:Static r:Strings.All}" AutomationProperties.Name="ONLY COPIES USING" Text="{Binding BalancerMinCpu, UpdateSourceTrigger=PropertyChanged}"/>
                                         </StackPanel>
                                     </UniformGrid>
                                     <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding BalancerAvoidSmt}" AutomationProperties.Name="AVOID SMT" Margin="0,14,0,0">
                                         <StackPanel>
-                                            <TextBlock Text="AVOID SMT" FontWeight="Bold" FontSize="14"/>
-                                            <TextBlock Text="Hand out only the first thread of each physical core." Style="{StaticResource Ed.Note}" Margin="0"/>
+                                            <TextBlock Text="{x:Static r:Strings.AvoidSmt}" FontWeight="Bold" FontSize="14"/>
+                                            <TextBlock Text="{x:Static r:Strings.HandOutOnlyTheFirstThread}" Style="{StaticResource Ed.Note}" Margin="0"/>
                                         </StackPanel>
                                     </CheckBox>
                                 </StackPanel>
@@ -236,45 +237,45 @@
                         </Expander>
 
                         <!-- Startup boost -->
-                        <Expander Style="{StaticResource Section}" Header="STARTUP BOOST" Tag="{Binding BoostSummary}">
+                        <Expander Style="{StaticResource Section}" Header="{x:Static r:Strings.StartupBoost}" Tag="{Binding BoostSummary}">
                             <StackPanel>
-                                <TextBlock Text="RAISE PRIORITY WHEN IT STARTS" Style="{StaticResource Ed.Label}" Margin="0,8,0,0"/>
+                                <TextBlock Text="{x:Static r:Strings.RaisePriorityWhenItStarts}" Style="{StaticResource Ed.Label}" Margin="0,8,0,0"/>
                                 <ListBox Style="{StaticResource Choices.Gated}" AutomationProperties.Name="STARTUP BOOST" ItemsSource="{Binding BoostPriorities}" SelectedItem="{Binding BoostPriority}"/>
                                 <StackPanel Visibility="{Binding BoostOn, Converter={StaticResource VisibleWhen}}">
-                                    <TextBlock Text="FOR (SECONDS, 1 TO 3600)" Style="{StaticResource Ed.Label}"/>
-                                    <TextBox Style="{StaticResource Ed.Num}" Tag="DEFAULT 10" AutomationProperties.Name="BOOST SECONDS" Text="{Binding BoostSeconds, UpdateSourceTrigger=PropertyChanged}"/>
-                                    <TextBlock Text="Then the priority goes back, unless something else changed it meanwhile." Style="{StaticResource Ed.Note}"/>
+                                    <TextBlock Text="{x:Static r:Strings.ForSeconds1To3600}" Style="{StaticResource Ed.Label}"/>
+                                    <TextBox Style="{StaticResource Ed.Num}" Tag="{x:Static r:Strings.Default10}" AutomationProperties.Name="BOOST SECONDS" Text="{Binding BoostSeconds, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="{x:Static r:Strings.ThenThePriorityGoesBackUnless}" Style="{StaticResource Ed.Note}"/>
                                 </StackPanel>
                             </StackPanel>
                         </Expander>
 
                         <!-- Advanced priorities -->
-                        <Expander Style="{StaticResource Section}" Header="ADVANCED PRIORITIES" Tag="{Binding AdvancedSummary}">
+                        <Expander Style="{StaticResource Section}" Header="{x:Static r:Strings.AdvancedPriorities}" Tag="{Binding AdvancedSummary}">
                             <StackPanel>
-                                <TextBlock Text="I/O PRIORITY" Style="{StaticResource Ed.Label}" Margin="0,8,0,6"/>
+                                <TextBlock Text="{x:Static r:Strings.IOPriority2}" Style="{StaticResource Ed.Label}" Margin="0,8,0,6"/>
                                 <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="I/O PRIORITY" ItemsSource="{Binding IoPriorities}" SelectedItem="{Binding IoPriority}"/>
 
-                                <TextBlock Text="MEMORY PRIORITY" Style="{StaticResource Ed.Label}"/>
+                                <TextBlock Text="{x:Static r:Strings.MemoryPriority2}" Style="{StaticResource Ed.Label}"/>
                                 <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="MEMORY PRIORITY" ItemsSource="{Binding MemoryPriorities}" SelectedItem="{Binding MemoryPriority}"/>
 
-                                <TextBlock Text="EFFICIENCY MODE (ECO)" Style="{StaticResource Ed.Label}"/>
+                                <TextBlock Text="{x:Static r:Strings.EfficiencyModeEco}" Style="{StaticResource Ed.Label}"/>
                                 <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="EFFICIENCY MODE" ItemsSource="{Binding EfficiencyModes}" SelectedItem="{Binding EfficiencyMode}"/>
-                                <TextBlock Text="On steers it to the efficient cores. Off keeps it on the fast ones." Style="{StaticResource Ed.Note}"/>
+                                <TextBlock Text="{x:Static r:Strings.OnSteersItToTheEfficient}" Style="{StaticResource Ed.Note}"/>
 
-                                <TextBlock Text="DYNAMIC PRIORITY BOOST" Style="{StaticResource Ed.Label}"/>
+                                <TextBlock Text="{x:Static r:Strings.DynamicPriorityBoost}" Style="{StaticResource Ed.Label}"/>
                                 <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="DYNAMIC PRIORITY BOOST" ItemsSource="{Binding ThreadBoosts}" SelectedItem="{Binding ThreadBoost}"/>
 
-                                <TextBlock Text="GPU PRIORITY" Style="{StaticResource Ed.Label}"/>
+                                <TextBlock Text="{x:Static r:Strings.GpuPriority}" Style="{StaticResource Ed.Label}"/>
                                 <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="GPU PRIORITY" ItemsSource="{Binding GpuPriorities}" SelectedItem="{Binding GpuPriority}"/>
 
-                                <TextBlock Text="GPU PREFERENCE" Style="{StaticResource Ed.Label}"/>
+                                <TextBlock Text="{x:Static r:Strings.GpuPreference}" Style="{StaticResource Ed.Label}"/>
                                 <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="GPU PREFERENCE" ItemsSource="{Binding GpuPreferences}" SelectedItem="{Binding GpuPreference}"/>
-                                <TextBlock Text="Takes effect the next time the program starts." Style="{StaticResource Ed.Note}"/>
+                                <TextBlock Text="{x:Static r:Strings.TakesEffectTheNextTimeThe}" Style="{StaticResource Ed.Note}"/>
 
                                 <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ReapplyIfChanged}" AutomationProperties.Name="RE-APPLY IF CHANGED" Margin="0,18,0,0">
                                     <StackPanel>
-                                        <TextBlock Text="RE-APPLY IF CHANGED" FontWeight="Bold" FontSize="14"/>
-                                        <TextBlock Text="Puts these settings back if something else changes them." Style="{StaticResource Ed.Note}" Margin="0"/>
+                                        <TextBlock Text="{x:Static r:Strings.ReApplyIfChanged}" FontWeight="Bold" FontSize="14"/>
+                                        <TextBlock Text="{x:Static r:Strings.PutsTheseSettingsBackIfSomething}" Style="{StaticResource Ed.Note}" Margin="0"/>
                                     </StackPanel>
                                 </CheckBox>
 
@@ -282,13 +283,13 @@
                                           IsEnabled="{Binding CanSetAtLaunch}">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="SET AT LAUNCH" FontWeight="Bold" FontSize="14"/>
+                                            <TextBlock Text="{x:Static r:Strings.SetAtLaunch}" FontWeight="Bold" FontSize="14"/>
                                             <Border Style="{StaticResource Tag}" Margin="8,0,0,0" Padding="4,0" VerticalAlignment="Center"
                                                     Visibility="{Binding IsRestricted, Converter={StaticResource VisibleWhen}}">
-                                                <TextBlock Text="ADMIN" Style="{StaticResource Tag.Text}" FontSize="9"/>
+                                                <TextBlock Text="{x:Static r:Strings.Admin}" Style="{StaticResource Tag.Text}" FontSize="9"/>
                                             </Border>
                                         </StackPanel>
-                                        <TextBlock Text="Windows starts the program with its priority, I/O and memory priority already set, instead of a moment later. Plain program names only." Style="{StaticResource Ed.Note}" Margin="0" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{x:Static r:Strings.WindowsStartsTheProgramWithIts}" Style="{StaticResource Ed.Note}" Margin="0" TextWrapping="Wrap"/>
                                     </StackPanel>
                                 </CheckBox>
                             </StackPanel>

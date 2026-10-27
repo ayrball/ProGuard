@@ -1,5 +1,6 @@
 <UserControl x:Class="ProGuard.UI.Views.CpuTuningView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:r="clr-namespace:ProGuard.UI.Resources"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="clr-namespace:ProGuard.UI.Controls"
              xmlns:vm="clr-namespace:ProGuard.UI.ViewModels">
@@ -32,15 +33,15 @@
                                 <TextBlock Text="{Binding ClassLabel}" Style="{StaticResource Tag.Text}"/>
                             </Border>
                             <Border Style="{StaticResource Tag}" Opacity="0.5" Visibility="{Binding HiddenInWindows, Converter={StaticResource VisibleWhen}}"
-                                    ToolTip="Windows' Power Options doesn't show this setting. ProGuard shows it there once it changes it.">
-                                <TextBlock Text="HIDDEN" Style="{StaticResource Tag.Text}"/>
+                                    ToolTip="{x:Static r:Strings.WindowsPowerOptionsDoesntShowThis}">
+                                <TextBlock Text="{x:Static r:Strings.Hidden}" Style="{StaticResource Tag.Text}"/>
                             </Border>
                         </WrapPanel>
                         <TextBlock Text="{Binding Description}" Style="{StaticResource Text.Body}" FontSize="12.5" Opacity="0.65" TextWrapping="Wrap" Margin="0,4,0,0"/>
                     </StackPanel>
 
                     <!-- Unavailable: the reason instead of a control. -->
-                    <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding UnavailableReason, StringFormat='UNAVAILABLE · {0}'}" Style="{StaticResource Note}"
+                    <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding UnavailableReason, StringFormat={x:Static r:Strings.Unavailable0}}" Style="{StaticResource Note}"
                                VerticalAlignment="Center" Visibility="{Binding IsAvailable, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}"/>
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Visibility="{Binding IsAvailable, Converter={StaticResource VisibleWhen}}"
@@ -95,7 +96,7 @@
             </Border>
 
             <!-- Plan picker -->
-            <TextBlock Text="POWER PLAN" Style="{StaticResource Text.Label}" Margin="0,22,0,8"/>
+            <TextBlock Text="{x:Static r:Strings.PowerPlan}" Style="{StaticResource Text.Label}" Margin="0,22,0,8"/>
             <ItemsControl ItemsSource="{Binding Plans}" Focusable="False" AutomationProperties.Name="POWER PLAN">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
@@ -111,10 +112,10 @@
             <TextBlock Margin="0,2,0,0">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock" BasedOn="{StaticResource Note}">
-                        <Setter Property="Text" Value="NOT THE ACTIVE PLAN"/>
+                        <Setter Property="Text" Value="{x:Static r:Strings.NotTheActivePlan}"/>
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsActivePlan}" Value="True">
-                                <Setter Property="Text" Value="THE ACTIVE PLAN"/>
+                                <Setter Property="Text" Value="{x:Static r:Strings.TheActivePlan}"/>
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
@@ -123,8 +124,8 @@
 
             <!-- Live parking -->
             <DockPanel Margin="0,26,0,10">
-                <TextBlock DockPanel.Dock="Right" Text="LIVE · PARKED CORES ARE THE FAINT ONES" Style="{StaticResource Note}" VerticalAlignment="Bottom"/>
-                <TextBlock Text="CORES NOW" Style="{StaticResource Text.Label}" FontWeight="Bold"/>
+                <TextBlock DockPanel.Dock="Right" Text="{x:Static r:Strings.LiveParkedCoresAreTheFaint}" Style="{StaticResource Note}" VerticalAlignment="Bottom"/>
+                <TextBlock Text="{x:Static r:Strings.CoresNow}" Style="{StaticResource Text.Label}" FontWeight="Bold"/>
             </DockPanel>
             <ItemsControl ItemsSource="{Binding CoreGroups}" Focusable="False" AutomationProperties.AutomationId="CoreParking">
                 <ItemsControl.ItemsPanel>
@@ -144,10 +145,10 @@
             </ItemsControl>
             <TextBlock Style="{StaticResource Note}" Margin="0,8,0,0" Visibility="{Binding ParkingOverrideActive, Converter={StaticResource VisibleWhen}}"
                        Opacity="1" FontWeight="Bold"
-                       Text="PROBALANCE IS RESTRAINING AND HOLDS EVERY CORE OF THIS PLAN UNPARKED. YOUR MIN CORES VALUES COME BACK WHEN IT LETS GO."/>
+                       Text="{x:Static r:Strings.ProbalanceIsRestrainingAndHoldsEvery}"/>
 
             <!-- Presets and revert -->
-            <TextBlock Text="PRESETS" Style="{StaticResource Text.Label}" FontWeight="Bold" Margin="0,28,0,10"/>
+            <TextBlock Text="{x:Static r:Strings.Presets}" Style="{StaticResource Text.Label}" FontWeight="Bold" Margin="0,28,0,10"/>
             <ItemsControl ItemsSource="{Binding Presets}" Focusable="False" IsEnabled="{Binding IsAdministrator}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate>
@@ -167,17 +168,17 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
             <DockPanel Margin="0,10,0,0">
-                <Button DockPanel.Dock="Right" Style="{StaticResource Btn.Solid}" Content="REVERT" Padding="18,8" Command="{Binding RevertCommand}"
+                <Button DockPanel.Dock="Right" Style="{StaticResource Btn.Solid}" Content="{x:Static r:Strings.Revert}" Padding="18,8" Command="{Binding RevertCommand}"
                         IsEnabled="{Binding HasOriginals}" Visibility="{Binding IsAdministrator, Converter={StaticResource VisibleWhen}}"
-                        ToolTip="Back to this plan's values before ProGuard first changed it"/>
+                        ToolTip="{x:Static r:Strings.BackToThisPlansValuesBefore}"/>
                 <TextBlock Text="{Binding OriginalsNote}" Style="{StaticResource Note}" VerticalAlignment="Center"/>
             </DockPanel>
 
             <!-- Plugged in / on battery -->
             <UniformGrid Rows="1" Columns="2" Width="360" HorizontalAlignment="Left" Margin="0,30,0,0">
-                <Button Style="{StaticResource Seg}" Content="PLUGGED IN" Command="{Binding UsePowerSourceCommand}" CommandParameter="AC"
+                <Button Style="{StaticResource Seg}" Content="{x:Static r:Strings.PluggedIn}" Command="{Binding UsePowerSourceCommand}" CommandParameter="AC"
                         ui:Seg.IsOn="{Binding IsDc, Converter={StaticResource EqualsParameter}, ConverterParameter=False, Mode=OneWay}"/>
-                <Button Style="{StaticResource Seg}" Content="ON BATTERY" Command="{Binding UsePowerSourceCommand}" CommandParameter="DC"
+                <Button Style="{StaticResource Seg}" Content="{x:Static r:Strings.OnBattery}" Command="{Binding UsePowerSourceCommand}" CommandParameter="DC"
                         ui:Seg.IsOn="{Binding IsDc, Mode=OneWay}"/>
             </UniformGrid>
 

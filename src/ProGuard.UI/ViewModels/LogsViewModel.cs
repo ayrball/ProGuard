@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 using ProGuard.Shared.Contracts;
 using ProGuard.Shared.Messages;
 using ProGuard.UI.Services;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.ViewModels;
 
@@ -45,7 +46,7 @@ public sealed class LogRow
         FullTime = local.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
         Level = ShortLevel(entry.Level);
         LevelName = entry.Level.ToString().ToUpperInvariant();
-        Source = entry.Source == LogSource.Engine ? "ENGINE" : "ACTIONS";
+        Source = entry.Source == LogSource.Engine ? Strings.Engine : Strings.Logs_Actions;
         Category = string.IsNullOrEmpty(entry.Category) ? "—" : entry.Category;
         Process = (entry.ProcessName, entry.Pid) switch
         {
@@ -123,20 +124,20 @@ public sealed partial class LogsViewModel : ObservableObject, IPage
 
     public IReadOnlyList<Choice<LogSource?>> Sources { get; } = new Choice<LogSource?>[]
     {
-        new("ALL SOURCES", null),
-        new("ENGINE LOG", LogSource.Engine, AdminOnly: true),
-        new("ACTION LOG", LogSource.Actions),
+        new(Strings.Logs_AllSources, null),
+        new(Strings.Logs_EngineLog, LogSource.Engine, AdminOnly: true),
+        new(Strings.Logs_ActionLog, LogSource.Actions),
     };
 
     public IReadOnlyList<LevelFilter> Levels { get; }
 
     public IReadOnlyList<Choice<TimeSpan?>> Ranges { get; } = new Choice<TimeSpan?>[]
     {
-        new("ANY TIME", null),
-        new("15 MIN", TimeSpan.FromMinutes(15)),
-        new("1 HOUR", TimeSpan.FromHours(1)),
-        new("24 HOURS", TimeSpan.FromHours(24)),
-        new("7 DAYS", TimeSpan.FromDays(7)),
+        new(Strings.Logs_AnyTime, null),
+        new(Strings.Logs_15Min, TimeSpan.FromMinutes(15)),
+        new(Strings.Logs_1Hour, TimeSpan.FromHours(1)),
+        new(Strings.Logs_24Hours, TimeSpan.FromHours(24)),
+        new(Strings.Logs_7Days, TimeSpan.FromDays(7)),
     };
 
     [ObservableProperty] private Choice<LogSource?> source;
@@ -178,12 +179,12 @@ public sealed partial class LogsViewModel : ObservableObject, IPage
         range = Ranges[0];
         Levels = new[]
         {
-            new LevelFilter("TRACE", LogLevelDto.Trace, () => ScheduleReload(chip: true)),
-            new LevelFilter("DEBUG", LogLevelDto.Debug, () => ScheduleReload(chip: true)),
-            new LevelFilter("INFO", LogLevelDto.Information, () => ScheduleReload(chip: true)),
-            new LevelFilter("WARN", LogLevelDto.Warning, () => ScheduleReload(chip: true)),
-            new LevelFilter("ERROR", LogLevelDto.Error, () => ScheduleReload(chip: true)),
-            new LevelFilter("CRITICAL", LogLevelDto.Critical, () => ScheduleReload(chip: true)),
+            new LevelFilter(Strings.Logs_Trace, LogLevelDto.Trace, () => ScheduleReload(chip: true)),
+            new LevelFilter(Strings.Logs_Debug, LogLevelDto.Debug, () => ScheduleReload(chip: true)),
+            new LevelFilter(Strings.Logs_Info, LogLevelDto.Information, () => ScheduleReload(chip: true)),
+            new LevelFilter(Strings.Logs_Warn, LogLevelDto.Warning, () => ScheduleReload(chip: true)),
+            new LevelFilter(Strings.Logs_Error, LogLevelDto.Error, () => ScheduleReload(chip: true)),
+            new LevelFilter(Strings.Logs_Critical, LogLevelDto.Critical, () => ScheduleReload(chip: true)),
         };
 
         hub.SnapshotApplied += s => IsAdministrator = s.CallerIsAdministrator;
@@ -392,12 +393,12 @@ public sealed partial class LogsViewModel : ObservableObject, IPage
         try
         {
             CopyText(Selected.ClipboardText);
-            _shell?.Toaster.Show("ROW COPIED");
+            _shell?.Toaster.Show(Strings.Logs_RowCopied);
         }
         catch (System.Runtime.InteropServices.ExternalException)
         {
             // Another program has the clipboard open.
-            _shell?.Toaster.Show("The clipboard is busy. Try again.", isError: true);
+            _shell?.Toaster.Show(Strings.Logs_ClipboardBusy, isError: true);
         }
     }
 
@@ -417,14 +418,14 @@ public sealed partial class LogsViewModel : ObservableObject, IPage
         {
             // With a byte order mark, so Excel reads it as UTF-8.
             await File.WriteAllTextAsync(path, export.Csv, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
-            var what = export.Count == 1 ? "1 ENTRY" : $"{export.Count:N0} ENTRIES";
+            var what = export.Count == 1 ? Strings.Logs_OneEntry : string.Format(Strings.Logs_Entries, export.Count);
             _shell?.Toaster.Show(export.Truncated
-                ? $"EXPORTED THE NEWEST {what} · MORE MATCHED THAN ONE EXPORT HOLDS"
-                : $"EXPORTED {what} · {Path.GetFileName(path)}");
+                ? string.Format(Strings.Logs_ExportedNewest, what)
+                : string.Format(Strings.Logs_Exported, what, Path.GetFileName(path)));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _shell?.Toaster.Show($"Couldn't save the export: {ex.Message}", isError: true);
+            _shell?.Toaster.Show(string.Format(Strings.Logs_CouldntSaveExport, ex.Message), isError: true);
         }
     }
 
@@ -432,12 +433,12 @@ public sealed partial class LogsViewModel : ObservableObject, IPage
     private void ClearActionLog()
     {
         if (_shell == null) return;
-        _shell.Confirm("CLEAR THE ACTION LOG?",
-            "Deletes the logged ProBalance, CPU Limiter and power-plan actions for everyone. The engine log is kept. This can't be undone.",
-            "CLEAR ACTION LOG",
+        _shell.Confirm(Strings.Logs_ClearTitle,
+            Strings.Logs_ClearWarning,
+            Strings.ClearActionLog,
             async () =>
             {
-                if (await _hub.RunAsync(CommandTypes.ClearActionLog, success: "ACTION LOG CLEARED")) await ReloadAsync();
+                if (await _hub.RunAsync(CommandTypes.ClearActionLog, success: Strings.Logs_Cleared)) await ReloadAsync();
             });
     }
 
@@ -445,10 +446,10 @@ public sealed partial class LogsViewModel : ObservableObject, IPage
     {
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
-            Title = "Export log",
+            Title = Strings.Logs_ExportDialogTitle,
             FileName = suggestedName,
             DefaultExt = ".csv",
-            Filter = "CSV file (*.csv)|*.csv|All files (*.*)|*.*",
+            Filter = Strings.Logs_ExportFilter,
             AddExtension = true,
             OverwritePrompt = true,
         };

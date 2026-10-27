@@ -10,13 +10,15 @@ namespace ProGuard.Preview;
 internal static class Program
 {
     private const string Usage = """
-        ProGuard.Preview [outputDir] [--mode admin,standard,offline|all] [--size 1440x900] [--scale 1]
+        ProGuard.Preview [outputDir] [--mode admin,standard,offline|all] [--size 1440x900] [--scale 1] [--culture en]
             Opens the real main window off-screen against a stand-in engine, visits every page of the shell's
             navigation, opens every dialog and editor it can, and writes a PNG of each to
             <outputDir>/<mode>/ (default: artifacts/preview in the repository).
               admin     the caller is an administrator (editing is allowed)
               standard  the caller is a standard user (the engine answers "Access denied" where it would)
               offline   no engine at all (default modes: admin and standard)
+            --culture renders the window in that language (es, de, fr, pt-BR...); English by default, whatever
+            the PC's own language is, so screenshots stay comparable.
 
         ProGuard.Preview --serve <pipeName> [--standard]
             Runs only the stand-in engine. Start the real UI against it with PROGUARD_PIPE=<pipeName>.
@@ -34,6 +36,7 @@ internal static class Program
         int width = 1440, height = 900;
         double scale = 1;
         bool standard = false;
+        var culture = "en";
 
         try
         {
@@ -49,6 +52,7 @@ internal static class Program
                     case "--standard": standard = true; break;
                     case "--mode": modes = ParseModes(Next(args, ref i)); break;
                     case "--scale": scale = double.Parse(Next(args, ref i), CultureInfo.InvariantCulture); break;
+                    case "--culture": culture = Next(args, ref i); break;
                     case "--size":
                         var parts = Next(args, ref i).Split('x', 'X');
                         width = int.Parse(parts[0], CultureInfo.InvariantCulture);
@@ -65,6 +69,19 @@ internal static class Program
         {
             Console.Error.WriteLine(ex.Message);
             Console.Error.WriteLine(Usage);
+            return 64;
+        }
+
+        // The UI's text (Strings.resx and its translations) follows the current UI culture.
+        try
+        {
+            var ui = CultureInfo.GetCultureInfo(culture);
+            CultureInfo.DefaultThreadCurrentUICulture = ui;
+            CultureInfo.CurrentUICulture = ui;
+        }
+        catch (CultureNotFoundException)
+        {
+            Console.Error.WriteLine($"Unknown culture '{culture}'.");
             return 64;
         }
 

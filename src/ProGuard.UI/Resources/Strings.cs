@@ -1149,6 +1149,10 @@ public static class Strings
 
     public static string Switch => Get(nameof(Switch));
 
+    public static string Switch_Off => Get(nameof(Switch_Off));
+
+    public static string Switch_On => Get(nameof(Switch_On));
+
     public static string SwitchPlansWithTheLoad => Get(nameof(SwitchPlansWithTheLoad));
 
     public static string SwitchTo => Get(nameof(SwitchTo));

@@ -115,6 +115,10 @@ public sealed partial class ShellViewModel : ObservableObject
     public static IReadOnlyList<(string Culture, string Name)> SupportedLanguages { get; } = new[]
     {
         ("en", "ENGLISH"),
+        ("es", "ESPAÑOL"),
+        ("de", "DEUTSCH"),
+        ("fr", "FRANÇAIS"),
+        ("pt-BR", "PORTUGUÊS (BRASIL)"),
     };
 
     /// <summary>Windows' own display language, then each translation. Picking one takes effect the next time ProGuard starts.</summary>

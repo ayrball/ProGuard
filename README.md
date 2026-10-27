@@ -28,6 +28,7 @@ portable zip, 64-bit Windows 10 or 11, no .NET install needed.
 | **SmartTrim** | Working-set trimming on a schedule while RAM is tight, standby-list and file-cache purges. |
 | **Power** | Performance Mode for listed programs, detected games and Steam; IdleSaver after a period without input; a load-based plan switcher; the Windows 11 power mode; your plan put back if the engine dies holding one. |
 | **System** | System timer resolution, CPU tuning per power plan (core parking, processor states, boost, EPP), config profiles with export and import, an activity log and a log viewer. |
+| **Languages** | English, Spanish, German, French and Brazilian Portuguese (System → General → Language; Windows' own language by default). Messages from the engine, such as its refusals and logs, stay in English. |
 
 ![The Processes page](docs/images/processes.png)
 

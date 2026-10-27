@@ -1729,6 +1729,12 @@ LOGGED.</value>
   <data name="SwitchWindowsPowerPlansByHand" xml:space="preserve">
     <value>Switch Windows power plans by hand, and choose the one to start with.</value>
   </data>
+  <data name="Switch_Off" xml:space="preserve">
+    <value>OFF</value>
+  </data>
+  <data name="Switch_On" xml:space="preserve">
+    <value>ON</value>
+  </data>
   <data name="Sys" xml:space="preserve">
     <value>SYS</value>
   </data>

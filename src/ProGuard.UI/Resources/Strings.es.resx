@@ -1729,6 +1729,12 @@ REGISTRADO.</value>
   <data name="SwitchWindowsPowerPlansByHand" xml:space="preserve">
     <value>Cambia manualmente los planes de energía de Windows y elige con cuál empezar.</value>
   </data>
+  <data name="Switch_Off" xml:space="preserve">
+    <value>NO</value>
+  </data>
+  <data name="Switch_On" xml:space="preserve">
+    <value>SÍ</value>
+  </data>
   <data name="Sys" xml:space="preserve">
     <value>SIS</value>
   </data>

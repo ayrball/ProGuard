@@ -1729,6 +1729,12 @@ PROTOKOLLIERT.</value>
   <data name="SwitchWindowsPowerPlansByHand" xml:space="preserve">
     <value>Wechseln Sie Windows-Energiesparpläne von Hand und wählen Sie den Startplan.</value>
   </data>
+  <data name="Switch_Off" xml:space="preserve">
+    <value>AUS</value>
+  </data>
+  <data name="Switch_On" xml:space="preserve">
+    <value>AN</value>
+  </data>
   <data name="Sys" xml:space="preserve">
     <value>SYS</value>
   </data>
@@ -2084,7 +2090,7 @@ PROTOKOLLIERT.</value>
     <value>Nutzt gerade CPU</value>
   </data>
   <data name="VLow" xml:space="preserve">
-    <value>SEHR NIEDR.</value>
+    <value>MINIMAL</value>
   </data>
   <data name="VeryLow" xml:space="preserve">
     <value>Sehr niedrig</value>

@@ -158,14 +158,14 @@ public class TimerResolutionTests
         Assert.Equal(5000, state.Held);
         Assert.Equal(5000, state.Current);
         Assert.True(state.GlobalRequests);
-        Assert.Equal(5000, h.Stored.SetTimerResolutionAtStartup);
+        Assert.Equal(5000, h.Stored.TimerResolutionRequest);
         Assert.Equal(5000u, h.Timer.Ours);
         Assert.True(h.Timer.Global);
 
         h.Data<TimerResolutionDto>(h.SendAsAdmin(CommandTypes.SetTimerResolution, argument: new TimerResolutionArgument { Resolution = 0 }));
         Assert.Null(h.Timer.Ours);
         Assert.True(h.Timer.Global); // null leaves the switch alone
-        Assert.Equal(0, h.Stored.SetTimerResolutionAtStartup);
+        Assert.Equal(0, h.Stored.TimerResolutionRequest);
     }
 
     [Theory]
@@ -176,7 +176,7 @@ public class TimerResolutionTests
         var h = new ThinHarness();
         Assert.False(h.SendAsAdmin(CommandTypes.SetTimerResolution, argument: new TimerResolutionArgument { Resolution = resolution }).Success);
         var settings = DtoMapper(h);
-        settings.SetTimerResolutionAtStartup = resolution;
+        settings.TimerResolutionRequest = resolution;
         Assert.False(h.SendAsAdmin(CommandTypes.SaveSettings, argument: settings).Success);
         Assert.Null(h.Timer.Ours);
     }
@@ -189,7 +189,7 @@ public class TimerResolutionTests
         var result = h.SendAsAdmin(CommandTypes.SetTimerResolution, argument: new TimerResolutionArgument { Resolution = 5000, GlobalRequests = true });
         Assert.False(result.Success);
         Assert.Contains("already system-wide", result.Error);
-        Assert.Equal(0, h.Stored.SetTimerResolutionAtStartup); // nothing half-done
+        Assert.Equal(0, h.Stored.TimerResolutionRequest); // nothing half-done
     }
 
     [Fact]
@@ -201,16 +201,16 @@ public class TimerResolutionTests
         Assert.Contains("Access denied", h.Send(user, CommandTypes.SetTimerResolution, argument: new TimerResolutionArgument { Resolution = 5000 }).Error);
 
         var settings = DtoMapper(h);
-        settings.SetTimerResolutionAtStartup = 5000;
+        settings.TimerResolutionRequest = 5000;
         var refused = h.Send(user, CommandTypes.SaveSettings, argument: settings);
         Assert.Contains("Access denied", refused.Error);
         Assert.Contains("timer resolution", refused.Error);
 
         // The legacy whole-settings request too.
-        var legacy = h.Dispatcher.Dispatch(new CommandMessage { Type = MessageType.SetSetting, Payload = JsonSerializer.Serialize(new AppSettings { SetTimerResolutionAtStartup = 5000 }) }, user);
+        var legacy = h.Dispatcher.Dispatch(new CommandMessage { Type = MessageType.SetSetting, Payload = JsonSerializer.Serialize(new AppSettings { TimerResolutionRequest = 5000 }) }, user);
         Assert.Contains("Access denied", JsonSerializer.Deserialize<CommandResult>(legacy.Payload)!.Error);
 
-        Assert.Equal(0, h.Stored.SetTimerResolutionAtStartup);
+        Assert.Equal(0, h.Stored.TimerResolutionRequest);
         Assert.Null(h.Timer.Ours);
     }
 
@@ -236,7 +236,7 @@ public class TimerResolutionTests
             new Moq.Mock<ProGuard.Core.Services.IMemoryTrimService>().Object, new Moq.Mock<ProGuard.Core.Services.IPowerManager>().Object,
             new Moq.Mock<ProGuard.Core.Services.IResponsivenessGuardEngine>().Object, timerResolution: timer);
 
-        applier.Apply(new AppSettings { SetTimerResolutionAtStartup = 10000 });
+        applier.Apply(new AppSettings { TimerResolutionRequest = 10000 });
         Assert.Equal(10000u, native.Ours);
     }
 
@@ -298,9 +298,9 @@ public class TimerResolutionTests
         var vm = NewPage();
         var saved = new List<EngineSettingsDto>();
         vm.Saver = dto => { saved.Add(dto); return Task.FromResult<EngineSettingsDto?>(dto); };
-        vm.Load(new EngineSettingsDto { SetTimerResolutionAtStartup = 5000 }, null, Timer(requested: 5000, held: 5000));
+        vm.Load(new EngineSettingsDto { TimerResolutionRequest = 5000 }, null, Timer(requested: 5000, held: 5000));
 
         vm.MemoryTrimEnabled = true;
-        Assert.Equal(5000, vm.BuildSettings().SetTimerResolutionAtStartup);
+        Assert.Equal(5000, vm.BuildSettings().TimerResolutionRequest);
     }
 }

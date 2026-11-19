@@ -225,7 +225,7 @@ public class CoreParkingTests
         using var h = new ResponsivenessGuardHarness();
         var reports = new List<bool>();
         h.Engine.RestraintsUpdated += reports.Add;
-        h.Engine.TimeOverQuotaBeforeRestraint = 0;
+        h.Engine.RestrainAfterMs = 0;
         var hog = h.Add(100, cpu: 50);
 
         h.At(0);
@@ -253,7 +253,7 @@ public class CoreParkingTests
         using var h = new ResponsivenessGuardHarness();
         var (service, power, _) = New();
         h.Engine.RestraintsUpdated += service.Update;
-        h.Engine.TimeOverQuotaBeforeRestraint = 0;
+        h.Engine.RestrainAfterMs = 0;
         var hog = h.Add(100, cpu: 50);
 
         h.At(0);

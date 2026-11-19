@@ -266,7 +266,7 @@ public static class StandInData
 
     public static EngineSettingsDto Settings() => new()
     {
-        SetTimerResolutionAtStartup = 5000,
+        TimerResolutionRequest = 5000,
         ResponsivenessGuardEnabled = true,
         ResponsivenessGuardSensitivity = 6,
         ResponsivenessGuardCpuThreshold = 25,

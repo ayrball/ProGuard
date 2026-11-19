@@ -51,7 +51,7 @@ namespace ProGuard.Engine.IPC;
 /// <item>Clearing the action log (<see cref="CommandTypes.ClearActionLog"/>) is administrator-only: it is the record of
 /// what the engine did to every user's processes.</item>
 /// <item>The system timer resolution is administrator-only to change (<see cref="CommandTypes.SetTimerResolution"/>, and
-/// <see cref="AppSettings.SetTimerResolutionAtStartup"/> through SaveSettings or SetSetting): it is machine-wide, costs
+/// <see cref="AppSettings.TimerResolutionRequest"/> through SaveSettings or SetSetting): it is machine-wide, costs
 /// every user battery life, and the GlobalTimerResolutionRequests switch it can set lives under HKLM. Reading it
 /// (<see cref="CommandTypes.GetTimerResolution"/>) is open to anyone, as the rest of the System page is.</item>
 /// <item>Unparking cores while Responsiveness Guard restrains (<see cref="AppSettings.ResponsivenessGuardDisableCoreParking"/>) is
@@ -165,7 +165,7 @@ public static class IpcAuthorization
     /// </summary>
     internal static readonly IReadOnlyList<string> AdministratorOnlySettings = new[]
     {
-        nameof(AppSettings.SetTimerResolutionAtStartup),
+        nameof(AppSettings.TimerResolutionRequest),
         // Rewrites the active power plan's hidden processor settings, machine-wide (powercfg needs elevation for it too).
         nameof(AppSettings.ResponsivenessGuardDisableCoreParking),
     };
@@ -188,7 +188,7 @@ public static class IpcAuthorization
 
     private static string DescribeSetting(string setting) => setting switch
     {
-        nameof(AppSettings.SetTimerResolutionAtStartup) => "the system timer resolution",
+        nameof(AppSettings.TimerResolutionRequest) => "the system timer resolution",
         nameof(AppSettings.ResponsivenessGuardDisableCoreParking) => "whether Responsiveness Guard unparks cores (it edits the power plan)",
         _ => System.Text.RegularExpressions.Regex.Replace(setting, "(?<=[a-z])(?=[A-Z])", " ").ToLowerInvariant(),
     };

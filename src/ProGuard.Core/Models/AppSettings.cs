@@ -104,7 +104,7 @@ public class AppSettings
     /// Timer resolution the engine asks Windows for while it runs, in 100-ns units (5000 = 0.5 ms); 0 = don't ask
     /// (the default). Administrators only.
     /// </summary>
-    public int SetTimerResolutionAtStartup { get; set; } = 0;
+    public int TimerResolutionRequest { get; set; } = 0;
 
     // General
     public bool StartWithWindows { get; set; } = true;

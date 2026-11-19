@@ -345,7 +345,7 @@ public class IpcDispatcher
         if (!Percent(d.LoadSwitcherLowThreshold) || !Percent(d.LoadSwitcherHighThreshold)) return "Load switcher thresholds must be between 0% and 100%";
         if (d.LoadSwitcherAveragingWindowSamples < 1 || d.LoadSwitcherMinimumTimeInPlanMs < 0) return "Invalid load switcher setting";
         if (string.IsNullOrWhiteSpace(d.Theme)) return "The theme can't be empty";
-        if (d.SetTimerResolutionAtStartup < 0 || d.SetTimerResolutionAtStartup > MaxTimerResolution) return "The timer resolution must be between 0 and 100 ms";
+        if (d.TimerResolutionRequest < 0 || d.TimerResolutionRequest > MaxTimerResolution) return "The timer resolution must be between 0 and 100 ms";
         foreach (var guid in new[] { d.IdlePowerPlanGuid, d.PerformanceModePlanGuid, d.LoadSwitcherLowPlanGuid, d.LoadSwitcherHighPlanGuid, d.StartWithPowerPlanGuid })
             if (!string.IsNullOrEmpty(guid) && !Guid.TryParse(guid, out _)) return "Invalid power plan GUID";
         return null;
@@ -380,7 +380,7 @@ public class IpcDispatcher
         if (argument.GlobalRequests != null && !_timerResolution.GlobalRequestsSupported)
             return CommandResult.Fail("This version of Windows has no GlobalTimerResolutionRequests switch: every timer request is already system-wide");
 
-        var result = UpdateSettings(s => s.SetTimerResolutionAtStartup = argument.Resolution);
+        var result = UpdateSettings(s => s.TimerResolutionRequest = argument.Resolution);
         if (!result.Success) return result;
         if (argument.GlobalRequests is bool global) _timerResolution.SetGlobalRequests(global);
         _thinClient?.Record(0, argument.Resolution == 0

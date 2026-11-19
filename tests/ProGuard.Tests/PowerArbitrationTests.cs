@@ -55,7 +55,7 @@ public class PowerArbitrationTests
         Enabled = true,
         LowThreshold = 10,
         HighThreshold = 50,
-        AveragingWindowSamples = 1,
+        SampleWindow = 1,
         MinimumTimeInPlanMs = 0,
         LowPlan = LoadLow,
         HighPlan = LoadHigh,
@@ -101,7 +101,7 @@ public class PowerArbitrationTests
     [Fact]
     public void LoadSwitcher_InvalidSettings_AreRefused()
     {
-        _power.ConfigureLoadSwitcher(new LoadSwitcherOptions { Enabled = true, LowThreshold = 60, HighThreshold = 50, AveragingWindowSamples = 1 });
+        _power.ConfigureLoadSwitcher(new LoadSwitcherOptions { Enabled = true, LowThreshold = 60, HighThreshold = 50, SampleWindow = 1 });
         Load(80);
         Load(80);
         Assert.Empty(_plans.Writes);

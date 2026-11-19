@@ -254,7 +254,7 @@ public class Review_Regression_Tests
         var store = new Mock<IRuleStore>();
         var engine = new ResponsivenessGuardEngine(NullLogger<ResponsivenessGuardEngine>.Instance, monitor.Object, store.Object, () => 99.0)
         {
-            TimeOverQuotaBeforeRestraint = 0 // restrain on the first over-quota sample
+            RestrainAfterMs = 0 // restrain on the first over-quota sample
         };
         return (engine, victim, () => exited = true);
     }
@@ -317,7 +317,7 @@ public class Review_Regression_Tests
             using var engine = new ResponsivenessGuardEngine(NullLogger<ResponsivenessGuardEngine>.Instance,
                 monitor.Object, new Mock<IRuleStore>().Object, () => 99.0)
             {
-                TimeOverQuotaBeforeRestraint = 0
+                RestrainAfterMs = 0
             };
 
             engine.Evaluate(null);

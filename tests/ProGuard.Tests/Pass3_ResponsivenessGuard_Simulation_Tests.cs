@@ -33,11 +33,11 @@ public class Pass3_ResponsivenessGuard_Simulation_Tests
             new Mock<IProcessMonitor>().Object, new Mock<IRuleStore>().Object);
         engine.SetSensitivity(sensitivity);
 
-        Assert.True(engine.PerProcessUsageForRestore < engine.PerProcessUsageBeforeRestraint,
-            $"At sensitivity {sensitivity}, restore ({engine.PerProcessUsageForRestore}) must be below restrain ({engine.PerProcessUsageBeforeRestraint})");
-        Assert.True(engine.PerProcessUsageForRestore > 0);
-        Assert.True(engine.TotalProcessorUsageBeforeRestraint > 0);
-        Assert.True(engine.TimeOverQuotaBeforeRestraint > 0);
+        Assert.True(engine.RestoreAtProcessCpuPercent < engine.RestrainAtProcessCpuPercent,
+            $"At sensitivity {sensitivity}, restore ({engine.RestoreAtProcessCpuPercent}) must be below restrain ({engine.RestrainAtProcessCpuPercent})");
+        Assert.True(engine.RestoreAtProcessCpuPercent > 0);
+        Assert.True(engine.RestrainAtSystemCpuPercent > 0);
+        Assert.True(engine.RestrainAfterMs > 0);
     }
 
     [Fact]
@@ -50,9 +50,9 @@ public class Pass3_ResponsivenessGuard_Simulation_Tests
         low.SetSensitivity(2);
         high.SetSensitivity(9);
 
-        Assert.True(high.TotalProcessorUsageBeforeRestraint < low.TotalProcessorUsageBeforeRestraint);
-        Assert.True(high.PerProcessUsageBeforeRestraint < low.PerProcessUsageBeforeRestraint);
-        Assert.True(high.TimeOverQuotaBeforeRestraint < low.TimeOverQuotaBeforeRestraint);
+        Assert.True(high.RestrainAtSystemCpuPercent < low.RestrainAtSystemCpuPercent);
+        Assert.True(high.RestrainAtProcessCpuPercent < low.RestrainAtProcessCpuPercent);
+        Assert.True(high.RestrainAfterMs < low.RestrainAfterMs);
     }
 
     // ---------- Restraint: time over quota ----------
@@ -255,7 +255,7 @@ public class Pass3_ResponsivenessGuard_Simulation_Tests
     {
         using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 90);
-        h.Engine.MaximumTimeOfRestraint = 3000;
+        h.Engine.MaxRestraintMs = 3000;
 
         h.At(0);
         h.At(1000);                             // restrained
@@ -302,7 +302,7 @@ public class Pass3_ResponsivenessGuard_Simulation_Tests
     {
         using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 90);
-        h.Engine.ExcludeForegroundProcesses = false;
+        h.Engine.ExemptForeground = false;
         h.At(0);
         h.At(1000);
 

@@ -198,6 +198,9 @@ public sealed class SignInStartup : IStartupRegistration
         }
         else
         {
+            // A copy that may not have the task leaves alone one that starts a different (installed) copy: sign-in is
+            // already taken care of.
+            if (task && _elevation.AlwaysElevate && !TaskStartsThisCopy) return;
             if (task) _tasks.Delete(TaskName);
             if (!runKey) _runKey.Enable();
         }

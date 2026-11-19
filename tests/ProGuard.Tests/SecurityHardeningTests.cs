@@ -197,22 +197,132 @@ public class SecurityHardeningTests
     [Fact]
     public void TheOrchestrator_LeavesOtherUsersProcessesAlone()
     {
-        var monitor = new FakeProcessMonitor();
-        var rules = new List<ProcessRule> { ScopedRule("victim.exe", configure: r => r.DisallowExecution = true) };
-        var store = FakeRules.Store(rules);
-        var limiter = new Mock<ICpuLimiter>();
-        var orchestrator = new ProcessOrchestrator(NullLogger<ProcessOrchestrator>.Instance, monitor, Mock.Of<IResponsivenessGuardEngine>(),
-            limiter.Object, Mock.Of<IMemoryTrimService>(), Mock.Of<IPowerManager>(), Mock.Of<IWatchdogService>(), store.Object)
+        // A real process, so that a regression would really end it (and not this test run).
+        using var child = Process.Start(new ProcessStartInfo("ping.exe", "-n 30 127.0.0.1") { CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true })!;
+        try
         {
-            Scope = new RuleScope(new FakeOwners().Own(Environment.ProcessId, Bob)),
+            var monitor = new FakeProcessMonitor();
+            var rules = new List<ProcessRule> { ScopedRule("ping.exe", configure: r => r.DisallowExecution = true) };
+            var orchestrator = new ProcessOrchestrator(NullLogger<ProcessOrchestrator>.Instance, monitor, Mock.Of<IResponsivenessGuardEngine>(),
+                Mock.Of<ICpuLimiter>(), Mock.Of<IMemoryTrimService>(), Mock.Of<IPowerManager>(), Mock.Of<IWatchdogService>(), FakeRules.Store(rules).Object)
+            {
+                Scope = new RuleScope(new FakeOwners().Own(child.Id, Bob)),
+            };
+            orchestrator.Start();
+
+            // Bob's copy starts: Alice's Disallow rule must not end it.
+            monitor.Start(child.Id, "ping");
+
+            Assert.False(child.WaitForExit(500));
+            orchestrator.Stop();
+        }
+        finally
+        {
+            try { child.Kill(); } catch (InvalidOperationException) { }
+        }
+    }
+
+    [Fact]
+    public void TheCpuLimiter_AStandardUsersRule_ConstrainsOnlyTheirOwnProcesses()
+    {
+        using var h = new CpuAffinityLimiterHarness();
+        var rule = h.AddRule(over: 1);
+        rule.AuthorSid = Alice;
+        rule.AuthorIsAdministrator = false;
+        h.Add(11, cpu: 95);
+        h.Add(12, cpu: 95);
+        h.Limiter.Scope = new RuleScope(new FakeOwners().Own(11, Bob).Own(12, Alice));
+
+        h.At(0);
+        h.At(1500);
+        h.At(3000);
+
+        Assert.Contains(h.Access.Sets, s => s.Pid == 12);
+        Assert.DoesNotContain(h.Access.Sets, s => s.Pid == 11);
+    }
+
+    [Fact]
+    public void ReapplyingRules_AStandardUsersRule_PutsBackOnlyTheirOwnProcesses()
+    {
+        var native = new FakeProcessTuning();
+        native.Io[11] = 2;
+        native.Io[12] = 2;
+        var processes = new List<ProcessInfo> { new() { Pid = 11, Name = "game" }, new() { Pid = 12, Name = "game" } };
+        var monitor = new Mock<IProcessMonitor>();
+        monitor.Setup(m => m.GetAllProcesses()).Returns(() => processes);
+        monitor.Setup(m => m.PollingInterval).Returns(TimeSpan.FromSeconds(1));
+        var store = FakeRules.Store(new List<ProcessRule> { ScopedRule("game.exe", configure: r => { r.IoPriority = 0; r.ReapplyIfChanged = true; }) });
+        var service = new ProGuard.Engine.Services.ProcessRules.PersistentRuleService(new ListLogger<ProGuard.Engine.Services.ProcessRules.PersistentRuleService>(),
+            new ProGuard.Engine.Services.ProcessRules.IProcessRuleApplier[] { new ProGuard.Engine.Services.ProcessRules.IoPriorityApplier(native) }, monitor.Object, store.Object)
+        {
+            Scope = new RuleScope(new FakeOwners().Own(11, Alice).Own(12, Bob)),
         };
-        orchestrator.Start();
 
-        // This very test process, owned (as far as the scope is told) by Bob: Alice's Disallow rule must not end it.
-        monitor.Start(Environment.ProcessId, "victim");
+        service.ReapplyChanged();
 
-        Assert.False(Process.GetCurrentProcess().HasExited);
-        orchestrator.Stop();
+        Assert.Equal(0, native.Io[11]);
+        Assert.Equal(2, native.Io[12]);
+    }
+
+    [Fact]
+    public void ResponsivenessGuard_AStandardUsersExclusion_SparesOnlyTheirOwnProcesses()
+    {
+        using var h = new ResponsivenessGuardHarness();
+        h.Add(100, cpu: 50, name: "render");
+        h.Store.Setup(s => s.GetProcessRule("render")).Returns(ScopedRule("render.exe", configure: r => r.ExcludeFromResponsivenessGuard = true));
+        h.Engine.RestrainAfterMs = 0;
+        h.Engine.Scope = new RuleScope(new FakeOwners().Own(100, Bob)); // someone else's render.exe
+
+        h.At(0);
+        h.At(1000);
+
+        Assert.True(h.Engine.IsEngaged);
+    }
+
+    [Fact]
+    public void InstanceSpread_AStandardUsersRule_SpreadsOnlyTheirOwnInstances()
+    {
+        var monitor = new FakeProcessMonitor();
+        var access = new FakeRuleProcessAccess();
+        var start = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+        foreach (var pid in new[] { 11, 12, 13 })
+        {
+            monitor.Add(pid, "worker", cpu: 50);
+            access.Affinity[pid] = 0xFF;
+            access.Start[pid] = start.AddSeconds(pid);
+        }
+        var rules = new List<ProcessRule> { ScopedRule("worker.exe", configure: r => r.InstanceSpreadMode = InstanceSpreadMode.EqualCoresPerInstance) };
+        var spread = new InstanceSpread(NullLogger<InstanceSpread>.Instance, monitor, FakeRules.Store(rules).Object, access,
+            FakeRules.EightThreadsFourCores, new ManualTimeProvider())
+        {
+            Scope = new RuleScope(new FakeOwners().Own(11, Alice).Own(12, Bob).Own(13, Alice)),
+        };
+
+        spread.Tick();
+
+        Assert.Null(spread.GetAppliedMask(12));
+        Assert.DoesNotContain(access.AffinityWrites, w => w.Pid == 12);
+        Assert.Contains(access.AffinityWrites, w => w.Pid == 11);
+        Assert.Contains(access.AffinityWrites, w => w.Pid == 13);
+    }
+
+    [Fact]
+    public void AnAdministratorsSwitch_PutsAStandardUsersRuleBack_AsTheirs()
+    {
+        var h = new ProfileHarness();
+        // The standard user's own rule; an administrator saves the configuration, empties it, and switches back.
+        Assert.True(h.Send(Standard, CommandTypes.SaveProcessRule, new ProcessRuleDto { ProcessName = "mine.exe", PriorityClass = 16384 }).Success);
+        var saved = h.SaveProfile("With the standard user's rule");
+        h.T.Rules.Clear();
+        var empty = h.SaveProfile("Empty");
+        Assert.True(h.Admin(CommandTypes.SwitchProfile, new SwitchProfileArgument { Id = empty }).Success);
+        Assert.Empty(h.T.Rules);
+
+        Assert.True(h.Admin(CommandTypes.SwitchProfile, new SwitchProfileArgument { Id = saved }).Success);
+
+        var back = Assert.Single(h.T.Rules);
+        Assert.False(back.AuthorIsAdministrator);
+        Assert.Equal(Alice, back.AuthorSid);
     }
 
     [Fact]
@@ -284,22 +394,24 @@ public class SecurityHardeningTests
         var monitor = new FakeProcessMonitor();
         var access = new FakeRuleProcessAccess();
         var start = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        foreach (var pid in new[] { 1, 2, 3 })
+        foreach (var pid in new[] { 21, 22, 23, 24 })
         {
             var info = monitor.Add(pid, "app");
             info.StartTime = start.AddSeconds(pid);
             access.Session[pid] = 1;
             access.Start[pid] = info.StartTime;
         }
-        var owners = new FakeOwners().Own(1, Bob).Own(2, Bob).Own(3, Alice);
+        var owners = new FakeOwners().Own(21, Bob).Own(22, Bob).Own(23, Alice).Own(24, Alice);
         var limiter = new InstanceLimiter(NullLogger<InstanceLimiter>.Instance, monitor, access) { Scope = new RuleScope(owners) };
         var rule = ScopedRule("app.exe", configure: r => r.MaxInstances = 1);
 
-        // Alice's first instance, with two of Bob's running: within her limit of one.
-        Assert.False(limiter.Enforce(monitor.GetProcess(3)!, rule));
-        // Bob's instance starting: her rule doesn't apply to it at all.
-        Assert.False(limiter.Enforce(monitor.GetProcess(2)!, rule));
+        // Bob's instance starting: her rule doesn't apply to it at all, however many are running.
+        Assert.False(limiter.Enforce(monitor.GetProcess(22)!, rule));
         Assert.Empty(access.Terminated);
+
+        // Her second instance: over her limit of one, counting only hers; the newest of hers is ended, none of Bob's.
+        Assert.True(limiter.Enforce(monitor.GetProcess(24)!, rule));
+        Assert.Equal(new[] { 24 }, access.Terminated);
     }
 
     [Theory]

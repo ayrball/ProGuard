@@ -32,7 +32,7 @@ public sealed class InstanceLimiter
     }
 
     /// <summary>Which processes a rule may act on (see <see cref="RuleScope"/>). Tests supply fake owners.</summary>
-    internal RuleScope Scope { get; init; } = RuleScope.Default;
+    internal RuleScope Scope { get; set; } = RuleScope.Default;
 
     /// <summary>
     /// Call when <paramref name="started"/> starts (or is first seen) and matches <paramref name="rule"/>.

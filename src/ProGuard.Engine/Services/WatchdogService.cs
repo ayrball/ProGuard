@@ -52,7 +52,7 @@ public class WatchdogService : IWatchdogService, IDisposable
     private readonly List<PendingRestart> _restarts = new();
 
     /// <summary>Which processes a rule may act on (see <see cref="RuleScope"/>). Tests supply fake owners.</summary>
-    internal RuleScope Scope { get; init; } = RuleScope.Default;
+    internal RuleScope Scope { get; set; } = RuleScope.Default;
 
     public WatchdogService(ILogger<WatchdogService> logger, IProcessMonitor processMonitor, IRuleStore ruleStore)
         : this(logger, processMonitor, ruleStore, new Win32ProcessActions()) { }

@@ -55,7 +55,7 @@ internal sealed class FakeProfileStore : IConfigProfileStore
     private static ConfigProfile Copy(ConfigProfile p) => new()
     {
         Id = p.Id, Name = p.Name, SavedUtc = p.SavedUtc, Document = p.Document, ProcessRuleCount = p.ProcessRuleCount, WatchdogRuleCount = p.WatchdogRuleCount,
-        CreatorSid = p.CreatorSid,
+        CreatorSid = p.CreatorSid, RuleAuthors = p.RuleAuthors,
     };
 }
 

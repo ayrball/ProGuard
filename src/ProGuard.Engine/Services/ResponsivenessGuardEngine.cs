@@ -158,7 +158,7 @@ public class ResponsivenessGuardEngine : IResponsivenessGuardEngine, IDisposable
     public event Action<bool>? RestraintsUpdated;
 
     /// <summary>Which processes a rule may act on (see <see cref="RuleScope"/>). Tests supply fake owners.</summary>
-    internal RuleScope Scope { get; init; } = RuleScope.Default;
+    internal RuleScope Scope { get; set; } = RuleScope.Default;
 
     public ResponsivenessGuardEngine(
         ILogger<ResponsivenessGuardEngine> logger,

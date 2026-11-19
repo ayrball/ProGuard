@@ -5,7 +5,7 @@ using ProGuard.Core.Native;
 namespace ProGuard.Core.Services;
 
 /// <summary>
-/// Settings of the load-based power switcher (Process Lasso's [LoadBasedPowerSwitcher]): the moving average of system
+/// Settings of the load-based power switcher: the moving average of system
 /// CPU over <see cref="AveragingWindowSamples"/> samples picks the high plan above <see cref="HighThreshold"/> and the
 /// low plan below <see cref="LowThreshold"/>, staying at least <see cref="MinimumTimeInPlanMs"/> in a plan.
 /// </summary>

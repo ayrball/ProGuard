@@ -10,7 +10,7 @@ using ProGuard.Shared.Contracts;
 namespace ProGuard.Engine.Services;
 
 /// <summary>
-/// Process Lasso's "Keep running": when the last instance of a process whose rule has <see cref="ProcessRule.KeepRunning"/>
+/// Keep Running: when the last instance of a process whose rule has <see cref="ProcessRule.KeepRunning"/>
 /// exits, start it again with the path, arguments and working directory it last ran with.
 /// <para>
 /// The command line is read from each instance while it runs, since it is gone once the process exits. Relaunches wait

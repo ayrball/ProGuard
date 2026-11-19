@@ -149,22 +149,22 @@
             <TextBlock Text="{x:Static r:Strings.System}" Style="{StaticResource Text.Title}"/>
             <TextBlock Text="{x:Static r:Strings.HowTheEngineBehavesChangesApply}" Style="{StaticResource Text.Label}" Margin="0,6,0,28"/>
 
-            <!-- ============================================================ A · ProBalance -->
+            <!-- ============================================================ A · Responsiveness Guard -->
             <HeaderedContentControl Style="{StaticResource Section}">
                 <HeaderedContentControl.Header>
                     <StackPanel>
                         <TextBlock Text="A" Style="{StaticResource SectionNumber}"/>
-                        <TextBlock Text="{x:Static r:Strings.Probalance}" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{x:Static r:Strings.ResponsivenessGuard}" Style="{StaticResource SectionTitle}"/>
                         <TextBlock Style="{StaticResource SectionBlurb}"
                                    Text="{x:Static r:Strings.WhenTheMachineIsOverloadedBackground}"/>
                     </StackPanel>
                 </HeaderedContentControl.Header>
                 <StackPanel>
-                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ProBalanceEnabled}">
-                        <TextBlock Text="{x:Static r:Strings.BalanceAutomatically}" FontWeight="Bold" FontSize="15"/>
+                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ResponsivenessGuardEnabled}">
+                        <TextBlock Text="{x:Static r:Strings.RestrainAutomatically}" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>
 
-                    <StackPanel IsEnabled="{Binding ProBalanceEnabled}">
+                    <StackPanel IsEnabled="{Binding ResponsivenessGuardEnabled}">
                         <DockPanel Margin="0,26,0,10">
                             <TextBlock DockPanel.Dock="Right" Text="{Binding SensitivityLevel, StringFormat='{}{0} / 10'}" FontFamily="{StaticResource Mono}" FontWeight="Bold" FontSize="16"/>
                             <TextBlock Text="{x:Static r:Strings.Sensitivity}" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
@@ -242,7 +242,7 @@
                                    Text="{x:Static r:Strings.SetsThePowerPlansCoreParking}"/>
 
                         <TextBlock Text="{x:Static r:Strings.WhileYoureAway}" Style="{StaticResource Sub}"/>
-                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding PauseWhenIdle}" Margin="0,0,0,16" Content="{x:Static r:Strings.PauseProbalanceWhenTheMachineIs}"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding PauseWhenIdle}" Margin="0,0,0,16" Content="{x:Static r:Strings.PauseResponsivenessGuardWhenTheMachineIs}"/>
                         <ContentControl Content="{Binding IdlePauseMs}" IsEnabled="{Binding PauseWhenIdle}" Focusable="False"/>
                     </StackPanel>
                 </StackPanel>
@@ -263,22 +263,22 @@
                 </CheckBox>
             </HeaderedContentControl>
 
-            <!-- ============================================================ C · SmartTrim -->
+            <!-- ============================================================ C · Memory Trim -->
             <HeaderedContentControl Style="{StaticResource Section}">
                 <HeaderedContentControl.Header>
                     <StackPanel>
                         <TextBlock Text="C" Style="{StaticResource SectionNumber}"/>
-                        <TextBlock Text="{x:Static r:Strings.Smarttrim}" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{x:Static r:Strings.MemoryTrim}" Style="{StaticResource SectionTitle}"/>
                         <TextBlock Style="{StaticResource SectionBlurb}"
                                    Text="{x:Static r:Strings.EverySoOftenBackgroundProgramsAbove}"/>
                     </StackPanel>
                 </HeaderedContentControl.Header>
                 <StackPanel>
-                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding SmartTrimEnabled}">
+                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding MemoryTrimEnabled}">
                         <TextBlock Text="{x:Static r:Strings.TrimAutomatically}" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>
 
-                    <StackPanel IsEnabled="{Binding SmartTrimEnabled}" Margin="0,26,0,0">
+                    <StackPanel IsEnabled="{Binding MemoryTrimEnabled}" Margin="0,26,0,0">
                         <WrapPanel>
                             <ContentControl Content="{Binding TrimInterval}" Focusable="False"/>
                             <ContentControl Content="{Binding TrimThresholdMb}" Focusable="False"/>
@@ -312,21 +312,21 @@
                 </StackPanel>
             </HeaderedContentControl>
 
-            <!-- ============================================================ D · IdleSaver -->
+            <!-- ============================================================ D · Away Mode -->
             <HeaderedContentControl Style="{StaticResource Section}">
                 <HeaderedContentControl.Header>
                     <StackPanel>
                         <TextBlock Text="D" Style="{StaticResource SectionNumber}"/>
-                        <TextBlock Text="{x:Static r:Strings.Idlesaver}" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{x:Static r:Strings.AwayMode}" Style="{StaticResource SectionTitle}"/>
                         <TextBlock Style="{StaticResource SectionBlurb}"
                                    Text="{x:Static r:Strings.WhenYouveLeftTheKeyboardAnd}"/>
                     </StackPanel>
                 </HeaderedContentControl.Header>
                 <StackPanel>
-                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding IdleSaverEnabled}">
+                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding AwayModeEnabled}">
                         <TextBlock Text="{x:Static r:Strings.SavePowerWhileAway}" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>
-                    <StackPanel IsEnabled="{Binding IdleSaverEnabled}" Margin="0,26,0,0">
+                    <StackPanel IsEnabled="{Binding AwayModeEnabled}" Margin="0,26,0,0">
                         <ContentControl Content="{Binding IdleTimeout}" Focusable="False"/>
                         <ContentControl Content="{Binding IdlePlan}" Focusable="False"/>
                     </StackPanel>

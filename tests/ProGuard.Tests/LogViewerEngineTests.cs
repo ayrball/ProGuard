@@ -24,7 +24,7 @@ namespace ProGuard.Tests;
 public sealed class LogViewerEngineTests : IDisposable
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "ProGuard.Tests.Logs", Guid.NewGuid().ToString("N"));
-    private readonly List<ProBalanceAction> _actions = new();
+    private readonly List<ResponsivenessGuardAction> _actions = new();
     private readonly Mock<IRuleStore> _store = new();
     private readonly DateTime _t0 = new(2026, 10, 16, 9, 0, 0, DateTimeKind.Local);
 
@@ -60,7 +60,7 @@ public sealed class LogViewerEngineTests : IDisposable
     }
 
     private void AddAction(int id, DateTime local, string name, int pid, string reason, bool restored = false) =>
-        _actions.Add(new ProBalanceAction
+        _actions.Add(new ResponsivenessGuardAction
         {
             Id = id, Timestamp = local.ToUniversalTime(), ProcessName = name, Pid = pid, Reason = reason, IsRestored = restored,
             OriginalPriority = 32, NewPriority = restored ? 32 : 16384,
@@ -91,10 +91,10 @@ public sealed class LogViewerEngineTests : IDisposable
     [Fact]
     public void Reader_ParsesLevelsCategoriesProcessesAndStackTraces()
     {
-        Append(Line(_t0, "INF", "ProBalanceEngine", "ProBalance restrained Discord (2144) from Normal to BelowNormal at 10.4% CPU"));
+        Append(Line(_t0, "INF", "ResponsivenessGuardEngine", "Responsiveness Guard restrained Discord (2144) from Normal to BelowNormal at 10.4% CPU"));
         Append(Line(_t0.AddSeconds(1), "INF", "IpcDispatcher", "IPC command SetPriority (pid 33268, arg 2) from PC\\me"));
         Append(Line(_t0.AddSeconds(2), "INF", "UserSessionLauncher", "Launched \"C:\\x\\ProGuard.SessionAgent.exe\" as process 2772 in session 1"));
-        Append(Line(_t0.AddSeconds(3), "ERR", "RuleStore", "Failed to log ProBalance action") +
+        Append(Line(_t0.AddSeconds(3), "ERR", "RuleStore", "Failed to log Responsiveness Guard action") +
                "System.InvalidOperationException: boom\r\n   at Somewhere()\r\n");
         Append(Line(_t0.AddSeconds(4), "WRN", "Lifetime", "Message: with a colon"));
 
@@ -383,11 +383,11 @@ public sealed class LogViewerEngineTests : IDisposable
     private void WriteMix()
     {
         Append(Line(_t0, "DBG", "ProcessMonitor", "Polled 200 processes"));
-        Append(Line(_t0.AddMinutes(1), "INF", "ProBalanceEngine", "ProBalance restrained Discord (2144) from Normal to BelowNormal"));
+        Append(Line(_t0.AddMinutes(1), "INF", "ResponsivenessGuardEngine", "Responsiveness Guard restrained Discord (2144) from Normal to BelowNormal"));
         Append(Line(_t0.AddMinutes(2), "WRN", "SessionAgentSupervisor", "Session agent 2772 in session 1 exited"));
-        Append(Line(_t0.AddMinutes(3), "ERR", "RuleStore", "Failed to log ProBalance action") + "SqliteException: database is locked\n");
+        Append(Line(_t0.AddMinutes(3), "ERR", "RuleStore", "Failed to log Responsiveness Guard action") + "SqliteException: database is locked\n");
         AddAction(1, _t0.AddMinutes(4), "chrome.exe", 4321, "chrome.exe (4321) is using 50% CPU");
-        AddAction(2, _t0.AddMinutes(5), ProBalanceAction.PowerPlanEntryName, 0, "Switched to High performance");
+        AddAction(2, _t0.AddMinutes(5), ResponsivenessGuardAction.PowerPlanEntryName, 0, "Switched to High performance");
     }
 
     private List<string> Messages(LogQuery query, bool admin = true) => Service().Query(query, admin).Entries.Select(e => e.Message).ToList();
@@ -396,7 +396,7 @@ public sealed class LogViewerEngineTests : IDisposable
     public void Filter_ByLevel()
     {
         WriteMix();
-        Assert.Equal(new[] { "Failed to log ProBalance action", "Session agent 2772 in session 1 exited" },
+        Assert.Equal(new[] { "Failed to log Responsiveness Guard action", "Session agent 2772 in session 1 exited" },
             Messages(new LogQuery { Levels = new() { LogLevelDto.Warning, LogLevelDto.Error } }));
     }
 
@@ -413,8 +413,8 @@ public sealed class LogViewerEngineTests : IDisposable
     public void Filter_ByCategory_CoversBothSources()
     {
         WriteMix();
-        Assert.Equal(new[] { "Restrained: chrome.exe (4321) is using 50% CPU", "ProBalance restrained Discord (2144) from Normal to BelowNormal" },
-            Messages(new LogQuery { Category = "probalance" }));
+        Assert.Equal(new[] { "Restrained: chrome.exe (4321) is using 50% CPU", "Responsiveness Guard restrained Discord (2144) from Normal to BelowNormal" },
+            Messages(new LogQuery { Category = "responsivenessguard" }));
         Assert.Equal(new[] { "Switched to High performance" }, Messages(new LogQuery { Category = "Power" }));
     }
 
@@ -422,7 +422,7 @@ public sealed class LogViewerEngineTests : IDisposable
     public void Filter_ByProcessNameOrPid()
     {
         WriteMix();
-        Assert.Equal(new[] { "ProBalance restrained Discord (2144) from Normal to BelowNormal" }, Messages(new LogQuery { Process = "disc" }));
+        Assert.Equal(new[] { "Responsiveness Guard restrained Discord (2144) from Normal to BelowNormal" }, Messages(new LogQuery { Process = "disc" }));
         Assert.Equal(new[] { "Restrained: chrome.exe (4321) is using 50% CPU" }, Messages(new LogQuery { Process = "4321" }));
         Assert.Empty(Messages(new LogQuery { Process = "432" })); // a pid matches whole
     }
@@ -431,7 +431,7 @@ public sealed class LogViewerEngineTests : IDisposable
     public void Filter_ByText_SearchesTheDetailToo()
     {
         WriteMix();
-        Assert.Equal(new[] { "Failed to log ProBalance action" }, Messages(new LogQuery { Text = "DATABASE IS LOCKED" }));
+        Assert.Equal(new[] { "Failed to log Responsiveness Guard action" }, Messages(new LogQuery { Text = "DATABASE IS LOCKED" }));
     }
 
     [Fact]
@@ -440,7 +440,7 @@ public sealed class LogViewerEngineTests : IDisposable
         WriteMix();
         var messages = Messages(new LogQuery { FromUtc = _t0.AddMinutes(1).ToUniversalTime(), ToUtc = _t0.AddMinutes(3).ToUniversalTime() });
         Assert.Equal(3, messages.Count);
-        Assert.Equal("Failed to log ProBalance action", messages[0]);
+        Assert.Equal("Failed to log Responsiveness Guard action", messages[0]);
     }
 
     [Fact]
@@ -492,7 +492,7 @@ public sealed class LogViewerEngineTests : IDisposable
     {
         var harness = new ThinHarness(LogPath);
         Append(Line(_t0, "WRN", "IpcDispatcher", "Refused IPC request from OTHER\\user"));
-        harness.Actions.Add(new ProBalanceAction { Id = 1, Timestamp = DateTime.UtcNow, ProcessName = "app.exe", Pid = 5, Reason = "busy" });
+        harness.Actions.Add(new ResponsivenessGuardAction { Id = 1, Timestamp = DateTime.UtcNow, ProcessName = "app.exe", Pid = 5, Reason = "busy" });
 
         var admin = harness.Data<LogPage>(harness.SendAsAdmin(CommandTypes.GetLogEntries, argument: new LogQuery()));
         Assert.True(admin.EngineLogIncluded);
@@ -560,7 +560,7 @@ public sealed class LogViewerEngineTests : IDisposable
         {
             var store = new RuleStore(NullLogger<RuleStore>.Instance, provider);
             for (int i = 0; i < 10; i++)
-                await store.LogProBalanceActionAsync(new ProBalanceAction { Timestamp = DateTime.UtcNow.AddSeconds(i), ProcessName = $"p{i}.exe", Pid = i, Reason = "r" });
+                await store.LogResponsivenessGuardActionAsync(new ResponsivenessGuardAction { Timestamp = DateTime.UtcNow.AddSeconds(i), ProcessName = $"p{i}.exe", Pid = i, Reason = "r" });
 
             var newest = store.GetActions(null, null, 3);
             Assert.Equal(new[] { "p9.exe", "p8.exe", "p7.exe" }, newest.Select(a => a.ProcessName));

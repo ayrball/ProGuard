@@ -14,8 +14,7 @@ using ProGuard.Engine.Services.ProcessRules;
 namespace ProGuard.Engine.Services;
 
 /// <summary>
-/// ProBalance - temporarily lowers the priority of background processes that hog the CPU, following
-/// Process Lasso's algorithm (see docs/process-lasso-internals.md):
+/// Responsiveness Guard - temporarily lowers the priority of background processes that hog the CPU:
 /// <list type="bullet">
 /// <item>Restrain a process once it has used at least <see cref="PerProcessUsageBeforeRestraint"/> % of total CPU
 /// for <see cref="TimeOverQuotaBeforeRestraint"/> ms, while the system is at least
@@ -27,14 +26,13 @@ namespace ProGuard.Engine.Services;
 /// <item>When nobody has said which program is in the foreground (no session agent or UI reporting, see
 /// <see cref="IForegroundFallback"/>), every process that could be it is treated as the foreground process: not
 /// restrained, and released if it was.</item>
-/// <item>Optionally (all off by default, as in Process Lasso) a restraint also narrows the CPU affinity, lowers the
+/// <item>Optionally (all off by default) a restraint also narrows the CPU affinity, lowers the
 /// I/O priority and turns on efficiency mode, or uses only those and leaves the priority class alone
 /// (<see cref="DoNotLowerPriorityClass"/>). Each is put back when the restraint ends, unless something else changed
 /// that setting meanwhile.</item>
 /// <item>Optionally pauses, lifting every restraint, while the user has been idle for
-/// <see cref="DisableProBalanceIfSysIdleThisManyMS"/>.</item>
+/// <see cref="PauseAfterIdleMs"/>.</item>
 /// </list>
-/// Property names mirror the <c>[OutOfControlProcessRestraint]</c> keys in prolasso.ini.
 /// <para>
 /// <b>Decision input.</b> System load is <see cref="Core.Helpers.SystemInfo.GetProcessorTimePercent"/>: busy time
 /// from <c>GetSystemTimes</c>, the same measure as each process's <see cref="ProcessInfo.CpuPercent"/> (CPU time over
@@ -43,9 +41,9 @@ namespace ProGuard.Engine.Services;
 /// the CPU is clocked down and can pass 100 % under turbo.
 /// </para>
 /// </summary>
-public class ProBalanceEngine : IProBalanceEngine, IDisposable
+public class ResponsivenessGuardEngine : IResponsivenessGuardEngine, IDisposable
 {
-    private readonly ILogger<ProBalanceEngine> _logger;
+    private readonly ILogger<ResponsivenessGuardEngine> _logger;
     private readonly IProcessMonitor _processMonitor;
     private readonly IRuleStore _ruleStore;
     private readonly IProcessPriorityAccess _access;
@@ -85,7 +83,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         public bool HoldsAnything => Priority != null || Affinity != null || IoPriority != null || Efficiency != null;
     }
 
-    /// <summary>IO_PRIORITY_HINT IoPriorityLow, what Process Lasso lowers to.</summary>
+    /// <summary>IO_PRIORITY_HINT IoPriorityLow, what a restraint lowers to.</summary>
     internal const int RestraintIoPriority = 1;
 
     /// <summary>
@@ -114,14 +112,13 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     public bool TameOnlyNormal { get; set; } = true;
     /// <summary>Restrain to Idle instead of BelowNormal.</summary>
     public bool LowerToIdleInsteadOfBelowNormal { get; set; }
-    /// <summary>The foreground process is exempt, and a restrained process that comes to the foreground is restored
-    /// (prolasso.ini: <c>ExcludeForegroundProcesses2</c>).</summary>
+    /// <summary>The foreground process is exempt, and a restrained process that comes to the foreground is restored.</summary>
     public bool ExcludeForegroundProcesses { get; set; } = true;
     /// <summary>Direct children (by parent PID) of the foreground process are exempt.</summary>
     public bool ExcludeChildrenOfForeground { get; set; } = true;
     /// <summary>Processes in session 0 (services) are exempt.</summary>
     public bool ExcludeServices { get; set; } = true;
-    // Optional restraint actions, all off by default (see ProBalanceRestraintOptions).
+    // Optional restraint actions, all off by default (see ResponsivenessGuardRestraintOptions).
     /// <summary>Also restrict a restrained process to <see cref="RestraintAffinity"/>, intersected with its own
     /// affinity; skipped if that leaves nothing or changes nothing.</summary>
     public bool RestrainByAffinity { get; set; }
@@ -129,23 +126,23 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     public long RestraintAffinity { get; set; }
     /// <summary>Restrict affinity by dropping one random CPU from the process's own mask. Turns the affinity action on
     /// by itself and takes precedence over <see cref="RestraintAffinity"/>.</summary>
-    public bool ProBalanceDropOneRandomCore { get; set; }
+    public bool DropOneRandomCore { get; set; }
     /// <summary>Lower the I/O priority to Low (NtSetInformationProcess, ProcessIoPriority = 33) during restraint.</summary>
-    public bool LowerIOPriorityDuringRestraint { get; set; }
+    public bool LowerIoPriority { get; set; }
     /// <summary>Turn on efficiency mode (EcoQoS via ProcessPowerThrottling) during restraint.</summary>
     public bool UseEfficiencyMode { get; set; }
     /// <summary>Leave the priority class alone; restrain only through the actions above (nothing happens if none is on).</summary>
     public bool DoNotLowerPriorityClass { get; set; }
-    /// <summary>Pause ProBalance, lifting every restraint, while the user has been idle this long. The idle time
+    /// <summary>Pause Responsiveness Guard, lifting every restraint, while the user has been idle this long. The idle time
     /// comes from the UI's reports (<see cref="IUserIdleSource"/>), since a session-0 service can't read it; with no
     /// UI reporting, the system never counts as idle.</summary>
-    public bool DisableProBalanceWhenSysIdle { get; set; }
-    public int DisableProBalanceIfSysIdleThisManyMS { get; set; } = 30000;
+    public bool PauseWhenIdle { get; set; }
+    public int PauseAfterIdleMs { get; set; } = 30000;
 
-    /// <summary>Picks the CPU <see cref="ProBalanceDropOneRandomCore"/> drops: an index in [0, count). Tests replace it.</summary>
+    /// <summary>Picks the CPU <see cref="DropOneRandomCore"/> drops: an index in [0, count). Tests replace it.</summary>
     internal Func<int, int> RandomIndex { get; set; } = Random.Shared.Next;
 
-    /// <summary>True while ProBalance is paused because the user is idle.</summary>
+    /// <summary>True while Responsiveness Guard is paused because the user is idle.</summary>
     public bool IsPausedForIdle => _pausedForIdle;
 
     public bool IsEngaged => !_restrained.IsEmpty;
@@ -156,12 +153,12 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
 
     /// <summary>
     /// Raised after every pass and whenever restraints are lifted outside one, with whether any process is restrained
-    /// now. Raised outside ProBalance's lock. <see cref="CoreParkingService"/> follows it.
+    /// now. Raised outside Responsiveness Guard's lock. <see cref="CoreParkingService"/> follows it.
     /// </summary>
     public event Action<bool>? RestraintsUpdated;
 
-    public ProBalanceEngine(
-        ILogger<ProBalanceEngine> logger,
+    public ResponsivenessGuardEngine(
+        ILogger<ResponsivenessGuardEngine> logger,
         IProcessMonitor processMonitor,
         IRuleStore ruleStore,
         Func<double>? systemCpuPercent = null,
@@ -182,9 +179,8 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Starting ProBalance Engine");
-        // Evaluate right after each process refresh (prolasso.ini UpdateSpeedCore is the monitor's polling interval),
-        // as Process Lasso samples and decides in one loop. On a separate timer the usage it judged could be up to a
+        _logger.LogInformation("Starting Responsiveness Guard engine");
+        // Evaluate right after each process refresh, sampling and deciding in one loop. On a separate timer the usage it judged could be up to a
         // whole interval old, which made restraints and restores about a second late.
         if (!_started) _processMonitor.Refreshed += OnProcessesRefreshed;
         _started = true;
@@ -193,9 +189,9 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Stopping ProBalance Engine");
+        _logger.LogInformation("Stopping Responsiveness Guard engine");
         Unsubscribe();
-        RestoreAll("ProBalance stopped");
+        RestoreAll("Responsiveness Guard stopped");
         RaiseRestraintsUpdated();
         return Task.CompletedTask;
     }
@@ -206,13 +202,13 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         // Evaluate() stops running when disabled, so nothing else would ever lift the restraints.
         if (!enabled)
         {
-            RestoreAll("ProBalance disabled");
+            RestoreAll("Responsiveness Guard disabled");
             RaiseRestraintsUpdated();
         }
     }
 
     /// <summary>
-    /// 1 (least aggressive) .. 10 (most). Level 5 is Process Lasso's defaults; higher levels restrain at lower
+    /// 1 (least aggressive) .. 10 (most). Level 5 is the default timing; higher levels restrain at lower
     /// usage and sooner.
     /// </summary>
     public void SetSensitivity(int level)
@@ -224,19 +220,19 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         PerProcessUsageForRestore = Math.Min(2.0, PerProcessUsageBeforeRestraint / 2);
     }
 
-    public void ConfigureRestraint(ProBalanceRestraintOptions options)
+    public void ConfigureRestraint(ResponsivenessGuardRestraintOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
         lock (_gate)
         {
             RestrainByAffinity = options.RestrainByAffinity;
             RestraintAffinity = options.RestraintAffinity;
-            ProBalanceDropOneRandomCore = options.ProBalanceDropOneRandomCore;
-            LowerIOPriorityDuringRestraint = options.LowerIOPriorityDuringRestraint;
+            DropOneRandomCore = options.DropOneRandomCore;
+            LowerIoPriority = options.LowerIoPriority;
             UseEfficiencyMode = options.UseEfficiencyMode;
             DoNotLowerPriorityClass = options.DoNotLowerPriorityClass;
-            DisableProBalanceWhenSysIdle = options.DisableProBalanceWhenSysIdle;
-            DisableProBalanceIfSysIdleThisManyMS = Math.Max(0, options.DisableProBalanceIfSysIdleThisManyMS);
+            PauseWhenIdle = options.PauseWhenIdle;
+            PauseAfterIdleMs = Math.Max(0, options.PauseAfterIdleMs);
         }
     }
 
@@ -285,7 +281,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in ProBalance evaluation loop");
+            _logger.LogError(ex, "Error in Responsiveness Guard evaluation loop");
         }
         finally
         {
@@ -294,16 +290,16 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         }
     }
 
-    /// <summary>True while ProBalance should stand aside because the user is idle; lifts every restraint on entry.</summary>
+    /// <summary>True while Responsiveness Guard should stand aside because the user is idle; lifts every restraint on entry.</summary>
     private bool PauseWhileIdle()
     {
-        var idle = DisableProBalanceWhenSysIdle ? _idleSource?.GetIdleTime() : null;
-        if (idle is { } t && t.TotalMilliseconds >= DisableProBalanceIfSysIdleThisManyMS)
+        var idle = PauseWhenIdle ? _idleSource?.GetIdleTime() : null;
+        if (idle is { } t && t.TotalMilliseconds >= PauseAfterIdleMs)
         {
             if (!_pausedForIdle)
             {
                 _pausedForIdle = true;
-                _logger.LogInformation("ProBalance paused: the user has been idle for {Idle:F0} s", t.TotalSeconds);
+                _logger.LogInformation("Responsiveness Guard paused: the user has been idle for {Idle:F0} s", t.TotalSeconds);
                 RestoreAll("System idle");
             }
             return true;
@@ -312,14 +308,14 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         if (_pausedForIdle)
         {
             _pausedForIdle = false;
-            _logger.LogInformation("ProBalance resumed: the user is back (or the idle pause was turned off)");
+            _logger.LogInformation("Responsiveness Guard resumed: the user is back (or the idle pause was turned off)");
         }
         return false;
     }
 
     /// <summary>
     /// True when the foreground exemption is on but nobody has said which program is in the foreground, so any program
-    /// that could be it must be treated as it (Process Lasso never restrains the program in use; we can't tell which
+    /// that could be it must be treated as it (the program in use is never restrained; we can't tell which
     /// that is, so we don't restrain any candidate).
     /// </summary>
     private bool IsForegroundUnknown()
@@ -329,10 +325,10 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         {
             _foregroundWasUnknown = unknown;
             if (unknown)
-                _logger.LogInformation("No foreground report from any user session: until one arrives, ProBalance leaves alone every " +
+                _logger.LogInformation("No foreground report from any user session: until one arrives, Responsiveness Guard leaves alone every " +
                                    "Windows program in a user session, since any of them could be the one in use");
             else
-                _logger.LogInformation("Foreground reports are back: ProBalance exempts only the foreground process again");
+                _logger.LogInformation("Foreground reports are back: Responsiveness Guard exempts only the foreground process again");
         }
         return unknown && ExcludeForegroundProcesses;
     }
@@ -357,7 +353,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
             if (!byPid.TryGetValue(pid, out var info))
             {
                 _restrained.TryRemove(pid, out _);
-                _logger.LogInformation("ProBalance restraint of {Name} ({Pid}) ended: process exited", r.Name, pid);
+                _logger.LogInformation("Responsiveness Guard restraint of {Name} ({Pid}) ended: process exited", r.Name, pid);
                 continue;
             }
 
@@ -374,7 +370,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
                     // Someone else (usually the user) set a priority while we held it down; theirs wins, and the
                     // restraint ends, putting back whatever else it changed: they evidently want the process to run.
                     r.Priority = null;
-                    _logger.LogInformation("ProBalance restraint of {Name} ({Pid}) ended: priority changed externally to {Priority}",
+                    _logger.LogInformation("Responsiveness Guard restraint of {Name} ({Pid}) ended: priority changed externally to {Priority}",
                         r.Name, pid, current);
                     Restore(pid, "priority changed externally");
                     continue;
@@ -385,7 +381,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
             if (!r.HoldsAnything)
             {
                 _restrained.TryRemove(pid, out _);
-                _logger.LogInformation("ProBalance restraint of {Name} ({Pid}) ended: everything it changed was changed externally",
+                _logger.LogInformation("Responsiveness Guard restraint of {Name} ({Pid}) ended: everything it changed was changed externally",
                     r.Name, pid);
                 continue;
             }
@@ -438,7 +434,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         if (ExcludeForegroundProcesses && (p.Pid == foregroundPid || p.IsForeground)) return true;
 
         var rule = _ruleStore.GetProcessRule(p.Name);
-        if (rule != null && rule.ExcludeFromProBalance) return true;
+        if (rule != null && rule.ExcludeFromResponsivenessGuard) return true;
 
         if (ExcludeChildrenOfForeground && foregroundPid > 0
             && (p.ParentPid ?? _access.GetParentPid(p.Pid)) == foregroundPid)
@@ -465,7 +461,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
             if (Rank(original.Value) <= Rank(target)) return;
             if (!_access.SetPriorityClass(p.Pid, target))
             {
-                _logger.LogDebug("ProBalance could not restrain {Name} ({Pid})", p.Name, p.Pid);
+                _logger.LogDebug("Responsiveness Guard could not restrain {Name} ({Pid})", p.Name, p.Pid);
                 return;
             }
             r.Priority = new(original.Value, target);
@@ -479,18 +475,18 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         var actions = Describe(r);
         LogAction(p.Name, p.Pid, original.Value, r.Priority?.Applied ?? original.Value,
             $"High CPU usage ({p.CpuPercent:F1}%): {actions}", restored: false);
-        _logger.LogInformation("ProBalance restrained {Name} ({Pid}) at {Cpu:F1}% CPU: {Actions}", p.Name, p.Pid, p.CpuPercent, actions);
+        _logger.LogInformation("Responsiveness Guard restrained {Name} ({Pid}) at {Cpu:F1}% CPU: {Actions}", p.Name, p.Pid, p.CpuPercent, actions);
     }
 
     /// <summary>Affinity, I/O priority and efficiency mode, as configured. Each is skipped if it would change nothing
     /// or can't be read or written; the restraint holds whatever did apply.</summary>
     private void ApplyOptionalActions(int pid, Restraint r)
     {
-        if ((RestrainByAffinity || ProBalanceDropOneRandomCore) && _access.GetAffinityMask(pid) is { } mask
+        if ((RestrainByAffinity || DropOneRandomCore) && _access.GetAffinityMask(pid) is { } mask
             && RestraintMask(mask) is { } narrowed && _access.SetAffinityMask(pid, narrowed))
             r.Affinity = new(mask, narrowed);
 
-        if (LowerIOPriorityDuringRestraint && _access.GetIoPriority(pid) is { } io && io > RestraintIoPriority
+        if (LowerIoPriority && _access.GetIoPriority(pid) is { } io && io > RestraintIoPriority
             && _access.SetIoPriority(pid, RestraintIoPriority))
             r.IoPriority = new(io, RestraintIoPriority);
 
@@ -502,7 +498,7 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
     /// <summary>The affinity to restrain a process with mask <paramref name="current"/> to, or null to leave it.</summary>
     private long? RestraintMask(long current)
     {
-        if (ProBalanceDropOneRandomCore)
+        if (DropOneRandomCore)
         {
             var count = BitOperations.PopCount((ulong)current);
             if (count < 2) return null;
@@ -522,17 +518,17 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         if (r.Affinity != null && _access.GetAffinityMask(pid) is { } mask && mask != r.Affinity.Applied)
         {
             r.Affinity = null;
-            _logger.LogInformation("ProBalance will leave the affinity of {Name} ({Pid}) at 0x{Mask:X}: changed externally", r.Name, pid, mask);
+            _logger.LogInformation("Responsiveness Guard will leave the affinity of {Name} ({Pid}) at 0x{Mask:X}: changed externally", r.Name, pid, mask);
         }
         if (r.IoPriority != null && _access.GetIoPriority(pid) is { } io && io != r.IoPriority.Applied)
         {
             r.IoPriority = null;
-            _logger.LogInformation("ProBalance will leave the I/O priority of {Name} ({Pid}) at {Io}: changed externally", r.Name, pid, io);
+            _logger.LogInformation("Responsiveness Guard will leave the I/O priority of {Name} ({Pid}) at {Io}: changed externally", r.Name, pid, io);
         }
         if (r.Efficiency != null && _access.GetEfficiencyMode(pid) is { } eco && eco != r.Efficiency.Applied)
         {
             r.Efficiency = null;
-            _logger.LogInformation("ProBalance will leave efficiency mode of {Name} ({Pid}) {State}: changed externally", r.Name, pid, eco);
+            _logger.LogInformation("Responsiveness Guard will leave efficiency mode of {Name} ({Pid}) {State}: changed externally", r.Name, pid, eco);
         }
     }
 
@@ -594,19 +590,19 @@ public class ProBalanceEngine : IProBalanceEngine, IDisposable
         }
 
         if (leftAlone.Count > 0)
-            _logger.LogInformation("ProBalance left the {Settings} of {Name} ({Pid}) alone: changed externally during restraint",
+            _logger.LogInformation("Responsiveness Guard left the {Settings} of {Name} ({Pid}) alone: changed externally during restraint",
                 string.Join(", ", leftAlone), r.Name, pid);
 
         if (restored.Count > 0)
         {
             LogAction(r.Name, pid, from, to, $"Restored: {reason}", restored: true);
-            _logger.LogInformation("ProBalance restored {Name} ({Pid}) to {Settings}: {Reason}", r.Name, pid, string.Join(", ", restored), reason);
+            _logger.LogInformation("Responsiveness Guard restored {Name} ({Pid}) to {Settings}: {Reason}", r.Name, pid, string.Join(", ", restored), reason);
         }
     }
 
     private void LogAction(string name, int pid, ProcessPriorityClass from, ProcessPriorityClass to, string reason, bool restored)
     {
-        _ = _ruleStore.LogProBalanceActionAsync(new ProBalanceAction
+        _ = _ruleStore.LogResponsivenessGuardActionAsync(new ResponsivenessGuardAction
         {
             Timestamp = DateTime.UtcNow,
             ProcessName = name,

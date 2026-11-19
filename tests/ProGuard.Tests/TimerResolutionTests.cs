@@ -39,7 +39,7 @@ internal sealed class FakeTimerNative : ITimerResolutionNative
 }
 
 /// <summary>
-/// The system timer resolution (Process Lasso's SetTimerResolutionAtStartup): the engine holds the configured request,
+/// The system timer resolution: the engine holds the configured request,
 /// administrators alone may change it, and the System page shows the timer's current, minimum and maximum values.
 /// </summary>
 public class TimerResolutionTests
@@ -221,9 +221,9 @@ public class TimerResolutionTests
         h.SendAsAdmin(CommandTypes.SetTimerResolution, argument: new TimerResolutionArgument { Resolution = 5000 });
 
         var settings = DtoMapper(h);
-        settings.SmartTrimEnabled = true;
+        settings.MemoryTrimEnabled = true;
         Assert.True(h.Send(new ThinCaller(), CommandTypes.SaveSettings, argument: settings).Success);
-        Assert.True(h.Stored.SmartTrimEnabled);
+        Assert.True(h.Stored.MemoryTrimEnabled);
         Assert.Equal(5000u, h.Timer.Ours);
     }
 
@@ -233,8 +233,8 @@ public class TimerResolutionTests
         var native = new FakeTimerNative();
         var timer = new TimerResolutionService(native: native);
         var applier = new SettingsApplier(Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsApplier>.Instance, new FakeProcessMonitor(),
-            new Moq.Mock<ProGuard.Core.Services.ISmartTrimService>().Object, new Moq.Mock<ProGuard.Core.Services.IPowerManager>().Object,
-            new Moq.Mock<ProGuard.Core.Services.IProBalanceEngine>().Object, timerResolution: timer);
+            new Moq.Mock<ProGuard.Core.Services.IMemoryTrimService>().Object, new Moq.Mock<ProGuard.Core.Services.IPowerManager>().Object,
+            new Moq.Mock<ProGuard.Core.Services.IResponsivenessGuardEngine>().Object, timerResolution: timer);
 
         applier.Apply(new AppSettings { SetTimerResolutionAtStartup = 10000 });
         Assert.Equal(10000u, native.Ours);
@@ -300,7 +300,7 @@ public class TimerResolutionTests
         vm.Saver = dto => { saved.Add(dto); return Task.FromResult<EngineSettingsDto?>(dto); };
         vm.Load(new EngineSettingsDto { SetTimerResolutionAtStartup = 5000 }, null, Timer(requested: 5000, held: 5000));
 
-        vm.SmartTrimEnabled = true;
+        vm.MemoryTrimEnabled = true;
         Assert.Equal(5000, vm.BuildSettings().SetTimerResolutionAtStartup);
     }
 }

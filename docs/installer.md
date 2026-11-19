@@ -102,12 +102,6 @@ Stops and deletes the service, ends the UI and session agents (as above), remove
 shortcut and the uninstalling user's Run value. Keeps `%ProgramData%\ProGuard` unless `REMOVE_DATA=1`
 (`msiexec /x ProGuard.msi /qn REMOVE_DATA=1`, or the checkbox in the Remove dialog).
 
-### Process Lasso
-
-The MSI looks for `HKLM\SOFTWARE\ProcessLasso\Install_Dir` (64- and 32-bit views) and the `ProcessGovernor` service.
-If it finds either, it sets `PROCESS_LASSO_FOUND=1` and the Options dialog shows a note that the two will fight. The
-install carries on either way, and a quiet install only records the property in its log. Process Lasso is never
-changed or removed.
 
 ## Code signing
 

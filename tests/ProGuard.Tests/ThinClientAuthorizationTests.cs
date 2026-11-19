@@ -18,8 +18,8 @@ public class ThinClientAuthorizationTests
 
     private static readonly string[] OpenToAnyUser =
     {
-        CommandTypes.EnableProBalance, CommandTypes.DisableProBalance, CommandTypes.SetSensitivity,
-        CommandTypes.ConfigureIdleSaver, CommandTypes.ConfigureSmartTrim,
+        CommandTypes.EnableResponsivenessGuard, CommandTypes.DisableResponsivenessGuard, CommandTypes.SetSensitivity,
+        CommandTypes.ConfigureAwayMode, CommandTypes.ConfigureMemoryTrim,
         CommandTypes.EnablePerformanceMode, CommandTypes.DisablePerformanceMode,
         CommandTypes.GetSnapshot, CommandTypes.GetProcessRules, CommandTypes.GetWatchdogRules, CommandTypes.GetSettings,
         CommandTypes.GetPower, CommandTypes.GetActivity, CommandTypes.GetCpuSets, CommandTypes.GetTimerResolution, CommandTypes.GetCpuTuning,
@@ -113,7 +113,7 @@ public class ThinClientAuthorizationTests
 
             Assert.False(Denied(h.Send(ThinCaller.Admin(), command)), command);
         }
-        h.SmartTrim.Verify(t => t.PurgeNow(), Times.Once);
+        h.MemoryTrim.Verify(t => t.PurgeNow(), Times.Once);
     }
 
     [Theory]

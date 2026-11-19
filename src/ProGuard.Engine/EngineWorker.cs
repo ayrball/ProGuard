@@ -17,13 +17,13 @@ public class EngineWorker : BackgroundService
 {
     private readonly ILogger<EngineWorker> _logger;
     private readonly ProcessMonitor _processMonitor;
-    private readonly ProBalanceEngine _proBalanceEngine;
+    private readonly ResponsivenessGuardEngine _responsivenessGuardEngine;
     private readonly CpuLimiter _cpuLimiter;
     private readonly CpuAffinityLimiter _cpuAffinityLimiter;
-    private readonly SmartTrimService _smartTrimService;
+    private readonly MemoryTrimService _memoryTrimService;
     private readonly PowerManager _powerManager;
     private readonly WatchdogService _watchdogService;
-    private readonly ProcessGovernor _processGovernor;
+    private readonly ProcessOrchestrator _processOrchestrator;
     private readonly ForegroundBoostService _foregroundBoostService;
     private readonly PipeServer _pipeServer;
     private readonly ForegroundPipeServer _foregroundPipeServer;
@@ -40,12 +40,12 @@ public class EngineWorker : BackgroundService
     public EngineWorker(
         ILogger<EngineWorker> logger,
         ProcessMonitor processMonitor,
-        ProBalanceEngine proBalanceEngine,
+        ResponsivenessGuardEngine responsivenessGuardEngine,
         CpuLimiter cpuLimiter,
-        SmartTrimService smartTrimService,
+        MemoryTrimService memoryTrimService,
         PowerManager powerManager,
         WatchdogService watchdogService,
-        ProcessGovernor processGovernor,
+        ProcessOrchestrator processOrchestrator,
         ForegroundBoostService foregroundBoostService,
         PipeServer pipeServer,
         ForegroundPipeServer foregroundPipeServer,
@@ -60,12 +60,12 @@ public class EngineWorker : BackgroundService
     {
         _logger = logger;
         _processMonitor = processMonitor;
-        _proBalanceEngine = proBalanceEngine;
+        _responsivenessGuardEngine = responsivenessGuardEngine;
         _cpuLimiter = cpuLimiter;
-        _smartTrimService = smartTrimService;
+        _memoryTrimService = memoryTrimService;
         _powerManager = powerManager;
         _watchdogService = watchdogService;
-        _processGovernor = processGovernor;
+        _processOrchestrator = processOrchestrator;
         _foregroundBoostService = foregroundBoostService;
         _pipeServer = pipeServer;
         _foregroundPipeServer = foregroundPipeServer;
@@ -91,11 +91,11 @@ public class EngineWorker : BackgroundService
         if (new Win32MemoryOperations().EnablePrivilege(IncreaseBasePriorityPrivilege) is { } privilegeProblem)
             _logger.LogWarning("High I/O priority and Realtime priority won't work: {Problem}", privilegeProblem);
 
-        // Before ProBalance can restrain anything: core parking values a crashed run left changed go back first.
+        // Before Responsiveness Guard can restrain anything: core parking values a crashed run left changed go back first.
         if (_coreParking != null)
         {
             _coreParking.RecoverFromLastRun();
-            _proBalanceEngine.RestraintsUpdated += _coreParking.Update;
+            _responsivenessGuardEngine.RestraintsUpdated += _coreParking.Update;
         }
 
         // Before the services start, so they come up with the user's settings rather than their defaults.
@@ -108,14 +108,14 @@ public class EngineWorker : BackgroundService
         // Then the agents that report to it, one per user session, so the reports don't depend on the UI being open.
         _sessionAgents?.Start();
         await _processMonitor.StartAsync(stoppingToken);
-        await _proBalanceEngine.StartAsync(stoppingToken);
+        await _responsivenessGuardEngine.StartAsync(stoppingToken);
         await _cpuLimiter.StartAsync(stoppingToken);
         await _cpuAffinityLimiter.StartAsync(stoppingToken);
-        await _smartTrimService.StartAsync(stoppingToken);
+        await _memoryTrimService.StartAsync(stoppingToken);
         await _powerManager.StartAsync(stoppingToken);
         _autoPerformanceMode.Start();
         await _watchdogService.StartAsync(stoppingToken);
-        await _processGovernor.StartAsync(stoppingToken);
+        await _processOrchestrator.StartAsync(stoppingToken);
         _foregroundBoostService.Start();
 
         _pipeServer.Start();
@@ -148,14 +148,14 @@ public class EngineWorker : BackgroundService
         StopStep("foreground pipe server", _foregroundPipeServer.Stop);
         StopStep("Foreground Boost", _foregroundBoostService.Stop);
 
-        await StopStepAsync("Process Governor", () => _processGovernor.StopAsync(stoppingToken));
+        await StopStepAsync("Process Orchestrator", () => _processOrchestrator.StopAsync(stoppingToken));
         await StopStepAsync("Watchdog", () => _watchdogService.StopAsync(stoppingToken));
         StopStep("automatic Performance Mode", _autoPerformanceMode.Stop);
         await StopStepAsync("Power Manager", () => _powerManager.StopAsync(stoppingToken));
-        await StopStepAsync("SmartTrim", () => _smartTrimService.StopAsync(stoppingToken));
+        await StopStepAsync("Memory Trim", () => _memoryTrimService.StopAsync(stoppingToken));
         await StopStepAsync("CPU Limiter (affinity)", () => _cpuAffinityLimiter.StopAsync(stoppingToken));
         await StopStepAsync("CPU Limiter", () => _cpuLimiter.StopAsync(stoppingToken));
-        await StopStepAsync("ProBalance", () => _proBalanceEngine.StopAsync(stoppingToken));
+        await StopStepAsync("Responsiveness Guard", () => _responsivenessGuardEngine.StopAsync(stoppingToken));
         StopStep("core parking", () => _coreParking?.Stop());
         await StopStepAsync("Process Monitor", () => _processMonitor.StopAsync(stoppingToken));
         StopStep("timer resolution", () => _timerResolution?.Release());

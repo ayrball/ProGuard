@@ -6,7 +6,7 @@ using ProGuard.Engine.Services;
 namespace ProGuard.Tests;
 
 /// <summary>
-/// PowerManager's crash recovery: whichever feature switched away from the user's plan (IdleSaver, Performance Mode or
+/// PowerManager's crash recovery: whichever feature switched away from the user's plan (Away Mode, Performance Mode or
 /// the load switcher), the user's plan is recorded before the switch, so if the engine dies holding it the next start
 /// restores it, unless a start-with plan is configured or the plan was changed since. A clean stop restores it and
 /// leaves no record. Plans, idle time, CPU load and the clock are fakes; the record is kept in memory, except in the
@@ -52,7 +52,7 @@ public class PowerPlanRecoveryTests
     public PowerPlanRecoveryTests()
     {
         _power = NewEngineRun();
-        _power.ConfigureIdleSaver(true, IdleMinutes, Powrprof.PowerSaver);
+        _power.ConfigureAwayMode(true, IdleMinutes, Powrprof.PowerSaver);
     }
 
     /// <summary>A PowerManager as a fresh engine process would create it: same machine, same recovery store.</summary>
@@ -93,7 +93,7 @@ public class PowerPlanRecoveryTests
     // ---------- a crash while each feature holds the plan ----------
 
     [Fact]
-    public async Task CrashDuringIdleSaver_NextStartRestoresTheUsersPlan()
+    public async Task CrashDuringAwayMode_NextStartRestoresTheUsersPlan()
     {
         Away();
         Assert.Equal(new PendingPlanRestore(Powrprof.PowerSaver, Balanced), _recovery.Pending);

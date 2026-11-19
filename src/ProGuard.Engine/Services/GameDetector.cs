@@ -8,16 +8,16 @@ using ProGuard.Core.Models;
 
 namespace ProGuard.Engine.Services;
 
-/// <summary>Settings of automatic Performance Mode (Process Lasso's [GamingMode]).</summary>
+/// <summary>Settings of automatic Performance Mode.</summary>
 public sealed record AutoPerformanceModeOptions
 {
-    /// <summary>Processes that turn Performance Mode on while they run (AutomaticGamingModeProcessPaths).</summary>
+    /// <summary>Processes that turn Performance Mode on while they run.</summary>
     public IReadOnlyList<string> Processes { get; init; } = Array.Empty<string>();
-    /// <summary>Processes that never do (AutomaticGamingModeUserExclusions).</summary>
+    /// <summary>Processes that never do.</summary>
     public IReadOnlyList<string> Exclusions { get; init; } = Array.Empty<string>();
     /// <summary>Detect games by their install path.</summary>
     public bool DetectGames { get; init; }
-    /// <summary>Games in the Steam libraries turn it on (GamingModeEngageForSteam).</summary>
+    /// <summary>Games in the Steam libraries turn it on.</summary>
     public bool EngageForSteam { get; init; }
 
     public bool AnyEnabled => Processes.Count > 0 || DetectGames || EngageForSteam;
@@ -83,12 +83,12 @@ public static class ProcessPattern
 
 /// <summary>
 /// Decides whether a running process should turn Performance Mode on, and why: the user's list, the Steam libraries
-/// (<see cref="SteamLibraryIndex"/>), or the install-path heuristics Process Lasso uses for game launchers. The user's
+/// (<see cref="SteamLibraryIndex"/>), or install-path heuristics for game launchers. The user's
 /// exclusions win over all of them.
 /// </summary>
 public sealed class GameDetector
 {
-    /// <summary>Install folders that only hold games (Process Lasso's heuristics), as lower-case path fragments.</summary>
+    /// <summary>Install folders that only hold games, as lower-case path fragments.</summary>
     internal static readonly string[] GamePathMarkers =
     {
         @"\steamapps\common\",
@@ -166,7 +166,7 @@ public sealed class GameDetector
         return null;
     }
 
-    /// <summary>Whether the path is in a launcher's game folder (Process Lasso's heuristics).</summary>
+    /// <summary>Whether the path is in a launcher's game folder.</summary>
     public static bool LooksLikeGame(string? path)
     {
         if (string.IsNullOrEmpty(path)) return false;

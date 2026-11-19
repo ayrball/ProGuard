@@ -9,12 +9,12 @@ public interface IPowerManager
     Guid GetActivePlan();
     /// <summary>
     /// The user's own choice of plan. It is applied now and becomes the plan to return to. A feature that currently
-    /// holds the plan (Performance Mode, IdleSaver, the load switcher) does not take it back or restore over it; its
+    /// holds the plan (Performance Mode, Away Mode, the load switcher) does not take it back or restore over it; its
     /// next decision applies as usual. Callers check <see cref="GetActivePlan"/> afterwards to see whether Windows accepted it.
     /// </summary>
     void SetActivePlan(Guid planId);
     void EnablePerformanceMode(bool enable);
-    void ConfigureIdleSaver(bool enable, int timeoutMinutes, Guid idlePlanId);
+    void ConfigureAwayMode(bool enable, int timeoutMinutes, Guid idlePlanId);
 
     /// <summary>Whether Performance Mode is on, manually or automatically.</summary>
     bool IsPerformanceModeActive { get; }
@@ -23,7 +23,7 @@ public interface IPowerManager
     bool IsPerformanceModeAutomatic { get; }
 
     /// <summary>
-    /// Who set the active plan: "User", "PerformanceMode", "IdleSaver", "LoadSwitcher" or "StartWith". A feature that
+    /// Who set the active plan: "User", "PerformanceMode", "AwayMode", "LoadSwitcher" or "StartWith". A feature that
     /// holds the plan loses it to a plan the user picks (<see cref="SetActivePlan"/>), after which this says "User".
     /// </summary>
     string PlanOwnerName { get; }

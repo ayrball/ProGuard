@@ -10,7 +10,7 @@ namespace ProGuard.Engine.Services;
 public class ForegroundBoostService : IDisposable
 {
     private readonly ILogger<ForegroundBoostService> _logger;
-    private readonly IProBalanceEngine _proBalance;
+    private readonly IResponsivenessGuardEngine _responsivenessGuard;
     private readonly IForegroundTracker _foreground;
     private Timer? _timer;
     private int _lastBoostedPid;
@@ -33,10 +33,10 @@ public class ForegroundBoostService : IDisposable
     /// <summary>The process boosted to Above Normal right now, or 0.</summary>
     public int BoostedPid => Volatile.Read(ref _lastBoostedPid);
 
-    public ForegroundBoostService(ILogger<ForegroundBoostService> logger, IProBalanceEngine proBalance, IForegroundTracker foreground)
+    public ForegroundBoostService(ILogger<ForegroundBoostService> logger, IResponsivenessGuardEngine responsivenessGuard, IForegroundTracker foreground)
     {
         _logger = logger;
-        _proBalance = proBalance;
+        _responsivenessGuard = responsivenessGuard;
         _foreground = foreground;
     }
 
@@ -77,9 +77,9 @@ public class ForegroundBoostService : IDisposable
                     return;
                 }
 
-                // ProBalance may be holding it at BelowNormal: end that first so we boost from its real priority
-                // and ProBalance doesn't later mistake our boost for a user change.
-                if (_proBalance.ReleaseRestraint(currentPid)) p.Refresh();
+                // Responsiveness Guard may be holding it at BelowNormal: end that first so we boost from its real priority
+                // and Responsiveness Guard doesn't later mistake our boost for a user change.
+                if (_responsivenessGuard.ReleaseRestraint(currentPid)) p.Refresh();
 
                 var currentPriority = p.PriorityClass;
                 if (currentPriority == ProcessPriorityClass.Normal)

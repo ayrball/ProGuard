@@ -44,9 +44,9 @@ public class CommandPipeSecurityTests
     private sealed class Harness
     {
         public Mock<IRuleStore> RuleStore { get; } = new();
-        public Mock<IProBalanceEngine> ProBalance { get; } = new();
+        public Mock<IResponsivenessGuardEngine> ResponsivenessGuard { get; } = new();
         public Mock<IPowerManager> Power { get; } = new();
-        public Mock<ISmartTrimService> SmartTrim { get; } = new();
+        public Mock<IMemoryTrimService> MemoryTrim { get; } = new();
         public Mock<ICpuLimiter> CpuLimiter { get; } = new();
         public Mock<IProcessController> Processes { get; } = new();
         public Mock<IProcessMonitor> Monitor { get; } = new();
@@ -60,9 +60,9 @@ public class CommandPipeSecurityTests
             RuleStore.Setup(s => s.GetProcessRules()).Returns(Array.Empty<ProcessRule>());
             Monitor.Setup(m => m.GetAllProcesses()).Returns(Array.Empty<ProcessInfo>());
 
-            var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, Monitor.Object, SmartTrim.Object, Power.Object, ProBalance.Object);
-            Dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, RuleStore.Object, applier, ProBalance.Object,
-                Power.Object, SmartTrim.Object, CpuLimiter.Object, Processes.Object, Monitor.Object);
+            var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, Monitor.Object, MemoryTrim.Object, Power.Object, ResponsivenessGuard.Object);
+            Dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, RuleStore.Object, applier, ResponsivenessGuard.Object,
+                Power.Object, MemoryTrim.Object, CpuLimiter.Object, Processes.Object, Monitor.Object);
         }
 
         public IpcMessage Send(IIpcCaller caller, CommandMessage request) => Dispatcher.Dispatch(request, caller);
@@ -76,7 +76,7 @@ public class CommandPipeSecurityTests
 
         /// <summary>Whether anything was asked to act on a process.</summary>
         public bool ProcessesTouched =>
-            Processes.Invocations.Count + CpuLimiter.Invocations.Count + SmartTrim.Invocations.Count(i => i.Method.Name == nameof(ISmartTrimService.TrimProcess)) > 0;
+            Processes.Invocations.Count + CpuLimiter.Invocations.Count + MemoryTrim.Invocations.Count(i => i.Method.Name == nameof(IMemoryTrimService.TrimProcess)) > 0;
     }
 
     private const int Pid = 4321;
@@ -135,11 +135,11 @@ public class CommandPipeSecurityTests
 
     public static IEnumerable<object?[]> UnrestrictedCommands() => new[]
     {
-        new object?[] { CommandTypes.EnableProBalance, null },
-        new object?[] { CommandTypes.DisableProBalance, null },
+        new object?[] { CommandTypes.EnableResponsivenessGuard, null },
+        new object?[] { CommandTypes.DisableResponsivenessGuard, null },
         new object?[] { CommandTypes.SetSensitivity, "3" },
-        new object?[] { CommandTypes.ConfigureIdleSaver, JsonSerializer.Serialize(new IdleSaverArgument { Enabled = true, TimeoutMinutes = 5 }) },
-        new object?[] { CommandTypes.ConfigureSmartTrim, JsonSerializer.Serialize(new SmartTrimArgument { Enabled = true }) },
+        new object?[] { CommandTypes.ConfigureAwayMode, JsonSerializer.Serialize(new AwayModeArgument { Enabled = true, TimeoutMinutes = 5 }) },
+        new object?[] { CommandTypes.ConfigureMemoryTrim, JsonSerializer.Serialize(new MemoryTrimArgument { Enabled = true }) },
         new object?[] { CommandTypes.EnablePerformanceMode, null },
         new object?[] { CommandTypes.DisablePerformanceMode, null },
         new object?[] { CommandTypes.TrimWorkingSet, null },
@@ -167,9 +167,9 @@ public class CommandPipeSecurityTests
         Assert.Equal(MessageType.Pong, h.Send(caller, new CommandMessage { Type = MessageType.Ping }).Type);
         Assert.Equal(MessageType.Status, h.Send(caller, new CommandMessage { Type = MessageType.GetStatus }).Type);
 
-        var reply = h.Send(caller, new CommandMessage { Type = MessageType.SetSetting, Payload = JsonSerializer.Serialize(new AppSettings { ProBalanceSensitivity = 7 }) });
+        var reply = h.Send(caller, new CommandMessage { Type = MessageType.SetSetting, Payload = JsonSerializer.Serialize(new AppSettings { ResponsivenessGuardSensitivity = 7 }) });
         Assert.True(JsonSerializer.Deserialize<CommandResult>(reply.Payload)!.Success);
-        Assert.Equal(7, h.Stored.ProBalanceSensitivity);
+        Assert.Equal(7, h.Stored.ResponsivenessGuardSensitivity);
     }
 
     public static IEnumerable<object?[]> ProcessCommands() => new[]
@@ -331,7 +331,7 @@ public class CommandPipeSecurityTests
             WindowStyle = ProcessWindowStyle.Hidden
         };
         var p = Process.Start(psi)!;
-        // A child inherits BelowNormal/Idle from its parent, and Process Lasso may have restrained this test host.
+        // A child inherits BelowNormal/Idle from its parent, and a process manager may have restrained this test host.
         p.PriorityClass = ProcessPriorityClass.Normal;
         return p;
     }

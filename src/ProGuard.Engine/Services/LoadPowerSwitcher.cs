@@ -5,9 +5,9 @@ using ProGuard.Core.Services;
 namespace ProGuard.Engine.Services;
 
 /// <summary>
-/// The decision half of Process Lasso's load-based power switcher: feed it one system CPU sample at a time and it
+/// The decision half of the load-based power switcher: feed it one system CPU sample at a time and it
 /// says which plan the load calls for. It never touches the power plan itself; <see cref="PowerManager"/> decides
-/// whether a higher-precedence feature (Performance Mode, IdleSaver) wins. Time comes from the caller, so tests drive
+/// whether a higher-precedence feature (Performance Mode, Away Mode) wins. Time comes from the caller, so tests drive
 /// it with a fake clock.
 /// <list type="bullet">
 /// <item>The load is the average of the last <see cref="LoadSwitcherOptions.AveragingWindowSamples"/> samples; no

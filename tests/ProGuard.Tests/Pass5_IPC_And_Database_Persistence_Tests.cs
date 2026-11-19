@@ -36,7 +36,7 @@ public class Pass5_IPC_And_Database_Persistence_Tests
             AffinityMask = 0b11110000,
             CpuLimitPercent = 75.0,
             DisallowExecution = false,
-            ExcludeFromProBalance = true
+            ExcludeFromResponsivenessGuard = true
         };
 
         db.ProcessRules.Add(rule);
@@ -61,8 +61,8 @@ public class Pass5_IPC_And_Database_Persistence_Tests
         await db.SaveChangesAsync();
         Assert.True(wdRule.Id > 0);
 
-        // 3. ProBalanceAction Logging
-        var action = new ProBalanceAction
+        // 3. ResponsivenessGuardAction Logging
+        var action = new ResponsivenessGuardAction
         {
             Timestamp = DateTime.UtcNow,
             ProcessName = "heavy.exe",
@@ -73,11 +73,11 @@ public class Pass5_IPC_And_Database_Persistence_Tests
             IsRestored = false
         };
 
-        db.ProBalanceActions.Add(action);
+        db.ResponsivenessGuardActions.Add(action);
         await db.SaveChangesAsync();
         Assert.True(action.Id > 0);
 
-        var actions = await db.ProBalanceActions.Where(a => a.ProcessName == "heavy.exe").ToListAsync();
+        var actions = await db.ResponsivenessGuardActions.Where(a => a.ProcessName == "heavy.exe").ToListAsync();
         Assert.NotEmpty(actions);
 
         // Cleanup
@@ -111,7 +111,7 @@ public class Pass5_IPC_And_Database_Persistence_Tests
         var status = new EngineStatus
         {
             IsRunning = true,
-            ProBalanceEngaged = false,
+            ResponsivenessGuardEngaged = false,
             ActiveInterventions = 0,
             CpuPercent = 14.5,
             RamPercent = 45.2,

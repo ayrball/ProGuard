@@ -42,12 +42,12 @@ public class SchemaUpgraderTests : IDisposable
     public void AddsMissingColumns_WithDefaults_AndKeepsExistingRows()
     {
         // A ProcessRules table from before most of the rule columns existed, and a Settings table that only
-        // knew about ProBalanceEnabled (stored as false, so we can tell it was not overwritten).
+        // knew about ResponsivenessGuardEnabled (stored as false, so we can tell it was not overwritten).
         Exec("""
             CREATE TABLE "ProcessRules" ("Id" INTEGER NOT NULL CONSTRAINT "PK_ProcessRules" PRIMARY KEY AUTOINCREMENT, "ProcessName" TEXT NOT NULL);
             INSERT INTO "ProcessRules" ("ProcessName") VALUES ('game.exe');
-            CREATE TABLE "Settings" ("Id" INTEGER NOT NULL CONSTRAINT "PK_Settings" PRIMARY KEY AUTOINCREMENT, "ProBalanceEnabled" INTEGER NOT NULL);
-            INSERT INTO "Settings" ("Id", "ProBalanceEnabled") VALUES (1, 0);
+            CREATE TABLE "Settings" ("Id" INTEGER NOT NULL CONSTRAINT "PK_Settings" PRIMARY KEY AUTOINCREMENT, "ResponsivenessGuardEnabled" INTEGER NOT NULL);
+            INSERT INTO "Settings" ("Id", "ResponsivenessGuardEnabled") VALUES (1, 0);
             """);
 
         using (var db = new FileDbContext(_path)) db.EnsureSchema();
@@ -61,14 +61,14 @@ public class SchemaUpgraderTests : IDisposable
         Assert.Equal(modelColumns.OrderBy(n => n), ruleColumns.Keys.OrderBy(n => n));
         Assert.Equal(("INTEGER", true, null), ruleColumns["PriorityClass"]);
         Assert.Equal(("TEXT", true, null), ruleColumns["PowerProfileGuid"]);
-        Assert.Equal(("INTEGER", false, "0"), ruleColumns["ExcludeFromProBalance"]);
+        Assert.Equal(("INTEGER", false, "0"), ruleColumns["ExcludeFromResponsivenessGuard"]);
 
         var settingsColumns = Columns("Settings");
         // Non-null columns get the value a new AppSettings would have, which is what a fresh database's seed row gets.
-        Assert.Equal(("INTEGER", false, "5"), settingsColumns["ProBalanceSensitivity"]);
+        Assert.Equal(("INTEGER", false, "5"), settingsColumns["ResponsivenessGuardSensitivity"]);
         Assert.Equal(("INTEGER", false, "1"), settingsColumns["StartWithWindows"]);
         Assert.Equal(("TEXT", false, "'System'"), settingsColumns["Theme"]);
-        Assert.Equal(("INTEGER", false, "0"), settingsColumns["SmartTrimEnabled"]);
+        Assert.Equal(("INTEGER", false, "0"), settingsColumns["MemoryTrimEnabled"]);
         Assert.Equal(("TEXT", true, null), settingsColumns["IdlePowerPlanGuid"]);
 
         using (var db = new FileDbContext(_path))
@@ -76,17 +76,17 @@ public class SchemaUpgraderTests : IDisposable
             var rule = db.ProcessRules.Single();
             Assert.Equal("game.exe", rule.ProcessName);
             Assert.Null(rule.PriorityClass);
-            Assert.False(rule.ExcludeFromProBalance);
+            Assert.False(rule.ExcludeFromResponsivenessGuard);
 
             var settings = db.Settings.Single();
             Assert.Equal(1, settings.Id);
-            Assert.False(settings.ProBalanceEnabled); // existing value untouched
+            Assert.False(settings.ResponsivenessGuardEnabled); // existing value untouched
             // Added columns take whatever a new AppSettings defaults to, so feature branches can change defaults.
             var defaults = new AppSettings();
-            Assert.Equal(defaults.ProBalanceSensitivity, settings.ProBalanceSensitivity);
-            Assert.Equal(defaults.ProBalanceCpuThreshold, settings.ProBalanceCpuThreshold);
-            Assert.Equal(defaults.SmartTrimIntervalSeconds, settings.SmartTrimIntervalSeconds);
-            Assert.Equal(defaults.SmartTrimMemoryThresholdMB, settings.SmartTrimMemoryThresholdMB);
+            Assert.Equal(defaults.ResponsivenessGuardSensitivity, settings.ResponsivenessGuardSensitivity);
+            Assert.Equal(defaults.ResponsivenessGuardCpuThreshold, settings.ResponsivenessGuardCpuThreshold);
+            Assert.Equal(defaults.MemoryTrimIntervalSeconds, settings.MemoryTrimIntervalSeconds);
+            Assert.Equal(defaults.MemoryTrimMemoryThresholdMB, settings.MemoryTrimMemoryThresholdMB);
             Assert.Equal(defaults.MinimizeToTray, settings.MinimizeToTray);
             Assert.Equal("System", settings.Theme);
             Assert.Null(settings.IdlePowerPlanGuid);
@@ -111,7 +111,7 @@ public class SchemaUpgraderTests : IDisposable
         var tables = Names("SELECT name FROM sqlite_master WHERE type = 'table'");
         Assert.Contains("WatchdogRules", tables);
         Assert.Contains("PowerProfiles", tables);
-        Assert.Contains("ProBalanceActions", tables);
+        Assert.Contains("ResponsivenessGuardActions", tables);
         Assert.Contains("Settings", tables);
 
         using var check = new FileDbContext(_path);
@@ -119,7 +119,7 @@ public class SchemaUpgraderTests : IDisposable
         // The Settings seed row a fresh database gets is inserted into a newly created Settings table too.
         var settings = check.Settings.Single();
         Assert.Equal(1, settings.Id);
-        Assert.True(settings.ProBalanceEnabled);
+        Assert.True(settings.ResponsivenessGuardEnabled);
 
         check.WatchdogRules.Add(new WatchdogRule { TargetProcessName = "leak.exe", ThresholdValue = 10 });
         check.SaveChanges();
@@ -182,8 +182,8 @@ public class SchemaUpgraderTests : IDisposable
         Exec("""
             CREATE TABLE "ProcessRules" ("Id" INTEGER NOT NULL CONSTRAINT "PK_ProcessRules" PRIMARY KEY AUTOINCREMENT, "ProcessName" TEXT NOT NULL);
             INSERT INTO "ProcessRules" ("ProcessName") VALUES ('game.exe');
-            CREATE TABLE "Settings" ("Id" INTEGER NOT NULL CONSTRAINT "PK_Settings" PRIMARY KEY AUTOINCREMENT, "ProBalanceEnabled" INTEGER NOT NULL);
-            INSERT INTO "Settings" ("Id", "ProBalanceEnabled") VALUES (1, 0);
+            CREATE TABLE "Settings" ("Id" INTEGER NOT NULL CONSTRAINT "PK_Settings" PRIMARY KEY AUTOINCREMENT, "ResponsivenessGuardEnabled" INTEGER NOT NULL);
+            INSERT INTO "Settings" ("Id", "ResponsivenessGuardEnabled") VALUES (1, 0);
             """);
 
         // Two context types so the per-process cache can't let callers skip the work: like the engine and the
@@ -202,7 +202,7 @@ public class SchemaUpgraderTests : IDisposable
         Assert.Contains("Theme", Columns("Settings").Keys);
         using var check = new FileDbContext(_path);
         Assert.Single(check.ProcessRules);
-        Assert.False(check.Settings.Single().ProBalanceEnabled);
+        Assert.False(check.Settings.Single().ResponsivenessGuardEnabled);
         Assert.Empty(check.WatchdogRules);
     }
 

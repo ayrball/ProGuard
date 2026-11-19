@@ -1,14 +1,14 @@
 namespace ProGuard.Core.Services;
 
-public interface IProBalanceEngine
+public interface IResponsivenessGuardEngine
 {
     bool IsEngaged { get; }
     int ActiveInterventions { get; }
 
-    /// <summary>ProBalance is switched on (it may still be paused, see <see cref="IsPausedForIdle"/>).</summary>
+    /// <summary>Responsiveness Guard is switched on (it may still be paused, see <see cref="IsPausedForIdle"/>).</summary>
     bool IsEnabled { get; }
 
-    /// <summary>Paused because the user is idle (DisableProBalanceWhenSysIdle); no restraints are held meanwhile.</summary>
+    /// <summary>Paused because the user is idle; no restraints are held meanwhile.</summary>
     bool IsPausedForIdle { get; }
 
     /// <summary>Restraints started since the engine started.</summary>
@@ -20,7 +20,7 @@ public interface IProBalanceEngine
     void SetEnabled(bool enabled);
     void SetSensitivity(int level);
     /// <summary>Optional restraint actions and the idle pause. Restraints already in place keep what they applied.</summary>
-    void ConfigureRestraint(ProBalanceRestraintOptions options);
+    void ConfigureRestraint(ResponsivenessGuardRestraintOptions options);
     void ExcludeProcess(string name);
     void RemoveExclusion(string name);
 

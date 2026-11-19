@@ -203,7 +203,7 @@ public sealed partial class StandInMachine
             {
                 if (cmd.TargetPid == null)
                 {
-                    var eligible = _processes.Select(s => s.Process).Where(p => p.WorkingSetBytes >= _settings.SmartTrimMemoryThresholdMB * 1024 * 1024).ToList();
+                    var eligible = _processes.Select(s => s.Process).Where(p => p.WorkingSetBytes >= _settings.MemoryTrimMemoryThresholdMB * 1024 * 1024).ToList();
                     long freed = eligible.Sum(p => p.WorkingSetBytes * 35 / 100);
                     Mutate(() => eligible.ForEach(p => p.WorkingSetBytes -= p.WorkingSetBytes * 35 / 100));
                     Log(ActivityKind.Manual, null, $"Trimmed {eligible.Count} processes.");
@@ -248,37 +248,37 @@ public sealed partial class StandInMachine
             }
 
             // ---- settings that change engine behaviour
-            case CommandTypes.EnableProBalance:
-            case CommandTypes.DisableProBalance:
-                Mutate(() => _settings.ProBalanceEnabled = cmd.CommandType == CommandTypes.EnableProBalance);
+            case CommandTypes.EnableResponsivenessGuard:
+            case CommandTypes.DisableResponsivenessGuard:
+                Mutate(() => _settings.ResponsivenessGuardEnabled = cmd.CommandType == CommandTypes.EnableResponsivenessGuard);
                 return CommandResult.Ok();
             case CommandTypes.SetSensitivity:
             {
                 if (!int.TryParse(cmd.Argument, NumberStyles.Integer, CultureInfo.InvariantCulture, out var level) || level is < 1 or > 10)
                     return CommandResult.Fail("Sensitivity must be between 1 and 10");
-                Mutate(() => _settings.ProBalanceSensitivity = level);
+                Mutate(() => _settings.ResponsivenessGuardSensitivity = level);
                 return CommandResult.Ok();
             }
-            case CommandTypes.ConfigureIdleSaver:
+            case CommandTypes.ConfigureAwayMode:
             {
-                var arg = Argument<IdleSaverArgument>(cmd);
+                var arg = Argument<AwayModeArgument>(cmd);
                 if (arg.PlanGuid != null && !Guid.TryParse(arg.PlanGuid, out _)) return CommandResult.Fail("Invalid power plan GUID");
                 Mutate(() =>
                 {
-                    _settings.IdleSaverEnabled = arg.Enabled;
+                    _settings.AwayModeEnabled = arg.Enabled;
                     _settings.IdleTimeoutMinutes = arg.TimeoutMinutes;
                     _settings.IdlePowerPlanGuid = arg.PlanGuid;
                 });
                 return CommandResult.Ok();
             }
-            case CommandTypes.ConfigureSmartTrim:
+            case CommandTypes.ConfigureMemoryTrim:
             {
-                var arg = Argument<SmartTrimArgument>(cmd);
+                var arg = Argument<MemoryTrimArgument>(cmd);
                 Mutate(() =>
                 {
-                    _settings.SmartTrimEnabled = arg.Enabled;
-                    _settings.SmartTrimIntervalSeconds = arg.IntervalSeconds;
-                    _settings.SmartTrimMemoryThresholdMB = arg.ThresholdMb;
+                    _settings.MemoryTrimEnabled = arg.Enabled;
+                    _settings.MemoryTrimIntervalSeconds = arg.IntervalSeconds;
+                    _settings.MemoryTrimMemoryThresholdMB = arg.ThresholdMb;
                 });
                 return CommandResult.Ok();
             }
@@ -308,9 +308,9 @@ public sealed partial class StandInMachine
                 var settings = Argument<EngineSettingsDto>(cmd);
                 if (!_admin && settings.SetTimerResolutionAtStartup != _settings.SetTimerResolutionAtStartup)
                     return Deny("change the system timer resolution");
-                if (!_admin && settings.ProBalanceDisableCoreParking != _settings.ProBalanceDisableCoreParking)
-                    return Deny("change whether ProBalance unparks cores (it edits the power plan)");
-                if (settings.ProBalanceSensitivity is < 1 or > 10) return CommandResult.Fail("Sensitivity must be between 1 and 10");
+                if (!_admin && settings.ResponsivenessGuardDisableCoreParking != _settings.ResponsivenessGuardDisableCoreParking)
+                    return Deny("change whether Responsiveness Guard unparks cores (it edits the power plan)");
+                if (settings.ResponsivenessGuardSensitivity is < 1 or > 10) return CommandResult.Fail("Sensitivity must be between 1 and 10");
                 if (settings.PollingIntervalMs < 100) return CommandResult.Fail("The polling interval must be at least 100 ms.");
                 Mutate(() => _settings = settings);
                 Log(ActivityKind.System, null, "Settings saved.");
@@ -457,10 +457,10 @@ public sealed partial class StandInMachine
             TotalMemoryBytes = StandInData.TotalMemoryBytes,
             AvailableMemoryBytes = (long)(StandInData.TotalMemoryBytes * (1 - memory / 100)),
             LogicalProcessors = StandInData.Logical,
-            ProBalanceEnabled = _settings.ProBalanceEnabled,
-            ProBalancePaused = false,
-            ProBalanceRestrained = _processes.Count(s => s.Process.IsRestrained),
-            ProBalanceRestraintsTotal = 41 + _processes.Count(s => s.Process.IsRestrained),
+            ResponsivenessGuardEnabled = _settings.ResponsivenessGuardEnabled,
+            ResponsivenessGuardPaused = false,
+            ResponsivenessGuardRestrained = _processes.Count(s => s.Process.IsRestrained),
+            ResponsivenessGuardRestraintsTotal = 41 + _processes.Count(s => s.Process.IsRestrained),
             ForegroundBoostEnabled = _settings.ForegroundBoostEnabled,
             ForegroundPid = _foreground,
             PerformanceModeActive = _performanceMode,

@@ -12,18 +12,18 @@ namespace ProGuard.Engine.Services;
 /// <summary>
 /// Master orchestrator - coordinates all services and applies persistent rules.
 /// </summary>
-public class ProcessGovernor : IProcessGovernor
+public class ProcessOrchestrator : IProcessOrchestrator
 {
-    private readonly ILogger<ProcessGovernor> _logger;
+    private readonly ILogger<ProcessOrchestrator> _logger;
     private readonly InstanceLimiter? _instanceLimiter;
-    private readonly InstanceBalancer? _instanceBalancer;
+    private readonly InstanceSpread? _instanceSpread;
     private readonly StartupBoostService? _startupBoost;
     private bool _isRunning;
 
     public IProcessMonitor Monitor { get; }
-    public IProBalanceEngine ProBalance { get; }
+    public IResponsivenessGuardEngine ResponsivenessGuard { get; }
     public ICpuLimiter CpuLimiter { get; }
-    public ISmartTrimService SmartTrim { get; }
+    public IMemoryTrimService MemoryTrim { get; }
     public IPowerManager PowerManager { get; }
     public IWatchdogService Watchdog { get; }
     public IRuleStore RuleStore { get; }
@@ -31,30 +31,30 @@ public class ProcessGovernor : IProcessGovernor
     public PersistentRuleService? PersistentRules { get; }
     public bool IsRunning => _isRunning;
 
-    public ProcessGovernor(
-        ILogger<ProcessGovernor> logger,
+    public ProcessOrchestrator(
+        ILogger<ProcessOrchestrator> logger,
         IProcessMonitor processMonitor,
-        IProBalanceEngine proBalance,
+        IResponsivenessGuardEngine responsivenessGuard,
         ICpuLimiter cpuLimiter,
-        ISmartTrimService smartTrim,
+        IMemoryTrimService memoryTrim,
         IPowerManager powerManager,
         IWatchdogService watchdog,
         IRuleStore ruleStore,
         InstanceLimiter? instanceLimiter = null,
-        InstanceBalancer? instanceBalancer = null,
+        InstanceSpread? instanceSpread = null,
         StartupBoostService? startupBoost = null,
         PersistentRuleService? persistentRules = null)
     {
         _logger = logger;
         Monitor = processMonitor;
-        ProBalance = proBalance;
+        ResponsivenessGuard = responsivenessGuard;
         CpuLimiter = cpuLimiter;
-        SmartTrim = smartTrim;
+        MemoryTrim = memoryTrim;
         PowerManager = powerManager;
         Watchdog = watchdog;
         RuleStore = ruleStore;
         _instanceLimiter = instanceLimiter;
-        _instanceBalancer = instanceBalancer;
+        _instanceSpread = instanceSpread;
         _startupBoost = startupBoost;
 
         PersistentRules = persistentRules;
@@ -67,10 +67,10 @@ public class ProcessGovernor : IProcessGovernor
     {
         _isRunning = true;
         _startupBoost?.Start();
-        _instanceBalancer?.Start();
+        _instanceSpread?.Start();
 
         PersistentRules?.Start();
-        _logger.LogInformation("Process Governor started");
+        _logger.LogInformation("Process Orchestrator started");
     }
 
     public void Stop()
@@ -80,8 +80,8 @@ public class ProcessGovernor : IProcessGovernor
         Monitor.ProcessStarted -= OnProcessStarted;
         Monitor.ProcessExited -= OnProcessExited;
         _startupBoost?.Stop();
-        _instanceBalancer?.Stop();
-        _logger.LogInformation("Process Governor stopped");
+        _instanceSpread?.Stop();
+        _logger.LogInformation("Process Orchestrator stopped");
     }
 
     // Release the per-process job object (and its handle) once the limited process is gone.
@@ -90,7 +90,7 @@ public class ProcessGovernor : IProcessGovernor
         CpuLimiter.RemoveLimit(pid);
         _instanceLimiter?.OnProcessExited(pid);
         _startupBoost?.OnProcessExited(pid);
-        _instanceBalancer?.OnProcessExited(pid); // re-splits the cores among the remaining instances
+        _instanceSpread?.OnProcessExited(pid); // re-splits the cores among the remaining instances
 
         PersistentRules?.Forget(pid);
     }
@@ -141,8 +141,8 @@ public class ProcessGovernor : IProcessGovernor
         // Separate from the block above so a priority/affinity failure doesn't skip these. Logs and never throws.
         PersistentRules?.Apply(rule, new ProcessTarget(e.Pid, e.Name, e.FilePath));
 
-        // After the rule's priority and affinity, so those are what the boost and the balancer restore.
+        // After the rule's priority and affinity, so those are what the boost and Instance Spread restore.
         _startupBoost?.TryBoost(e, rule);
-        _instanceBalancer?.OnProcessStarted(e, rule);
+        _instanceSpread?.OnProcessStarted(e, rule);
     }
 }

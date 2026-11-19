@@ -10,22 +10,22 @@ using ProGuard.Core.Services;
 namespace ProGuard.Engine.Services;
 
 /// <summary>
-/// Instance Balancer (Process Lasso's InstanceManagedCPUAffinities): splits the CPU cores across the running
+/// Instance Spread: splits the CPU cores across the running
 /// instances of a process with plain affinity masks, re-splitting whenever an instance starts or exits.
 /// <para>
 /// An instance takes part once it reaches the rule's minimum CPU percent and then stays in until it exits, so
 /// usage hovering around the threshold doesn't reshuffle every instance. Instances that haven't qualified keep
-/// their own affinity. If something else changes a balanced instance's affinity, the balancer lets it go and
+/// their own affinity. If something else changes a balanced instance's affinity, the spread lets it go and
 /// splits the cores among the rest.
 /// </para>
 /// </summary>
-public sealed class InstanceBalancer : IDisposable
+public sealed class InstanceSpread : IDisposable
 {
     public const int DefaultCoresPerInstance = 1;
 
     private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(2);
 
-    private readonly ILogger<InstanceBalancer> _logger;
+    private readonly ILogger<InstanceSpread> _logger;
     private readonly IProcessMonitor _monitor;
     private readonly IRuleStore _ruleStore;
     private readonly IRuleProcessAccess _access;
@@ -48,8 +48,8 @@ public sealed class InstanceBalancer : IDisposable
         public bool Released { get; set; }
     }
 
-    public InstanceBalancer(
-        ILogger<InstanceBalancer> logger,
+    public InstanceSpread(
+        ILogger<InstanceSpread> logger,
         IProcessMonitor monitor,
         IRuleStore ruleStore,
         IRuleProcessAccess? access = null,
@@ -84,7 +84,7 @@ public sealed class InstanceBalancer : IDisposable
 
     public void Dispose() => Stop();
 
-    /// <summary>The mask the balancer gave <paramref name="pid"/>, or null if it isn't balancing it.</summary>
+    /// <summary>The mask the spread gave <paramref name="pid"/>, or null if it isn't balancing it.</summary>
     public long? GetAppliedMask(int pid)
     {
         lock (_gate) return _members.TryGetValue(pid, out var m) && !m.Released ? m.AppliedMask : null;
@@ -92,7 +92,7 @@ public sealed class InstanceBalancer : IDisposable
 
     public void OnProcessStarted(ProcessInfo process, ProcessRule rule)
     {
-        if (rule.InstanceBalancerMode == null) return;
+        if (rule.InstanceSpreadMode == null) return;
 
         lock (_gate)
         {
@@ -108,7 +108,7 @@ public sealed class InstanceBalancer : IDisposable
             if (member.Released || !member.Included) return; // the others' share is unchanged
 
             var rule = _ruleStore.GetProcessRule(member.Key);
-            if (rule?.InstanceBalancerMode != null) Rebalance(member.Key, rule);
+            if (rule?.InstanceSpreadMode != null) Rebalance(member.Key, rule);
         }
     }
 
@@ -121,7 +121,7 @@ public sealed class InstanceBalancer : IDisposable
         lock (_gate)
         {
             var balanced = _ruleStore.GetProcessRules()
-                .Where(r => r.InstanceBalancerMode != null)
+                .Where(r => r.InstanceSpreadMode != null)
                 .Select(r => ProcessExtensions.NormalizeName(r.ProcessName))
                 .ToHashSet();
             if (balanced.Count > 0)
@@ -136,7 +136,7 @@ public sealed class InstanceBalancer : IDisposable
             foreach (var key in _members.Values.Select(m => m.Key).Distinct().ToList())
             {
                 var rule = _ruleStore.GetProcessRule(key);
-                if (rule?.InstanceBalancerMode != null)
+                if (rule?.InstanceSpreadMode != null)
                 {
                     Rebalance(key, rule);
                     continue;
@@ -156,7 +156,7 @@ public sealed class InstanceBalancer : IDisposable
     {
         // Timer-thread entry point: an exception escaping it would take the engine down.
         try { Tick(); }
-        catch (Exception ex) { _logger.LogError(ex, "Instance Balancer check failed"); }
+        catch (Exception ex) { _logger.LogError(ex, "Instance Spread check failed"); }
     }
 
     // Caller holds _gate. Returns true if the process is now a member.
@@ -181,7 +181,7 @@ public sealed class InstanceBalancer : IDisposable
     // Caller holds _gate.
     private void Rebalance(string key, ProcessRule rule)
     {
-        double minCpu = rule.InstanceBalancerMinCpuPercent ?? 0;
+        double minCpu = rule.InstanceSpreadMinCpuPercent ?? 0;
         var group = _members.Where(m => m.Value.Key == key && !m.Value.Released).ToList();
 
         foreach (var (pid, member) in group)
@@ -196,7 +196,7 @@ public sealed class InstanceBalancer : IDisposable
         {
             var current = _access.GetAffinityMask(pid);
             if (current == null || current == member.AppliedMask) continue;
-            _logger.LogInformation("Instance Balancer: affinity of {Name} ({Pid}) was changed elsewhere, no longer balancing it", member.Name, pid);
+            _logger.LogInformation("Instance Spread: affinity of {Name} ({Pid}) was changed elsewhere, no longer balancing it", member.Name, pid);
             member.Released = true;
         }
 
@@ -207,9 +207,9 @@ public sealed class InstanceBalancer : IDisposable
             .ToList();
         if (included.Count == 0) return;
 
-        var masks = PlanMasks(_topology(), rule.InstanceBalancerMode!.Value, included.Count,
-            rule.InstanceBalancerCoresPerInstance ?? DefaultCoresPerInstance,
-            rule.InstanceBalancerAvoidSmt, rule.InstanceBalancerReservedCores ?? 0);
+        var masks = PlanMasks(_topology(), rule.InstanceSpreadMode!.Value, included.Count,
+            rule.InstanceSpreadCoresPerInstance ?? DefaultCoresPerInstance,
+            rule.InstanceSpreadAvoidSmt, rule.InstanceSpreadReservedCores ?? 0);
         if (masks.Count == 0) return;
 
         for (int i = 0; i < included.Count; i++)
@@ -220,7 +220,7 @@ public sealed class InstanceBalancer : IDisposable
             if (_access.SetAffinityMask(pid, masks[i]))
             {
                 member.AppliedMask = masks[i];
-                _logger.LogInformation("Instance Balancer: {Name} ({Pid}) instance {Index} of {Count} set to affinity 0x{Mask:X}",
+                _logger.LogInformation("Instance Spread: {Name} ({Pid}) instance {Index} of {Count} set to affinity 0x{Mask:X}",
                     member.Name, pid, i + 1, included.Count, masks[i]);
             }
         }
@@ -234,7 +234,7 @@ public sealed class InstanceBalancer : IDisposable
         if (!restore) return;
 
         if (_access.GetAffinityMask(pid) == member.AppliedMask && _access.SetAffinityMask(pid, member.OriginalMask))
-            _logger.LogInformation("Instance Balancer: {Name} ({Pid}) affinity restored to 0x{Mask:X}", member.Name, pid, member.OriginalMask);
+            _logger.LogInformation("Instance Spread: {Name} ({Pid}) affinity restored to 0x{Mask:X}", member.Name, pid, member.OriginalMask);
     }
 
     /// <summary>
@@ -242,14 +242,14 @@ public sealed class InstanceBalancer : IDisposable
     /// are every logical processor, minus SMT siblings if <paramref name="avoidSmt"/>, minus the lowest
     /// <paramref name="reservedCores"/> (at least one core always stays usable).
     /// <list type="bullet">
-    /// <item><see cref="InstanceBalancerMode.EqualCoresPerInstance"/>: consecutive equal blocks, the first
+    /// <item><see cref="InstanceSpreadMode.EqualCoresPerInstance"/>: consecutive equal blocks, the first
     /// instances getting one extra core when the split is uneven; with more instances than cores, instance i
     /// gets core i mod cores.</item>
-    /// <item><see cref="InstanceBalancerMode.FixedCoresPerInstance"/>: <paramref name="coresPerInstance"/>
+    /// <item><see cref="InstanceSpreadMode.FixedCoresPerInstance"/>: <paramref name="coresPerInstance"/>
     /// consecutive cores each, wrapping round to the first core when they run out.</item>
     /// </list>
     /// </summary>
-    public static IReadOnlyList<long> PlanMasks(CpuTopology topology, InstanceBalancerMode mode, int instanceCount,
+    public static IReadOnlyList<long> PlanMasks(CpuTopology topology, InstanceSpreadMode mode, int instanceCount,
         int coresPerInstance, bool avoidSmt, int reservedCores)
     {
         if (instanceCount <= 0) return Array.Empty<long>();
@@ -261,7 +261,7 @@ public sealed class InstanceBalancer : IDisposable
         int c = cores.Count;
         var masks = new long[instanceCount];
 
-        if (mode == InstanceBalancerMode.FixedCoresPerInstance)
+        if (mode == InstanceSpreadMode.FixedCoresPerInstance)
         {
             int n = Math.Clamp(coresPerInstance, 1, c);
             for (int i = 0; i < instanceCount; i++)

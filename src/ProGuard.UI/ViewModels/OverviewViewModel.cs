@@ -33,18 +33,18 @@ public sealed partial class OverviewViewModel : ObservableObject
     [ObservableProperty] private int ruledCount;
     [ObservableProperty] private int limitedCount;
     [ObservableProperty] private string foreground = "—";
-    [ObservableProperty] private bool proBalanceEnabled;
+    [ObservableProperty] private bool responsivenessGuardEnabled;
     [ObservableProperty] private string coresText = "—";
     [ObservableProperty] private bool isElevated = true;
 
-    // Responsiveness (Process Lasso's measure of how long the CPU queue is) and the load of each logical processor.
+    // Responsiveness (a measure of how long the CPU queue is) and the load of each logical processor.
     [ObservableProperty] private double responsiveness;
     [ObservableProperty] private string responsivenessText = "—";
     [ObservableProperty] private IReadOnlyList<double> coreLoads = Array.Empty<double>();
 
-    // ProBalance in detail: armed, paused because the user is idle, or off; and how many restraints so far.
-    [ObservableProperty] private bool proBalancePaused;
-    [ObservableProperty] private string proBalanceState = "—";
+    // Responsiveness Guard in detail: armed, paused because the user is idle, or off; and how many restraints so far.
+    [ObservableProperty] private bool responsivenessGuardPaused;
+    [ObservableProperty] private string responsivenessGuardState = "—";
     [ObservableProperty] private int restraintsTotal;
     [ObservableProperty] private string restraintsText = "—";
 
@@ -67,10 +67,10 @@ public sealed partial class OverviewViewModel : ObservableObject
         ResponsivenessText = s.ResponsivenessPercent is double r ? $"{r:0}%" : "—";
         CoreLoads = s.CoreCpuPercent.ToArray();
 
-        ProBalancePaused = s.ProBalanceEnabled && s.ProBalancePaused;
-        ProBalanceState = !s.ProBalanceEnabled ? Strings.Off : s.ProBalancePaused ? Strings.Overview_PausedIdle : Strings.Armed2;
-        RestraintsTotal = s.ProBalanceRestraintsTotal;
-        RestraintsText = string.Format(Strings.Overview_Restraints, s.ProBalanceRestrained, s.ProBalanceRestraintsTotal);
+        ResponsivenessGuardPaused = s.ResponsivenessGuardEnabled && s.ResponsivenessGuardPaused;
+        ResponsivenessGuardState = !s.ResponsivenessGuardEnabled ? Strings.Off : s.ResponsivenessGuardPaused ? Strings.Overview_PausedIdle : Strings.Armed2;
+        RestraintsTotal = s.ResponsivenessGuardRestraintsTotal;
+        RestraintsText = string.Format(Strings.Overview_Restraints, s.ResponsivenessGuardRestrained, s.ResponsivenessGuardRestraintsTotal);
 
         PerformanceModeActive = s.PerformanceModeActive;
         PerformanceModeText = s.PerformanceModeActive ? Strings.On : Strings.Off;
@@ -81,10 +81,10 @@ public sealed partial class OverviewViewModel : ObservableObject
         Memory = (int)Math.Round(s.MemoryPercent);
         MemoryDetail = string.Format(Strings.Overview_MemoryOf, Fmt.Bytes(s.TotalMemoryBytes - s.AvailableMemoryBytes), Fmt.Bytes(s.TotalMemoryBytes));
         ProcessCount = s.Processes.Count;
-        RestrainedCount = s.ProBalanceRestrained;
+        RestrainedCount = s.ResponsivenessGuardRestrained;
         RuledCount = s.Processes.Count(p => p.HasRule);
         LimitedCount = s.Processes.Count(p => p.CpuLimitPercent.HasValue);
-        ProBalanceEnabled = s.ProBalanceEnabled;
+        ResponsivenessGuardEnabled = s.ResponsivenessGuardEnabled;
         CoresText = string.Format(Strings.N0Threads, s.LogicalProcessors);
         IsElevated = s.CallerIsAdministrator;
 

@@ -7,16 +7,16 @@ using ProGuard.Engine.Services.ProcessRules;
 namespace ProGuard.Tests;
 
 /// <summary>
-/// ProBalance's optional restraint actions (affinity, I/O priority, efficiency mode, priority-free restraint) and its
-/// idle pause, on the fake clock of <see cref="ProBalanceHarness"/>. With the default timing a hog first over quota at
+/// Responsiveness Guard's optional restraint actions (affinity, I/O priority, efficiency mode, priority-free restraint) and its
+/// idle pause, on the fake clock of <see cref="ResponsivenessGuardHarness"/>. With the default timing a hog first over quota at
 /// t=0 is restrained at t=1000, and can be restored from t=5200 (4200 ms minimum restraint).
 /// </summary>
-public class ProBalanceRestraintActionsTests
+public class ResponsivenessGuardRestraintActionsTests
 {
-    private static ProBalanceHarness Restrained(Action<ProBalanceHarness> configure, out ProcessInfo hog,
+    private static ResponsivenessGuardHarness Restrained(Action<ResponsivenessGuardHarness> configure, out ProcessInfo hog,
         long affinity = 0xFF, int io = 2, EfficiencyModeState eco = EfficiencyModeState.NotSet)
     {
-        var h = new ProBalanceHarness();
+        var h = new ResponsivenessGuardHarness();
         configure(h);
         hog = h.Add(100, cpu: 50, affinity: affinity, io: io, eco: eco);
         h.At(0);
@@ -25,7 +25,7 @@ public class ProBalanceRestraintActionsTests
     }
 
     /// <summary>Usage drops; restore needs both that and the minimum restraint time.</summary>
-    private static void CalmDown(ProBalanceHarness h, ProcessInfo hog)
+    private static void CalmDown(ResponsivenessGuardHarness h, ProcessInfo hog)
     {
         hog.CpuPercent = 0;
         h.At(5000);
@@ -77,7 +77,7 @@ public class ProBalanceRestraintActionsTests
     {
         using var h = Restrained(h =>
         {
-            h.Engine.ProBalanceDropOneRandomCore = true;
+            h.Engine.DropOneRandomCore = true;
             h.Engine.RestraintAffinity = 0x1;   // ignored: dropping a core takes precedence
             h.Engine.RandomIndex = count => { Assert.Equal(3, count); return index; };
         }, out var hog, affinity: 0b1011);
@@ -91,7 +91,7 @@ public class ProBalanceRestraintActionsTests
     [Fact]
     public void DropOneRandomCore_LeavesASingleCpuProcessAlone()
     {
-        using var h = Restrained(h => h.Engine.ProBalanceDropOneRandomCore = true, out _, affinity: 0x4);
+        using var h = Restrained(h => h.Engine.DropOneRandomCore = true, out _, affinity: 0x4);
 
         Assert.Equal(0x4, h.Access.Affinity[100]);
         Assert.True(h.Engine.IsEngaged);
@@ -104,7 +104,7 @@ public class ProBalanceRestraintActionsTests
     [InlineData(3)]
     public void LowerIOPriority_LowersToLow_AndRestoresTheOriginal(int original)
     {
-        using var h = Restrained(h => h.Engine.LowerIOPriorityDuringRestraint = true, out var hog, io: original);
+        using var h = Restrained(h => h.Engine.LowerIoPriority = true, out var hog, io: original);
 
         Assert.Equal(1, h.Access.Io[100]);
 
@@ -117,7 +117,7 @@ public class ProBalanceRestraintActionsTests
     [InlineData(1)]
     public void LowerIOPriority_LeavesAlreadyLowIoAlone(int original)
     {
-        using var h = Restrained(h => h.Engine.LowerIOPriorityDuringRestraint = true, out var hog, io: original);
+        using var h = Restrained(h => h.Engine.LowerIoPriority = true, out var hog, io: original);
 
         Assert.Equal(original, h.Access.Io[100]);
         CalmDown(h, hog);
@@ -153,9 +153,9 @@ public class ProBalanceRestraintActionsTests
     [Fact]
     public void DoNotLowerPriorityClass_RestrainsOnlyThroughTheOtherActions_WithTheSameTiming()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Engine.DoNotLowerPriorityClass = true;
-        h.Engine.LowerIOPriorityDuringRestraint = true;
+        h.Engine.LowerIoPriority = true;
         h.Engine.UseEfficiencyMode = true;
         var hog = h.Add(100, cpu: 50);
 
@@ -187,7 +187,7 @@ public class ProBalanceRestraintActionsTests
     [Fact]
     public void DoNotLowerPriorityClass_StillHonoursTameOnlyNormal()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Engine.DoNotLowerPriorityClass = true;
         h.Engine.UseEfficiencyMode = true;
         h.Add(100, cpu: 50, priority: ProcessPriorityClass.High);
@@ -205,10 +205,10 @@ public class ProBalanceRestraintActionsTests
         using var h = Restrained(h => { h.Engine.DoNotLowerPriorityClass = true; h.Engine.UseEfficiencyMode = true; }, out var hog);
         CalmDown(h, hog);
 
-        h.Store.Verify(s => s.LogProBalanceActionAsync(It.Is<ProBalanceAction>(a => !a.IsRestored && a.Pid == 100
+        h.Store.Verify(s => s.LogResponsivenessGuardActionAsync(It.Is<ResponsivenessGuardAction>(a => !a.IsRestored && a.Pid == 100
             && a.OriginalPriority == (int)ProcessPriorityClass.Normal && a.NewPriority == (int)ProcessPriorityClass.Normal
             && a.Reason.Contains("efficiency mode"))), Times.Once);
-        h.Store.Verify(s => s.LogProBalanceActionAsync(It.Is<ProBalanceAction>(a => a.IsRestored && a.Pid == 100)), Times.Once);
+        h.Store.Verify(s => s.LogResponsivenessGuardActionAsync(It.Is<ResponsivenessGuardAction>(a => a.IsRestored && a.Pid == 100)), Times.Once);
     }
 
     // ---------- Changes made by someone else ----------
@@ -220,7 +220,7 @@ public class ProBalanceRestraintActionsTests
         {
             h.Engine.RestrainByAffinity = true;
             h.Engine.RestraintAffinity = 0x0F;
-            h.Engine.LowerIOPriorityDuringRestraint = true;
+            h.Engine.LowerIoPriority = true;
             h.Engine.UseEfficiencyMode = true;
         }, out var hog);
 
@@ -239,7 +239,7 @@ public class ProBalanceRestraintActionsTests
     [Fact]
     public void ExternalPriorityChange_EndsTheRestraint_AndPutsBackWhatIsStillOurs()
     {
-        using var h = Restrained(h => { h.Engine.LowerIOPriorityDuringRestraint = true; h.Engine.UseEfficiencyMode = true; }, out _);
+        using var h = Restrained(h => { h.Engine.LowerIoPriority = true; h.Engine.UseEfficiencyMode = true; }, out _);
 
         h.Access.Priority[100] = ProcessPriorityClass.High;
         h.Access.Io[100] = 0;
@@ -254,7 +254,7 @@ public class ProBalanceRestraintActionsTests
     [Fact]
     public void DoNotLowerPriorityClass_RestraintEnds_WhenEverythingItChangedWasChangedExternally()
     {
-        using var h = Restrained(h => { h.Engine.DoNotLowerPriorityClass = true; h.Engine.LowerIOPriorityDuringRestraint = true; }, out _);
+        using var h = Restrained(h => { h.Engine.DoNotLowerPriorityClass = true; h.Engine.LowerIoPriority = true; }, out _);
         Assert.True(h.Engine.IsEngaged);
         var sets = h.Access.SetCalls;
 
@@ -269,7 +269,7 @@ public class ProBalanceRestraintActionsTests
     [Fact]
     public void ExitedProcess_WithOptionalActions_IsForgottenWithoutWritingItsPid()
     {
-        using var h = Restrained(h => { h.Engine.ProBalanceDropOneRandomCore = true; h.Engine.UseEfficiencyMode = true; }, out _);
+        using var h = Restrained(h => { h.Engine.DropOneRandomCore = true; h.Engine.UseEfficiencyMode = true; }, out _);
         var sets = h.Access.SetCalls;
 
         h.Exit(100);
@@ -282,7 +282,7 @@ public class ProBalanceRestraintActionsTests
     [Fact]
     public void Disabling_RestoresTheOptionalActionsToo()
     {
-        using var h = Restrained(h => { h.Engine.LowerIOPriorityDuringRestraint = true; h.Engine.ProBalanceDropOneRandomCore = true; }, out _);
+        using var h = Restrained(h => { h.Engine.LowerIoPriority = true; h.Engine.DropOneRandomCore = true; }, out _);
 
         h.Engine.SetEnabled(false);
 
@@ -294,22 +294,22 @@ public class ProBalanceRestraintActionsTests
     [Fact]
     public void ConfigureRestraint_SetsEveryOption()
     {
-        using var h = new ProBalanceHarness();
-        h.Engine.ConfigureRestraint(new ProBalanceRestraintOptions
+        using var h = new ResponsivenessGuardHarness();
+        h.Engine.ConfigureRestraint(new ResponsivenessGuardRestraintOptions
         {
-            RestrainByAffinity = true, RestraintAffinity = 0x5, ProBalanceDropOneRandomCore = true,
-            LowerIOPriorityDuringRestraint = true, UseEfficiencyMode = true, DoNotLowerPriorityClass = true,
-            DisableProBalanceWhenSysIdle = true, DisableProBalanceIfSysIdleThisManyMS = 12345
+            RestrainByAffinity = true, RestraintAffinity = 0x5, DropOneRandomCore = true,
+            LowerIoPriority = true, UseEfficiencyMode = true, DoNotLowerPriorityClass = true,
+            PauseWhenIdle = true, PauseAfterIdleMs = 12345
         });
 
         Assert.True(h.Engine.RestrainByAffinity);
         Assert.Equal(0x5, h.Engine.RestraintAffinity);
-        Assert.True(h.Engine.ProBalanceDropOneRandomCore);
-        Assert.True(h.Engine.LowerIOPriorityDuringRestraint);
+        Assert.True(h.Engine.DropOneRandomCore);
+        Assert.True(h.Engine.LowerIoPriority);
         Assert.True(h.Engine.UseEfficiencyMode);
         Assert.True(h.Engine.DoNotLowerPriorityClass);
-        Assert.True(h.Engine.DisableProBalanceWhenSysIdle);
-        Assert.Equal(12345, h.Engine.DisableProBalanceIfSysIdleThisManyMS);
+        Assert.True(h.Engine.PauseWhenIdle);
+        Assert.Equal(12345, h.Engine.PauseAfterIdleMs);
     }
 
     // ---------- Idle pause ----------
@@ -317,7 +317,7 @@ public class ProBalanceRestraintActionsTests
     [Fact]
     public void SysIdle_PreventsRestraint_AndLiftsRestraintsInPlace()
     {
-        using var h = Restrained(h => h.Engine.DisableProBalanceWhenSysIdle = true, out _);
+        using var h = Restrained(h => h.Engine.PauseWhenIdle = true, out _);
         Assert.True(h.Engine.IsEngaged);
 
         h.IdleSource.Idle = TimeSpan.FromMilliseconds(30000);
@@ -334,8 +334,8 @@ public class ProBalanceRestraintActionsTests
     [Fact]
     public void SysIdle_ResumesOnInput_AndTheOverQuotaRunStartsAfresh()
     {
-        using var h = new ProBalanceHarness();
-        h.Engine.DisableProBalanceWhenSysIdle = true;
+        using var h = new ResponsivenessGuardHarness();
+        h.Engine.PauseWhenIdle = true;
         h.IdleSource.Idle = TimeSpan.FromMinutes(5);
         h.Add(100, cpu: 50);
         for (var t = 0; t <= 5000; t += 1000) h.At(t);
@@ -355,8 +355,8 @@ public class ProBalanceRestraintActionsTests
     [InlineData(true, null)]        // no UI reporting: nobody knows, so not idle
     public void SysIdle_DoesNotPause_UnlessEnabledAndIdleLongEnough(bool enabled, double? idleMs)
     {
-        using var h = new ProBalanceHarness();
-        h.Engine.DisableProBalanceWhenSysIdle = enabled;
+        using var h = new ResponsivenessGuardHarness();
+        h.Engine.PauseWhenIdle = enabled;
         h.IdleSource.Idle = idleMs is { } ms ? TimeSpan.FromMilliseconds(ms) : null;
         h.Add(100, cpu: 50);
 
@@ -370,9 +370,9 @@ public class ProBalanceRestraintActionsTests
     [Fact]
     public void SysIdle_ThresholdIsConfigurable()
     {
-        using var h = new ProBalanceHarness();
-        h.Engine.DisableProBalanceWhenSysIdle = true;
-        h.Engine.DisableProBalanceIfSysIdleThisManyMS = 5000;
+        using var h = new ResponsivenessGuardHarness();
+        h.Engine.PauseWhenIdle = true;
+        h.Engine.PauseAfterIdleMs = 5000;
         h.IdleSource.Idle = TimeSpan.FromSeconds(6);
         h.Add(100, cpu: 50);
 

@@ -2,8 +2,7 @@
 
 ProGuard installed for real and checked against real processes: the engine as a LocalSystem Windows service in
 session 0, the UI as the signed-in user, unelevated. Everything below was run on 2026-10-11 on the development machine
-(Windows 11 Pro 26200, 16 logical CPUs, 47 GB RAM). Process Lasso 18.4's ProcessGovernor service and tray GUI were
-stopped for the run and restored afterwards.
+(Windows 11 Pro 26200, 16 logical CPUs, 47 GB RAM).
 
 ## How it was run
 
@@ -31,13 +30,13 @@ stopped for the run and restored afterwards.
 | # | Item | First install (`main`) | Final build |
 |---|------|------------------------|-------------|
 | 1 | UI ↔ command pipe; standard-user commands work; admin-only commands refused clearly | **FAIL** | PASS |
-| 2 | Foreground PID and idle time from the UI; ProBalance exempts the foreground; IdleSaver | PASS (no visibility) | PASS |
-| 3 | ProBalance restrains/restores on Process Lasso's timing | **FAIL** (slow) | PASS |
+| 2 | Foreground PID and idle time from the UI; Responsiveness Guard exempts the foreground; Away Mode | PASS (no visibility) | PASS |
+| 3 | Responsiveness Guard restrains/restores on time | **FAIL** (slow) | PASS |
 | 4 | Per-process rules applied at process start, GPU preference in the user's hive | **FAIL** (rules never loaded) | PASS |
-| 5 | CPU Limiter affinity reduction, instance limit, Instance Balancer, startup boost | not reached (same cause) | PASS |
+| 5 | CPU Limiter affinity reduction, instance limit, Instance Spread, startup boost | not reached (same cause) | PASS |
 | 6 | Watchdog Restart / Launch / Keep Running in the user's session | not reached (same cause) | PASS |
-| 7 | SmartTrim trim, standby purge, file-cache purge with the service's privileges | **FAIL** | PASS |
-| 8 | Automatic Performance Mode; load switcher and IdleSaver respect its precedence | not reached | PASS |
+| 7 | Memory Trim trim, standby purge, file-cache purge with the service's privileges | **FAIL** | PASS |
+| 8 | Automatic Performance Mode; load switcher and Away Mode respect its precedence | not reached | PASS |
 | 9 | Older database at the shared path upgrades when the new engine starts | PASS | PASS |
 
 ### 1. UI and the command pipe
@@ -57,14 +56,14 @@ authorization is unchanged since; rule and settings commands on the final build)
 | SaveProcessRule `lsass.exe` | `... may not change rules for lsass.exe, a system process` |
 | SaveWatchdogRule with a Launch action / DeleteWatchdogRule of the administrator's Launch rule | refused: Launch actions would start a program as another user |
 | ClearActionLog | `... may not run ClearActionLog` |
-| SetSetting `{"ProBalanceSensitivity":5}` | applied; other settings untouched |
+| SetSetting `{"ResponsivenessGuardSensitivity":5}` | applied; other settings untouched |
 
 From an elevated client: SetPriority RealTime → `RealTime`; PurgeMemory → success (see 7); SaveWatchdogRule (Launch)
 → saved.
 
 **Failures found on the first install, now fixed:**
 - *The UI could not save anything.* The service creates `%ProgramData%\ProGuard` and the database as SYSTEM; users get
-  read-only access (Process Lasso's `prolasso.ini` is the same). Writing as the UI's account: `attempt to write a
+  read-only access. Writing as the UI's account: `attempt to write a
   readonly database`. Every Settings/Power/Rules/Watchdog/Logs save went straight to the database, and the settings
   pages swallowed the error. → **bd54dd9**: the engine owns the database; the UI saves through new pipe commands
   (`SaveProcessRule`, `DeleteProcessRule`, `SaveWatchdogRule`, `DeleteWatchdogRule`, `ClearActionLog`) and a merging
@@ -90,28 +89,28 @@ sends, from the same account.
   and idle time (`"ForegroundPid":24652,"UserIdleSeconds":18.687`).
 - Windowed 2-thread burner (12.5% CPU), final build, sampling the process and GetStatus every 200 ms:
   `0.32s Normal engineForegroundPid=self` → (minimized at 8.0 s) `9.72s BelowNormal` → (foreground again at 16.0 s)
-  `16.52s engineForegroundPid=self`, `16.74s Normal`. Log: `ProBalance restored pgtest-fg (38432) to Normal: Came to
+  `16.52s engineForegroundPid=self`, `16.74s Normal`. Log: `ResponsivenessGuard restored pgtest-fg (38432) to Normal: Came to
   the foreground`. Never restrained while in front; no boost (see below).
-- IdleSaver (1 min, Balanced): `Power plan High performance -> Balanced: IdleSaver: no input for 1 min` at 62 s idle;
-  one injected mouse event (`SendInput`) → `Balanced -> High performance: IdleSaver: user input; restored the plan from
-  before IdleSaver` **0.40 s** later (0.39 s on the first install).
+- Away Mode (1 min, Balanced): `Power plan High performance -> Balanced: Away Mode: no input for 1 min` at 62 s idle;
+  one injected mouse event (`SendInput`) → `Balanced -> High performance: Away Mode: user input; restored the plan from
+  before Away Mode` **0.40 s** later (0.39 s on the first install).
 - Found: ForegroundBoost was always on. Once the engine knew the foreground process, it raised every foreground app to
-  Above Normal (seen at 0.3 s in the first-install run). Process Lasso's default is off. → **21d1b0a**
+  Above Normal (seen at 0.3 s in the first-install run). It should be off by default. → **21d1b0a**
   (`AppSettings.ForegroundBoostEnabled`, default false, toggle on the Settings page).
 - Added for diagnosis: **662f1c6** (foreground/idle/Performance Mode in GetStatus, reporter connect/disconnect logged).
 
-### 3. ProBalance timing
+### 3. Responsiveness Guard timing
 
 Background burner on 2 of 16 threads (12.5% total CPU), priority sampled every 50–100 ms:
 
 | | Restrained after start | Restored after the load stopped |
 |---|---|---|
-| Process Lasso (docs/process-lasso-internals.md) | 1.86 s | ~1.7 s |
+
 | First install | 3.18 s | 2.18 s |
 | Final build, 3 runs | 1.13 s, 1.11 s, 2.00 s | 1.13 s, 1.11 s, 1.00 s |
 
-Cause: ProBalance evaluated on its own 1 s timer, out of phase with ProcessMonitor's 1 s CPU sampling, so it judged
-usage up to a second old; and a new process read 0% on its first sample. → **3bba281**: ProBalance evaluates on
+Cause: Responsiveness Guard evaluated on its own 1 s timer, out of phase with ProcessMonitor's 1 s CPU sampling, so it judged
+usage up to a second old; and a new process read 0% on its first sample. → **3bba281**: Responsiveness Guard evaluates on
 `IProcessMonitor.Refreshed`; a process first seen within 5 s of starting gets its usage since start as its first
 reading.
 
@@ -138,14 +137,14 @@ Final build, `pgtest-rule.exe` started by the user (control: `burner.exe`, no ru
 
 Log: `Applied GPU preference High performance for S-1-5-21-2953843503-2753174364-614686599-1001 at …\pgtest-rule.exe`.
 
-### 5. CPU Limiter, instance limits, Instance Balancer, startup boost
+### 5. CPU Limiter, instance limits, Instance Spread, startup boost
 
 - CPU Limiter (≥5% for 2 s → remove 8 cores for 10 s), 2-thread burner: affinity `0xFFFF` → `0xFF` at 4.1 s, back to
   `0xFFFF` at 14.0 s, reduced again at 16.1 s while the load continued. Log: `Constraining CPU affinity by 8 CPUs for
   10000 ms. New CPU affinity is 0xFF, original was 0xFFFF` / `restored pgtest-cpu (33528) to 0xFFFF: limit period ended`.
 - Instance limit 2: of three `pgtest-inst` started 0.7 s apart, the third was ended: `Instance limit for pgtest-inst:
   terminated 42716 (3 instances in session 1, limit 2)`.
-- Instance Balancer (equal cores): three instances got disjoint `0x3F`, `0x7C0`, `0xF800`.
+- Instance Spread (equal cores): three instances got disjoint `0x3F`, `0x7C0`, `0xF800`.
 - Startup boost (High for 5 s): `Normal` → `High` at 1.0 s (the WMI start event's 1 s polling) → `Normal` at 5.5 s.
 
 ### 6. Watchdog and Keep Running
@@ -160,24 +159,24 @@ All started processes checked with `Win32_Process` (the test processes were star
   first attempt failed because the test rule I wrote into the database contained a stray `\b` character; corrected over
   the pipe as administrator, not a product bug.)
 
-### 7. SmartTrim
+### 7. Memory Trim
 
 **First install: FAIL.** An administrator's "Purge now" over the pipe returned `Standby list purge failed:
 SeProfileSingleProcessPrivilege is not enabled`, with `OpenProcessToken failed (Access is denied., error 5)` for the
-engine's own token. Once SmartTrim and the purges were enabled over the pipe, the periodic passes produced no log lines
+engine's own token. Once Memory Trim and the purges were enabled over the pipe, the periodic passes produced no log lines
 at all and the standby list stayed at ~19 GB, though the same build run as an elevated console process trimmed and
 purged normally (`purge returned 0x00000000 in 2704 ms`, standby 19062 → 131 MB).
 
 Cause: `NamedPipeServerStream.RunAsClient` (used to check the caller) reverts the thread's token but leaves the client's
 identity in the ExecutionContext, so await continuations, tasks and timers started from that connection later ran **as
-the client**. The purge, dispatched after an await, ran as the admin client; SmartTrim's timers, created while applying
+the client**. The purge, dispatched after an await, ran as the admin client; Memory Trim's timers, created while applying
 settings received over the pipe, ran as the unelevated user (trims of the user's own processes worked, purges failed,
 and their log writes were denied). Reproduced in a test: a timer started after the check ran at
 `TokenImpersonationLevel.Impersonation`. → **fd48ff2** (impersonated checks run in a throw-away context);
 diagnostics **b41ae07**, **377d338**.
 
 Final build:
-- Periodic trim (enabled over the pipe by the user): `SmartTrim: trimmed Discord (23828) 621 MB -> 19 MB`,
+- Periodic trim (enabled over the pipe by the user): `MemoryTrim: trimmed Discord (23828) 621 MB -> 19 MB`,
   `trimmed claude (22864) 594 MB -> 4 MB`, ...
 - Automatic standby + file-cache purge: `Memory purge: purged standby list, reclaimed 20146 MB`, `purged file cache,
   reclaimed 352 MB`.
@@ -187,27 +186,27 @@ Final build:
 
 ### 8. Performance Mode precedence
 
-`pgtest-perf.exe` listed for automatic Performance Mode (plan: Bitsum Highest Performance), load switcher set to want
-Power saver, IdleSaver 1 min → Balanced; plan sampled every second (`evidence: powercfg`):
+`pgtest-perf.exe` listed for automatic Performance Mode (plan: a custom high-performance plan), load switcher set to want
+Power saver, Away Mode 1 min → Balanced; plan sampled every second (`evidence: powercfg`):
 
 ```
 16:05:51 enable load switcher             -> 16:05:57 (Power saver)   Load switcher: average CPU 26.1% is below 90%
-16:06:00 idle 60 s                        -> (Balanced)               IdleSaver: no input for 1 min
-16:06:12 start pgtest-perf.exe            -> 16:06:14 (Bitsum Highest Performance)  Performance Mode engaged automatically
-16:06:14 .. 16:07:42, idle 75 s -> 163 s     plan stays Bitsum Highest Performance (IdleSaver and load switcher held off)
-16:07:42 stop pgtest-perf.exe             -> 16:07:44 (Power saver) Performance Mode released, 16:07:45 (Balanced) IdleSaver
+16:06:00 idle 60 s                        -> (Balanced)               Away Mode: no input for 1 min
+16:06:12 start pgtest-perf.exe            -> 16:06:14 (custom high-performance plan)  Performance Mode engaged automatically
+16:06:14 .. 16:07:42, idle 75 s -> 163 s     plan stays on the custom high-performance plan (Away Mode and load switcher held off)
+16:07:42 stop pgtest-perf.exe             -> 16:07:44 (Power saver) Performance Mode released, 16:07:45 (Balanced) Away Mode
 ```
 
-Precedence holds (Performance Mode > IdleSaver > load switcher). Minor: on release the load switcher's plan applied for
-one second before IdleSaver took over again (follow-up below).
+Precedence holds (Performance Mode > Away Mode > load switcher). Minor: on release the load switcher's plan applied for
+one second before Away Mode took over again (follow-up below).
 
 ### 9. Schema upgrade
 
 The database already at `C:\ProgramData\ProGuard\proguard.db` was an early one (ProcessRules 9 columns, Settings 15,
 WatchdogRules 8); a legacy process rule and Watchdog rule were added to it. After the service's first start:
 ProcessRules 30 columns, WatchdogRules 11, Settings 36; `legacy-rule.exe` kept its priority (16384) and
-ExcludeFromProBalance, new columns took their defaults (`CooldownSeconds 60`, `SmartTrimMinimumRamLoadPercent 65`,
-`KeepRunning 0`), existing settings kept their values (`SmartTrimIntervalSeconds 300`), log `Loaded 1 process rules, 1
+ExcludeFromResponsivenessGuard, new columns took their defaults (`CooldownSeconds 60`, `MemoryTrimMinimumRamLoadPercent 65`,
+`KeepRunning 0`), existing settings kept their values (`MemoryTrimIntervalSeconds 300`), log `Loaded 1 process rules, 1
 watchdog rules`.
 
 ## Other fixes made for the deployment
@@ -222,7 +221,7 @@ watchdog rules`.
 ## Follow-ups (not fixed here)
 
 - When automatic Performance Mode ends while the user is idle, the load switcher's plan is applied for about a second
-  before IdleSaver re-takes the plan: IdleSaver's request is not re-evaluated when Performance Mode releases.
+  before Away Mode re-takes the plan: Away Mode's request is not re-evaluated when Performance Mode releases.
 - The Power page's Performance Mode toggle starts off even when Performance Mode is on (manual or automatic); it doesn't
   read the engine's state (`EngineStatus.PerformanceModeActive` now has it).
 - Watchdog Restart fires again for each restarted instance that still breaks the rule (the cooldown is per process);

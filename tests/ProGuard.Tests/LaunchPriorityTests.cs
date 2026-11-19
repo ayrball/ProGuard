@@ -125,7 +125,7 @@ public class LaunchPriorityTests
 
         service.Sync(rules, force: true);
         int reads = registry.Reads;
-        // A reload caused by the ProBalance log, with the same rules: no registry access at all.
+        // A reload caused by the Responsiveness Guard log, with the same rules: no registry access at all.
         Assert.Equal(0, service.Sync(rules));
         Assert.Equal(reads, registry.Reads);
 

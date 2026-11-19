@@ -67,7 +67,7 @@ public sealed class Win32ProcessAffinityAccess : IProcessAffinityAccess
 }
 
 /// <summary>
-/// Process Lasso's CPU Limiter: when a process matching a rule uses at least the rule's CPU percent for the
+/// The CPU Limiter: when a process matching a rule uses at least the rule's CPU percent for the
 /// rule's time, take N cores away from its affinity for a while, then put the original affinity back. This is
 /// the "affinity reduction" mode; the job-object hard cap (<see cref="CpuLimiter"/>) is a separate mode.
 /// </summary>
@@ -254,7 +254,7 @@ public sealed class CpuAffinityLimiter : IDisposable
         }
 
         _constrained[p.Pid] = new Constraint(p.Name, current.Value.StartTimeUtc, current.Value.Mask, newMask, now + durationMs);
-        // Same wording as Process Lasso's log line.
+        // The log line says what was done and for how long.
         var message = $"Constraining CPU affinity by {removed} CPUs for {durationMs} ms. " +
                       $"New CPU affinity is 0x{newMask:X}, original was 0x{current.Value.Mask:X}";
         LogAction(p.Name, p.Pid, $"{message} (CPU usage {p.CpuPercent:F1}%)", restored: false);
@@ -294,10 +294,10 @@ public sealed class CpuAffinityLimiter : IDisposable
         }
     }
 
-    // ProBalanceAction has no affinity columns; the priority fields stay 0 and the reason carries the masks.
+    // ResponsivenessGuardAction has no affinity columns; the priority fields stay 0 and the reason carries the masks.
     private void LogAction(string name, int pid, string reason, bool restored)
     {
-        _ = _ruleStore.LogProBalanceActionAsync(new ProBalanceAction
+        _ = _ruleStore.LogResponsivenessGuardActionAsync(new ResponsivenessGuardAction
         {
             Timestamp = DateTime.UtcNow,
             ProcessName = name,

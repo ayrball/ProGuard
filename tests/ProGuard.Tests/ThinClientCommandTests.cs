@@ -221,8 +221,8 @@ public class ThinClientCommandTests
     public void TrimWorkingSet_ReturnsTheBytesReclaimed()
     {
         var h = new ThinHarness();
-        h.SmartTrim.Setup(t => t.TrimProcess(Pid)).Returns(new MemoryPurgeReport { ProcessesTrimmed = 1, WorkingSetBytesReclaimed = 123_456 });
-        h.SmartTrim.Setup(t => t.TrimMemory()).Returns(new MemoryPurgeReport { ProcessesTrimmed = 3, WorkingSetBytesReclaimed = 9_000_000 });
+        h.MemoryTrim.Setup(t => t.TrimProcess(Pid)).Returns(new MemoryPurgeReport { ProcessesTrimmed = 1, WorkingSetBytesReclaimed = 123_456 });
+        h.MemoryTrim.Setup(t => t.TrimMemory()).Returns(new MemoryPurgeReport { ProcessesTrimmed = 3, WorkingSetBytesReclaimed = 9_000_000 });
 
         Assert.Equal("123456", h.SendAsAdmin(CommandTypes.TrimWorkingSet, Pid).Data);
         Assert.Equal("9000000", h.SendAsAdmin(CommandTypes.TrimWorkingSet).Data);
@@ -235,7 +235,7 @@ public class ThinClientCommandTests
         var h = new ThinHarness();
         var report = new MemoryPurgeReport();
         report.Errors.Add("OpenProcess failed (Access is denied)");
-        h.SmartTrim.Setup(t => t.TrimProcess(Pid)).Returns(report);
+        h.MemoryTrim.Setup(t => t.TrimProcess(Pid)).Returns(report);
 
         var result = h.SendAsAdmin(CommandTypes.TrimWorkingSet, Pid);
 
@@ -253,7 +253,7 @@ public class ThinClientCommandTests
             StandbyPurged = true, StandbyBytesReclaimed = 1000L << 20,
         };
         report.Errors.Add("file cache: privilege not held");
-        h.SmartTrim.Setup(t => t.PurgeNow()).Returns(report);
+        h.MemoryTrim.Setup(t => t.PurgeNow()).Returns(report);
 
         var dto = h.Data<MemoryPurgeResultDto>(h.SendAsAdmin(CommandTypes.PurgeMemory));
 
@@ -271,7 +271,7 @@ public class ThinClientCommandTests
         var h = new ThinHarness();
         var report = new MemoryPurgeReport();
         report.Errors.Add("standby: privilege not held");
-        h.SmartTrim.Setup(t => t.PurgeNow()).Returns(report);
+        h.MemoryTrim.Setup(t => t.PurgeNow()).Returns(report);
 
         var result = h.SendAsAdmin(CommandTypes.PurgeMemory);
 
@@ -304,7 +304,7 @@ public class ThinClientCommandTests
         var h = new ThinHarness();
         var dto = Rule();
         dto.AffinityMask = 0xF;
-        dto.InstanceBalancerMode = BalancerMode.FixedCoresPerInstance;
+        dto.InstanceSpreadMode = SpreadMode.FixedCoresPerInstance;
         dto.StartupBoostPriorityClass = (int)ProcessPriorityClass.High;
         dto.StartupBoostSeconds = 30;
 
@@ -314,7 +314,7 @@ public class ThinClientCommandTests
         var stored = Assert.Single(h.Rules);
         Assert.Equal(saved.Id, stored.Id);
         Assert.Equal(0xF, stored.AffinityMask);
-        Assert.Equal(InstanceBalancerMode.FixedCoresPerInstance, stored.InstanceBalancerMode);
+        Assert.Equal(InstanceSpreadMode.FixedCoresPerInstance, stored.InstanceSpreadMode);
         Assert.Equal(30, stored.StartupBoostSeconds);
     }
 
@@ -419,10 +419,10 @@ public class ThinClientCommandTests
         new object[] { "time over", new Action<ProcessRuleDto>(r => r.CpuLimitOverThresholdSeconds = 0) },
         new object[] { "remove at least", new Action<ProcessRuleDto>(r => r.CpuLimitCoresToRemove = 0) },
         new object[] { "duration", new Action<ProcessRuleDto>(r => r.CpuLimitDurationSeconds = 0) },
-        new object[] { "Balancer mode", new Action<ProcessRuleDto>(r => r.InstanceBalancerMode = (BalancerMode)9) },
-        new object[] { "at least 1 core", new Action<ProcessRuleDto>(r => r.InstanceBalancerCoresPerInstance = 0) },
-        new object[] { "Reserved cores", new Action<ProcessRuleDto>(r => r.InstanceBalancerReservedCores = -1) },
-        new object[] { "minimum CPU", new Action<ProcessRuleDto>(r => r.InstanceBalancerMinCpuPercent = 101) },
+        new object[] { "Spread mode", new Action<ProcessRuleDto>(r => r.InstanceSpreadMode = (SpreadMode)9) },
+        new object[] { "at least 1 core", new Action<ProcessRuleDto>(r => r.InstanceSpreadCoresPerInstance = 0) },
+        new object[] { "Reserved cores", new Action<ProcessRuleDto>(r => r.InstanceSpreadReservedCores = -1) },
+        new object[] { "minimum CPU", new Action<ProcessRuleDto>(r => r.InstanceSpreadMinCpuPercent = 101) },
         new object[] { "startup boost priority", new Action<ProcessRuleDto>(r => r.StartupBoostPriorityClass = 7) },
         new object[] { "startup boost must last", new Action<ProcessRuleDto>(r => r.StartupBoostSeconds = 0) },
         new object[] { "startup boost must last", new Action<ProcessRuleDto>(r => r.StartupBoostSeconds = 3601) },
@@ -462,7 +462,7 @@ public class ThinClientCommandTests
         dto.AffinityMask = 0x3;
         dto.CpuLimitPercent = 40;
         dto.IoPriority = 0;
-        dto.ExcludeFromProBalance = true;
+        dto.ExcludeFromResponsivenessGuard = true;
 
         Assert.True(h.SendAsAdmin(CommandTypes.SaveProcessRule, null, dto).Success);
 
@@ -471,7 +471,7 @@ public class ThinClientCommandTests
             h.Access.Verify(a => a.SetPriorityClass(pid, ProcessPriorityClass.High), Times.Once);
             h.Access.Verify(a => a.SetAffinityMask(pid, 0x3), Times.Once);
             h.CpuLimiter.Verify(c => c.AddLimit(pid, 40), Times.Once);
-            h.ProBalance.Verify(p => p.ReleaseRestraint(pid), Times.Once);
+            h.ResponsivenessGuard.Verify(p => p.ReleaseRestraint(pid), Times.Once);
         }
         h.Access.Verify(a => a.SetPriorityClass(12, It.IsAny<ProcessPriorityClass>()), Times.Never);
         Assert.Contains(h.Manual.GetRecent(20), e => e.Kind == ActivityKind.Rule && e.Pid == 10);
@@ -677,13 +677,13 @@ public class ThinClientCommandTests
     public void GetSettings_ReturnsTheStoredSettingsWithoutTheirKey()
     {
         var h = new ThinHarness();
-        h.Stored.ProBalanceSensitivity = 8;
+        h.Stored.ResponsivenessGuardSensitivity = 8;
         h.Stored.Theme = "Dark";
         h.Stored.IdlePowerPlanGuid = Powrprof.Balanced.ToString();
 
         var dto = h.Data<EngineSettingsDto>(h.SendAsAdmin(CommandTypes.GetSettings));
 
-        Assert.Equal(8, dto.ProBalanceSensitivity);
+        Assert.Equal(8, dto.ResponsivenessGuardSensitivity);
         Assert.Equal("Dark", dto.Theme);
         Assert.Equal(Powrprof.Balanced.ToString(), dto.IdlePowerPlanGuid);
         Assert.False(dto.ForegroundBoostEnabled);
@@ -694,20 +694,20 @@ public class ThinClientCommandTests
     {
         var h = new ThinHarness();
         var dto = h.Data<EngineSettingsDto>(h.SendAsAdmin(CommandTypes.GetSettings));
-        dto.SmartTrimEnabled = true;
-        dto.SmartTrimMemoryThresholdMB = 512;
+        dto.MemoryTrimEnabled = true;
+        dto.MemoryTrimMemoryThresholdMB = 512;
         dto.PollingIntervalMs = 2500;
         dto.ForegroundBoostEnabled = true;
-        dto.SmartTrimExclusions = "keep.exe";
+        dto.MemoryTrimExclusions = "keep.exe";
 
         var stored = h.Data<EngineSettingsDto>(h.SendAsAdmin(CommandTypes.SaveSettings, null, dto));
 
         Assert.Equal(1, h.Stored.Id);
-        Assert.True(h.Stored.SmartTrimEnabled);
-        Assert.Equal(512, h.Stored.SmartTrimMemoryThresholdMB);
-        Assert.Equal("keep.exe", stored.SmartTrimExclusions);
+        Assert.True(h.Stored.MemoryTrimEnabled);
+        Assert.Equal(512, h.Stored.MemoryTrimMemoryThresholdMB);
+        Assert.Equal("keep.exe", stored.MemoryTrimExclusions);
         Assert.True(stored.ForegroundBoostEnabled);
-        h.SmartTrim.Verify(t => t.Configure(true, It.IsAny<TimeSpan>(), 512L * 1024 * 1024), Times.Once);
+        h.MemoryTrim.Verify(t => t.Configure(true, It.IsAny<TimeSpan>(), 512L * 1024 * 1024), Times.Once);
         h.Monitor.GetType(); // the fake ignores the interval; the applier test covers it
         Assert.True(h.ForegroundBoost.IsEnabled);
         Assert.Contains(h.Manual.GetRecent(5), e => e.Message.Contains("settings"));
@@ -729,9 +729,9 @@ public class ThinClientCommandTests
 
     public static IEnumerable<object[]> InvalidSettings() => new[]
     {
-        new object[] { new Action<EngineSettingsDto>(s => s.ProBalanceSensitivity = 0) },
-        new object[] { new Action<EngineSettingsDto>(s => s.ProBalanceSensitivity = 11) },
-        new object[] { new Action<EngineSettingsDto>(s => s.ProBalanceCpuThreshold = 101) },
+        new object[] { new Action<EngineSettingsDto>(s => s.ResponsivenessGuardSensitivity = 0) },
+        new object[] { new Action<EngineSettingsDto>(s => s.ResponsivenessGuardSensitivity = 11) },
+        new object[] { new Action<EngineSettingsDto>(s => s.ResponsivenessGuardCpuThreshold = 101) },
         new object[] { new Action<EngineSettingsDto>(s => s.PollingIntervalMs = 10) },
         new object[] { new Action<EngineSettingsDto>(s => s.PollingIntervalMs = 3_600_000) },
         new object[] { new Action<EngineSettingsDto>(s => s.IdleTimeoutMinutes = 0) },
@@ -739,7 +739,7 @@ public class ThinClientCommandTests
         new object[] { new Action<EngineSettingsDto>(s => s.StartWithPowerPlanGuid = "nope") },
         new object[] { new Action<EngineSettingsDto>(s => s.LoadSwitcherHighThreshold = -1) },
         new object[] { new Action<EngineSettingsDto>(s => s.Theme = "") },
-        new object[] { new Action<EngineSettingsDto>(s => s.SmartTrimMinimumRamLoadPercent = 150) },
+        new object[] { new Action<EngineSettingsDto>(s => s.MemoryTrimMinimumRamLoadPercent = 150) },
     };
 
     [Theory]
@@ -817,10 +817,10 @@ public class ThinClientCommandTests
     {
         var h = new ThinHarness();
         var t0 = DateTime.UtcNow.AddMinutes(-30);
-        h.Actions.Add(new ProBalanceAction { Timestamp = t0.AddMinutes(1), ProcessName = "chrome", Pid = 5, Reason = "High CPU usage (12.0%): priority BelowNormal" });
-        h.Actions.Add(new ProBalanceAction { Timestamp = t0.AddMinutes(2), ProcessName = "chrome", Pid = 5, Reason = "Restored: CPU usage dropped to 1.0%", IsRestored = true });
-        h.Actions.Add(new ProBalanceAction { Timestamp = t0.AddMinutes(3), ProcessName = "encoder", Pid = 6, Reason = "Constraining CPU affinity by 2 CPUs for 30000 ms." });
-        h.Actions.Add(new ProBalanceAction { Timestamp = t0.AddMinutes(4), ProcessName = ProBalanceAction.PowerPlanEntryName, Reason = "Balanced -> High performance: Performance Mode turned on", IsRestored = true });
+        h.Actions.Add(new ResponsivenessGuardAction { Timestamp = t0.AddMinutes(1), ProcessName = "chrome", Pid = 5, Reason = "High CPU usage (12.0%): priority BelowNormal" });
+        h.Actions.Add(new ResponsivenessGuardAction { Timestamp = t0.AddMinutes(2), ProcessName = "chrome", Pid = 5, Reason = "Restored: CPU usage dropped to 1.0%", IsRestored = true });
+        h.Actions.Add(new ResponsivenessGuardAction { Timestamp = t0.AddMinutes(3), ProcessName = "encoder", Pid = 6, Reason = "Constraining CPU affinity by 2 CPUs for 30000 ms." });
+        h.Actions.Add(new ResponsivenessGuardAction { Timestamp = t0.AddMinutes(4), ProcessName = ResponsivenessGuardAction.PowerPlanEntryName, Reason = "Balanced -> High performance: Performance Mode turned on", IsRestored = true });
         var fired = h.WatchdogEvents.Add(WatchdogEventKinds.Fired, "Watchdog: app", "terminated app (9)", "app", 9, 3);
         var restored = h.WatchdogEvents.Add(WatchdogEventKinds.Restored, "Watchdog: app", "priority put back", "app", 9, 3);
         h.Manual.Add(ActivityKind.Manual, "game", 7, "Set priority to High.");
@@ -884,11 +884,11 @@ public class ThinClientCommandTests
     public void ClearActionLog_DeletesTheLoggedActions()
     {
         var h = new ThinHarness();
-        h.Actions.Add(new ProBalanceAction { Timestamp = DateTime.UtcNow, ProcessName = "x", Reason = "r" });
+        h.Actions.Add(new ResponsivenessGuardAction { Timestamp = DateTime.UtcNow, ProcessName = "x", Reason = "r" });
 
         Assert.True(h.SendAsAdmin(CommandTypes.ClearActionLog).Success);
 
-        h.Store.Verify(s => s.ClearProBalanceActions(), Times.Once);
+        h.Store.Verify(s => s.ClearResponsivenessGuardActions(), Times.Once);
         Assert.Empty(h.Actions);
     }
 
@@ -898,7 +898,7 @@ public class ThinClientCommandTests
     public void ClearActionLog_EmptiesTheWholeActivityFeed_AndLaterEntriesStillShow()
     {
         var h = new ThinHarness();
-        h.Actions.Add(new ProBalanceAction { Timestamp = DateTime.UtcNow.AddSeconds(-5), ProcessName = "x", Reason = "r" });
+        h.Actions.Add(new ResponsivenessGuardAction { Timestamp = DateTime.UtcNow.AddSeconds(-5), ProcessName = "x", Reason = "r" });
         h.Manual.Add(ActivityKind.Manual, "game.exe", 0, "Added a rule for game.exe.");
         h.WatchdogEvents.Add(WatchdogEventKinds.Fired, "Watchdog: app.exe", "fired");
         Assert.Equal(3, h.Data<List<ActivityEntry>>(h.SendAsAdmin(CommandTypes.GetActivity)).Count);
@@ -940,11 +940,11 @@ public class ThinClientCommandTests
         var feed = new ActivityFeed(h.Store.Object, h.Manual);
         var thin = new ThinClientCommands(Microsoft.Extensions.Logging.Abstractions.NullLogger<ThinClientCommands>.Instance, h.Snapshots,
             new ProcessActionService(Microsoft.Extensions.Logging.Abstractions.NullLogger<ProcessActionService>.Instance, tuning.Object, h.Monitor, h.Controller.Object),
-            new RuleService(Microsoft.Extensions.Logging.Abstractions.NullLogger<RuleService>.Instance, h.Store.Object, h.Monitor, h.CpuLimiter.Object, h.ProBalance.Object, h.Access.Object, h.Manual),
+            new RuleService(Microsoft.Extensions.Logging.Abstractions.NullLogger<RuleService>.Instance, h.Store.Object, h.Monitor, h.CpuLimiter.Object, h.ResponsivenessGuard.Object, h.Access.Object, h.Manual),
             feed, h.Manual, h.Store.Object, h.Power.Object, h.Monitor, tuning.Object);
         var dispatcher = new IpcDispatcher(Microsoft.Extensions.Logging.Abstractions.NullLogger<IpcDispatcher>.Instance, h.Store.Object,
-            new SettingsApplier(Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsApplier>.Instance, h.Monitor, h.SmartTrim.Object, h.Power.Object, h.ProBalance.Object),
-            h.ProBalance.Object, h.Power.Object, h.SmartTrim.Object, h.CpuLimiter.Object, h.Controller.Object, h.Monitor, null, thin);
+            new SettingsApplier(Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsApplier>.Instance, h.Monitor, h.MemoryTrim.Object, h.Power.Object, h.ResponsivenessGuard.Object),
+            h.ResponsivenessGuard.Object, h.Power.Object, h.MemoryTrim.Object, h.CpuLimiter.Object, h.Controller.Object, h.Monitor, null, thin);
 
         var reply = dispatcher.Dispatch(new CommandMessage { CommandType = CommandTypes.GetCpuSets });
         var result = JsonSerializer.Deserialize<CommandResult>(reply.Payload)!;

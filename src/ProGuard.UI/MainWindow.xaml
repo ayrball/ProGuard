@@ -224,7 +224,7 @@
                                    Text="{Binding Hub.Snapshot.MemoryPercent, StringFormat={x:Static r:Strings.Mem00}}"/>
                         <TextBlock FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.3" Text="  ·  "/>
                         <TextBlock FontFamily="{StaticResource Mono}" FontSize="11" Opacity="0.6"
-                                   Text="{Binding Hub.Snapshot.ProBalanceRestrained, StringFormat={x:Static r:Strings.N0Balanced}}"/>
+                                   Text="{Binding Hub.Snapshot.ResponsivenessGuardRestrained, StringFormat={x:Static r:Strings.N0Restrained}}"/>
                     </StackPanel>
                 </Grid>
             </Border>

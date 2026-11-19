@@ -85,7 +85,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
         _ => "???",
     };
 
-    // "ProGuard.Engine.Services.ProBalanceEngine" -> "ProBalanceEngine"; keeps lines short.
+    // "ProGuard.Engine.Services.ResponsivenessGuardEngine" -> "ResponsivenessGuardEngine"; keeps lines short.
     private static string ShortCategory(string category)
     {
         var dot = category.LastIndexOf('.');

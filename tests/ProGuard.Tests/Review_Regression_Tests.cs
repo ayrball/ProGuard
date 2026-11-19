@@ -39,8 +39,8 @@ public class Review_Regression_Tests
 
     /// <summary>
     /// A process that uses next to no CPU, even while starting, for tests whose CPU figures come from a mocked
-    /// monitor. A spinner, or PowerShell's ~1 s of startup CPU, gets restrained by any ProBalance-like tool running on
-    /// the machine (Process Lasso does exactly that) and breaks the test.
+    /// monitor. A spinner, or PowerShell's ~1 s of startup CPU, gets restrained by any process manager running on
+    /// the machine that restrains CPU hogs, and breaks the test.
     /// </summary>
     private static Process StartIdleProcess()
     {
@@ -143,14 +143,14 @@ public class Review_Regression_Tests
     public void RuleStore_UpdateSettings_WithNewSettingsObject_Persists()
     {
         using var fx = new RuleStoreFixture();
-        var ex = Record.Exception(() => fx.Store.UpdateSettings(new AppSettings { ProBalanceSensitivity = 9 }));
+        var ex = Record.Exception(() => fx.Store.UpdateSettings(new AppSettings { ResponsivenessGuardSensitivity = 9 }));
 
         Assert.Null(ex);
-        Assert.Equal(9, fx.Store.GetSettings().ProBalanceSensitivity);
+        Assert.Equal(9, fx.Store.GetSettings().ResponsivenessGuardSensitivity);
 
         // survives a reload
         var reloaded = new RuleStore(NullLogger<RuleStore>.Instance, fx.Provider);
-        Assert.Equal(9, reloaded.GetSettings().ProBalanceSensitivity);
+        Assert.Equal(9, reloaded.GetSettings().ResponsivenessGuardSensitivity);
     }
 
     [Fact]
@@ -235,10 +235,10 @@ public class Review_Regression_Tests
         Assert.Null(Record.Exception(() => wd.EvaluateRules()));
     }
 
-    // ---------- ProBalance ----------
+    // ---------- Responsiveness Guard ----------
 
-    /// <summary>Starts a stand-in hog and a ProBalance whose monitor reports it at 50% CPU on a machine pinned at 99%.</summary>
-    private static (ProBalanceEngine Engine, Process Victim, Action MarkExited) MakeEngagedProBalance()
+    /// <summary>Starts a stand-in hog and a Responsiveness Guard whose monitor reports it at 50% CPU on a machine pinned at 99%.</summary>
+    private static (ResponsivenessGuardEngine Engine, Process Victim, Action MarkExited) MakeEngagedResponsivenessGuard()
     {
         var victim = StartIdleProcess();
         Thread.Sleep(1000);
@@ -252,7 +252,7 @@ public class Review_Regression_Tests
             !exited && pid == victim.Id ? new ProcessInfo { Pid = pid, Name = "powershell" } : null);
 
         var store = new Mock<IRuleStore>();
-        var engine = new ProBalanceEngine(NullLogger<ProBalanceEngine>.Instance, monitor.Object, store.Object, () => 99.0)
+        var engine = new ResponsivenessGuardEngine(NullLogger<ResponsivenessGuardEngine>.Instance, monitor.Object, store.Object, () => 99.0)
         {
             TimeOverQuotaBeforeRestraint = 0 // restrain on the first over-quota sample
         };
@@ -260,9 +260,9 @@ public class Review_Regression_Tests
     }
 
     [Fact]
-    public void ProBalance_DisablingWhileEngaged_RestoresRestrainedProcesses()
+    public void ResponsivenessGuard_DisablingWhileEngaged_RestoresRestrainedProcesses()
     {
-        var (engine, victim, _) = MakeEngagedProBalance();
+        var (engine, victim, _) = MakeEngagedResponsivenessGuard();
         using var __ = engine;
         try
         {
@@ -284,9 +284,9 @@ public class Review_Regression_Tests
     }
 
     [Fact]
-    public void ProBalance_ExclusionWithExeSuffix_ProtectsProcessNameWithoutExe()
+    public void ResponsivenessGuard_ExclusionWithExeSuffix_ProtectsProcessNameWithoutExe()
     {
-        var (engine, victim, _) = MakeEngagedProBalance();
+        var (engine, victim, _) = MakeEngagedResponsivenessGuard();
         using var __ = engine;
         try
         {
@@ -302,7 +302,7 @@ public class Review_Regression_Tests
     [InlineData("audiodg")]
     [InlineData("csrss")]
     [InlineData("ProGuard.Engine")]
-    public void ProBalance_NeverRestrainsProtectedSystemProcesses(string reportedName)
+    public void ResponsivenessGuard_NeverRestrainsProtectedSystemProcesses(string reportedName)
     {
         // A harmless stand-in process is reported under a protected name; it must be left alone.
         var victim = StartIdleProcess();
@@ -314,7 +314,7 @@ public class Review_Regression_Tests
             {
                 new ProcessInfo { Pid = victim.Id, Name = reportedName, CpuPercent = 90 }
             });
-            using var engine = new ProBalanceEngine(NullLogger<ProBalanceEngine>.Instance,
+            using var engine = new ResponsivenessGuardEngine(NullLogger<ResponsivenessGuardEngine>.Instance,
                 monitor.Object, new Mock<IRuleStore>().Object, () => 99.0)
             {
                 TimeOverQuotaBeforeRestraint = 0
@@ -330,9 +330,9 @@ public class Review_Regression_Tests
     }
 
     [Fact]
-    public void ProBalance_ForgetsRestrainedProcessesThatExited()
+    public void ResponsivenessGuard_ForgetsRestrainedProcessesThatExited()
     {
-        var (engine, victim, markExited) = MakeEngagedProBalance();
+        var (engine, victim, markExited) = MakeEngagedResponsivenessGuard();
         using var __ = engine;
         try
         {

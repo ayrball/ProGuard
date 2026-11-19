@@ -11,11 +11,11 @@ using ProGuard.UI.Services;
 namespace ProGuard.Tests;
 
 /// <summary>
-/// IdleSaver: switch to the idle plan after the timeout, switch back on input, and never fight Performance Mode or
+/// Away Mode: switch to the idle plan after the timeout, switch back on input, and never fight Performance Mode or
 /// a plan the user picked themselves. The power-plan API and the idle source are fakes, so nothing here waits minutes
 /// or changes this machine's plan.
 /// </summary>
-public class IdleSaverTests
+public class AwayModeTests
 {
     private static readonly Guid Balanced = new("381b4222-f694-41f0-9685-ff5bb260df2e");
     private static readonly Guid Ultimate = new("e9a42b02-d5df-448d-aa00-03f14749eb61");
@@ -38,10 +38,10 @@ public class IdleSaverTests
     private readonly FakePlans _plans = new();
     private readonly PowerManager _power;
 
-    public IdleSaverTests()
+    public AwayModeTests()
     {
         _power = new PowerManager(null, _idle, () => _plans.Active, _plans.Write);
-        _power.ConfigureIdleSaver(true, TimeoutMinutes, Powrprof.PowerSaver);
+        _power.ConfigureAwayMode(true, TimeoutMinutes, Powrprof.PowerSaver);
     }
 
     private void Away() { _idle.Idle = TimeSpan.FromMinutes(TimeoutMinutes) + TimeSpan.FromSeconds(1); _power.CheckIdle(); }
@@ -92,7 +92,7 @@ public class IdleSaverTests
     public void DisablingWhileIdle_RestoresAtOnce_AndStaysOff()
     {
         Away();
-        _power.ConfigureIdleSaver(false, TimeoutMinutes, Powrprof.PowerSaver);
+        _power.ConfigureAwayMode(false, TimeoutMinutes, Powrprof.PowerSaver);
         Assert.Equal(Balanced, _plans.Active);
 
         Away();
@@ -103,7 +103,7 @@ public class IdleSaverTests
     public void ChangingTheIdlePlanWhileIdle_RestoresThenAppliesTheNewPlan()
     {
         Away();
-        _power.ConfigureIdleSaver(true, TimeoutMinutes, Ultimate);
+        _power.ConfigureAwayMode(true, TimeoutMinutes, Ultimate);
         Assert.Equal(Balanced, _plans.Active);
 
         Away();
@@ -138,7 +138,7 @@ public class IdleSaverTests
     {
         Away();
         _plans.Active = Ultimate;   // changed in Windows' power options, or by another tool
-        Away();                     // same idle stretch: IdleSaver already had its go
+        Away();                     // same idle stretch: Away Mode already had its go
         Assert.Equal(Ultimate, _plans.Active);
 
         Back();
@@ -182,7 +182,7 @@ public class IdleSaverTests
     }
 
     [Fact]
-    public void PerformanceModeEnding_WhileStillIdle_LetsIdleSaverAct()
+    public void PerformanceModeEnding_WhileStillIdle_LetsAwayModeAct()
     {
         _power.EnablePerformanceMode(true);
         Away();
@@ -201,7 +201,7 @@ public class IdleSaverTests
         _power.EnablePerformanceMode(true);
         Assert.Equal(Powrprof.HighPerformance, _plans.Active);
 
-        Back();     // IdleSaver no longer owes a restore: it must not touch Performance Mode's plan
+        Back();     // Away Mode no longer owes a restore: it must not touch Performance Mode's plan
         Assert.Equal(Powrprof.HighPerformance, _plans.Active);
 
         _power.EnablePerformanceMode(false);

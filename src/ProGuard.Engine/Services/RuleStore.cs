@@ -59,7 +59,7 @@ public class RuleStore : IRuleStore
 
         if (Stamp(_dbFilePath) == _lastLoadedStamp) return false;
 
-        // The engine's own writes (e.g. the ProBalance log) land here too, so this is routine.
+        // The engine's own writes (e.g. the Responsiveness Guard log) land here too, so this is routine.
         _logger.LogDebug("Database changed on disk, reloading rules");
         LoadRules();
         return true;
@@ -340,38 +340,38 @@ public class RuleStore : IRuleStore
 
     // === Logging ===
 
-    public async Task LogProBalanceActionAsync(ProBalanceAction action)
+    public async Task LogResponsivenessGuardActionAsync(ResponsivenessGuardAction action)
     {
         try
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
-            db.ProBalanceActions.Add(action);
+            db.ResponsivenessGuardActions.Add(action);
             await db.SaveChangesAsync();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to log ProBalance action");
+            _logger.LogError(ex, "Failed to log Responsiveness Guard action");
         }
     }
 
-    public void ClearProBalanceActions()
+    public void ClearResponsivenessGuardActions()
     {
         using var scope = _serviceProvider.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
-        db.ProBalanceActions.ExecuteDelete();
+        db.ResponsivenessGuardActions.ExecuteDelete();
     }
 
-    public IReadOnlyList<ProBalanceAction> GetRecentActions(int count) => GetActions(null, null, count);
+    public IReadOnlyList<ResponsivenessGuardAction> GetRecentActions(int count) => GetActions(null, null, count);
 
-    public IReadOnlyList<ProBalanceAction> GetActions(int? beforeId, int? afterId, int count)
+    public IReadOnlyList<ResponsivenessGuardAction> GetActions(int? beforeId, int? afterId, int count)
     {
-        if (count <= 0) return Array.Empty<ProBalanceAction>();
+        if (count <= 0) return Array.Empty<ResponsivenessGuardAction>();
         try
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
-            IQueryable<ProBalanceAction> query = db.ProBalanceActions.AsNoTracking();
+            IQueryable<ResponsivenessGuardAction> query = db.ResponsivenessGuardActions.AsNoTracking();
             if (beforeId is int before) query = query.Where(a => a.Id < before);
             if (afterId is int after) query = query.Where(a => a.Id > after);
             // Ids only grow, so the highest are the newest (and the primary key needs no index of its own).
@@ -382,7 +382,7 @@ public class RuleStore : IRuleStore
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to read the action log");
-            return Array.Empty<ProBalanceAction>();
+            return Array.Empty<ResponsivenessGuardAction>();
         }
     }
 }

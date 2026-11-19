@@ -111,10 +111,10 @@
                                 </CheckBox>
                                 <ContentControl Content="{Binding CorePicker}" Margin="0,10,0,0" Visibility="{Binding AffinityEnabled, Converter={StaticResource VisibleWhen}}"/>
 
-                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ExcludeFromProBalance}" AutomationProperties.Name="NEVER BALANCE IT" Margin="0,16,0,0">
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ExcludeFromResponsivenessGuard}" AutomationProperties.Name="NEVER RESTRAIN IT" Margin="0,16,0,0">
                                     <StackPanel>
-                                        <TextBlock Text="{x:Static r:Strings.NeverBalanceIt}" FontWeight="Bold" FontSize="14"/>
-                                        <TextBlock Text="{x:Static r:Strings.ProbalanceWontLowerItsPriorityEven}" Style="{StaticResource Ed.Note}" Margin="0"/>
+                                        <TextBlock Text="{x:Static r:Strings.NeverRestrainIt}" FontWeight="Bold" FontSize="14"/>
+                                        <TextBlock Text="{x:Static r:Strings.ResponsivenessGuardWontLowerItsPriorityEven}" Style="{StaticResource Ed.Note}" Margin="0"/>
                                     </StackPanel>
                                 </CheckBox>
 
@@ -207,26 +207,26 @@
                                     </StackPanel>
                                 </CheckBox>
 
-                                <TextBlock Text="{x:Static r:Strings.InstanceBalancer}" Style="{StaticResource Ed.Label}" Margin="0,22,0,6"/>
-                                <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="INSTANCE BALANCER" ItemsSource="{Binding BalancerModes}" SelectedItem="{Binding Balancer}"/>
+                                <TextBlock Text="{x:Static r:Strings.InstanceSpread}" Style="{StaticResource Ed.Label}" Margin="0,22,0,6"/>
+                                <ListBox Style="{StaticResource Choices}" AutomationProperties.Name="INSTANCE SPREAD" ItemsSource="{Binding SpreadModes}" SelectedItem="{Binding Spread}"/>
                                 <TextBlock Style="{StaticResource Ed.Note}" Margin="0,0,0,4"
                                            Text="{x:Static r:Strings.SplitsTheCoresBetweenRunningCopies}"/>
-                                <StackPanel Visibility="{Binding BalancerOn, Converter={StaticResource VisibleWhen}}">
-                                    <StackPanel Visibility="{Binding BalancerFixed, Converter={StaticResource VisibleWhen}}">
+                                <StackPanel Visibility="{Binding SpreadOn, Converter={StaticResource VisibleWhen}}">
+                                    <StackPanel Visibility="{Binding SpreadFixed, Converter={StaticResource VisibleWhen}}">
                                         <TextBlock Text="{x:Static r:Strings.CoresPerCopy}" Style="{StaticResource Ed.Label}"/>
-                                        <TextBox Style="{StaticResource Ed.Num}" Tag="{x:Static r:Strings.Default1}" AutomationProperties.Name="CORES PER COPY" Text="{Binding BalancerCores, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBox Style="{StaticResource Ed.Num}" Tag="{x:Static r:Strings.Default1}" AutomationProperties.Name="CORES PER COPY" Text="{Binding SpreadCores, UpdateSourceTrigger=PropertyChanged}"/>
                                     </StackPanel>
                                     <UniformGrid Columns="2" Margin="0,4,0,0">
                                         <StackPanel Margin="0,0,10,0">
                                             <TextBlock Text="{x:Static r:Strings.KeepFreeLowestCores}" Style="{StaticResource Ed.Label}"/>
-                                            <TextBox Style="{StaticResource Ed.Num}" Tag="{x:Static r:Strings.None}" AutomationProperties.Name="KEEP FREE" Text="{Binding BalancerReserved, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <TextBox Style="{StaticResource Ed.Num}" Tag="{x:Static r:Strings.None}" AutomationProperties.Name="KEEP FREE" Text="{Binding SpreadReserved, UpdateSourceTrigger=PropertyChanged}"/>
                                         </StackPanel>
                                         <StackPanel>
                                             <TextBlock Text="{x:Static r:Strings.OnlyCopiesUsing}" Style="{StaticResource Ed.Label}"/>
-                                            <TextBox Style="{StaticResource Ed.Num}" Tag="{x:Static r:Strings.All}" AutomationProperties.Name="ONLY COPIES USING" Text="{Binding BalancerMinCpu, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <TextBox Style="{StaticResource Ed.Num}" Tag="{x:Static r:Strings.All}" AutomationProperties.Name="ONLY COPIES USING" Text="{Binding SpreadMinCpu, UpdateSourceTrigger=PropertyChanged}"/>
                                         </StackPanel>
                                     </UniformGrid>
-                                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding BalancerAvoidSmt}" AutomationProperties.Name="AVOID SMT" Margin="0,14,0,0">
+                                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding SpreadAvoidSmt}" AutomationProperties.Name="AVOID SMT" Margin="0,14,0,0">
                                         <StackPanel>
                                             <TextBlock Text="{x:Static r:Strings.AvoidSmt}" FontWeight="Bold" FontSize="14"/>
                                             <TextBlock Text="{x:Static r:Strings.HandOutOnlyTheFirstThread}" Style="{StaticResource Ed.Note}" Margin="0"/>

@@ -171,7 +171,7 @@
                             <TextBlock Text="{x:Static r:Strings.Eco2}" Style="{StaticResource Tag.Text}"/>
                         </Border>
                         <Border Style="{StaticResource Tag}" Visibility="{Binding IsRestrained, Converter={StaticResource VisibleWhen}}">
-                            <TextBlock Text="{x:Static r:Strings.Balanced}" Style="{StaticResource Tag.Text}"/>
+                            <TextBlock Text="{x:Static r:Strings.Restrained}" Style="{StaticResource Tag.Text}"/>
                         </Border>
                         <Border Style="{StaticResource Tag}" Visibility="{Binding IsAffinityLimited, Converter={StaticResource VisibleWhen}}"
                                 ToolTip="{x:Static r:Strings.TheCpuLimiterHasTakenCores}">

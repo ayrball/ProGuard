@@ -64,14 +64,14 @@ internal sealed class ThinHarness
 {
     public List<ProcessRule> Rules { get; } = new();
     public List<WatchdogRule> WatchdogRules { get; } = new();
-    public List<ProBalanceAction> Actions { get; } = new();
+    public List<ResponsivenessGuardAction> Actions { get; } = new();
     public AppSettings Stored { get; private set; } = new() { Id = 1 };
     private int _nextId = 100;
 
     public Mock<IRuleStore> Store { get; } = new();
-    public Mock<IProBalanceEngine> ProBalance { get; } = new();
+    public Mock<IResponsivenessGuardEngine> ResponsivenessGuard { get; } = new();
     public Mock<IPowerManager> Power { get; } = new();
-    public Mock<ISmartTrimService> SmartTrim { get; } = new();
+    public Mock<IMemoryTrimService> MemoryTrim { get; } = new();
     public Mock<ICpuLimiter> CpuLimiter { get; } = new();
     public Mock<IProcessController> Controller { get; } = new();
     public Mock<IRuleProcessAccess> Access { get; } = new();
@@ -127,39 +127,39 @@ internal sealed class ThinHarness
         Store.Setup(s => s.GetRecentActions(It.IsAny<int>())).Returns((int n) => Actions.OrderByDescending(a => a.Timestamp).Take(n).ToList());
         Store.Setup(s => s.GetActions(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<int>())).Returns((int? before, int? after, int n) => Actions
             .Where(a => (before == null || a.Id < before) && (after == null || a.Id > after)).OrderByDescending(a => a.Id).Take(n).ToList());
-        Store.Setup(s => s.ClearProBalanceActions()).Callback(() => Actions.Clear());
+        Store.Setup(s => s.ClearResponsivenessGuardActions()).Callback(() => Actions.Clear());
 
-        ProBalance.SetupGet(p => p.RestrainedPids).Returns(Array.Empty<int>());
+        ResponsivenessGuard.SetupGet(p => p.RestrainedPids).Returns(Array.Empty<int>());
         CpuLimiter.Setup(c => c.GetActiveLimits()).Returns(new Dictionary<int, double>());
         Power.Setup(p => p.GetAvailablePlans()).Returns(() => Plans.Select(p => (p.Item1, p.Item2)).ToList());
         Power.Setup(p => p.GetActivePlan()).Returns(() => ActivePlan);
         Power.Setup(p => p.SetActivePlan(It.IsAny<Guid>())).Callback<Guid>(id => ActivePlan = id);
         Power.SetupGet(p => p.PlanOwnerName).Returns("User");
-        SmartTrim.Setup(t => t.TrimMemory()).Returns(new MemoryPurgeReport());
-        SmartTrim.Setup(t => t.TrimProcess(It.IsAny<int>())).Returns(new MemoryPurgeReport { ProcessesTrimmed = 1 });
+        MemoryTrim.Setup(t => t.TrimMemory()).Returns(new MemoryPurgeReport());
+        MemoryTrim.Setup(t => t.TrimProcess(It.IsAny<int>())).Returns(new MemoryPurgeReport { ProcessesTrimmed = 1 });
         Access.Setup(a => a.IsCritical(It.IsAny<int>())).Returns(false);
         Access.Setup(a => a.Terminate(It.IsAny<int>())).Returns(true);
         Access.Setup(a => a.SetPriorityClass(It.IsAny<int>(), It.IsAny<System.Diagnostics.ProcessPriorityClass>())).Returns(true);
         Access.Setup(a => a.SetAffinityMask(It.IsAny<int>(), It.IsAny<long>())).Returns(true);
 
-        ForegroundBoost = new ForegroundBoostService(NullLogger<ForegroundBoostService>.Instance, ProBalance.Object, new Mock<IForegroundTracker>().Object);
+        ForegroundBoost = new ForegroundBoostService(NullLogger<ForegroundBoostService>.Instance, ResponsivenessGuard.Object, new Mock<IForegroundTracker>().Object);
         TimerResolution = new TimerResolutionService(native: Timer);
-        var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, Monitor, SmartTrim.Object, Power.Object, ProBalance.Object,
+        var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, Monitor, MemoryTrim.Object, Power.Object, ResponsivenessGuard.Object,
             foregroundBoost: ForegroundBoost, timerResolution: TimerResolution);
 
-        Snapshots = new SnapshotBuilder(Monitor, ProBalance.Object, CpuLimiter.Object, Store.Object, Power.Object, Details,
+        Snapshots = new SnapshotBuilder(Monitor, ResponsivenessGuard.Object, CpuLimiter.Object, Store.Object, Power.Object, Details,
             foregroundBoost: ForegroundBoost, metrics: () => { MetricsReads++; return Metrics; }, clockMs: () => NowMs, engineIsElevated: true);
 
         var actions = new ProcessActionService(NullLogger<ProcessActionService>.Instance, Tuning, Monitor, Controller.Object);
-        var rules = new RuleService(NullLogger<RuleService>.Instance, Store.Object, Monitor, CpuLimiter.Object, ProBalance.Object,
+        var rules = new RuleService(NullLogger<RuleService>.Instance, Store.Object, Monitor, CpuLimiter.Object, ResponsivenessGuard.Object,
             Access.Object, Manual, launchPriorities: new LaunchPriorityService(registry: LaunchRegistry));
         var feed = new ActivityFeed(Store.Object, Manual, WatchdogEvents);
         CpuTuning = new CpuTuningService(power: PowerSettings, originals: new MemoryCpuTuningOriginalsStore());
         var thin = new ThinClientCommands(NullLogger<ThinClientCommands>.Instance, Snapshots, actions, rules, feed, Manual,
             Store.Object, Power.Object, Monitor, Tuning, CpuTuning,
             new LogQueryService(new EngineLogReader(engineLogPath ?? Path.Combine(Path.GetTempPath(), "ProGuard.Tests.NoLog", "engine.log")), Store.Object));
-        Dispatcher = new IpcDispatcher(Log, Store.Object, applier, ProBalance.Object, Power.Object,
-            SmartTrim.Object, CpuLimiter.Object, Controller.Object, Monitor, WatchdogEvents, thin, timerResolution: TimerResolution);
+        Dispatcher = new IpcDispatcher(Log, Store.Object, applier, ResponsivenessGuard.Object, Power.Object,
+            MemoryTrim.Object, CpuLimiter.Object, Controller.Object, Monitor, WatchdogEvents, thin, timerResolution: TimerResolution);
     }
 
     public CommandResult Send(IIpcCaller caller, string command, int? pid = null, object? argument = null)

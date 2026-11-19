@@ -1,11 +1,11 @@
 namespace ProGuard.Core.Services;
 
-public interface IProcessGovernor
+public interface IProcessOrchestrator
 {
     IProcessMonitor Monitor { get; }
-    IProBalanceEngine ProBalance { get; }
+    IResponsivenessGuardEngine ResponsivenessGuard { get; }
     ICpuLimiter CpuLimiter { get; }
-    ISmartTrimService SmartTrim { get; }
+    IMemoryTrimService MemoryTrim { get; }
     IPowerManager PowerManager { get; }
     IWatchdogService Watchdog { get; }
     IRuleStore RuleStore { get; }

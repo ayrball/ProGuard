@@ -9,9 +9,8 @@ namespace ProGuard.Core.Helpers;
 public readonly record struct PowerPlanInfo(Guid Id, string Name);
 
 /// <summary>
-/// Lists the power plans actually installed (<c>PowerEnumerate</c> + <c>PowerReadFriendlyName</c>), as Process Lasso
-/// does, rather than assuming the three Windows defaults exist: OEM images often drop High Performance or Power Saver,
-/// and tools add their own (Ultimate Performance, Bitsum Highest Performance). Works unelevated, so the UI and the
+/// Lists the power plans actually installed (<c>PowerEnumerate</c> + <c>PowerReadFriendlyName</c>), rather than assuming the three Windows defaults exist: OEM images often drop High Performance or Power Saver,
+/// and tools add their own (Ultimate Performance, vendor plans). Works unelevated, so the UI and the
 /// engine share it.
 /// </summary>
 public static class PowerPlans

@@ -12,21 +12,21 @@ namespace ProGuard.Tests;
 /// <summary>The power settings reaching the engine services and the Power page.</summary>
 public class PowerSettingsTests
 {
-    private static readonly Guid Bitsum = new("7e7c1a77-6191-4f35-95bc-f3e18e688049");
+    private static readonly Guid Vendor = new("3c1e5f2a-8b4d-4e6f-9a07-5d2c1b8e4f60");
 
     // ---------- SettingsApplier ----------
 
     private sealed class Harness
     {
         public Mock<IProcessMonitor> Monitor { get; } = new();
-        public Mock<ISmartTrimService> SmartTrim { get; } = new();
+        public Mock<IMemoryTrimService> MemoryTrim { get; } = new();
         public Mock<IPowerManager> Power { get; } = new();
-        public Mock<IProBalanceEngine> ProBalance { get; } = new();
+        public Mock<IResponsivenessGuardEngine> ResponsivenessGuard { get; } = new();
         public Mock<IAutoPerformanceMode> Auto { get; } = new();
         public SettingsApplier Applier { get; }
 
         public Harness() =>
-            Applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, Monitor.Object, SmartTrim.Object, Power.Object, ProBalance.Object, Auto.Object);
+            Applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, Monitor.Object, MemoryTrim.Object, Power.Object, ResponsivenessGuard.Object, Auto.Object);
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public class PowerSettingsTests
         var h = new Harness();
         h.Applier.Apply(new AppSettings
         {
-            PerformanceModePlanGuid = Bitsum.ToString(),
+            PerformanceModePlanGuid = Vendor.ToString(),
             AutoPerformanceModeProcesses = "a.exe;b.exe",
             AutoPerformanceModeDetectGames = true,
             LoadSwitcherEnabled = true,
@@ -45,7 +45,7 @@ public class PowerSettingsTests
             StartWithPowerPlanGuid = Powrprof.Balanced.ToString(),
         });
 
-        h.Power.Verify(p => p.ConfigurePerformanceMode(Bitsum), Times.Once);
+        h.Power.Verify(p => p.ConfigurePerformanceMode(Vendor), Times.Once);
         h.Auto.Verify(a => a.Configure(It.Is<AutoPerformanceModeOptions>(o =>
             o.DetectGames && !o.EngageForSteam && o.Processes.SequenceEqual(new[] { "a.exe", "b.exe" }))), Times.Once);
         h.Power.Verify(p => p.ConfigureLoadSwitcher(It.Is<LoadSwitcherOptions>(o =>

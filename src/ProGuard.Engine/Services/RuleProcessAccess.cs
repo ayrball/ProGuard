@@ -8,7 +8,7 @@ using ProGuard.Core.Native;
 namespace ProGuard.Engine.Services;
 
 /// <summary>
-/// The live-process reads and writes the per-rule features (instance limits, Instance Balancer, startup boost)
+/// The live-process reads and writes the per-rule features (instance limits, Instance Spread, startup boost)
 /// need. Kept behind an interface so their rules can be tested against fake processes.
 /// Every method returns null/false instead of throwing when the process is gone or access is denied.
 /// </summary>

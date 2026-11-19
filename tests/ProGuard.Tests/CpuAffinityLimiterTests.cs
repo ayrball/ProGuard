@@ -39,7 +39,7 @@ internal sealed class CpuAffinityLimiterHarness : IDisposable
     public long Now { get; private set; }
     public List<ProcessInfo> Processes { get; } = new();
     public Dictionary<string, ProcessRule> Rules { get; } = new(StringComparer.OrdinalIgnoreCase);
-    public List<ProBalanceAction> Logged { get; } = new();
+    public List<ResponsivenessGuardAction> Logged { get; } = new();
     public FakeAffinityAccess Access { get; } = new();
     public Mock<IProcessMonitor> Monitor { get; } = new();
     public CpuAffinityLimiter Limiter { get; }
@@ -51,8 +51,8 @@ internal sealed class CpuAffinityLimiterHarness : IDisposable
         var store = new Mock<IRuleStore>();
         store.Setup(s => s.GetProcessRule(It.IsAny<string>()))
             .Returns((string name) => Rules.TryGetValue(name, out var r) ? r : null);
-        store.Setup(s => s.LogProBalanceActionAsync(It.IsAny<ProBalanceAction>()))
-            .Callback((ProBalanceAction a) => Logged.Add(a))
+        store.Setup(s => s.LogResponsivenessGuardActionAsync(It.IsAny<ResponsivenessGuardAction>()))
+            .Callback((ResponsivenessGuardAction a) => Logged.Add(a))
             .Returns(Task.CompletedTask);
 
         Limiter = new CpuAffinityLimiter(NullLogger<CpuAffinityLimiter>.Instance, Monitor.Object, store.Object, Access, () => Now);
@@ -158,7 +158,7 @@ public class CpuAffinityLimiterTests
     }
 
     [Fact]
-    public void Apply_LogsProcessLassoStyleMessage()
+    public void Apply_LogsWhatItDidAndForHowLong()
     {
         using var h = new CpuAffinityLimiterHarness();
         h.AddRule(cores: 2, duration: 30);
@@ -392,7 +392,7 @@ public class CpuAffinityLimiterTests
     {
         if (Environment.ProcessorCount < 2) return;
 
-        // A process that does next to nothing, so Process Lasso leaves it alone; its priority isn't assumed.
+        // A process that does next to nothing, so no process manager touches it; its priority isn't assumed.
         using var p = Process.Start(new ProcessStartInfo("ping.exe", "-n 60 127.0.0.1")
         {
             CreateNoWindow = true,

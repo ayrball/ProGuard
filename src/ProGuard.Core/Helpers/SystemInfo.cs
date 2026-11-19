@@ -12,7 +12,7 @@ namespace ProGuard.Core.Helpers;
 /// <item><see cref="GetOverallCpuPercent"/>: what Task Manager shows (PDH <c>% Processor Utility</c>, which scales busy
 /// time by the current clock speed). For display: dashboard, status bar, tray, engine status.</item>
 /// <item><see cref="GetProcessorTimePercent"/>: busy time from <c>GetSystemTimes</c>, the same measure as per-process
-/// CPU % (CPU time over wall time). The engine's decisions (ProBalance, load switcher) use this, so a system
+/// CPU % (CPU time over wall time). The engine's decisions (Responsiveness Guard, load switcher) use this, so a system
 /// threshold and per-process thresholds compare like with like.</item>
 /// </list>
 /// </summary>

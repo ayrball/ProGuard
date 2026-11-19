@@ -17,7 +17,7 @@ public class RuleTests
             AffinityMask = 0b1111,
             CpuLimitPercent = 50.0,
             MaxInstances = 2,
-            ExcludeFromProBalance = true,
+            ExcludeFromResponsivenessGuard = true,
             DisallowExecution = false
         };
 
@@ -25,7 +25,7 @@ public class RuleTests
         Assert.Equal((int)System.Diagnostics.ProcessPriorityClass.High, rule.PriorityClass);
         Assert.Equal(0b1111, rule.AffinityMask);
         Assert.Equal(50.0, rule.CpuLimitPercent);
-        Assert.True(rule.ExcludeFromProBalance);
+        Assert.True(rule.ExcludeFromResponsivenessGuard);
         Assert.False(rule.DisallowExecution);
     }
 

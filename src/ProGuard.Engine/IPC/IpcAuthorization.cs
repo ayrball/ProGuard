@@ -19,7 +19,7 @@ namespace ProGuard.Engine.IPC;
 /// terminating the System process or the engine) still apply.</item>
 /// <item>Anyone may read the Watchdog event log (GetLogs), whose notifications every desktop's UI shows. It holds
 /// process names and ids, which any user can list anyway, and the rules' own notification text.</item>
-/// <item>Anyone may Ping, GetStatus, read the process rules (GetRules), change the engine settings (SetSetting and the Responsiveness Guard, Memory Trim and
+/// <item>Anyone may Ping, GetStatus, read the process rules (GetRules), change the engine settings (the Responsiveness Guard, Memory Trim and
 /// Away Mode commands), toggle Performance Mode and trim all working sets. These are the machine-wide preferences the
 /// UI shows on every desktop. None of them reads or changes another user's data, and
 /// trimming everything is what Memory Trim does anyway once it is enabled.</item>
@@ -35,7 +35,7 @@ namespace ProGuard.Engine.IPC;
 /// <c>SnapshotBuilder</c> blanks the file path of every process the caller couldn't open themselves), the process and
 /// Watchdog rules, the settings, the power state, the activity feed and the CPU Sets. They hold machine-wide
 /// preferences and the process list any user can see anyway.</item>
-/// <item>SaveSettings and SetPowerPlan are open to any user, like SetSetting and Performance Mode: they are the same
+/// <item>SaveSettings and SetPowerPlan are open to any user, like Performance Mode: they are the same
 /// machine-wide preferences, and a power plan the user picks is what Windows would let them pick in Power Options.
 /// A plan chosen this way wins over Performance Mode or Away Mode (see <c>IPowerManager.SetActivePlan</c>).</item>
 /// <item>SetPowerMode is open to any user too: it is the Windows power-mode slider, which every user may move in Windows'
@@ -51,7 +51,7 @@ namespace ProGuard.Engine.IPC;
 /// <item>Clearing the action log (<see cref="CommandTypes.ClearActionLog"/>) is administrator-only: it is the record of
 /// what the engine did to every user's processes.</item>
 /// <item>The system timer resolution is administrator-only to change (<see cref="CommandTypes.SetTimerResolution"/>, and
-/// <see cref="AppSettings.TimerResolutionRequest"/> through SaveSettings or SetSetting): it is machine-wide, costs
+/// <see cref="AppSettings.TimerResolutionRequest"/> through SaveSettings): it is machine-wide, costs
 /// every user battery life, and the GlobalTimerResolutionRequests switch it can set lives under HKLM. Reading it
 /// (<see cref="CommandTypes.GetTimerResolution"/>) is open to anyone, as the rest of the System page is.</item>
 /// <item>Unparking cores while Responsiveness Guard restrains (<see cref="AppSettings.ResponsivenessGuardDisableCoreParking"/>) is
@@ -61,7 +61,10 @@ namespace ProGuard.Engine.IPC;
 /// hidden settings in every user's Power Options. Reading them (<see cref="CommandTypes.GetCpuTuning"/>) is open to
 /// anyone, as powercfg /query is.</item>
 /// <item>Settings listed in <see cref="AdministratorOnlySettings"/> may be saved by a standard user only unchanged: a
-/// SaveSettings or SetSetting that changes one of them is refused as a whole (<see cref="CheckSettingsChange"/>).</item>
+/// SaveSettings that changes one of them is refused as a whole (<see cref="CheckSettingsChange"/>). That includes the
+/// automatic standby-list and file-cache purges: they do what "Purge now" does, which is administrator-only.</item>
+/// <item>The legacy SetSetting request is retired: it copied every setting without validation. The dispatcher refuses it
+/// for everyone.</item>
 /// <item>Config profiles: listing, saving, renaming, deleting and exporting them is open to any user (a profile changes
 /// nothing until it is applied, and the rules and settings it holds are readable by anyone anyway). Switching to one and
 /// importing a config are open here too, and <c>ConfigProfileService</c> then checks every rule it would add, change or
@@ -168,6 +171,12 @@ public static class IpcAuthorization
         nameof(AppSettings.TimerResolutionRequest),
         // Rewrites the active power plan's hidden processor settings, machine-wide (powercfg needs elevation for it too).
         nameof(AppSettings.ResponsivenessGuardDisableCoreParking),
+        // The automatic purges do what PurgeMemory does, which is administrator-only: they throw away every user's
+        // cached data machine-wide. Their thresholds and conditions decide how often that happens.
+        nameof(AppSettings.StandbyPurgeEnabled),
+        nameof(AppSettings.StandbyPurgeFreeRamThresholdMB),
+        nameof(AppSettings.StandbyPurgeOnlyInPerformanceMode),
+        nameof(AppSettings.FileCachePurgeEnabled),
     };
 
     /// <summary>
@@ -190,6 +199,10 @@ public static class IpcAuthorization
     {
         nameof(AppSettings.TimerResolutionRequest) => "the system timer resolution",
         nameof(AppSettings.ResponsivenessGuardDisableCoreParking) => "whether Responsiveness Guard unparks cores (it edits the power plan)",
+        nameof(AppSettings.StandbyPurgeEnabled) => "the automatic standby list purge (it empties every user's cache)",
+        nameof(AppSettings.StandbyPurgeFreeRamThresholdMB) => "when the standby list is purged",
+        nameof(AppSettings.StandbyPurgeOnlyInPerformanceMode) => "when the standby list is purged",
+        nameof(AppSettings.FileCachePurgeEnabled) => "the automatic file cache purge (it empties every user's cache)",
         _ => System.Text.RegularExpressions.Regex.Replace(setting, "(?<=[a-z])(?=[A-Z])", " ").ToLowerInvariant(),
     };
 
@@ -202,7 +215,7 @@ public static class IpcAuthorization
         {
             case MessageType.Ping:
             case MessageType.GetStatus:
-            case MessageType.SetSetting:
+            case MessageType.SetSetting: // refused by the dispatcher for everyone (retired)
             case MessageType.GetRules: // rule names and settings, no data about anyone's processes
             case MessageType.GetLogs:
                 return null;

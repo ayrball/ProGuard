@@ -1678,6 +1678,9 @@ PROTOKOLLIERT.</value>
   <data name="SignIn_NeedsAdmin" xml:space="preserve">
     <value>ProGuard startet bei der Anmeldung über eine Aufgabe, die nur ein Administrator entfernen kann. Starten Sie ProGuard als Administrator neu, um dies auszuschalten.</value>
   </data>
+  <data name="SignIn_NotProtected" xml:space="preserve">
+    <value>ProGuard startet bei der Anmeldung mit Standardrechten und fragt beim Öffnen nach Administratorrechten, weil diese Kopie auch von anderen Benutzern als Administratoren ersetzt werden kann ({0}). Installieren Sie ProGuard, um es ohne Nachfrage als Administrator zu starten.</value>
+  </data>
   <data name="SignIn_Refused" xml:space="preserve">
     <value>Die Aufgabenplanung hat die Änderung abgelehnt.</value>
   </data>

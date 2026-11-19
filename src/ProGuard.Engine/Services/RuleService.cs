@@ -59,6 +59,9 @@ public sealed class RuleService
         _launchPriorities = launchPriorities;
     }
 
+    /// <summary>Which processes a rule may act on (see <see cref="RuleScope"/>). Tests supply fake owners.</summary>
+    internal RuleScope Scope { get; init; } = RuleScope.Default;
+
     // === Process rules ===
 
     public CommandResult GetProcessRules() =>
@@ -79,7 +82,7 @@ public sealed class RuleService
         if (sameName != null && sameName.Id != dto.Id)
         {
             // Not allowed to replace someone's rule by saving under its name, so say that rather than "duplicate".
-            if (RuleAuthorization.CheckProcessRule(sameName, caller, _monitor) is { } protectedRule)
+            if (RuleAuthorization.CheckMayChange(sameName, caller, _monitor) is { } protectedRule)
                 return IpcAuthorization.Deny(caller, protectedRule);
             return CommandResult.Fail($"There is already a rule for {sameName.ProcessName}.");
         }
@@ -88,9 +91,10 @@ public sealed class RuleService
         RuleDtoMapper.CopyTo(dto, rule);
         rule.ProcessName = dto.ProcessName.Trim();
         rule.Id = existing?.Id ?? 0;
+        RuleAuthorization.Stamp(rule, caller); // never from the client: the DTO has no author
 
-        // Both the rule being replaced and the one replacing it must be ones this caller could have made.
-        if (existing != null && RuleAuthorization.CheckProcessRule(existing, caller, _monitor) is { } cannotChange)
+        // The rule being replaced must be this caller's to change, and the one replacing it one they could make.
+        if (existing != null && RuleAuthorization.CheckMayChange(existing, caller, _monitor) is { } cannotChange)
             return IpcAuthorization.Deny(caller, cannotChange);
         if (RuleAuthorization.CheckProcessRule(rule, caller, _monitor) is { } denied)
             return IpcAuthorization.Deny(caller, denied);
@@ -106,7 +110,7 @@ public sealed class RuleService
     {
         var existing = _store.GetProcessRules().FirstOrDefault(r => r.Id == id);
         if (existing == null) return CommandResult.Fail("That rule no longer exists. Refresh the list and try again.");
-        if (RuleAuthorization.CheckProcessRule(existing, caller, _monitor) is { } denied)
+        if (RuleAuthorization.CheckMayChange(existing, caller, _monitor) is { } denied)
             return IpcAuthorization.Deny(caller, denied);
 
         _store.DeleteProcessRule(id);
@@ -192,7 +196,7 @@ public sealed class RuleService
                 && (rule.CpuLimitPercent == null || ProcessExtensions.NormalizeName(previous.ProcessName) != ProcessExtensions.NormalizeName(rule.ProcessName)))
                 ReleaseCap(previous);
 
-            foreach (var p in Running(rule.ProcessName))
+            foreach (var p in Running(rule))
                 ApplyTo(rule, p);
 
             _spread?.Tick();
@@ -207,13 +211,14 @@ public sealed class RuleService
     private void ReleaseCap(ProcessRule rule)
     {
         if (rule.CpuLimitPercent == null) return;
-        foreach (var p in Running(rule.ProcessName)) _cpuLimiter.RemoveLimit(p.Pid);
+        foreach (var p in Running(rule)) _cpuLimiter.RemoveLimit(p.Pid);
     }
 
-    private List<ProcessInfo> Running(string name)
+    /// <summary>The running processes <paramref name="rule"/> may act on: its name, and for a standard user's rule, the author's own.</summary>
+    private List<ProcessInfo> Running(ProcessRule rule)
     {
-        var key = ProcessExtensions.NormalizeName(name);
-        return _monitor.GetAllProcesses().Where(p => ProcessExtensions.NormalizeName(p.Name) == key).ToList();
+        var key = ProcessExtensions.NormalizeName(rule.ProcessName);
+        return _monitor.GetAllProcesses().Where(p => ProcessExtensions.NormalizeName(p.Name) == key && Scope.AppliesTo(rule, p)).ToList();
     }
 
     private void ApplyTo(ProcessRule rule, ProcessInfo p)
@@ -271,8 +276,9 @@ public sealed class RuleService
         rule.TargetProcessName = dto.TargetProcessName.Trim();
         rule.ActionArgument = string.IsNullOrWhiteSpace(dto.ActionArgument) ? null : dto.ActionArgument.Trim();
         rule.Id = existing?.Id ?? 0;
+        RuleAuthorization.Stamp(rule, caller);
 
-        if (existing != null && RuleAuthorization.CheckWatchdogRule(existing, caller, _monitor) is { } cannotChange)
+        if (existing != null && RuleAuthorization.CheckMayChange(existing, caller, _monitor) is { } cannotChange)
             return IpcAuthorization.Deny(caller, cannotChange);
         if (RuleAuthorization.CheckWatchdogRule(rule, caller, _monitor) is { } denied)
             return IpcAuthorization.Deny(caller, denied);
@@ -288,7 +294,7 @@ public sealed class RuleService
     {
         var existing = _store.GetWatchdogRules().FirstOrDefault(r => r.Id == id);
         if (existing == null) return CommandResult.Fail("That watchdog rule no longer exists. Refresh the list and try again.");
-        if (RuleAuthorization.CheckWatchdogRule(existing, caller, _monitor) is { } denied)
+        if (RuleAuthorization.CheckMayChange(existing, caller, _monitor) is { } denied)
             return IpcAuthorization.Deny(caller, denied);
 
         _store.DeleteWatchdogRule(id);

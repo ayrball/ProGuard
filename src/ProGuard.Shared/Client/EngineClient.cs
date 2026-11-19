@@ -1,8 +1,10 @@
 using System.Globalization;
 using System.IO.Pipes;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 using ProGuard.Shared.Messages;
+using ProGuard.Shared.Security;
 
 namespace ProGuard.Shared.Client;
 
@@ -169,6 +171,8 @@ public sealed class EngineClient : IAsyncDisposable
         Disconnect();
         return ex switch
         {
+            UntrustedPipeServerException => new EngineUnavailableException(
+                "ProGuard didn't connect: " + ex.Message + ". Restart the ProGuard Engine service, or the PC.", ex),
             UnauthorizedAccessException => new EngineUnavailableException(
                 "Windows refused the connection to the ProGuard engine. Run ProGuard as administrator to connect to it.", ex),
             JsonException => new EngineUnavailableException("The engine sent a reply this version of ProGuard can't read.", ex),
@@ -192,11 +196,15 @@ public sealed class EngineClient : IAsyncDisposable
         if (IsConnected) return;
         Disconnect();
 
-        // A pipe stream can't be reconnected once closed, so every attempt uses a new one.
-        var pipe = new NamedPipeClientStream(".", _pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+        // A pipe stream can't be reconnected once closed, so every attempt uses a new one. Impersonation, not less: the
+        // engine checks each process request by opening the process as us (IpcCaller), which Identification doesn't
+        // allow. So before anything is written, PipeServerCheck makes sure the server is the engine and not a program
+        // that took the pipe name while the engine was down to capture that token.
+        var pipe = new NamedPipeClientStream(".", _pipeName, PipeDirection.InOut, PipeOptions.Asynchronous, TokenImpersonationLevel.Impersonation);
         try
         {
             await pipe.ConnectAsync((int)_connectTimeout.TotalMilliseconds, cancellationToken).ConfigureAwait(false);
+            PipeServerCheck.Verify(pipe.SafePipeHandle);
         }
         catch
         {

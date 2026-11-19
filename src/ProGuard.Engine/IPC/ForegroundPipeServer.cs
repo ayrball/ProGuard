@@ -25,6 +25,10 @@ public sealed class ForegroundPipeServer
     internal const int MaxConnections = 16;
     /// <summary>A report is one short JSON line; anything longer is not a ProGuard UI.</summary>
     internal const int MaxLineLength = 512;
+    /// <summary>Reporters one account may hold at once: a session agent and a UI in each of a couple of sessions.</summary>
+    internal const int MaxConnectionsPerAccount = 4;
+    /// <summary>Reporters repeat themselves every 5 seconds; one silent for this long is gone or isn't a reporter.</summary>
+    internal static readonly TimeSpan DefaultIdleTimeout = TimeSpan.FromSeconds(60);
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -32,6 +36,7 @@ public sealed class ForegroundPipeServer
     private readonly ForegroundTracker _tracker;
     private CancellationTokenSource? _cts;
     private long _nextConnectionId;
+    private PipeConnectionLimiter _connections = new(MaxConnectionsPerAccount);
 
     public ForegroundPipeServer(ILogger<ForegroundPipeServer> logger, ForegroundTracker tracker)
     {
@@ -45,14 +50,23 @@ public sealed class ForegroundPipeServer
     /// <summary>Who may connect and write. Tests narrow it to check what an unelevated client actually needs.</summary>
     public PipeSecurity Security { get; init; } = CreateSecurity();
 
+    /// <summary>Which account a connection counts against (<see cref="MaxConnectionsPerAccount"/>). Tests replace it.</summary>
+    internal Func<NamedPipeServerStream, string> AccountOf { get; init; } = PipeConnectionLimiter.AccountOf;
+
+    internal int MaxPerAccount { init => _connections = new PipeConnectionLimiter(value); }
+    internal TimeSpan IdleTimeout { get; init; } = DefaultIdleTimeout;
+
     /// <summary>
     /// SYSTEM, Administrators and the engine's own account get full control (creating further pipe instances needs
     /// it); other signed-in users may only read and write. Write here maps to what a client opening the pipe for
     /// writing asks for, and excludes creating instances, so users can't stand up a rival server on this name.
+    /// Network logons are denied outright, as on the command pipe: reports only make sense from this machine's desktops.
     /// </summary>
     public static PipeSecurity CreateSecurity()
     {
         var security = new PipeSecurity();
+        security.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(WellKnownSidType.NetworkSid, null),
+            PipeAccessRights.FullControl, AccessControlType.Deny));
         security.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null),
             PipeAccessRights.ReadWrite | PipeAccessRights.Synchronize, AccessControlType.Allow));
         security.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null),
@@ -79,19 +93,27 @@ public sealed class ForegroundPipeServer
         while (!token.IsCancellationRequested)
         {
             NamedPipeServerStream? server = null;
+            // With none of our instances left the name is free, so the next one must be the first (see PipeServer).
+            var first = _connections.Open == 0;
             try
             {
                 server = NamedPipeServerStreamAcl.Create(PipeName, PipeDirection.In, MaxConnections,
-                    PipeTransmissionMode.Byte, PipeOptions.Asynchronous, 0, 0, Security);
+                    PipeTransmissionMode.Byte, PipeOptions.Asynchronous | (first ? PipeOptions.FirstPipeInstance : PipeOptions.None), 0, 0, Security);
                 await server.WaitForConnectionAsync(token);
 
                 var connected = server;
                 server = null;
+                _connections.Connected();
                 _ = Task.Run(() => HandleClientAsync(connected, token));
             }
             catch (OperationCanceledException)
             {
                 break;
+            }
+            catch (UnauthorizedAccessException ex) when (first)
+            {
+                _logger.LogError(ex, "Could not create the foreground pipe {Pipe}: another process already owns that name. Reporters refuse a server that isn't the engine, but no foreground reports arrive until that process exits. Retrying.", PipeName);
+                try { await Task.Delay(5000, token); } catch (OperationCanceledException) { break; }
             }
             catch (IOException ex)
             {
@@ -114,8 +136,17 @@ public sealed class ForegroundPipeServer
     private async Task HandleClientAsync(NamedPipeServerStream pipe, CancellationToken token)
     {
         var connectionId = Interlocked.Increment(ref _nextConnectionId);
+        string? account = null;
         try
         {
+            var candidate = AccountOf(pipe);
+            if (!_connections.TryAdmit(candidate))
+            {
+                _logger.LogWarning("Refused a foreground reporter from {Account}: it already holds {Max} connections", candidate, _connections.MaxPerAccount);
+                return;
+            }
+            account = candidate;
+
             if (!Kernel32.GetNamedPipeClientSessionId(pipe.SafePipeHandle, out var session))
             {
                 _logger.LogDebug("Rejecting foreground reporter: client session unknown");
@@ -126,7 +157,20 @@ public sealed class ForegroundPipeServer
             using var reader = new StreamReader(pipe, Encoding.UTF8);
             while (pipe.IsConnected && !token.IsCancellationRequested)
             {
-                var line = await PipeLineReader.ReadLineAsync(reader, MaxLineLength, token);
+                string? line;
+                using (var idle = CancellationTokenSource.CreateLinkedTokenSource(token))
+                {
+                    idle.CancelAfter(IdleTimeout);
+                    try
+                    {
+                        line = await PipeLineReader.ReadLineAsync(reader, MaxLineLength, idle.Token);
+                    }
+                    catch (OperationCanceledException) when (!token.IsCancellationRequested)
+                    {
+                        _logger.LogDebug("Dropping silent foreground reporter {Connection}", connectionId);
+                        break;
+                    }
+                }
                 if (line == null) break;
                 if (line.Length == 0) continue;
 
@@ -153,6 +197,8 @@ public sealed class ForegroundPipeServer
             if (_tracker.Disconnect(connectionId))
                 _logger.LogInformation("Foreground reporter {Connection} disconnected", connectionId);
             pipe.Dispose();
+            if (account != null) _connections.Release(account);
+            _connections.Closed();
         }
     }
 

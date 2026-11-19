@@ -46,6 +46,9 @@ public sealed class PersistentRuleService : IDisposable
     /// </summary>
     public Func<int, bool>? PriorityHeld { get; set; }
 
+    /// <summary>Which processes a rule may act on (see <see cref="RuleScope"/>). Tests supply fake owners.</summary>
+    internal RuleScope Scope { get; init; } = RuleScope.Default;
+
     public PersistentRuleService(ILogger<PersistentRuleService> logger, IProcessTuningNative native, IProcessMonitor monitor, IRuleStore ruleStore)
         : this(logger, CreateAppliers(native), monitor, ruleStore)
     {
@@ -99,7 +102,7 @@ public sealed class PersistentRuleService : IDisposable
         {
             foreach (var process in _monitor.GetAllProcesses().ToList())
             {
-                var rule = _ruleStore.GetProcessRule(process.Name);
+                var rule = Scope.RuleFor(_ruleStore, process); // a standard user's rule: their own processes only
                 if (rule is not { ReapplyIfChanged: true } || rule.DisallowExecution) continue;
 
                 var target = new ProcessTarget(process.Pid, process.Name, process.FilePath);

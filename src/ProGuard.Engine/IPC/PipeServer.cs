@@ -21,6 +21,12 @@ public class PipeServer
 
     /// <summary>Enough for every session's UI (and a few tools) without letting one user exhaust the engine.</summary>
     internal const int MaxConnections = 16;
+    /// <summary>Connections one account may hold at once: a UI needs one, the preview tool or a script a few more.</summary>
+    internal const int MaxConnectionsPerAccount = 4;
+    /// <summary>A client that connects must send its first request within this long, or it is dropped.</summary>
+    internal static readonly TimeSpan DefaultFirstRequestTimeout = TimeSpan.FromSeconds(15);
+    /// <summary>A connection with no request for this long is dropped; the UI reconnects when it next asks.</summary>
+    internal static readonly TimeSpan DefaultIdleTimeout = TimeSpan.FromMinutes(5);
     /// <summary>
     /// The largest request is an imported config file (ConfigDocuments.MaxDocumentLength characters, a little more once
     /// JSON-escaped into the request). Bounded, so an unprivileged client can't make the engine buffer unbounded input.
@@ -30,6 +36,7 @@ public class PipeServer
     private readonly ILogger<PipeServer> _logger;
     private readonly IpcDispatcher _dispatcher;
     private CancellationTokenSource? _cts;
+    private PipeConnectionLimiter _connections = new(MaxConnectionsPerAccount);
 
     public PipeServer(ILogger<PipeServer> logger, IpcDispatcher dispatcher)
     {
@@ -45,6 +52,13 @@ public class PipeServer
 
     /// <summary>How a connected client is identified. Tests of request routing (rather than authorization) replace it.</summary>
     internal Func<NamedPipeServerStream, IIpcCaller?> IdentifyCaller { get; init; } = PipeCaller.Identify;
+
+    /// <summary>Which account a connection counts against (<see cref="MaxConnectionsPerAccount"/>). Tests replace it.</summary>
+    internal Func<NamedPipeServerStream, string> AccountOf { get; init; } = PipeConnectionLimiter.AccountOf;
+
+    internal int MaxPerAccount { init => _connections = new PipeConnectionLimiter(value); }
+    internal TimeSpan FirstRequestTimeout { get; init; } = DefaultFirstRequestTimeout;
+    internal TimeSpan IdleTimeout { get; init; } = DefaultIdleTimeout;
 
     /// <summary>
     /// Interactive users (the UI on any desktop, including Remote Desktop sessions) may read and write. That excludes
@@ -86,19 +100,28 @@ public class PipeServer
         while (!token.IsCancellationRequested)
         {
             NamedPipeServerStream? server = null;
+            // With none of our instances left, the name is free: the next one must be the first, or a program that
+            // created the pipe in the meantime (to capture a connecting UI's token) would serve our clients.
+            var first = _connections.Open == 0;
             try
             {
                 server = NamedPipeServerStreamAcl.Create(PipeName, PipeDirection.InOut, MaxConnections,
-                    PipeTransmissionMode.Message, PipeOptions.Asynchronous, 0, 0, Security);
+                    PipeTransmissionMode.Message, PipeOptions.Asynchronous | (first ? PipeOptions.FirstPipeInstance : PipeOptions.None), 0, 0, Security);
                 await server.WaitForConnectionAsync(token);
 
                 var connected = server;
                 server = null;
+                _connections.Connected();
                 _ = Task.Run(() => HandleClientAsync(connected, token));
             }
             catch (OperationCanceledException)
             {
                 break;
+            }
+            catch (UnauthorizedAccessException ex) when (first)
+            {
+                _logger.LogError(ex, "Could not create the command pipe {Pipe}: another process already owns that name. Clients refuse a server that isn't the engine, so nothing is sent to it, but the UI can't reach the engine until that process exits. Retrying.", PipeName);
+                try { await Task.Delay(5000, token); } catch (OperationCanceledException) { break; }
             }
             catch (IOException ex)
             {
@@ -120,15 +143,38 @@ public class PipeServer
 
     private async Task HandleClientAsync(NamedPipeServerStream pipe, CancellationToken token)
     {
+        string? account = null;
         try
         {
+            var candidate = AccountOf(pipe);
+            if (!_connections.TryAdmit(candidate))
+            {
+                _logger.LogWarning("Refused a command pipe connection from {Account}: it already holds {Max} connections", candidate, _connections.MaxPerAccount);
+                return;
+            }
+            account = candidate;
+
             using var reader = new StreamReader(pipe);
             using var writer = new StreamWriter(pipe) { AutoFlush = true };
             IIpcCaller? caller = null;
 
             while (pipe.IsConnected && !token.IsCancellationRequested)
             {
-                var line = await PipeLineReader.ReadLineAsync(reader, MaxLineLength, token);
+                // A client that never writes, or stops, would otherwise hold its instance for good.
+                string? line;
+                using (var idle = CancellationTokenSource.CreateLinkedTokenSource(token))
+                {
+                    idle.CancelAfter(caller == null ? FirstRequestTimeout : IdleTimeout);
+                    try
+                    {
+                        line = await PipeLineReader.ReadLineAsync(reader, MaxLineLength, idle.Token);
+                    }
+                    catch (OperationCanceledException) when (!token.IsCancellationRequested)
+                    {
+                        _logger.LogDebug("Dropping an idle command pipe client ({Account})", account);
+                        break;
+                    }
+                }
                 if (line == null) break;
 
                 // Windows only lets a server impersonate its client once it has read from the pipe, so the client is
@@ -158,6 +204,8 @@ public class PipeServer
         finally
         {
             pipe.Dispose();
+            if (account != null) _connections.Release(account);
+            _connections.Closed();
         }
     }
 }

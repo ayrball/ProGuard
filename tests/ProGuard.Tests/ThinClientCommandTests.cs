@@ -939,12 +939,12 @@ public class ThinClientCommandTests
         tuning.Setup(t => t.GetSystemCpuSets()).Throws(new System.ComponentModel.Win32Exception("The parameter is incorrect"));
         var feed = new ActivityFeed(h.Store.Object, h.Manual);
         var thin = new ThinClientCommands(Microsoft.Extensions.Logging.Abstractions.NullLogger<ThinClientCommands>.Instance, h.Snapshots,
-            new ProcessActionService(Microsoft.Extensions.Logging.Abstractions.NullLogger<ProcessActionService>.Instance, tuning.Object, h.Monitor, h.Controller.Object),
+            new ProcessActionService(Microsoft.Extensions.Logging.Abstractions.NullLogger<ProcessActionService>.Instance, tuning.Object, h.Monitor, h.Controller.Object) { PinProcess = TestPins.AnyDescendant },
             new RuleService(Microsoft.Extensions.Logging.Abstractions.NullLogger<RuleService>.Instance, h.Store.Object, h.Monitor, h.CpuLimiter.Object, h.ResponsivenessGuard.Object, h.Access.Object, h.Manual),
             feed, h.Manual, h.Store.Object, h.Power.Object, h.Monitor, tuning.Object);
         var dispatcher = new IpcDispatcher(Microsoft.Extensions.Logging.Abstractions.NullLogger<IpcDispatcher>.Instance, h.Store.Object,
             new SettingsApplier(Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsApplier>.Instance, h.Monitor, h.MemoryTrim.Object, h.Power.Object, h.ResponsivenessGuard.Object),
-            h.ResponsivenessGuard.Object, h.Power.Object, h.MemoryTrim.Object, h.CpuLimiter.Object, h.Controller.Object, h.Monitor, null, thin);
+            h.ResponsivenessGuard.Object, h.Power.Object, h.MemoryTrim.Object, h.CpuLimiter.Object, h.Controller.Object, h.Monitor, null, thin) { PinProcess = TestPins.Any };
 
         var reply = dispatcher.Dispatch(new CommandMessage { CommandType = CommandTypes.GetCpuSets });
         var result = JsonSerializer.Deserialize<CommandResult>(reply.Payload)!;

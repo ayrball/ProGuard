@@ -1678,6 +1678,9 @@ DE JOURNALISÉ.</value>
   <data name="SignIn_NeedsAdmin" xml:space="preserve">
     <value>ProGuard démarre à l'ouverture de session via une tâche que seul un administrateur peut supprimer. Redémarrez ProGuard en tant qu'administrateur pour le désactiver.</value>
   </data>
+  <data name="SignIn_NotProtected" xml:space="preserve">
+    <value>ProGuard démarre à l'ouverture de session avec des droits standard et demande les droits d'administrateur à son ouverture, car cette copie peut être remplacée par des utilisateurs autres que les administrateurs ({0}). Installez ProGuard pour le démarrer en tant qu'administrateur sans confirmation.</value>
+  </data>
   <data name="SignIn_Refused" xml:space="preserve">
     <value>Le Planificateur de tâches a refusé la modification.</value>
   </data>

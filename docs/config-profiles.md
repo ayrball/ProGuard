@@ -23,7 +23,12 @@ A profile changes nothing until it is applied, and its contents are readable by 
 commands are open. Applying one is what is checked: every rule a switch or import would add, change or remove goes
 through `RuleAuthorization` as the caller, and the settings through `IpcAuthorization.CheckSettingsChange`
 (`AdministratorOnlySettings`). One refusal stops the whole switch. Rules that stay exactly as they are aren't checked,
-so a standard user can switch between profiles that both keep an administrator's rule.
+so a standard user can switch between profiles that both keep an administrator's rule; they also keep whoever saved
+them, while every rule the switch adds or changes is recorded as the caller's (and so, for a standard user, acts only on
+their own processes). A standard user may change or remove only rules they saved themselves.
+
+The engine also records who created each profile. A standard user may overwrite, rename or delete only their own;
+administrators may change any, and profiles from before this was recorded count as administrators'.
 
 ## Switching and importing
 

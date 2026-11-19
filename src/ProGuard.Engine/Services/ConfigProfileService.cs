@@ -31,7 +31,9 @@ namespace ProGuard.Engine.Services;
 /// <item>Values that only work on the machine they were saved on are left out and reported
 /// (<see cref="ConfigDocuments.FitToMachine"/>).</item>
 /// <item>Saving, listing, exporting, renaming and deleting profiles are open to any user: a profile changes nothing
-/// until it is applied, and applying it is what is checked.</item>
+/// until it is applied, and applying it is what is checked. The engine records who created each profile
+/// (<see cref="ConfigProfile.CreatorSid"/>), and a standard user may overwrite, rename or delete only their own;
+/// administrators may change any. Profiles from before creators were recorded count as administrators'.</item>
 /// </list>
 /// Switch and import change settings, so the dispatcher calls them under its settings lock.
 /// </summary>
@@ -86,27 +88,34 @@ public sealed class ConfigProfileService
 
     public CommandResult List() => CommandResult.Ok(JsonSerializer.Serialize(_profiles.GetProfiles().Select(ToDto).ToList()));
 
-    public CommandResult Save(string? name)
+    public CommandResult Save(string? name) => Save(name, IpcCaller.InProcess);
+
+    public CommandResult Save(string? name, IIpcCaller caller)
     {
         name = name?.Trim() ?? string.Empty;
         if (CheckName(name) is { } bad) return CommandResult.Fail(bad);
         if (IsAutomatic(name)) return CommandResult.Fail($"\"{name}\" is kept for the copy ProGuard saves before a switch. Pick another name.");
         var all = _profiles.GetProfiles();
-        if (all.Count(p => !IsAutomatic(p.Name)) >= MaxProfiles && all.All(p => !string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)))
+        var replacing = all.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (replacing != null && CheckMayChange(replacing, caller) is { } denied) return denied;
+        if (all.Count(p => !IsAutomatic(p.Name)) >= MaxProfiles && replacing == null)
             return CommandResult.Fail($"There are already {MaxProfiles} profiles. Delete one first.");
 
-        var saved = _profiles.Save(ToProfile(Capture(name)));
+        var saved = _profiles.Save(ToProfile(Capture(name), caller));
         _activity.Add(ActivityKind.Manual, string.Empty, 0, $"Saved the configuration as the {saved.Name} profile.");
         return CommandResult.Ok(JsonSerializer.Serialize(ToDto(saved)));
     }
 
-    public CommandResult Rename(RenameProfileArgument argument)
+    public CommandResult Rename(RenameProfileArgument argument) => Rename(argument, IpcCaller.InProcess);
+
+    public CommandResult Rename(RenameProfileArgument argument, IIpcCaller caller)
     {
         var name = argument.Name?.Trim() ?? string.Empty;
         if (CheckName(name) is { } bad) return CommandResult.Fail(bad);
         if (IsAutomatic(name)) return CommandResult.Fail($"\"{name}\" is kept for the copy ProGuard saves before a switch. Pick another name.");
         var profile = _profiles.GetProfile(argument.Id);
         if (profile == null) return CommandResult.Fail("That profile no longer exists. Refresh the list and try again.");
+        if (CheckMayChange(profile, caller) is { } denied) return denied;
         if (_profiles.GetProfiles().Any(p => p.Id != profile.Id && string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)))
             return CommandResult.Fail($"There is already a profile called {name}.");
         if (!_profiles.Rename(profile.Id, name)) return CommandResult.Fail("That profile no longer exists. Refresh the list and try again.");
@@ -114,10 +123,14 @@ public sealed class ConfigProfileService
         return CommandResult.Ok(JsonSerializer.Serialize(ToDto(profile)));
     }
 
-    public CommandResult Delete(int id)
+    public CommandResult Delete(int id) => Delete(id, IpcCaller.InProcess);
+
+    public CommandResult Delete(int id, IIpcCaller caller)
     {
         var profile = _profiles.GetProfile(id);
-        if (profile == null || !_profiles.Delete(id)) return CommandResult.Fail("That profile no longer exists. Refresh the list and try again.");
+        if (profile == null) return CommandResult.Fail("That profile no longer exists. Refresh the list and try again.");
+        if (CheckMayChange(profile, caller) is { } denied) return denied;
+        if (!_profiles.Delete(id)) return CommandResult.Fail("That profile no longer exists. Refresh the list and try again.");
         _activity.Add(ActivityKind.Manual, string.Empty, 0, $"Deleted the {profile.Name} profile.");
         return CommandResult.Ok();
     }
@@ -160,7 +173,7 @@ public sealed class ConfigProfileService
 
         // The configuration in force, kept first so the switch can be undone. Saved before anything is replaced: if the
         // replacement fails, it is simply a copy of what is still in force.
-        _profiles.Save(ToProfile(Capture(backupName)));
+        _profiles.Save(ToProfile(Capture(backupName), caller));
 
         var previous = _store.GetProcessRules().ToList();
         _store.ReplaceConfiguration(plan!.ProcessRules, plan.WatchdogRules, plan.Settings);
@@ -210,12 +223,18 @@ public sealed class ConfigProfileService
         foreach (var (key, dto) in existing)
         {
             if (incoming.TryGetValue(key, out var same) && ConfigDocuments.SameRule(dto, same)) continue;
-            if (stored.TryGetValue(key, out var rule) && RuleAuthorization.CheckProcessRule(rule, caller, _monitor) is { } denied) refusals.Add(denied);
+            if (stored.TryGetValue(key, out var rule) && RuleAuthorization.CheckMayChange(rule, caller, _monitor) is { } denied) refusals.Add(denied);
         }
         foreach (var rule in plan.ProcessRules)
         {
             var key = ConfigDocuments.RuleKey(rule.ProcessName);
-            if (existing.TryGetValue(key, out var same) && ConfigDocuments.SameRule(same, incoming[key])) continue;
+            if (existing.TryGetValue(key, out var same) && ConfigDocuments.SameRule(same, incoming[key]))
+            {
+                // Stored again unchanged: it keeps whoever saved it, so a switch never widens or narrows a rule.
+                if (stored.TryGetValue(key, out var kept)) rule.CopyAuthor(kept);
+                continue;
+            }
+            RuleAuthorization.Stamp(rule, caller);
             if (RuleAuthorization.CheckProcessRule(rule, caller, _monitor) is { } denied) refusals.Add(denied);
         }
 
@@ -225,11 +244,17 @@ public sealed class ConfigProfileService
         foreach (var rule in newWatchdog)
         {
             var match = unmatchedOld.FindIndex(o => o.Key == rule.Key);
-            if (match >= 0) { unmatchedOld.RemoveAt(match); continue; }
+            if (match >= 0)
+            {
+                rule.Rule.CopyAuthor(unmatchedOld[match].Rule);
+                unmatchedOld.RemoveAt(match);
+                continue;
+            }
+            RuleAuthorization.Stamp(rule.Rule, caller);
             if (RuleAuthorization.CheckWatchdogRule(rule.Rule, caller, _monitor) is { } denied) refusals.Add(denied);
         }
         foreach (var (rule, _) in unmatchedOld)
-            if (RuleAuthorization.CheckWatchdogRule(rule, caller, _monitor) is { } denied) refusals.Add(denied);
+            if (RuleAuthorization.CheckMayChange(rule, caller, _monitor) is { } denied) refusals.Add(denied);
 
         if (IpcAuthorization.CheckSettingsChange(_store.GetSettings(), plan.Settings, caller) is { } settingsDenied) preview.Refusals.Add(settingsDenied.Error!);
         preview.Refusals.InsertRange(0, refusals.Distinct().Select(what => IpcAuthorization.Deny(caller, what).Error!));
@@ -275,8 +300,22 @@ public sealed class ConfigProfileService
         return null;
     }
 
-    private static ConfigProfile ToProfile(ConfigDocument document) => new()
+    /// <summary>
+    /// Null when <paramref name="caller"/> may overwrite, rename or delete <paramref name="profile"/>: administrators
+    /// always, a standard user only a profile they created. ProGuard's own "Before switch" and "Before import" copies
+    /// are refreshed by every switch and import, whoever makes it, so they can be replaced by anyone.
+    /// </summary>
+    internal static CommandResult? CheckMayChange(ConfigProfile profile, IIpcCaller caller)
     {
+        if (caller.IsAdministrator) return null;
+        if (profile.CreatorSid != null && caller.Sid != null && string.Equals(profile.CreatorSid, caller.Sid, StringComparison.OrdinalIgnoreCase))
+            return null;
+        return IpcAuthorization.Deny(caller, $"change or delete the {profile.Name} profile: an administrator or another user created it");
+    }
+
+    private static ConfigProfile ToProfile(ConfigDocument document, IIpcCaller caller) => new()
+    {
+        CreatorSid = caller.Sid ?? (caller.IsAdministrator ? null : Core.Models.RuleAuthorship.NobodySid),
         Name = document.Name,
         SavedUtc = document.SavedUtc,
         Document = ConfigDocuments.Serialize(document),

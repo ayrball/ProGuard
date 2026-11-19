@@ -18,4 +18,11 @@ public class ConfigProfile
     // Kept alongside the document so the list doesn't have to read every one.
     public int ProcessRuleCount { get; set; }
     public int WatchdogRuleCount { get; set; }
+
+    /// <summary>
+    /// SID of the account that created the profile, set by the engine. Standard users may overwrite, rename or delete
+    /// only profiles they created; administrators may change any. Null for profiles from before this was recorded,
+    /// which only administrators may change.
+    /// </summary>
+    public string? CreatorSid { get; set; }
 }

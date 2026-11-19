@@ -586,6 +586,19 @@ public sealed partial class WatchdogViewModel : ObservableObject, IPage
             return;
         }
 
+        // Realtime can starve the mouse and keyboard, and this rule sets it unattended: say so first.
+        if (dto.ActionType == WatchdogResponse.SetPriority && WatchdogArgs.TryParsePriority(dto.ActionArgument, out var priority)
+            && priority == ProcessPriorityClass.RealTime)
+        {
+            _shell.Confirm(Strings.Proc_RealtimeTitle, string.Format(Strings.Wd_RealtimeWarning, RuleText.Display(dto.TargetProcessName)),
+                Strings.Rule_SaveRealtime, () => StoreAsync(dto));
+            return;
+        }
+        await StoreAsync(dto);
+    }
+
+    private async Task StoreAsync(WatchdogRuleDto dto)
+    {
         var saved = await _hub.QueryAsync<WatchdogRuleDto>(CommandTypes.SaveWatchdogRule, argument: dto);
         if (saved == null) return;
 

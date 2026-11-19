@@ -1558,11 +1558,17 @@ DE JOURNALISÉ.</value>
   <data name="Rule_PriorityClassNumber" xml:space="preserve">
     <value>CLASSE {0}</value>
   </data>
+  <data name="Rule_RealtimeWarning" xml:space="preserve">
+    <value>Une règle en priorité Temps réel permet à {0} d'affamer Windows lui-même, y compris votre souris et votre clavier, à chaque lancement et sans personne pour l'arrêter. Ne l'utilisez que pour un programme dont vous êtes sûr qu'il reste léger.</value>
+  </data>
   <data name="Rule_Reapply" xml:space="preserve">
     <value>RÉAPPLIQUER</value>
   </data>
   <data name="Rule_Reserve" xml:space="preserve">
     <value>RÉSERVE {0}</value>
+  </data>
+  <data name="Rule_SaveRealtime" xml:space="preserve">
+    <value>ENREGISTRER EN TEMPS RÉEL</value>
   </data>
   <data name="Rule_Saved" xml:space="preserve">
     <value>RÈGLE ENREGISTRÉE · {0}</value>
@@ -2223,6 +2229,9 @@ DE JOURNALISÉ.</value>
   </data>
   <data name="Wd_PrivateBytes" xml:space="preserve">
     <value>OCTETS PRIVÉS</value>
+  </data>
+  <data name="Wd_RealtimeWarning" xml:space="preserve">
+    <value>Quand cette règle se déclenche, elle passe {0} en priorité Temps réel, qui peut affamer Windows lui-même, y compris votre souris et votre clavier. Ne l'utilisez que pour un programme dont vous êtes sûr qu'il reste léger.</value>
   </data>
   <data name="Wd_RestartIt" xml:space="preserve">
     <value>LE REDÉMARRER</value>

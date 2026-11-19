@@ -206,7 +206,9 @@ public sealed partial class RuleEditor : ObservableObject
     {
         _logical = logical;
         var priorities = PriorityChoices(Strings.Rule_Leave);
+        // A startup boost raises to High at most: the engine never applies Realtime automatically.
         var boostPriorities = PriorityChoices(Strings.Off);
+        boostPriorities.RemoveAll(c => c.Value == ProcessPriorityClass.RealTime);
         var io = IntChoices(Strings.Rule_Leave, RuleText.IoPriorityName, 0, 3, adminFrom: 3);
         var memory = IntChoices(Strings.Rule_Leave, RuleText.MemoryPriorityName, 1, 5);
         var gpu = IntChoices(Strings.Rule_Leave, RuleText.GpuPriorityName, 0, 4);
@@ -609,6 +611,18 @@ public sealed partial class RulesViewModel : ObservableObject, IPage
             return;
         }
 
+        // Realtime can starve the mouse and keyboard, and a rule applies it at every start, unattended: say so first.
+        if (dto.PriorityClass == (int)ProcessPriorityClass.RealTime)
+        {
+            _shell.Confirm(Strings.Proc_RealtimeTitle, string.Format(Strings.Rule_RealtimeWarning, RuleText.Display(dto.ProcessName)),
+                Strings.Rule_SaveRealtime, () => StoreAsync(dto));
+            return;
+        }
+        await StoreAsync(dto);
+    }
+
+    private async Task StoreAsync(ProcessRuleDto dto)
+    {
         var saved = await _hub.QueryAsync<ProcessRuleDto>(CommandTypes.SaveProcessRule, argument: dto);
         if (saved == null) return;
 

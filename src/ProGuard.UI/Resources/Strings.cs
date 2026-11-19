@@ -1039,11 +1039,15 @@ public static class Strings
 
     public static string Rule_PriorityClassNumber => Get(nameof(Rule_PriorityClassNumber));
 
+    public static string Rule_RealtimeWarning => Get(nameof(Rule_RealtimeWarning));
+
     public static string Rule_Reapply => Get(nameof(Rule_Reapply));
 
     public static string Rule_Reserve => Get(nameof(Rule_Reserve));
 
     public static string Rule_Saved => Get(nameof(Rule_Saved));
+
+    public static string Rule_SaveRealtime => Get(nameof(Rule_SaveRealtime));
 
     public static string Rule_SpreadEqual => Get(nameof(Rule_SpreadEqual));
 
@@ -1486,6 +1490,8 @@ public static class Strings
     public static string Wd_PrivateAboveValue => Get(nameof(Wd_PrivateAboveValue));
 
     public static string Wd_PrivateBytes => Get(nameof(Wd_PrivateBytes));
+
+    public static string Wd_RealtimeWarning => Get(nameof(Wd_RealtimeWarning));
 
     public static string Wd_RestartIt => Get(nameof(Wd_RestartIt));
 

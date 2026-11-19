@@ -1558,11 +1558,17 @@ REGISTRADO.</value>
   <data name="Rule_PriorityClassNumber" xml:space="preserve">
     <value>CLASSE {0}</value>
   </data>
+  <data name="Rule_RealtimeWarning" xml:space="preserve">
+    <value>Uma regra com prioridade Tempo real permite que {0} esgote os recursos do próprio Windows, inclusive mouse e teclado, toda vez que for executado, sem ninguém para impedir. Use só em um programa que você confia que continuará leve.</value>
+  </data>
   <data name="Rule_Reapply" xml:space="preserve">
     <value>REAPLICAR</value>
   </data>
   <data name="Rule_Reserve" xml:space="preserve">
     <value>RESERVAR {0}</value>
+  </data>
+  <data name="Rule_SaveRealtime" xml:space="preserve">
+    <value>SALVAR COM TEMPO REAL</value>
   </data>
   <data name="Rule_Saved" xml:space="preserve">
     <value>REGRA SALVA · {0}</value>
@@ -2223,6 +2229,9 @@ REGISTRADO.</value>
   </data>
   <data name="Wd_PrivateBytes" xml:space="preserve">
     <value>BYTES PRIVADOS</value>
+  </data>
+  <data name="Wd_RealtimeWarning" xml:space="preserve">
+    <value>Quando esta regra é acionada, ela coloca {0} em prioridade Tempo real, que pode esgotar os recursos do próprio Windows, inclusive mouse e teclado. Use só em um programa que você confia que continuará leve.</value>
   </data>
   <data name="Wd_RestartIt" xml:space="preserve">
     <value>REINICIAR</value>

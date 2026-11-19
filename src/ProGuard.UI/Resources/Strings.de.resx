@@ -1558,11 +1558,17 @@ PROTOKOLLIERT.</value>
   <data name="Rule_PriorityClassNumber" xml:space="preserve">
     <value>KLASSE {0}</value>
   </data>
+  <data name="Rule_RealtimeWarning" xml:space="preserve">
+    <value>Eine Regel mit Echtzeitpriorität erlaubt {0}, Windows selbst auszubremsen, einschließlich Maus und Tastatur, und zwar bei jedem Start, ohne dass jemand eingreifen kann. Verwenden Sie sie nur für ein Programm, das garantiert genügsam bleibt.</value>
+  </data>
   <data name="Rule_Reapply" xml:space="preserve">
     <value>NEU ANWENDEN</value>
   </data>
   <data name="Rule_Reserve" xml:space="preserve">
     <value>RESERVE {0}</value>
+  </data>
+  <data name="Rule_SaveRealtime" xml:space="preserve">
+    <value>MIT ECHTZEIT SPEICHERN</value>
   </data>
   <data name="Rule_Saved" xml:space="preserve">
     <value>REGEL GESPEICHERT · {0}</value>
@@ -2223,6 +2229,9 @@ PROTOKOLLIERT.</value>
   </data>
   <data name="Wd_PrivateBytes" xml:space="preserve">
     <value>PRIVATE BYTES</value>
+  </data>
+  <data name="Wd_RealtimeWarning" xml:space="preserve">
+    <value>Wenn diese Regel auslöst, setzt sie {0} auf Echtzeitpriorität, die Windows selbst ausbremsen kann, einschließlich Maus und Tastatur. Verwenden Sie sie nur für ein Programm, das garantiert genügsam bleibt.</value>
   </data>
   <data name="Wd_RestartIt" xml:space="preserve">
     <value>NEU STARTEN</value>

@@ -1558,11 +1558,17 @@ LOGGED.</value>
   <data name="Rule_PriorityClassNumber" xml:space="preserve">
     <value>CLASS {0}</value>
   </data>
+  <data name="Rule_RealtimeWarning" xml:space="preserve">
+    <value>A rule with Realtime priority lets {0} starve Windows itself, including your mouse and keyboard, every time it runs, with no one there to stop it. Only use it for a program you trust to stay light.</value>
+  </data>
   <data name="Rule_Reapply" xml:space="preserve">
     <value>RE-APPLY</value>
   </data>
   <data name="Rule_Reserve" xml:space="preserve">
     <value>RESERVE {0}</value>
+  </data>
+  <data name="Rule_SaveRealtime" xml:space="preserve">
+    <value>SAVE WITH REALTIME</value>
   </data>
   <data name="Rule_Saved" xml:space="preserve">
     <value>RULE SAVED · {0}</value>
@@ -2223,6 +2229,9 @@ LOGGED.</value>
   </data>
   <data name="Wd_PrivateBytes" xml:space="preserve">
     <value>PRIVATE BYTES</value>
+  </data>
+  <data name="Wd_RealtimeWarning" xml:space="preserve">
+    <value>When this rule fires it sets {0} to Realtime priority, which can starve Windows itself, including your mouse and keyboard. Only use it for a program you trust to stay light.</value>
   </data>
   <data name="Wd_RestartIt" xml:space="preserve">
     <value>RESTART IT</value>

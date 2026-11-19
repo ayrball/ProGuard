@@ -11,6 +11,7 @@ using ProGuard.Shared.Contracts;
 using ProGuard.Shared.Messages;
 using ProGuard.UI.Services;
 using ProGuard.UI.ViewModels;
+using ProGuard.UI.Resources;
 
 namespace ProGuard.Tests;
 
@@ -1272,5 +1273,106 @@ public class UiSystemTests
         });
 
         Assert.Null(failure);
+    }
+
+    // ------------------------------------------------------------------ Realtime asks first, wherever it is chosen
+
+    [Fact]
+    public async Task Processes_Realtime_AsksFirst_AndOnlySetsItOnceConfirmed()
+    {
+        await using var engine = RuleEngine();
+        var vm = AlwaysPage(engine, out var shell);
+
+        await vm.SetPriorityCommand.ExecuteAsync("RealTime");
+        var confirm = Assert.IsType<ConfirmDialogViewModel>(shell.Dialog);
+        Assert.Equal(Strings.Proc_RealtimeTitle, confirm.Title);
+        Assert.Empty(Sent(engine));
+
+        await confirm.ConfirmCommand.ExecuteAsync(null);
+        Assert.Contains(CommandTypes.SetPriority, Sent(engine));
+    }
+
+    [Fact]
+    public async Task RuleEditor_SavingRealtime_AsksFirst()
+    {
+        await using var engine = RuleEngine();
+        var shell = NewShell(pipe: engine.PipeName);
+        shell.Hub.Snapshot = new EngineSnapshot { LogicalProcessors = 8, CallerIsAdministrator = true };
+        shell.Rules.NewCommand.Execute(null);
+        var editor = shell.Rules.Editor!;
+        editor.ProcessName = "game.exe";
+        editor.Priority = editor.Priorities.Single(c => c.Value == ProcessPriorityClass.RealTime);
+
+        await shell.Rules.SaveCommand.ExecuteAsync(null);
+        var confirm = Assert.IsType<ConfirmDialogViewModel>(shell.Dialog);
+        Assert.Equal(Strings.Rule_SaveRealtime, confirm.ConfirmText);
+        Assert.Contains("GAME", confirm.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(Saved(engine));
+
+        await confirm.ConfirmCommand.ExecuteAsync(null);
+        Assert.Equal((int)ProcessPriorityClass.RealTime, Assert.Single(Saved(engine)).PriorityClass);
+    }
+
+    [Fact]
+    public async Task RuleEditor_SavingAnyOtherPriority_DoesNotAsk()
+    {
+        await using var engine = RuleEngine();
+        var shell = NewShell(pipe: engine.PipeName);
+        shell.Hub.Snapshot = new EngineSnapshot { LogicalProcessors = 8, CallerIsAdministrator = true };
+        shell.Rules.NewCommand.Execute(null);
+        var editor = shell.Rules.Editor!;
+        editor.ProcessName = "game.exe";
+        editor.Priority = editor.Priorities.Single(c => c.Value == ProcessPriorityClass.High);
+
+        await shell.Rules.SaveCommand.ExecuteAsync(null);
+        Assert.Null(shell.Dialog);
+        Assert.Single(Saved(engine));
+    }
+
+    [Fact]
+    public void RuleEditor_StartupBoost_OffersHighAtMost()
+    {
+        var editor = new RuleEditor(8);
+        Assert.DoesNotContain(editor.BoostPriorities, c => c.Value == ProcessPriorityClass.RealTime);
+        Assert.Contains(editor.BoostPriorities, c => c.Value == ProcessPriorityClass.High);
+    }
+
+    [Fact]
+    public async Task WatchdogEditor_SavingASetRealtimeAction_AsksFirst()
+    {
+        await using var engine = new FakeEngine
+        {
+            Handler = c => c.CommandType == CommandTypes.SaveWatchdogRule ? CommandResult.Ok(c.Argument!) : CommandResult.Ok("[]"),
+        };
+        var shell = NewShell(pipe: engine.PipeName);
+        shell.Hub.Snapshot = new EngineSnapshot { LogicalProcessors = 8, CallerIsAdministrator = true };
+        shell.Watchdog.NewCommand.Execute(null);
+        var editor = shell.Watchdog.Editor!;
+        editor.ProcessName = "game.exe";
+        editor.Response = editor.Responses.Single(r => r.Value == WatchdogResponse.SetPriority);
+        editor.PriorityArg = editor.PriorityChoices.Single(c => c.Value == ProcessPriorityClass.RealTime);
+
+        await shell.Watchdog.SaveCommand.ExecuteAsync(null);
+        var confirm = Assert.IsType<ConfirmDialogViewModel>(shell.Dialog);
+        Assert.Equal(Strings.Rule_SaveRealtime, confirm.ConfirmText);
+        Assert.DoesNotContain(engine.Received(), c => c.CommandType == CommandTypes.SaveWatchdogRule);
+
+        await confirm.ConfirmCommand.ExecuteAsync(null);
+        Assert.Contains(engine.Received(), c => c.CommandType == CommandTypes.SaveWatchdogRule);
+    }
+
+    [Fact]
+    public void TheRealtimeWarnings_AreTranslated()
+    {
+        foreach (var culture in new[] { "es", "de", "fr", "pt-BR" })
+        {
+            var info = System.Globalization.CultureInfo.GetCultureInfo(culture);
+            foreach (var key in new[] { nameof(Strings.Rule_RealtimeWarning), nameof(Strings.Rule_SaveRealtime), nameof(Strings.Wd_RealtimeWarning) })
+            {
+                var text = Strings.ResourceManager.GetString(key, info);
+                Assert.False(string.IsNullOrWhiteSpace(text));
+                Assert.NotEqual(Strings.ResourceManager.GetString(key, System.Globalization.CultureInfo.InvariantCulture), text);
+            }
+        }
     }
 }

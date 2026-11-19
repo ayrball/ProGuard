@@ -56,7 +56,7 @@ public class ThinClientPipeTests
             WindowStyle = ProcessWindowStyle.Hidden
         };
         var p = Process.Start(psi)!;
-        // A child inherits BelowNormal/Idle from its parent, and another process manager may have restrained this test host.
+        // A child inherits BelowNormal/Idle from its parent, and a process manager may have restrained this test host.
         p.PriorityClass = ProcessPriorityClass.Normal;
         return p;
     }

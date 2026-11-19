@@ -139,13 +139,13 @@ public class Win32CoreParkingPower : ICoreParkingPower
 }
 
 /// <summary>
-/// another process manager's <c>OocDisableCoreParkingWhileIn</c>: while ResponsivenessGuard holds any process restrained, the active power
+/// Unparks cores while Responsiveness Guard restrains: while it holds any process restrained, the active power
 /// plan's "processor performance core parking min cores" (<c>CPMINCORES</c>, and <c>CPMINCORES1</c> for the second
 /// efficiency class of a hybrid CPU) is set to 100 %, so every core stays unparked and the foreground work isn't
 /// squeezed onto a few. The plan's own values come back once nothing is restrained.
 /// <para>
 /// Only values still at 100 % are put back: if the user (or a tool) changed one meanwhile, theirs stays. If the active
-/// plan changes while cores are held unparked (Performance Mode, AwayMode, the user), the old plan gets its values back
+/// plan changes while cores are held unparked (Performance Mode, Away Mode, the user), the old plan gets its values back
 /// and the new one is unparked instead.
 /// </para>
 /// <para>
@@ -194,7 +194,7 @@ public sealed class CoreParkingService
 
     /// <summary>
     /// While the cores of <paramref name="scheme"/> are held unparked: the plan's own value of <paramref name="setting"/>,
-    /// the one that comes back when ResponsivenessGuard lets go. Null when not held, or when the hold didn't change that setting.
+    /// the one that comes back when Responsiveness Guard lets go. Null when not held, or when the hold didn't change that setting.
     /// </summary>
     public AcDc? HeldOriginal(Guid scheme, Guid setting)
     {
@@ -205,7 +205,7 @@ public sealed class CoreParkingService
     /// <summary>
     /// Changes the user's value of a plan's setting (CPU tuning) without fighting a hold. While the plan's cores are held
     /// unparked and the hold changed <paramref name="setting"/>, the plan keeps 100 % for now and
-    /// <paramref name="values"/> becomes what is put back when ResponsivenessGuard lets go (also after a crash: the recovery
+    /// <paramref name="values"/> becomes what is put back when Responsiveness Guard lets go (also after a crash: the recovery
     /// record is rewritten). Otherwise <paramref name="write"/> runs, under this service's lock so a hold can't start
     /// halfway through. Returns <paramref name="write"/>'s result, or true when deferred.
     /// </summary>
@@ -218,7 +218,7 @@ public sealed class CoreParkingService
 
             _held!.Originals[setting] = values;
             _recovery.Save(_held);
-            _logger.LogInformation("{Setting} of {Plan} set to {Values} while ResponsivenessGuard holds its cores unparked; applied when it lets go",
+            _logger.LogInformation("{Setting} of {Plan} set to {Values} while Responsiveness Guard holds its cores unparked; applied when it lets go",
                 setting, PowerPlans.Describe(scheme), Describe(values));
             return true;
         }
@@ -230,13 +230,13 @@ public sealed class CoreParkingService
         {
             if (enabled == _enabled) return;
             _enabled = enabled;
-            _logger.LogInformation("Unparking cores while ResponsivenessGuard restrains: {State}", enabled ? "on" : "off");
+            _logger.LogInformation("Unparking cores while Responsiveness Guard restrains: {State}", enabled ? "on" : "off");
             if (!enabled) RestoreLocked("the option was turned off");
             else if (_engaged) ApplyLocked();
         }
     }
 
-    /// <summary>ResponsivenessGuard's state after each of its passes: whether it holds any process restrained.</summary>
+    /// <summary>Responsiveness Guard's state after each of its passes: whether it holds any process restrained.</summary>
     public void Update(bool anyRestrained)
     {
         lock (_sync)
@@ -255,7 +255,7 @@ public sealed class CoreParkingService
 
     /// <summary>
     /// Puts back values a previous run changed and never restored (it crashed or was killed). Run at startup, before
-    /// ResponsivenessGuard starts.
+    /// Responsiveness Guard starts.
     /// </summary>
     public void RecoverFromLastRun()
     {
@@ -263,7 +263,7 @@ public sealed class CoreParkingService
         {
             if (_recovery.Load() is not { } record) return;
             _logger.LogWarning("The engine last stopped while it held the cores of {Plan} unparked; putting its settings back", PowerPlans.Describe(record.Scheme));
-            PutBack(record, "the engine last stopped while ResponsivenessGuard was restraining");
+            PutBack(record, "the engine last stopped while Responsiveness Guard was restraining");
             _recovery.Clear();
         }
     }
@@ -292,7 +292,7 @@ public sealed class CoreParkingService
         _held = record;
         foreach (var setting in originals.Keys) _power.Write(active, setting, new AcDc(AllCores, AllCores));
         _power.Reapply(active);
-        Log($"Core parking off on {PowerPlans.Describe(active)} (min cores {Describe(originals[MinCores0(originals)])} -> 100%) while ResponsivenessGuard restrains");
+        Log($"Core parking off on {PowerPlans.Describe(active)} (min cores {Describe(originals[MinCores0(originals)])} -> 100%) while Responsiveness Guard restrains");
     }
 
     private void RestoreLocked(string reason)

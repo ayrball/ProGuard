@@ -173,7 +173,7 @@ public class ConfigProfileTests
         Assert.Empty(h.T.Rules); // a preview changes nothing
         Assert.Contains(preview.Changes, c => c.Kind == ConfigChangeKind.Added && c.Area == "Process rule" && c.Name == "game.exe");
         Assert.Contains(preview.Changes, c => c.Kind == ConfigChangeKind.Added && c.Area == "Watchdog rule" && c.Name == "leaky.exe");
-        Assert.Contains(preview.Changes, c => c.Area == "Setting" && c.Name == "ResponsivenessGuard sensitivity" && c.Detail == "3 → 8");
+        Assert.Contains(preview.Changes, c => c.Area == "Setting" && c.Name == "Responsiveness Guard sensitivity" && c.Detail == "3 → 8");
         Assert.Empty(preview.MachineSpecific);
 
         var applied = h.Data<ConfigPreviewDto>(h.Admin(CommandTypes.ImportConfig, new ImportConfigArgument { Document = file }));
@@ -505,7 +505,7 @@ public class ConfigProfileTests
         Assert.Contains(flags, f => f.Where == "Process rule game.exe" && f.Setting == "CPU Sets" && f.Value == "256,257" && f.Reason.Contains("laid out differently"));
         Assert.Contains(flags, f => f.Where == "Process rule game.exe" && f.Setting == "Power plan" && f.Value.StartsWith("Ultimate Performance"));
         Assert.Contains(flags, f => f.Where == "Watchdog rule hog.exe" && f.Outcome.Contains("turned off"));
-        Assert.Contains(flags, f => f.Where == "Settings" && f.Setting == "ResponsivenessGuard restraint cores");
+        Assert.Contains(flags, f => f.Where == "Settings" && f.Setting == "Responsiveness Guard restraint cores");
         Assert.Contains(flags, f => f.Where == "Settings" && f.Setting == "Performance Mode plan" && f.Outcome.Contains("High performance"));
         Assert.Equal(6, flags.Count); // ok.exe's mask fits and its empty CPU Set list travels; the installed idle plan is kept
         Assert.True(preview.CanApply);

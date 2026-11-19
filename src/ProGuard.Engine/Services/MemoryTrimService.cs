@@ -13,19 +13,19 @@ using ProGuard.Core.Services;
 namespace ProGuard.Engine.Services;
 
 /// <summary>
-/// MemoryTrim, after another process manager's [MemoryManagement]:
+/// Memory Trim:
 /// <list type="bullet">
-/// <item>Every <see cref="Interval"/> (MemoryTrimIntervalMins, 15), if memory load is at least
+/// <item>Every <see cref="Interval"/> (15 minutes by default), if memory load is at least
 /// <see cref="MemoryTrimPolicy.MinimumRamLoadPercent"/> (65 %), empties the working set of every process using at
-/// least <see cref="ThresholdBytes"/> (MinimumProcessWSSInMb, 196). Never the foreground process, the protected
+/// least <see cref="ThresholdBytes"/> (196 MB). Never the foreground process, the protected
 /// system processes or the configured exclusions.</item>
 /// <item>Every <see cref="LowMemoryCheckInterval"/>, if free RAM (free + zero page lists) is below
-/// <see cref="MemoryTrimPolicy.StandbyFreeRamThresholdBytes"/> (ClearStandbyFreeRAMThresholdMB, 1024), purges the
+/// <see cref="MemoryTrimPolicy.StandbyFreeRamThresholdBytes"/> (1024 MB), purges the
 /// standby list and/or the file cache, whichever is enabled. By default only while Performance Mode is on, which
 /// <see cref="PowerManager"/> owns and reports through <see cref="IsPerformanceModeActive"/>.</item>
 /// </list>
 /// The purges need SeProfileSingleProcessPrivilege and SeIncreaseQuotaPrivilege on the engine's token; SYSTEM holds
-/// both, but they start disabled, so MemoryTrim enables them and logs clearly when it can't.
+/// both, but they start disabled, so Memory Trim enables them and logs clearly when it can't.
 /// </summary>
 public class MemoryTrimService : IMemoryTrimService, IDisposable
 {
@@ -94,7 +94,7 @@ public class MemoryTrimService : IMemoryTrimService, IDisposable
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Starting MemoryTrim Service");
+        _logger.LogInformation("Starting Memory Trim service");
         // Enable the privileges up front so a missing one shows in the log at startup, not at the first purge.
         lock (_passSync) EnsurePrivileges();
         lock (_sync)
@@ -107,7 +107,7 @@ public class MemoryTrimService : IMemoryTrimService, IDisposable
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Stopping MemoryTrim Service");
+        _logger.LogInformation("Stopping Memory Trim service");
         lock (_sync)
         {
             _started = false;
@@ -144,7 +144,7 @@ public class MemoryTrimService : IMemoryTrimService, IDisposable
             ThresholdBytes = Math.Max(0, thresholdBytes);
             Reschedule();
         }
-        _logger.LogInformation("MemoryTrim configured: Enabled={Enabled}, Interval={Interval}s, Threshold={Threshold}MB",
+        _logger.LogInformation("Memory Trim configured: Enabled={Enabled}, Interval={Interval}s, Threshold={Threshold}MB",
             enabled, _interval.TotalSeconds, ThresholdBytes / (1024 * 1024));
     }
 
@@ -160,7 +160,7 @@ public class MemoryTrimService : IMemoryTrimService, IDisposable
             Reschedule();
         }
         _logger.LogInformation(
-            "MemoryTrim policy: MinRamLoad={Load}%, Exclusions={Exclusions}, StandbyPurge={Standby} (below {Free}MB free, PerformanceModeOnly={PerfOnly}), FileCachePurge={FileCache}, LogNoAction={LogNoAction}",
+            "Memory Trim policy: MinRamLoad={Load}%, Exclusions={Exclusions}, StandbyPurge={Standby} (below {Free}MB free, PerformanceModeOnly={PerfOnly}), FileCachePurge={FileCache}, LogNoAction={LogNoAction}",
             _policy.MinimumRamLoadPercent, _exclusions.Count, policy.StandbyPurgeEnabled, policy.StandbyFreeRamThresholdBytes / (1024 * 1024),
             policy.StandbyOnlyInPerformanceMode, policy.FileCachePurgeEnabled, policy.LogNoAction);
     }
@@ -173,14 +173,14 @@ public class MemoryTrimService : IMemoryTrimService, IDisposable
 
         if (trim)
         {
-            _trimTimer ??= new Timer(_ => Safe("MemoryTrim pass", () => RunTrimPass()), null, Timeout.Infinite, Timeout.Infinite);
+            _trimTimer ??= new Timer(_ => Safe("Memory Trim pass", () => RunTrimPass()), null, Timeout.Infinite, Timeout.Infinite);
             _trimTimer.Change(_interval, _interval);
         }
         else _trimTimer?.Change(Timeout.Infinite, Timeout.Infinite);
 
         if (lowMemory)
         {
-            _lowMemoryTimer ??= new Timer(_ => Safe("MemoryTrim low-memory check", () => RunLowMemoryCheck()), null, Timeout.Infinite, Timeout.Infinite);
+            _lowMemoryTimer ??= new Timer(_ => Safe("Memory Trim low-memory check", () => RunLowMemoryCheck()), null, Timeout.Infinite, Timeout.Infinite);
             _lowMemoryTimer.Change(LowMemoryCheckInterval, LowMemoryCheckInterval);
         }
         else _lowMemoryTimer?.Change(Timeout.Infinite, Timeout.Infinite);
@@ -196,20 +196,20 @@ public class MemoryTrimService : IMemoryTrimService, IDisposable
     /// <summary>The periodic working-set trim: only acts while memory load is at least the policy's minimum.</summary>
     internal MemoryPurgeReport RunTrimPass()
     {
-        _logger.LogDebug("MemoryTrim pass due");
+        _logger.LogDebug("Memory Trim pass due");
         lock (_passSync)
         {
-            _logger.LogDebug("MemoryTrim pass running");
+            _logger.LogDebug("Memory Trim pass running");
             var minimum = Policy.MinimumRamLoadPercent;
             var load = _memory.GetMemoryLoadPercent();
             if (load is not int percent)
-                return NoAction("MemoryTrim", "memory load unavailable");
+                return NoAction("Memory Trim", "memory load unavailable");
             if (percent < minimum)
-                return NoAction("MemoryTrim", $"memory load {percent}% is below {minimum}%");
+                return NoAction("Memory Trim", $"memory load {percent}% is below {minimum}%");
 
             var report = new MemoryPurgeReport();
             TrimEligible(report);
-            return Finish("MemoryTrim", $"memory load {percent}%", report);
+            return Finish("Memory Trim", $"memory load {percent}%", report);
         }
     }
 
@@ -262,7 +262,7 @@ public class MemoryTrimService : IMemoryTrimService, IDisposable
         {
             var report = new MemoryPurgeReport();
             TrimEligible(report);
-            return Finish("MemoryTrim", "requested", report);
+            return Finish("Memory Trim", "requested", report);
         }
     }
 
@@ -276,12 +276,12 @@ public class MemoryTrimService : IMemoryTrimService, IDisposable
         {
             report.ProcessesTrimmed = 1;
             report.WorkingSetBytesReclaimed = result.BytesReclaimed;
-            _logger.LogInformation("MemoryTrim: trimmed {ProcessName} ({Pid}), reclaimed {Reclaimed}", name, pid, MemoryPurgeReport.FormatMb(result.BytesReclaimed));
+            _logger.LogInformation("Memory Trim: trimmed {ProcessName} ({Pid}), reclaimed {Reclaimed}", name, pid, MemoryPurgeReport.FormatMb(result.BytesReclaimed));
         }
         else
         {
             report.Errors.Add(result.Error ?? "the working set could not be trimmed");
-            _logger.LogDebug("MemoryTrim: could not trim {ProcessName} ({Pid}): {Error}", name, pid, result.Error);
+            _logger.LogDebug("Memory Trim: could not trim {ProcessName} ({Pid}): {Error}", name, pid, result.Error);
         }
         return report;
     }
@@ -315,17 +315,17 @@ public class MemoryTrimService : IMemoryTrimService, IDisposable
     {
         foreach (var p in EligibleProcesses())
         {
-            _logger.LogDebug("MemoryTrim: trimming {ProcessName} ({Pid})", p.Name, p.Pid);
+            _logger.LogDebug("Memory Trim: trimming {ProcessName} ({Pid})", p.Name, p.Pid);
             var result = _native.TrimWorkingSet(p.Pid);
             if (!result.Success)
             {
                 // Usually a process that exited or that even SYSTEM can't open (protected); not worth more than debug.
-                _logger.LogDebug("MemoryTrim: could not trim {ProcessName} ({Pid}): {Error}", p.Name, p.Pid, result.Error);
+                _logger.LogDebug("Memory Trim: could not trim {ProcessName} ({Pid}): {Error}", p.Name, p.Pid, result.Error);
                 continue;
             }
             report.ProcessesTrimmed++;
             report.WorkingSetBytesReclaimed += result.BytesReclaimed;
-            _logger.LogInformation("MemoryTrim: trimmed {ProcessName} ({Pid}) {Before} -> {After}, reclaimed {Reclaimed}",
+            _logger.LogInformation("Memory Trim: trimmed {ProcessName} ({Pid}) {Before} -> {After}, reclaimed {Reclaimed}",
                 p.Name, p.Pid, MemoryPurgeReport.FormatMb(result.BytesBefore), MemoryPurgeReport.FormatMb(result.BytesAfter),
                 MemoryPurgeReport.FormatMb(result.BytesReclaimed));
         }
@@ -388,8 +388,8 @@ public class MemoryTrimService : IMemoryTrimService, IDisposable
             _privilegeErrors[privilege] = error;
             if (known && previous == error) continue;
 
-            if (error == null) _logger.LogInformation("MemoryTrim: enabled {Privilege}", privilege);
-            else _logger.LogWarning("MemoryTrim: could not enable {Privilege}: {Error}. {Consequence}", privilege, error,
+            if (error == null) _logger.LogInformation("Memory Trim: enabled {Privilege}", privilege);
+            else _logger.LogWarning("Memory Trim: could not enable {Privilege}: {Error}. {Consequence}", privilege, error,
                 privilege == MemoryApi.SeProfileSingleProcessPrivilege
                     ? "Standby list purges will fail."
                     : "File cache purges will fail.");

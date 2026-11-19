@@ -35,12 +35,12 @@ public static class CommandTypes
     /// <summary>TargetPid.</summary>
     public const string ResumeProcess = "ResumeProcess";
     /// <summary>
-    /// TargetPid, or no pid to trim every process above the MemoryTrim threshold. Data = bytes reclaimed (a number),
+    /// TargetPid, or no pid to trim every process above the Memory Trim threshold. Data = bytes reclaimed (a number),
     /// when known.
     /// </summary>
     public const string TrimWorkingSet = "TrimWorkingSet";
     /// <summary>
-    /// MemoryTrim's "Purge now": trims eligible working sets, purges the standby list and, if enabled, the file cache.
+    /// Memory Trim's "Purge now": trims eligible working sets, purges the standby list and, if enabled, the file cache.
     /// Administrators only. Data = <see cref="Contracts.MemoryPurgeResultDto"/>.
     /// </summary>
     public const string PurgeMemory = "PurgeMemory";
@@ -58,7 +58,7 @@ public static class CommandTypes
     /// <summary>
     /// TargetPid = process owning the foreground window, 0 if none. Sent by the UI on
     /// <see cref="PipeNames.Foreground"/> only: the engine runs as a service in session 0 and can't see the desktop.
-    /// Argument = milliseconds since the last keyboard/mouse input on that desktop (for AwayMode), or null if unknown.
+    /// Argument = milliseconds since the last keyboard/mouse input on that desktop (for Away Mode), or null if unknown.
     /// </summary>
     public const string ReportForeground = "ReportForeground";
 
@@ -200,7 +200,7 @@ public static class CommandTypes
         _ => "run " + System.Text.RegularExpressions.Regex.Replace(commandType, "(?<=[a-z])(?=[A-Z])", " ").ToLowerInvariant()
     };
 
-    /// <summary>No args. Administrators only. Deletes the logged ResponsivenessGuard, CPU Limiter and power-plan actions the activity feed shows.</summary>
+    /// <summary>No args. Administrators only. Deletes the logged Responsiveness Guard, CPU Limiter and power-plan actions the activity feed shows.</summary>
     public const string ClearActionLog = "ClearActionLog";
 }
 

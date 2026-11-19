@@ -93,13 +93,9 @@ public static class Strings
 
     public static string AvoidSmt => Get(nameof(AvoidSmt));
 
+    public static string AwayMode => Get(nameof(AwayMode));
+
     public static string BackToThisPlansValuesBefore => Get(nameof(BackToThisPlansValuesBefore));
-
-    public static string BalanceAutomatically => Get(nameof(BalanceAutomatically));
-
-    public static string Balanced => Get(nameof(Balanced));
-
-    public static string BalancedNow => Get(nameof(BalancedNow));
 
     public static string Basics => Get(nameof(Basics));
 
@@ -231,7 +227,7 @@ public static class Strings
 
     public static string DeleteRule => Get(nameof(DeleteRule));
 
-    public static string DeletesTheLoggedresponsiveness guardCpuLimiter => Get(nameof(DeletesTheLoggedresponsiveness guardCpuLimiter));
+    public static string DeletesTheLoggedResponsivenessGuardCpuLimiter => Get(nameof(DeletesTheLoggedResponsivenessGuardCpuLimiter));
 
     public static string Detail => Get(nameof(Detail));
 
@@ -383,8 +379,6 @@ public static class Strings
 
     public static string Idle2 => Get(nameof(Idle2));
 
-    public static string away mode => Get(nameof(away mode));
-
     public static string IfThisHappensDoThatChecked => Get(nameof(IfThisHappensDoThatChecked));
 
     public static string ImportFromFile => Get(nameof(ImportFromFile));
@@ -393,9 +387,9 @@ public static class Strings
 
     public static string InstalledPlans => Get(nameof(InstalledPlans));
 
-    public static string InstanceSpread => Get(nameof(InstanceSpread));
-
     public static string Instances => Get(nameof(Instances));
+
+    public static string InstanceSpread => Get(nameof(InstanceSpread));
 
     public static string InsteadOfSwitchingToTheLow => Get(nameof(InsteadOfSwitchingToTheLow));
 
@@ -533,6 +527,8 @@ public static class Strings
 
     public static string MemoryPriority2 => Get(nameof(MemoryPriority2));
 
+    public static string MemoryTrim => Get(nameof(MemoryTrim));
+
     public static string Message => Get(nameof(Message));
 
     public static string MessageOptional => Get(nameof(MessageOptional));
@@ -543,13 +539,13 @@ public static class Strings
 
     public static string MostCopiesAtOnce => Get(nameof(MostCopiesAtOnce));
 
-    public static string N0Balanced => Get(nameof(N0Balanced));
-
     public static string N0EntriesShown => Get(nameof(N0EntriesShown));
 
     public static string N0Presets => Get(nameof(N0Presets));
 
     public static string N0ProcessesWatched => Get(nameof(N0ProcessesWatched));
+
+    public static string N0Restrained => Get(nameof(N0Restrained));
 
     public static string N0Threads => Get(nameof(N0Threads));
 
@@ -561,7 +557,7 @@ public static class Strings
 
     public static string NeedsAdministratorRights => Get(nameof(NeedsAdministratorRights));
 
-    public static string NeverBalanceIt => Get(nameof(NeverBalanceIt));
+    public static string NeverRestrainIt => Get(nameof(NeverRestrainIt));
 
     public static string NewerCopiesOverTheLimitAre => Get(nameof(NewerCopiesOverTheLimitAre));
 
@@ -657,7 +653,7 @@ public static class Strings
 
     public static string PausedNewEntriesWaitUntilYou => Get(nameof(PausedNewEntriesWaitUntilYou));
 
-    public static string Pauseresponsiveness guardWhenTheMachineIs => Get(nameof(Pauseresponsiveness guardWhenTheMachineIs));
+    public static string PauseResponsivenessGuardWhenTheMachineIs => Get(nameof(PauseResponsivenessGuardWhenTheMachineIs));
 
     public static string PCores => Get(nameof(PCores));
 
@@ -696,16 +692,6 @@ public static class Strings
     public static string PriorityIOAndMemoryPriority => Get(nameof(PriorityIOAndMemoryPriority));
 
     public static string Private => Get(nameof(Private));
-
-    public static string responsiveness guard => Get(nameof(responsiveness guard));
-
-    public static string responsiveness guardArmed => Get(nameof(responsiveness guardArmed));
-
-    public static string responsiveness guardIsRestrainingAndHoldsEvery => Get(nameof(responsiveness guardIsRestrainingAndHoldsEvery));
-
-    public static string responsiveness guardOff => Get(nameof(responsiveness guardOff));
-
-    public static string responsiveness guardWontLowerItsPriorityEven => Get(nameof(responsiveness guardWontLowerItsPriorityEven));
 
     public static string Proc_Always => Get(nameof(Proc_Always));
 
@@ -903,9 +889,27 @@ public static class Strings
 
     public static string Responsiveness => Get(nameof(Responsiveness));
 
+    public static string ResponsivenessGuard => Get(nameof(ResponsivenessGuard));
+
+    public static string ResponsivenessGuardArmed => Get(nameof(ResponsivenessGuardArmed));
+
+    public static string ResponsivenessGuardIsRestrainingAndHoldsEvery => Get(nameof(ResponsivenessGuardIsRestrainingAndHoldsEvery));
+
+    public static string ResponsivenessGuardOff => Get(nameof(ResponsivenessGuardOff));
+
+    public static string ResponsivenessGuardShort => Get(nameof(ResponsivenessGuardShort));
+
+    public static string ResponsivenessGuardWontLowerItsPriorityEven => Get(nameof(ResponsivenessGuardWontLowerItsPriorityEven));
+
     public static string RestartAsAdmin => Get(nameof(RestartAsAdmin));
 
     public static string RestartAsAdministrator => Get(nameof(RestartAsAdministrator));
+
+    public static string RestrainAutomatically => Get(nameof(RestrainAutomatically));
+
+    public static string Restrained => Get(nameof(Restrained));
+
+    public static string RestrainedNow => Get(nameof(RestrainedNow));
 
     public static string RestrainOnlyThroughTheExtraActions => Get(nameof(RestrainOnlyThroughTheExtraActions));
 
@@ -956,12 +960,6 @@ public static class Strings
     public static string Rule_BadReserved => Get(nameof(Rule_BadReserved));
 
     public static string Rule_BadThreshold => Get(nameof(Rule_BadThreshold));
-
-    public static string Rule_BalanceEqual => Get(nameof(Rule_BalanceEqual));
-
-    public static string Rule_BalanceFixed => Get(nameof(Rule_BalanceFixed));
-
-    public static string Rule_BalanceMinCpu => Get(nameof(Rule_BalanceMinCpu));
 
     public static string Rule_BlockAndKeep => Get(nameof(Rule_BlockAndKeep));
 
@@ -1047,6 +1045,12 @@ public static class Strings
 
     public static string Rule_Saved => Get(nameof(Rule_Saved));
 
+    public static string Rule_SpreadEqual => Get(nameof(Rule_SpreadEqual));
+
+    public static string Rule_SpreadFixed => Get(nameof(Rule_SpreadFixed));
+
+    public static string Rule_SpreadMinCpu => Get(nameof(Rule_SpreadMinCpu));
+
     public static string Rule_ThisRule => Get(nameof(Rule_ThisRule));
 
     public static string Rule_ThreadBoostOff => Get(nameof(Rule_ThreadBoostOff));
@@ -1122,8 +1126,6 @@ public static class Strings
     public static string SignIn_NeedsAdmin => Get(nameof(SignIn_NeedsAdmin));
 
     public static string SignIn_Refused => Get(nameof(SignIn_Refused));
-
-    public static string memory trim => Get(nameof(memory trim));
 
     public static string Source => Get(nameof(Source));
 
@@ -1289,7 +1291,7 @@ public static class Strings
 
     public static string TheFinestTheTimerCanBe => Get(nameof(TheFinestTheTimerCanBe));
 
-    public static string TheLoggerresponsiveness guardengineIpcdispatcherOrFor => Get(nameof(TheLoggerresponsiveness guardengineIpcdispatcherOrFor));
+    public static string TheLoggerResponsivenessGuardEngineIpcdispatcherOrFor => Get(nameof(TheLoggerResponsivenessGuardEngineIpcdispatcherOrFor));
 
     public static string Then => Get(nameof(Then));
 
@@ -1363,9 +1365,9 @@ public static class Strings
 
     public static string Tune_PresetConfirm => Get(nameof(Tune_PresetConfirm));
 
-    public static string Tune_ResponsivenessGuardHolds => Get(nameof(Tune_ResponsivenessGuardHolds));
-
     public static string Tune_ReadOnly => Get(nameof(Tune_ReadOnly));
+
+    public static string Tune_ResponsivenessGuardHolds => Get(nameof(Tune_ResponsivenessGuardHolds));
 
     public static string Tune_RevertConfirm => Get(nameof(Tune_RevertConfirm));
 
@@ -1533,7 +1535,7 @@ public static class Strings
 
     public static string WhenItUsesAtLeast => Get(nameof(WhenItUsesAtLeast));
 
-    public static string Whenresponsiveness guardStepsInARule => Get(nameof(Whenresponsiveness guardStepsInARule));
+    public static string WhenResponsivenessGuardStepsInARule => Get(nameof(WhenResponsivenessGuardStepsInARule));
 
     public static string WhenTheMachineIsOverloadedBackground => Get(nameof(WhenTheMachineIsOverloadedBackground));
 

@@ -271,7 +271,7 @@ public sealed partial class ShellViewModel : ObservableObject
     }
 
     /// <summary>
-    /// MemoryTrim's "Purge now" (administrators only; the engine refuses anyone else and says why). Shows the engine's
+    /// Memory Trim's "Purge now" (administrators only; the engine refuses anyone else and says why). Shows the engine's
     /// summary as a toast. Returns null when it failed.
     /// </summary>
     public async Task<MemoryPurgeResultDto?> PurgeNowAsync()

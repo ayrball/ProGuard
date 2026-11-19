@@ -12,7 +12,7 @@ namespace ProGuard.Shared.Reporting;
 
 /// <summary>
 /// Tells the engine which process owns this desktop's foreground window. The engine runs as a service in session 0
-/// and can't see the user's desktop, so ResponsivenessGuard's foreground exemption and Foreground Boost depend on this.
+/// and can't see the user's desktop, so Responsiveness Guard's foreground exemption and Foreground Boost depend on this.
 /// Keeps one connection open (the engine drops the report when it closes) and sends a line whenever the
 /// foreground process changes.
 /// <para>
@@ -21,7 +21,7 @@ namespace ProGuard.Shared.Reporting;
 /// stands aside while the session's agent runs (<see cref="SessionAgentInstance"/>), so a session has one reporter.
 /// </para>
 /// <para>
-/// Each report also carries how long this desktop has had no keyboard or mouse input, for AwayMode: the engine
+/// Each report also carries how long this desktop has had no keyboard or mouse input, for Away Mode: the engine
 /// can't call <c>GetLastInputInfo</c> for the user's session from session 0. The engine ages the last report by
 /// the time since it arrived, so reports while the user is away just confirm it; what matters is telling the
 /// engine promptly when they come back, so a report that drops the idle time from a long value is sent at once.
@@ -34,7 +34,7 @@ public sealed class ForegroundReporter : IDisposable
     // A write is the only way to notice the engine went away (e.g. restarted), so repeat the report now and then.
     private static readonly TimeSpan ResendInterval = TimeSpan.FromSeconds(5);
     // Input after the engine was told we'd been idle this long is reported immediately. Below it, the engine's aged
-    // estimate is at most this plus ResendInterval too high until the next report, far under any AwayMode timeout.
+    // estimate is at most this plus ResendInterval too high until the next report, far under any Away Mode timeout.
     private static readonly TimeSpan ReturnReportThreshold = ResendInterval;
 
     private readonly string _pipeName;

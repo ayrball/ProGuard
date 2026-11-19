@@ -18,8 +18,8 @@ public partial class App : Application
     private WatchdogNotificationFeed? _watchdogFeed;
     private SingleInstance? _instance;
 
-    // The engine runs as a service in session 0 and can't see this desktop: ResponsivenessGuard's foreground exemption,
-    // Foreground Boost and AwayMode depend on a report of the foreground process and idle time. The session agent the
+    // The engine runs as a service in session 0 and can't see this desktop: Responsiveness Guard's foreground exemption,
+    // Foreground Boost and Away Mode depend on a report of the foreground process and idle time. The session agent the
     // engine starts normally sends it; this one covers a session without one and stays quiet while the agent runs.
     private readonly ForegroundReporter _foregroundReporter = new(yieldToSessionAgent: true);
 

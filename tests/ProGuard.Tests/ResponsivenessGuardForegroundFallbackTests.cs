@@ -8,7 +8,7 @@ using ProGuard.Shared.Reporting;
 namespace ProGuard.Tests;
 
 /// <summary>
-/// With no foreground report (no session agent or UI), ResponsivenessGuard can't tell which program is in use, so it treats
+/// With no foreground report (no session agent or UI), Responsiveness Guard can't tell which program is in use, so it treats
 /// every program that could be (a GUI program in a user session) as the foreground process.
 /// </summary>
 public class ResponsivenessGuardForegroundFallbackTests

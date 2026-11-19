@@ -28,7 +28,7 @@
     <value>¿BORRAR EL REGISTRO?</value>
   </data>
   <data name="Act_ClearWarning" xml:space="preserve">
-    <value>Vacía el registro de actividad para todos: acciones de ResponsivenessGuard y de planes de energía, eventos de Watchdog y lo que los usuarios cambiaron. No se puede deshacer.</value>
+    <value>Vacía el registro de actividad para todos: acciones de la Guardia de respuesta y de planes de energía, eventos de Watchdog y lo que los usuarios cambiaron. No se puede deshacer.</value>
   </data>
   <data name="Act_Cleared" xml:space="preserve">
     <value>REGISTRO DE ACTIVIDAD BORRADO</value>
@@ -130,14 +130,14 @@ TRANQUILO.</value>
   <data name="BackToThisPlansValuesBefore" xml:space="preserve">
     <value>Vuelve a los valores de este plan anteriores al primer cambio de ProGuard</value>
   </data>
-  <data name="BalanceAutomatically" xml:space="preserve">
-    <value>EQUILIBRAR AUTOMÁTICAMENTE</value>
+  <data name="RestrainAutomatically" xml:space="preserve">
+    <value>RESTRINGIR AUTOMÁTICAMENTE</value>
   </data>
-  <data name="Balanced" xml:space="preserve">
-    <value>EQUILIBRADO</value>
+  <data name="Restrained" xml:space="preserve">
+    <value>RESTRINGIDO</value>
   </data>
-  <data name="BalancedNow" xml:space="preserve">
-    <value>EQUILIBRADOS AHORA</value>
+  <data name="RestrainedNow" xml:space="preserve">
+    <value>RESTRINGIDOS AHORA</value>
   </data>
   <data name="Basics" xml:space="preserve">
     <value>BÁSICO</value>
@@ -334,8 +334,8 @@ TRANQUILO.</value>
   <data name="DeleteRule" xml:space="preserve">
     <value>Eliminar regla</value>
   </data>
-  <data name="DeletesTheLoggedresponsiveness guardCpuLimiter" xml:space="preserve">
-    <value>Elimina las acciones de ResponsivenessGuard, Limitador de CPU y planes de energía registradas, para todos (solo administradores)</value>
+  <data name="DeletesTheLoggedResponsivenessGuardCpuLimiter" xml:space="preserve">
+    <value>Elimina las acciones de Guardia de respuesta, Limitador de CPU y planes de energía registradas, para todos (solo administradores)</value>
   </data>
   <data name="Detail" xml:space="preserve">
     <value>DETALLE</value>
@@ -474,7 +474,7 @@ DESCONECTADO</value>
     <value>ESTABLECIDO POR {0}</value>
   </data>
   <data name="Fmt_SetByAwayMode" xml:space="preserve">
-    <value>ESTABLECIDO POR AWAY MODE</value>
+    <value>ESTABLECIDO POR MODO AUSENTE</value>
   </data>
   <data name="Fmt_SetByLoadSwitcher" xml:space="preserve">
     <value>ESTABLECIDO POR EL CAMBIO SEGÚN LA CARGA</value>
@@ -569,8 +569,8 @@ DESCONECTADO</value>
   <data name="Idle2" xml:space="preserve">
     <value>INACTIVA</value>
   </data>
-  <data name="away mode" xml:space="preserve">
-    <value>AWAY MODE</value>
+  <data name="AwayMode" xml:space="preserve">
+    <value>MODO AUSENTE</value>
   </data>
   <data name="IfThisHappensDoThatChecked" xml:space="preserve">
     <value>SI OCURRE ESTO, HAZ AQUELLO — SE COMPRUEBA CADA POCOS SEGUNDOS</value>
@@ -585,7 +585,7 @@ DESCONECTADO</value>
     <value>PLANES INSTALADOS</value>
   </data>
   <data name="InstanceSpread" xml:space="preserve">
-    <value>EQUILIBRADOR DE INSTANCIAS</value>
+    <value>REPARTO DE INSTANCIAS</value>
   </data>
   <data name="Instances" xml:space="preserve">
     <value>INSTANCIAS</value>
@@ -690,7 +690,7 @@ DESCONECTADO</value>
     <value>¿BORRAR EL REGISTRO DE ACCIONES?</value>
   </data>
   <data name="Logs_ClearWarning" xml:space="preserve">
-    <value>Elimina las acciones de ResponsivenessGuard, Limitador de CPU y planes de energía registradas, para todos. El registro del motor se conserva. No se puede deshacer.</value>
+    <value>Elimina las acciones de Guardia de respuesta, Limitador de CPU y planes de energía registradas, para todos. El registro del motor se conserva. No se puede deshacer.</value>
   </data>
   <data name="Logs_Cleared" xml:space="preserve">
     <value>REGISTRO DE ACCIONES BORRADO</value>
@@ -803,8 +803,8 @@ DESCONECTADO</value>
   <data name="MostCopiesAtOnce" xml:space="preserve">
     <value>MÁX. DE COPIAS A LA VEZ</value>
   </data>
-  <data name="N0Balanced" xml:space="preserve">
-    <value>{0} EQUILIBRADOS</value>
+  <data name="N0Restrained" xml:space="preserve">
+    <value>{0} RESTRINGIDOS</value>
   </data>
   <data name="N0EntriesShown" xml:space="preserve">
     <value>{0} ENTRADAS MOSTRADAS</value>
@@ -830,8 +830,8 @@ DESCONECTADO</value>
   <data name="NeedsAdministratorRights" xml:space="preserve">
     <value>REQUIERE PERMISOS DE ADMINISTRADOR</value>
   </data>
-  <data name="NeverBalanceIt" xml:space="preserve">
-    <value>NO EQUILIBRARLO NUNCA</value>
+  <data name="NeverRestrainIt" xml:space="preserve">
+    <value>NO RESTRINGIRLO NUNCA</value>
   </data>
   <data name="NewRule" xml:space="preserve">
     <value>+ NUEVA REGLA</value>
@@ -973,8 +973,8 @@ REGISTRADO.</value>
   <data name="Pause2" xml:space="preserve">
     <value>PAUSAR</value>
   </data>
-  <data name="Pauseresponsiveness guardWhenTheMachineIs" xml:space="preserve">
-    <value>PAUSAR GUARD CUANDO EL EQUIPO ESTÁ INACTIVO</value>
+  <data name="PauseResponsivenessGuardWhenTheMachineIs" xml:space="preserve">
+    <value>PAUSAR LA GUARDIA CUANDO EL EQUIPO ESTÁ INACTIVO</value>
   </data>
   <data name="Paused" xml:space="preserve">
     <value>❚❚ EN PAUSA</value>
@@ -1039,20 +1039,23 @@ REGISTRADO.</value>
   <data name="Private" xml:space="preserve">
     <value>PRIVADA</value>
   </data>
-  <data name="responsiveness guard" xml:space="preserve">
-    <value>GUARD</value>
+  <data name="ResponsivenessGuard" xml:space="preserve">
+    <value>GUARDIA DE RESPUESTA</value>
   </data>
-  <data name="responsiveness guardArmed" xml:space="preserve">
-    <value>GUARD ACTIVO</value>
+  <data name="ResponsivenessGuardShort" xml:space="preserve">
+    <value>GUARDIA</value>
   </data>
-  <data name="responsiveness guardIsRestrainingAndHoldsEvery" xml:space="preserve">
-    <value>GUARD ESTÁ RESTRINGIENDO Y MANTIENE TODOS LOS NÚCLEOS DE ESTE PLAN SIN ESTACIONAR. TUS VALORES DE NÚCLEOS MÍNIMOS VUELVEN CUANDO LOS SUELTE.</value>
+  <data name="ResponsivenessGuardArmed" xml:space="preserve">
+    <value>GUARDIA ACTIVA</value>
   </data>
-  <data name="responsiveness guardOff" xml:space="preserve">
-    <value>GUARD DESACTIVADO</value>
+  <data name="ResponsivenessGuardIsRestrainingAndHoldsEvery" xml:space="preserve">
+    <value>LA GUARDIA DE RESPUESTA ESTÁ RESTRINGIENDO Y MANTIENE TODOS LOS NÚCLEOS DE ESTE PLAN SIN ESTACIONAR. TUS VALORES DE NÚCLEOS MÍNIMOS VUELVEN CUANDO LOS SUELTE.</value>
   </data>
-  <data name="responsiveness guardWontLowerItsPriorityEven" xml:space="preserve">
-    <value>ResponsivenessGuard no bajará su prioridad, ni siquiera bajo carga.</value>
+  <data name="ResponsivenessGuardOff" xml:space="preserve">
+    <value>GUARDIA DESACTIVADA</value>
+  </data>
+  <data name="ResponsivenessGuardWontLowerItsPriorityEven" xml:space="preserve">
+    <value>La Guardia de respuesta no bajará su prioridad, ni siquiera bajo carga.</value>
   </data>
   <data name="Proc_Always" xml:space="preserve">
     <value>{0} · SIEMPRE {1}. Establecido ahora y de nuevo cada vez que se inicie.</value>
@@ -1429,14 +1432,14 @@ REGISTRADO.</value>
   <data name="Rule_BadThreshold" xml:space="preserve">
     <value>El umbral del Limitador de CPU es un porcentaje superior a 0 y hasta 100, p. ej., 40. Déjalo vacío para desactivar el limitador.</value>
   </data>
-  <data name="Rule_BalanceEqual" xml:space="preserve">
-    <value>EQUILIBRIO IGUAL</value>
+  <data name="Rule_SpreadEqual" xml:space="preserve">
+    <value>REPARTO IGUAL</value>
   </data>
-  <data name="Rule_BalanceFixed" xml:space="preserve">
-    <value>EQUILIBRIO FIJO {0}</value>
+  <data name="Rule_SpreadFixed" xml:space="preserve">
+    <value>REPARTO FIJO {0}</value>
   </data>
-  <data name="Rule_BalanceMinCpu" xml:space="preserve">
-    <value>EQUILIBRIO ≥{0}% CPU</value>
+  <data name="Rule_SpreadMinCpu" xml:space="preserve">
+    <value>REPARTO ≥{0}% CPU</value>
   </data>
   <data name="Rule_BlockAndKeep" xml:space="preserve">
     <value>Una regla no puede bloquear un programa y mantenerlo en ejecución a la vez. Desactiva una de las dos opciones.</value>
@@ -1678,8 +1681,8 @@ REGISTRADO.</value>
   <data name="SignIn_Refused" xml:space="preserve">
     <value>El Programador de tareas rechazó el cambio.</value>
   </data>
-  <data name="memory trim" xml:space="preserve">
-    <value>MEMORY TRIM</value>
+  <data name="MemoryTrim" xml:space="preserve">
+    <value>RECORTE DE MEMORIA</value>
   </data>
   <data name="Source" xml:space="preserve">
     <value>ORIGEN</value>
@@ -1927,7 +1930,7 @@ REGISTRADO.</value>
   <data name="TheFinestTheTimerCanBe" xml:space="preserve">
     <value>El valor más fino que se puede pedir al temporizador (Windows lo llama resolución máxima)</value>
   </data>
-  <data name="TheLoggerresponsiveness guardengineIpcdispatcherOrFor" xml:space="preserve">
+  <data name="TheLoggerResponsivenessGuardEngineIpcdispatcherOrFor" xml:space="preserve">
     <value>El registrador (ResponsivenessGuardEngine, IpcDispatcher...) o, en el registro de acciones, ResponsivenessGuard, CpuLimiter o Power</value>
   </data>
   <data name="TheWindowYoureWorkingInRuns" xml:space="preserve">
@@ -2039,7 +2042,7 @@ REGISTRADO.</value>
     <value>{0} Se aplica al plan de energía {1} para todos los usuarios de este PC. Puedes volver a los valores anteriores al primer cambio de ProGuard en cualquier momento.</value>
   </data>
   <data name="Tune_ResponsivenessGuardHolds" xml:space="preserve">
-    <value>GUARD MANTIENE {0} MIENTRAS RESTRINGE</value>
+    <value>LA GUARDIA MANTIENE {0} MIENTRAS RESTRINGE</value>
   </data>
   <data name="Tune_ReadOnly" xml:space="preserve">
     <value>SOLO LECTURA · CAMBIAR UN PLAN DE ENERGÍA REQUIERE PERMISOS DE ADMINISTRADOR. {0}.</value>
@@ -2293,8 +2296,8 @@ REGISTRADO.</value>
   <data name="WhenItUsesAtLeast" xml:space="preserve">
     <value>CUANDO USA AL MENOS (%)</value>
   </data>
-  <data name="Whenresponsiveness guardStepsInARule" xml:space="preserve">
-    <value>Cuando ResponsivenessGuard interviene, se activa una regla o una vigilancia, o cambias un proceso, aparece aquí.</value>
+  <data name="WhenResponsivenessGuardStepsInARule" xml:space="preserve">
+    <value>Cuando la Guardia de respuesta interviene, se activa una regla o una vigilancia, o cambias un proceso, aparece aquí.</value>
   </data>
   <data name="WhenTheMachineIsOverloadedBackground" xml:space="preserve">
     <value>Cuando el equipo está sobrecargado, se baja la prioridad de los procesos en segundo plano que acaparan recursos para que lo que usas siga respondiendo. Se restaura en cuanto se calma.</value>

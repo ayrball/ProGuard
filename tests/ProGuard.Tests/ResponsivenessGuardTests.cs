@@ -9,7 +9,7 @@ using ProGuard.Engine.Services.ProcessRules;
 
 namespace ProGuard.Tests;
 
-/// <summary>In-memory processes for ResponsivenessGuard: priorities, affinities, I/O priorities, efficiency mode, parents and
+/// <summary>In-memory processes for Responsiveness Guard: priorities, affinities, I/O priorities, efficiency mode, parents and
 /// sessions without touching real PIDs.</summary>
 internal sealed class FakeProcessAccess : IProcessPriorityAccess
 {
@@ -137,7 +137,7 @@ public class ResponsivenessGuardTests
         new(new Mock<ILogger<ResponsivenessGuardEngine>>().Object, new Mock<IProcessMonitor>().Object, new Mock<IRuleStore>().Object);
 
     [Fact]
-    public void Defaults_Matchanother process managerIni()
+    public void Defaults_AreTheDocumentedOnes()
     {
         using var engine = NewEngine();
 
@@ -154,12 +154,12 @@ public class ResponsivenessGuardTests
         Assert.True(engine.ExcludeServices);
         Assert.False(engine.RestrainByAffinity);
         Assert.Equal(0, engine.RestraintAffinity);
-        Assert.False(engine.ResponsivenessGuardDropOneRandomCore);
-        Assert.False(engine.LowerIOPriorityDuringRestraint);
+        Assert.False(engine.DropOneRandomCore);
+        Assert.False(engine.LowerIoPriority);
         Assert.False(engine.UseEfficiencyMode);
         Assert.False(engine.DoNotLowerPriorityClass);
-        Assert.False(engine.DisableResponsivenessGuardWhenSysIdle);
-        Assert.Equal(30000, engine.DisableResponsivenessGuardIfSysIdleThisManyMS);
+        Assert.False(engine.PauseWhenIdle);
+        Assert.Equal(30000, engine.PauseAfterIdleMs);
     }
 
     [Fact]
@@ -167,9 +167,9 @@ public class ResponsivenessGuardTests
     {
         Assert.Equal(new ResponsivenessGuardRestraintOptions(), ResponsivenessGuardRestraintOptions.FromSettings(new AppSettings()));
         var o = new ResponsivenessGuardRestraintOptions();
-        Assert.False(o.RestrainByAffinity || o.ResponsivenessGuardDropOneRandomCore || o.LowerIOPriorityDuringRestraint
-                     || o.UseEfficiencyMode || o.DoNotLowerPriorityClass || o.DisableResponsivenessGuardWhenSysIdle);
-        Assert.Equal(30000, o.DisableResponsivenessGuardIfSysIdleThisManyMS);
+        Assert.False(o.RestrainByAffinity || o.DropOneRandomCore || o.LowerIoPriority
+                     || o.UseEfficiencyMode || o.DoNotLowerPriorityClass || o.PauseWhenIdle);
+        Assert.Equal(30000, o.PauseAfterIdleMs);
     }
 
     [Fact]
@@ -188,7 +188,7 @@ public class ResponsivenessGuardTests
     }
 
     [Fact]
-    public void SetSensitivity_Level5_Isanother process managerDefaults()
+    public void SetSensitivity_Level5_IsTheDefaultTiming()
     {
         using var engine = NewEngine();
         engine.SetSensitivity(1);

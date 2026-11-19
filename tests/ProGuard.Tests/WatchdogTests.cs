@@ -759,12 +759,12 @@ public class WatchdogTests
         var store = new Mock<IRuleStore>();
         store.Setup(s => s.GetSettings()).Returns(new AppSettings { Id = 1 });
         var monitor = new Mock<IProcessMonitor>();
-        var memory trim = new Mock<IMemoryTrimService>();
+        var memoryTrim = new Mock<IMemoryTrimService>();
         var power = new Mock<IPowerManager>();
-        var responsiveness guard = new Mock<IResponsivenessGuardEngine>();
-        var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, monitor.Object, memory trim.Object, power.Object, responsiveness guard.Object);
-        var dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, store.Object, applier, responsiveness guard.Object, power.Object,
-            memory trim.Object, new Mock<ICpuLimiter>().Object, new Mock<IProcessController>().Object, monitor.Object, log);
+        var responsivenessGuard = new Mock<IResponsivenessGuardEngine>();
+        var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, monitor.Object, memoryTrim.Object, power.Object, responsivenessGuard.Object);
+        var dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, store.Object, applier, responsivenessGuard.Object, power.Object,
+            memoryTrim.Object, new Mock<ICpuLimiter>().Object, new Mock<IProcessController>().Object, monitor.Object, log);
 
         var request = new CommandMessage { Type = MessageType.GetLogs, Payload = JsonSerializer.Serialize(new WatchdogEventQuery { After = 0 }) };
         var reply = dispatcher.Dispatch(request, new StandardUser());

@@ -9,8 +9,8 @@ namespace ProGuard.Core.Helpers;
 public readonly record struct PowerModeInfo(Guid Id, string Name);
 
 /// <summary>
-/// The Windows 10/11 power-mode slider, through <c>PowerGetActualOverlayScheme</c> / <c>PowerSetActiveOverlayScheme</c>
-/// as another process manager uses them. The mode is an overlay on the active power plan: Windows applies it while the Balanced
+/// The Windows 10/11 power-mode slider, through <c>PowerGetActualOverlayScheme</c> / <c>PowerSetActiveOverlayScheme</c>.
+/// The mode is an overlay on the active power plan: Windows applies it while the Balanced
 /// plan is active and ignores it under plans such as High Performance. The calls aren't in the SDK headers, so on
 /// Windows without them (or where they fail) the slider is reported as unavailable.
 /// </summary>

@@ -173,7 +173,7 @@ internal sealed class PipeCaller : IIpcCaller
     /// Runs <paramref name="action"/> as the client. <see cref="NamedPipeServerStream.RunAsClient"/> reverts the thread's
     /// token afterwards but leaves the client's identity in the current ExecutionContext, so every await continuation,
     /// task and timer later started from this flow would run as the client. On the installed service that made "Purge
-    /// now" fail to open SYSTEM's own token, and MemoryTrim timers set up over IPC ran as the user (purges failed, their
+    /// now" fail to open SYSTEM's own token, and Memory Trim timers set up over IPC ran as the user (purges failed, their
     /// log lines were denied). Running it on a thread pool thread without flowing the context confines that to a
     /// context that is thrown away.
     /// </summary>

@@ -59,7 +59,7 @@ public class RuleStore : IRuleStore
 
         if (Stamp(_dbFilePath) == _lastLoadedStamp) return false;
 
-        // The engine's own writes (e.g. the ResponsivenessGuard log) land here too, so this is routine.
+        // The engine's own writes (e.g. the Responsiveness Guard log) land here too, so this is routine.
         _logger.LogDebug("Database changed on disk, reloading rules");
         LoadRules();
         return true;
@@ -351,7 +351,7 @@ public class RuleStore : IRuleStore
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to log ResponsivenessGuard action");
+            _logger.LogError(ex, "Failed to log Responsiveness Guard action");
         }
     }
 

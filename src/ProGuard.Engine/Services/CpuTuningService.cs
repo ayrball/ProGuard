@@ -175,8 +175,7 @@ public sealed class FileCpuTuningOriginalsStore : ICpuTuningOriginalsStore
 public sealed record CpuTuningChange(CpuTuningDto Tuning, string Summary, string? Error);
 
 /// <summary>
-/// Core parking and processor frequency per power plan, plugged in (AC) and on battery (DC), as the vendor's tool for it
-/// does: <see cref="CpuTuningCatalog.Settings"/> read with <c>PowerReadACValueIndex</c>/<c>PowerReadDCValueIndex</c> and
+/// Core parking and processor frequency per power plan, plugged in (AC) and on battery (DC): <see cref="CpuTuningCatalog.Settings"/> read with <c>PowerReadACValueIndex</c>/<c>PowerReadDCValueIndex</c> and
 /// written with <c>PowerWriteACValueIndex</c>/<c>PowerWriteDCValueIndex</c>, then <c>PowerSetActiveScheme</c> when the
 /// plan is the active one, so Windows picks the values up at once. Another plan's values take effect when it is next
 /// switched to; it is never made active here.
@@ -187,7 +186,7 @@ public sealed record CpuTuningChange(CpuTuningDto Tuning, string Summary, string
 /// so what changed can be seen without ProGuard; once no plan is tuned any more (every one reverted) it is hidden again.</item>
 /// <item><b>Revert.</b> Before the first change to a plan, its values are recorded (<see cref="ICpuTuningOriginalsStore"/>);
 /// <see cref="CpuTuningPresets.Revert"/> writes them back and drops the record.</item>
-/// <item><b>ResponsivenessGuard.</b> While <see cref="CoreParkingService"/> holds a plan's cores unparked, the min cores settings
+/// <item><b>Responsiveness Guard.</b> While <see cref="CoreParkingService"/> holds a plan's cores unparked, the min cores settings
 /// it changed are left at 100 %: a new value goes into what it puts back (<see cref="CoreParkingService.WriteUserValue"/>),
 /// and reads report the user's value with the live one alongside. So the hold isn't fought, and ends on the user's
 /// tuned values rather than the ones it found.</item>

@@ -192,7 +192,7 @@ public class LoadPowerSwitcherTests
     }
 
     [Fact]
-    public void Defaults_Matchanother process manager()
+    public void Defaults_AreTheDocumentedOnes()
     {
         var o = LoadSwitcherOptions.FromSettings(new ProGuard.Core.Models.AppSettings());
         Assert.False(o.Enabled);

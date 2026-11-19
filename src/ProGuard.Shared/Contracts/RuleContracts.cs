@@ -6,7 +6,7 @@ namespace ProGuard.Shared.Contracts;
 // value; they have their own names so engine code can use both namespaces without ambiguity.
 
 /// <summary>Mirror of ProGuard.Core.Models.InstanceSpreadMode.</summary>
-public enum BalancerMode { EqualCoresPerInstance, FixedCoresPerInstance }
+public enum SpreadMode { EqualCoresPerInstance, FixedCoresPerInstance }
 
 /// <summary>Mirror of ProGuard.Core.Models.WatchdogCondition.</summary>
 public enum WatchdogTrigger { CpuAbove, RamAbove, RunningLongerThan, InstanceCountAbove }
@@ -45,9 +45,9 @@ public sealed class ProcessRuleDto
     public int? CpuLimitCoresToRemove { get; set; }
     public int? CpuLimitDurationSeconds { get; set; }
 
-    // Instance limit and Instance Spread. Balancer off while the mode is null.
+    // Instance limit and Instance Spread. Instance Spread is off while the mode is null.
     public bool MaxInstancesAllSessions { get; set; }
-    public BalancerMode? InstanceSpreadMode { get; set; }
+    public SpreadMode? InstanceSpreadMode { get; set; }
     public int? InstanceSpreadCoresPerInstance { get; set; }
     public bool InstanceSpreadAvoidSmt { get; set; }
     public int? InstanceSpreadReservedCores { get; set; }

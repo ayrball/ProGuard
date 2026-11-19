@@ -97,7 +97,7 @@ internal sealed class FakePowerSettings : IPowerSettingsApi
 
 /// <summary>
 /// CPU tuning: a power plan's core parking and frequency settings, read and written per plan for AC and DC, with
-/// presets, a record of the values before the first change, and no fight with ResponsivenessGuard's temporary unparking.
+/// presets, a record of the values before the first change, and no fight with Responsiveness Guard's temporary unparking.
 /// </summary>
 public class CpuTuningTests
 {
@@ -409,7 +409,7 @@ public class CpuTuningTests
         Assert.Empty(power.Writes);
     }
 
-    // ------------------------------------------------------------------ ResponsivenessGuard's temporary unparking
+    // ------------------------------------------------------------------ Responsiveness Guard's temporary unparking
 
     private static (CpuTuningService Tuning, CoreParkingService Parking, FakePowerSettings Power, MemoryCoreParkingRecoveryStore Recovery, MemoryCpuTuningOriginalsStore Store) WithParking()
     {

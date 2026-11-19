@@ -41,7 +41,7 @@ public sealed class PersistentRuleService : IDisposable
     public IRuleProcessAccess? PriorityAccess { get; set; }
 
     /// <summary>
-    /// True while something else holds the process's CPU priority for now: a ResponsivenessGuard restraint, a startup boost or
+    /// True while something else holds the process's CPU priority for now: a Responsiveness Guard restraint, a startup boost or
     /// Foreground Boost. The re-apply check leaves it alone then; each of those puts the priority back itself.
     /// </summary>
     public Func<int, bool>? PriorityHeld { get; set; }

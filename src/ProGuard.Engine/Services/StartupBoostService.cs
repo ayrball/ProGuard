@@ -9,7 +9,7 @@ using ProGuard.Core.Models;
 namespace ProGuard.Engine.Services;
 
 /// <summary>
-/// Startup boost (another process manager's StartupBoostRules): raises a matching new process's priority class for
+/// Startup boost: raises a matching new process's priority class for
 /// <see cref="ProcessRule.StartupBoostSeconds"/> after it starts, then puts back the priority it had. If
 /// something else changed the priority during the boost, that change wins and the process is left alone.
 /// </summary>

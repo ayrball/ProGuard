@@ -9,7 +9,7 @@ public interface IPowerManager
     Guid GetActivePlan();
     /// <summary>
     /// The user's own choice of plan. It is applied now and becomes the plan to return to. A feature that currently
-    /// holds the plan (Performance Mode, AwayMode, the load switcher) does not take it back or restore over it; its
+    /// holds the plan (Performance Mode, Away Mode, the load switcher) does not take it back or restore over it; its
     /// next decision applies as usual. Callers check <see cref="GetActivePlan"/> afterwards to see whether Windows accepted it.
     /// </summary>
     void SetActivePlan(Guid planId);

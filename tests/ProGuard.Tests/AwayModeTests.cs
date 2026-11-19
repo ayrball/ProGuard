@@ -11,7 +11,7 @@ using ProGuard.UI.Services;
 namespace ProGuard.Tests;
 
 /// <summary>
-/// AwayMode: switch to the idle plan after the timeout, switch back on input, and never fight Performance Mode or
+/// Away Mode: switch to the idle plan after the timeout, switch back on input, and never fight Performance Mode or
 /// a plan the user picked themselves. The power-plan API and the idle source are fakes, so nothing here waits minutes
 /// or changes this machine's plan.
 /// </summary>
@@ -138,7 +138,7 @@ public class AwayModeTests
     {
         Away();
         _plans.Active = Ultimate;   // changed in Windows' power options, or by another tool
-        Away();                     // same idle stretch: AwayMode already had its go
+        Away();                     // same idle stretch: Away Mode already had its go
         Assert.Equal(Ultimate, _plans.Active);
 
         Back();
@@ -201,7 +201,7 @@ public class AwayModeTests
         _power.EnablePerformanceMode(true);
         Assert.Equal(Powrprof.HighPerformance, _plans.Active);
 
-        Back();     // AwayMode no longer owes a restore: it must not touch Performance Mode's plan
+        Back();     // Away Mode no longer owes a restore: it must not touch Performance Mode's plan
         Assert.Equal(Powrprof.HighPerformance, _plans.Active);
 
         _power.EnablePerformanceMode(false);

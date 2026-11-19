@@ -39,7 +39,7 @@ internal sealed class FakeTimerNative : ITimerResolutionNative
 }
 
 /// <summary>
-/// The system timer resolution (another process manager's SetTimerResolutionAtStartup): the engine holds the configured request,
+/// The system timer resolution: the engine holds the configured request,
 /// administrators alone may change it, and the System page shows the timer's current, minimum and maximum values.
 /// </summary>
 public class TimerResolutionTests

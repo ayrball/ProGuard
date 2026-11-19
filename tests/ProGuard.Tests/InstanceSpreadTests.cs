@@ -12,13 +12,13 @@ public class InstanceSpreadTests
     private readonly FakeProcessMonitor _monitor = new();
     private readonly FakeRuleProcessAccess _access = new();
     private readonly List<ProcessRule> _rules = new();
-    private readonly InstanceSpread _balancer;
+    private readonly InstanceSpread _spread;
     private readonly ProcessRule _rule = new() { ProcessName = "worker.exe", InstanceSpreadMode = InstanceSpreadMode.EqualCoresPerInstance };
 
     public InstanceSpreadTests()
     {
         _rules.Add(_rule);
-        _balancer = new InstanceSpread(NullLogger<InstanceSpread>.Instance, _monitor, FakeRules.Store(_rules).Object,
+        _spread = new InstanceSpread(NullLogger<InstanceSpread>.Instance, _monitor, FakeRules.Store(_rules).Object,
             _access, FakeRules.EightThreadsFourCores, new ManualTimeProvider());
     }
 
@@ -26,14 +26,14 @@ public class InstanceSpreadTests
     {
         _access.Affinity[pid] = affinity;
         _access.Start[pid] = T0.AddSeconds(pid);
-        _balancer.OnProcessStarted(_monitor.Add(pid, "worker", cpu), _rule);
+        _spread.OnProcessStarted(_monitor.Add(pid, "worker", cpu), _rule);
     }
 
     private void Exit(int pid)
     {
         _monitor.Exit(pid);
         _access.Affinity.Remove(pid);
-        _balancer.OnProcessExited(pid);
+        _spread.OnProcessExited(pid);
     }
 
     private long MaskOf(int pid) => _access.Affinity[pid];
@@ -155,7 +155,7 @@ public class InstanceSpreadTests
         _access.AffinityWrites.Clear();
 
         Start(3);
-        _balancer.Tick();
+        _spread.Tick();
 
         Assert.Equal(new[] { (3, 0x30L) }, _access.AffinityWrites);
     }
@@ -169,16 +169,16 @@ public class InstanceSpreadTests
 
         Assert.Equal(0xFF, MaskOf(1));
         Assert.Equal(0x0F, MaskOf(2)); // below the minimum: left alone
-        Assert.Null(_balancer.GetAppliedMask(2));
+        Assert.Null(_spread.GetAppliedMask(2));
 
         _monitor.GetProcess(2)!.CpuPercent = 12;
-        _balancer.Tick();
+        _spread.Tick();
         Assert.Equal(0x0F, MaskOf(1));
         Assert.Equal(0xF0, MaskOf(2));
 
         // Once in, an instance stays in even if it goes quiet, so masks don't flap.
         _monitor.GetProcess(2)!.CpuPercent = 0;
-        _balancer.Tick();
+        _spread.Tick();
         Assert.Equal(0xF0, MaskOf(2));
     }
 
@@ -189,11 +189,11 @@ public class InstanceSpreadTests
         Start(2);
         _access.Affinity[1] = 0x01; // the user (or another rule) set it
 
-        _balancer.Tick();
+        _spread.Tick();
 
         Assert.Equal(0x01, MaskOf(1));
         Assert.Equal(0xFF, MaskOf(2));
-        Assert.Null(_balancer.GetAppliedMask(1));
+        Assert.Null(_spread.GetAppliedMask(1));
     }
 
     [Fact]
@@ -203,7 +203,7 @@ public class InstanceSpreadTests
         Start(2, affinity: 0xFE);
 
         _rule.InstanceSpreadMode = null;
-        _balancer.Tick();
+        _spread.Tick();
 
         Assert.Equal(0x7F, MaskOf(1));
         Assert.Equal(0xFE, MaskOf(2));
@@ -215,7 +215,7 @@ public class InstanceSpreadTests
         Start(1);
         Start(2);
 
-        _balancer.Stop();
+        _spread.Stop();
 
         Assert.Equal(AllCores, MaskOf(1));
         Assert.Equal(AllCores, MaskOf(2));
@@ -232,14 +232,14 @@ public class InstanceSpreadTests
         _monitor.Add(2, "worker");
         _monitor.Add(3, "unrelated");
 
-        _balancer.Tick();
+        _spread.Tick();
 
         Assert.Equal(0x0F, MaskOf(1));
         Assert.Equal(0xF0, MaskOf(2));
     }
 
     [Fact]
-    public void RuleWithoutBalancer_IsIgnored()
+    public void RuleWithoutSpread_IsIgnored()
     {
         _rule.InstanceSpreadMode = null;
         Start(1);

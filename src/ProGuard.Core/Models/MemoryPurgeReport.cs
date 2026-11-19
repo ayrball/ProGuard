@@ -5,7 +5,7 @@ using System.Linq;
 namespace ProGuard.Core.Models;
 
 /// <summary>
-/// What one MemoryTrim pass or "Purge now" did. Sent to the UI as the data of the PurgeMemory command result.
+/// What one Memory Trim pass or "Purge now" did. Sent to the UI as the data of the PurgeMemory command result.
 /// </summary>
 public class MemoryPurgeReport
 {

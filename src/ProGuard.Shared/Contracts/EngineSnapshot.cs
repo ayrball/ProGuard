@@ -25,7 +25,7 @@ public sealed class EngineSnapshot
     /// </summary>
     public List<bool> CoreParked { get; set; } = new();
 
-    /// <summary>another process manager's "responsiveness" (from the processor queue length), 0-100; null before the first reading.</summary>
+    /// <summary>Responsiveness (from the processor queue length), 0-100; null before the first reading.</summary>
     public double? ResponsivenessPercent { get; set; }
 
     /// <summary>Physical memory in use, 0-100.</summary>
@@ -36,13 +36,13 @@ public sealed class EngineSnapshot
 
     public bool ResponsivenessGuardEnabled { get; set; }
 
-    /// <summary>ResponsivenessGuard is enabled but paused because the user is idle (DisableResponsivenessGuardWhenSysIdle).</summary>
+    /// <summary>Responsiveness Guard is enabled but paused because the user is idle.</summary>
     public bool ResponsivenessGuardPaused { get; set; }
 
-    /// <summary>Processes ResponsivenessGuard is holding at a lowered priority right now.</summary>
+    /// <summary>Processes Responsiveness Guard is holding at a lowered priority right now.</summary>
     public int ResponsivenessGuardRestrained { get; set; }
 
-    /// <summary>Restraints ResponsivenessGuard started since the engine started.</summary>
+    /// <summary>Restraints Responsiveness Guard started since the engine started.</summary>
     public int ResponsivenessGuardRestraintsTotal { get; set; }
 
     public bool ForegroundBoostEnabled { get; set; }
@@ -120,7 +120,7 @@ public sealed class ProcessSnapshot
     public bool IsSuspended { get; set; }
     public bool IsEfficiencyMode { get; set; }
 
-    /// <summary>ResponsivenessGuard has lowered this process's priority and will restore it when the load drops.</summary>
+    /// <summary>Responsiveness Guard has lowered this process's priority and will restore it when the load drops.</summary>
     public bool IsRestrained { get; set; }
 
     /// <summary>The CPU Limiter has taken cores away from it for now.</summary>

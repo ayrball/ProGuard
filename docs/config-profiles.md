@@ -48,8 +48,8 @@ one; the preview shows them under "ONLY FOR THE MACHINE IT WAS SAVED ON".
 | A rule's CPU Set IDs | an ID doesn't exist here, or the CPU Set layout (id:core:efficiency class) differs from the saving machine's | the rule doesn't change CPU Sets |
 | A rule's affinity mask | it names a logical processor this machine lacks | the rule doesn't change the cores |
 | Watchdog "set affinity" mask | as above | the rule is imported turned off |
-| ResponsivenessGuard restraint cores | as above | no cores picked |
-| Power plan GUIDs (rule, AwayMode, Performance Mode, load switcher, plan at start) | the plan isn't installed | the default plan |
+| Responsiveness Guard restraint cores | as above | no cores picked |
+| Power plan GUIDs (rule, Away Mode, Performance Mode, load switcher, plan at start) | the plan isn't installed | the default plan |
 
 ## File format
 

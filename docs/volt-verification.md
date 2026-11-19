@@ -2,8 +2,7 @@
 
 The Volt UI (PR #13) checked the way it deploys: the engine installed as the LocalSystem service in session 0, and the
 UI run from its Release publish by the signed-in user, unelevated, then once elevated. Run on 2026-10-11, 18:03 to
-19:20, on the development machine (Windows 11 Pro 26200, 16 logical CPUs, 47 GB RAM). another process manager's
-ProcessOrchestrator service was already stopped and its GUI not running; both were left that way.
+19:20, on the development machine (Windows 11 Pro 26200, 16 logical CPUs, 47 GB RAM).
 
 ## How it was run
 
@@ -49,7 +48,7 @@ sends, from a script running as the same account. **Unit**: covered by unit test
 | Watchdog | Restart and Keep Running relaunch into session 1 | PASS | UIA, `Win32_Process` |
 | Activity | Entries appear; Clear Log refused for standard user, works for admin | **FAIL → fixed** (didn't empty the page) | UIA, pipe |
 | System | Every setting saves, survives an engine restart, takes effect | PASS | UIA, pipe, `powercfg` |
-| System | Performance Mode, power plans, AwayMode, load switcher, Purge Now (admin) | PASS | UIA, `powercfg`, log |
+| System | Performance Mode, power plans, Away Mode, load switcher, Purge Now (admin) | PASS | UIA, `powercfg`, log |
 | Tray | Minimise and close to tray, show again, quit when the option is off | PASS | UIA |
 | Tray | Tray menu and balloons | **not driven** | no taskbar on the test desktop |
 | Tray | Start with Windows (HKCU Run value) | PASS | UIA, registry |
@@ -58,12 +57,10 @@ sends, from a script running as the same account. **Unit**: covered by unit test
 
 ### Overview
 
-![Overview with one core busy](volt-verification/overview-core15-busy.png)
-
 - With one burner thread pinned to CPU 15: UI CPU **16%**, against the `\Processor(_Total)` counter's 15.1% and 14.3%
   over the same seconds. The last per-core bar was full and the others low (`\Processor(15)` = 100%).
-  burner.exe topped "Who's working hardest" at 6.4% (one of 16 threads). ResponsivenessGuard showed 1 restrained, and the
-  status strip read `1 BALANCED`.
+  burner.exe topped "Who's working hardest" at 6.4% (one of 16 threads). Responsiveness Guard showed 1 restrained, and the
+  status strip read `1 BALANCED` (now `1 RESTRAINED`).
 - Responsiveness 99–100%, the CPU and memory sparklines moving, and the power plan shown as `HIGH PERFORMANCE · SET BY
   YOU`, matching `powercfg`.
 - The standard-rights banner was shown unelevated (its wording was updated, see Rules) and absent in the elevated UI.
@@ -81,7 +78,7 @@ Own process (`pgproc.exe`). Every value is as the probe read it after the click,
 | I/O HIGH, unelevated | not sent: toast "I/O priority High needs administrator rights…" (`io` stayed 1) |
 | I/O HIGH, elevated UI | `io=3` |
 | Memory V.LOW … NORM | `mem=1` … `5` |
-| Eco on / off | EcoQoS `0x1/0x1`, then `0x1/0x0` (off is explicit, as another process manager does) |
+| Eco on / off | EcoQoS `0x1/0x1`, then `0x1/0x0` (off is explicit) |
 | Cores: first half, one per core, 03+15, all | `0xFF`, `0x5555`, `0x8008`, `0xFFFF`; none picked shows "PICK AT LEAST ONE" with Apply disabled |
 | CPU cap 10% on a 4-thread burner | 25% of the machine before, **10.3%** capped, 25% after Remove cap; row tag `LIM 10%` |
 | Trim | working set 14 MB → 0 MB, toast "freed 14 MB" |
@@ -118,7 +115,7 @@ tree asked for confirmation first ("END A SYSTEM PROCESS?"). spoolsv was unchang
 | same rule edited to LOW | the next instance came up `BelowNormal` (the editor loaded the rule's values; heading "EDIT RULE") |
 | `pgset.exe`: CPU Sets picked in the dialog (258, 259), startup boost High 5 s | CPU Sets `258 259`; priority `Normal` → `High` at 0.5 s → `Normal` at 5.5 s |
 | `pgcap2.exe`: hard cap 10%, limiter ≥3% for 2 s → −8 cores for 10 s | affinity `0xFFFF` → `0xFF` at about 5 s → `0xFFFF` at 15 s; CPU over eight 3 s windows averaged 10.5% (individual windows 4.9–13.3%) |
-| `pginst.exe`: at most 2, balancer EQUAL | third copy ended (`Instance limit … terminated 35680`); the other two got `0xFF` and `0xFF00` |
+| `pginst.exe`: at most 2, Instance Spread EQUAL | third copy ended (`Instance limit … terminated 35680`); the other two got `0xFF` and `0xFF00` |
 | `pgkeep.exe`: keep running | see Watchdog |
 | delete `pgcap2.exe` | the next pgcap2 ran uncapped (24.9%) |
 
@@ -179,7 +176,7 @@ relaunched instance that still breaks the rule; this was already a known follow-
 
 ### Activity
 
-- **Entries**: ResponsivenessGuard restraints and restores, power plan changes, Watchdog events and the user's own actions
+- **Entries**: Responsiveness Guard restraints and restores, power plan changes, Watchdog events and the user's own actions
   ("YOU": rule and watch edits, priority changes), with the ALL / BALANCED / RESTORED / POWER / MEMORY / YOU / ENGINE
   filters.
 - **Standard user**: Clear Log is disabled, with a tooltip saying it is for administrators. Sent anyway over the pipe:
@@ -190,8 +187,8 @@ relaunched instance that still breaks the rule; this was already a known follow-
 
 ### System
 
-**Every control changed through the UI**: ResponsivenessGuard sensitivity and each restraint option, the restraint cores,
-pause when idle, Focus boost, all MemoryTrim fields and switches, the standby and file-cache purges, AwayMode,
+**Every control changed through the UI**: Responsiveness Guard sensitivity and each restraint option, the restraint cores,
+pause when idle, Focus boost, all Memory Trim fields and switches, the standby and file-cache purges, Away Mode,
 Performance Mode's plan, auto list, exclusions and game detection, every load-switcher field, the start-with plan, and
 the refresh interval.
 
@@ -207,22 +204,22 @@ the refresh interval.
 
 | Setting | Effect |
 |---|---|
-| Performance Mode on / off | High performance → **the vendor Highest Performance** (the chosen plan; owner shown as "SET BY PERFORMANCE MODE") → back to High performance |
+| Performance Mode on / off | High performance → **a custom high-performance plan** (the chosen plan; owner shown as "SET BY PERFORMANCE MODE") → back to High performance |
 | Installed plans | Balanced, then High performance; log `set by the user` |
 | Automatic for `pgperf.exe` | started: `Performance Mode engaged automatically: pgperf.exe is running (listed)`; exited: plan restored. Overview showed Performance Mode ON |
 | Steam game detection | engaged for the user's own Steam game (WARDOGS) the moment it started |
 | Load switcher (low below 90% → Power saver) | Power saver within 9 s; switched off → `restored the plan from before the load switcher` |
-| AwayMode 1 min → Balanced | the user was away for a minute: `High performance -> Balanced: AwayMode: no input for 1 min`, back 13 s later on input |
-| ResponsivenessGuard restraint options | applied together on a restraint: `priority BelowNormal, affinity 0xBFFF (was 0xFFFF), I/O priority Low, efficiency mode on`; drop-one-random-core taking precedence over the chosen cores is documented engine behaviour |
-| ResponsivenessGuard off | every restrained process restored at once (`… ResponsivenessGuard disabled`) |
+| Away Mode 1 min → Balanced | the user was away for a minute: `High performance -> Balanced: Away Mode: no input for 1 min`, back 13 s later on input |
+| Responsiveness Guard restraint options | applied together on a restraint: `priority BelowNormal, affinity 0xBFFF (was 0xFFFF), I/O priority Low, efficiency mode on`; drop-one-random-core taking precedence over the chosen cores is documented engine behaviour |
+| Responsiveness Guard off | every restrained process restored at once (`… Responsiveness Guard disabled`) |
 | Purge Now (elevated UI) | "Trimmed 7 processes (3512 MB); purged standby list (4132 MB); purged file cache (75 MB)"; for a standard user the button is disabled with "PURGE NEEDS ADMINISTRATOR RIGHTS" |
 
-**Not checked live**: Focus boost and ResponsivenessGuard's foreground exemption. A UI on the test desktop has no foreground
+**Not checked live**: Focus boost and Responsiveness Guard's foreground exemption. A UI on the test desktop has no foreground
 window to report (`ForegroundPid 0` in `GetStatus`). The earlier service check covered both.
 
 **Incident caused by that limit.** The user started a Steam game during the run. With my restraint options on and no
-foreground report, ResponsivenessGuard restrained the game for 63 s (BelowNormal, I/O Low, efficiency mode; 18:46:24 to
-18:47:27). I then turned ResponsivenessGuard and game detection off, and the engine restored it. A real user who quits the UI
+foreground report, Responsiveness Guard restrained the game for 63 s (BelowNormal, I/O Low, efficiency mode; 18:46:24 to
+18:47:27). I then turned Responsiveness Guard and game detection off, and the engine restored it. A real user who quits the UI
 from the tray is in the same position; see the follow-ups (since fixed: the session agent reports without the UI).
 
 **Fixed here**:
@@ -282,19 +279,19 @@ are flaky while the machine is busy (a game was running): they failed in 2 of 3 
 ## Follow-ups (not fixed here)
 
 - ~~**No foreground report, no exemption**~~ **Fixed** (PR #19): with no UI connected (quit
-  from the tray, or a session without one), ResponsivenessGuard could restrain the app the user is using, as it did to the game
+  from the tray, or a session without one), Responsiveness Guard could restrain the app the user is using, as it did to the game
   above. Now:
-  - the engine keeps a small session agent (`ProGuard.SessionAgent.exe`, like another process manager's `the vendorsessionagent.exe`)
+  - the engine keeps a small session agent (`ProGuard.SessionAgent.exe`)
     running in every signed-in session, as that session's user, and it reports the foreground process and idle time
     whether or not the UI is open; the UI stands aside while it runs;
   - with several sessions reporting, the engine uses the console session's report (else the session with the most
     recent input), and a reporter's 5 s repeats no longer make sessions take turns;
-  - if no report arrives at all (no agent, no UI, or none heard from for 15 s), ResponsivenessGuard spares every Windows GUI
+  - if no report arrives at all (no agent, no UI, or none heard from for 15 s), Responsiveness Guard spares every Windows GUI
     program in a user session, so the game in use isn't restrained, and releases any it had restrained.
 
   Covered by unit tests with fake WTS calls and real agent processes in the test's own session, and checked on an
   installed service on 2026-10-16 (Release publish of 3677c81, `install-service.ps1`, uninstalled afterwards; UI closed
-  unless stated; another process manager uninstalled beforehand):
+  unless stated):
   - **Start**: the service started `ProGuard.SessionAgent.exe` from `C:\Program Files\ProGuard\Engine` in session 1 as
     the signed-in user, unelevated. It connected to the foreground pipe 50 ms later. `GetStatus` `ForegroundPid` matched
     the desktop's foreground window, and `UserIdleSeconds` followed input.
@@ -303,16 +300,14 @@ are flaky while the machine is busy (a game was running): they failed in 2 of 3 
   - **UI**: a UI started with `--tray` never connected a reporter while the agent ran. It connected 0.4 s after the
     agent was killed, and disconnected 225 ms after the restarted agent connected.
   - **No report**: two 2-thread CPU burners ran, one `WINDOWS_GUI` and one console program. While reports flowed, both
-    were restrained (neither was in front). With the agent suspended (`NtSuspendProcess`), after about 15 s ResponsivenessGuard
+    were restrained (neither was in front). With the agent suspended (`NtSuspendProcess`), after about 15 s Responsiveness Guard
     logged the fallback and restored the GUI burner ("No foreground report: it may be the program in use"). It kept the
     console burner restrained. Within 1 s of resuming the agent, it restrained the GUI burner again.
   - **Stop and uninstall**: stopping the service ended the agent itself ("Ended session agent … the engine is
     stopping"). Uninstalling left no service, install folder or agent.
   - **Not checked**: sign-in, sign-out, fast user switching and remote desktop. They need a second account or session.
-
-  Details: `docs/another process manager-internals.md`, "Session agent".
-- another process manager matches rules by wildcard, full path, command line and regex; ProGuard only by exact file name (now
-  stated in the editor and enforced). Adding patterns needs `RuleAuthorization` to check what a pattern can match.
+- ProGuard matches rules only by exact file name, not by wildcard, full path, command line or regex (now stated in
+  the editor and enforced). Adding patterns needs `RuleAuthorization` to check what a pattern can match.
 - A standard user's rule is checked against the instances running when it is saved. A service started later under
   the same name is still affected. Closing that needs the engine to record who made a rule and to check at apply time.
 - The engine's `StartWithWindows` setting is unused: the UI reads and writes the HKCU Run value. It said true here

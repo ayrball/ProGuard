@@ -28,7 +28,7 @@
     <value>CLEAR THE LOG?</value>
   </data>
   <data name="Act_ClearWarning" xml:space="preserve">
-    <value>Empties the activity log for everyone: ResponsivenessGuard and power-plan actions, Watchdog events and what users changed. This can't be undone.</value>
+    <value>Empties the activity log for everyone: Responsiveness Guard and power-plan actions, Watchdog events and what users changed. This can't be undone.</value>
   </data>
   <data name="Act_Cleared" xml:space="preserve">
     <value>ACTIVITY LOG CLEARED</value>
@@ -130,14 +130,14 @@ QUIET.</value>
   <data name="BackToThisPlansValuesBefore" xml:space="preserve">
     <value>Back to this plan's values before ProGuard first changed it</value>
   </data>
-  <data name="BalanceAutomatically" xml:space="preserve">
-    <value>BALANCE AUTOMATICALLY</value>
+  <data name="RestrainAutomatically" xml:space="preserve">
+    <value>RESTRAIN AUTOMATICALLY</value>
   </data>
-  <data name="Balanced" xml:space="preserve">
-    <value>BALANCED</value>
+  <data name="Restrained" xml:space="preserve">
+    <value>RESTRAINED</value>
   </data>
-  <data name="BalancedNow" xml:space="preserve">
-    <value>BALANCED NOW</value>
+  <data name="RestrainedNow" xml:space="preserve">
+    <value>RESTRAINED NOW</value>
   </data>
   <data name="Basics" xml:space="preserve">
     <value>BASICS</value>
@@ -334,8 +334,8 @@ QUIET.</value>
   <data name="DeleteRule" xml:space="preserve">
     <value>Delete rule</value>
   </data>
-  <data name="DeletesTheLoggedresponsiveness guardCpuLimiter" xml:space="preserve">
-    <value>Deletes the logged ResponsivenessGuard, CPU Limiter and power-plan actions for everyone (administrators only)</value>
+  <data name="DeletesTheLoggedResponsivenessGuardCpuLimiter" xml:space="preserve">
+    <value>Deletes the logged Responsiveness Guard, CPU Limiter and power-plan actions for everyone (administrators only)</value>
   </data>
   <data name="Detail" xml:space="preserve">
     <value>DETAIL</value>
@@ -569,7 +569,7 @@ OFFLINE</value>
   <data name="Idle2" xml:space="preserve">
     <value>IDLE</value>
   </data>
-  <data name="away mode" xml:space="preserve">
+  <data name="AwayMode" xml:space="preserve">
     <value>AWAY MODE</value>
   </data>
   <data name="IfThisHappensDoThatChecked" xml:space="preserve">
@@ -690,7 +690,7 @@ OFFLINE</value>
     <value>CLEAR THE ACTION LOG?</value>
   </data>
   <data name="Logs_ClearWarning" xml:space="preserve">
-    <value>Deletes the logged ResponsivenessGuard, CPU Limiter and power-plan actions for everyone. The engine log is kept. This can't be undone.</value>
+    <value>Deletes the logged Responsiveness Guard, CPU Limiter and power-plan actions for everyone. The engine log is kept. This can't be undone.</value>
   </data>
   <data name="Logs_Cleared" xml:space="preserve">
     <value>ACTION LOG CLEARED</value>
@@ -803,8 +803,8 @@ OFFLINE</value>
   <data name="MostCopiesAtOnce" xml:space="preserve">
     <value>MOST COPIES AT ONCE</value>
   </data>
-  <data name="N0Balanced" xml:space="preserve">
-    <value>{0} BALANCED</value>
+  <data name="N0Restrained" xml:space="preserve">
+    <value>{0} RESTRAINED</value>
   </data>
   <data name="N0EntriesShown" xml:space="preserve">
     <value>{0} ENTRIES SHOWN</value>
@@ -830,8 +830,8 @@ OFFLINE</value>
   <data name="NeedsAdministratorRights" xml:space="preserve">
     <value>NEEDS ADMINISTRATOR RIGHTS</value>
   </data>
-  <data name="NeverBalanceIt" xml:space="preserve">
-    <value>NEVER BALANCE IT</value>
+  <data name="NeverRestrainIt" xml:space="preserve">
+    <value>NEVER RESTRAIN IT</value>
   </data>
   <data name="NewRule" xml:space="preserve">
     <value>+ NEW RULE</value>
@@ -973,8 +973,8 @@ LOGGED.</value>
   <data name="Pause2" xml:space="preserve">
     <value>PAUSE</value>
   </data>
-  <data name="Pauseresponsiveness guardWhenTheMachineIs" xml:space="preserve">
-    <value>PAUSE GUARD WHEN THE MACHINE IS IDLE</value>
+  <data name="PauseResponsivenessGuardWhenTheMachineIs" xml:space="preserve">
+    <value>PAUSE THE GUARD WHEN THE MACHINE IS IDLE</value>
   </data>
   <data name="Paused" xml:space="preserve">
     <value>❚❚ PAUSED</value>
@@ -1039,20 +1039,23 @@ LOGGED.</value>
   <data name="Private" xml:space="preserve">
     <value>PRIVATE</value>
   </data>
-  <data name="responsiveness guard" xml:space="preserve">
+  <data name="ResponsivenessGuard" xml:space="preserve">
+    <value>RESPONSIVENESS GUARD</value>
+  </data>
+  <data name="ResponsivenessGuardShort" xml:space="preserve">
     <value>GUARD</value>
   </data>
-  <data name="responsiveness guardArmed" xml:space="preserve">
+  <data name="ResponsivenessGuardArmed" xml:space="preserve">
     <value>GUARD ARMED</value>
   </data>
-  <data name="responsiveness guardIsRestrainingAndHoldsEvery" xml:space="preserve">
-    <value>GUARD IS RESTRAINING AND HOLDS EVERY CORE OF THIS PLAN UNPARKED. YOUR MIN CORES VALUES COME BACK WHEN IT LETS GO.</value>
+  <data name="ResponsivenessGuardIsRestrainingAndHoldsEvery" xml:space="preserve">
+    <value>RESPONSIVENESS GUARD IS RESTRAINING AND HOLDS EVERY CORE OF THIS PLAN UNPARKED. YOUR MIN CORES VALUES COME BACK WHEN IT LETS GO.</value>
   </data>
-  <data name="responsiveness guardOff" xml:space="preserve">
+  <data name="ResponsivenessGuardOff" xml:space="preserve">
     <value>GUARD OFF</value>
   </data>
-  <data name="responsiveness guardWontLowerItsPriorityEven" xml:space="preserve">
-    <value>ResponsivenessGuard won't lower its priority, even under load.</value>
+  <data name="ResponsivenessGuardWontLowerItsPriorityEven" xml:space="preserve">
+    <value>Responsiveness Guard won't lower its priority, even under load.</value>
   </data>
   <data name="Proc_Always" xml:space="preserve">
     <value>{0} · ALWAYS {1}. Set now, and again whenever it starts.</value>
@@ -1429,14 +1432,14 @@ LOGGED.</value>
   <data name="Rule_BadThreshold" xml:space="preserve">
     <value>The CPU Limiter threshold is a percentage above 0 and up to 100, e.g. 40. Empty it to switch the limiter off.</value>
   </data>
-  <data name="Rule_BalanceEqual" xml:space="preserve">
-    <value>BALANCE EQUAL</value>
+  <data name="Rule_SpreadEqual" xml:space="preserve">
+    <value>SPREAD EQUAL</value>
   </data>
-  <data name="Rule_BalanceFixed" xml:space="preserve">
-    <value>BALANCE FIXED {0}</value>
+  <data name="Rule_SpreadFixed" xml:space="preserve">
+    <value>SPREAD FIXED {0}</value>
   </data>
-  <data name="Rule_BalanceMinCpu" xml:space="preserve">
-    <value>BALANCE ≥{0}% CPU</value>
+  <data name="Rule_SpreadMinCpu" xml:space="preserve">
+    <value>SPREAD ≥{0}% CPU</value>
   </data>
   <data name="Rule_BlockAndKeep" xml:space="preserve">
     <value>A rule can't both block a program and keep it running. Switch one of them off.</value>
@@ -1678,7 +1681,7 @@ LOGGED.</value>
   <data name="SignIn_Refused" xml:space="preserve">
     <value>Task Scheduler refused the change.</value>
   </data>
-  <data name="memory trim" xml:space="preserve">
+  <data name="MemoryTrim" xml:space="preserve">
     <value>MEMORY TRIM</value>
   </data>
   <data name="Source" xml:space="preserve">
@@ -1927,7 +1930,7 @@ LOGGED.</value>
   <data name="TheFinestTheTimerCanBe" xml:space="preserve">
     <value>The finest the timer can be asked for (Windows calls it the maximum resolution)</value>
   </data>
-  <data name="TheLoggerresponsiveness guardengineIpcdispatcherOrFor" xml:space="preserve">
+  <data name="TheLoggerResponsivenessGuardEngineIpcdispatcherOrFor" xml:space="preserve">
     <value>The logger (ResponsivenessGuardEngine, IpcDispatcher...) or, for the action log, ResponsivenessGuard, CpuLimiter or Power</value>
   </data>
   <data name="TheWindowYoureWorkingInRuns" xml:space="preserve">
@@ -2293,8 +2296,8 @@ LOGGED.</value>
   <data name="WhenItUsesAtLeast" xml:space="preserve">
     <value>WHEN IT USES AT LEAST (%)</value>
   </data>
-  <data name="Whenresponsiveness guardStepsInARule" xml:space="preserve">
-    <value>When ResponsivenessGuard steps in, a rule or watch fires, or you change a process, it shows up here.</value>
+  <data name="WhenResponsivenessGuardStepsInARule" xml:space="preserve">
+    <value>When Responsiveness Guard steps in, a rule or watch fires, or you change a process, it shows up here.</value>
   </data>
   <data name="WhenTheMachineIsOverloadedBackground" xml:space="preserve">
     <value>When the machine is overloaded, background hogs get their priority lowered so whatever you're using stays responsive. Restored the moment things calm down.</value>

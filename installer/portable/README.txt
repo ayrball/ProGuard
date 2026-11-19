@@ -1,9 +1,9 @@
 ProGuard
 ========
 
-A Windows process manager in the spirit of another process manager. It keeps your PC responsive by lowering
-the priority of background programs that hog the CPU (ResponsivenessGuard), and lets you set rules for how
-individual programs run.
+A Windows process manager. It keeps your PC responsive by lowering the priority of background
+programs that hog the CPU (Responsiveness Guard), and lets you set rules for how individual
+programs run.
 
 There are two ways to run it. Both need 64-bit Windows 10 or 11 and nothing else: no .NET install.
 
@@ -69,8 +69,7 @@ PORTABLE: REMOVE
 
 
 GOOD TO KNOW
-  - Don't run it alongside another process manager: both adjust the same processes and will fight. The
-    installer warns if it finds another process manager but never changes or removes it.
+  - Don't run it alongside another process manager: both would adjust the same processes and fight.
   - Settings and rules are saved in C:\ProgramData\ProGuard, by both the installed and the portable
     version.
   - If something goes wrong, please send:

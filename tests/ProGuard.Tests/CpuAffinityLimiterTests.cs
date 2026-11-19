@@ -158,7 +158,7 @@ public class CpuAffinityLimiterTests
     }
 
     [Fact]
-    public void Apply_Logsanother process managerStyleMessage()
+    public void Apply_LogsWhatItDidAndForHowLong()
     {
         using var h = new CpuAffinityLimiterHarness();
         h.AddRule(cores: 2, duration: 30);
@@ -392,7 +392,7 @@ public class CpuAffinityLimiterTests
     {
         if (Environment.ProcessorCount < 2) return;
 
-        // A process that does next to nothing, so another process manager leaves it alone; its priority isn't assumed.
+        // A process that does next to nothing, so no process manager touches it; its priority isn't assumed.
         using var p = Process.Start(new ProcessStartInfo("ping.exe", "-n 60 127.0.0.1")
         {
             CreateNoWindow = true,

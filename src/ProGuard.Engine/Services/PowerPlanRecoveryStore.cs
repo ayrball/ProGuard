@@ -12,9 +12,8 @@ namespace ProGuard.Engine.Services;
 internal readonly record struct PendingPlanRestore(Guid Applied, Guid Restore);
 
 /// <summary>
-/// Remembers the pending restore across engine runs, so a crash or kill while a feature (AwayMode, Performance Mode
-/// or the load switcher) holds the plan doesn't leave the user stuck on it: the next start restores it (Process
-/// otherpm's AwayModeRecoveryGUID). There is at most one pending restore, since only one feature holds the plan.
+/// Remembers the pending restore across engine runs, so a crash or kill while a feature (Away Mode, Performance Mode
+/// or the load switcher) holds the plan doesn't leave the user stuck on it: the next start restores it. There is at most one pending restore, since only one feature holds the plan.
 /// </summary>
 internal interface IPowerPlanRecoveryStore
 {

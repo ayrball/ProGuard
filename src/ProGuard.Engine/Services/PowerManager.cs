@@ -20,35 +20,34 @@ public enum PowerPlanOwner { None, LoadSwitcher, AwayMode, PerformanceMode }
 public sealed record PowerPlanChange(DateTime Time, Guid From, Guid To, PowerPlanOwner Owner, string Reason);
 
 /// <summary>
-/// Manages Windows power plans for Performance Mode, AwayMode and the load-based power switcher.
+/// Manages Windows power plans for Performance Mode, Away Mode and the load-based power switcher.
 /// <para>
 /// <b>One arbitration point.</b> Each feature only says which plan it wants (or nothing); <see cref="Arbitrate"/> picks
-/// the winner and is the only code that switches plans for them. Precedence: Performance Mode beats AwayMode, which
-/// beats the load switcher. AwayMode is also disabled while Performance Mode is on (another process manager's
-/// DisableEnergySaverDuringGamingMode), so it starts counting again only once Performance Mode ends.
+/// the winner and is the only code that switches plans for them. Precedence: Performance Mode beats Away Mode, which
+/// beats the load switcher. Away Mode is also disabled while Performance Mode is on, so it starts counting again only once Performance Mode ends.
 /// </para>
 /// <para>
 /// The plan that was active before any feature took over is the <i>baseline</i>; when the last feature lets go, the
-/// baseline comes back. Handing over between features doesn't change it, so after AwayMode then Performance Mode the
+/// baseline comes back. Handing over between features doesn't change it, so after Away Mode then Performance Mode the
 /// user still ends up on their own plan.
 /// </para>
 /// <para>
 /// <b>Manual changes win.</b> If the plan is changed by someone else while a feature holds it (Windows' power options,
 /// another tool, <see cref="SetActivePlan"/>), that plan becomes the new baseline and the feature's current decision
 /// counts as overridden: it isn't re-applied and nothing is restored over the user's choice when it ends. A later,
-/// different decision (the load switcher changing level, AwayMode on the next idle stretch) applies as usual.
+/// different decision (the load switcher changing level, Away Mode on the next idle stretch) applies as usual.
 /// </para>
 /// <para>
-/// AwayMode switches once the user has been away for the timeout and switches back as soon as they return. The idle
+/// Away Mode switches once the user has been away for the timeout and switches back as soon as they return. The idle
 /// time comes from <see cref="IUserIdleSource"/> (in practice <see cref="ForegroundTracker"/>): the engine runs as a
 /// service in session 0, where <c>GetLastInputInfo</c> never sees the user's input, so the UI on each desktop reports
-/// it. Unknown idle time (no UI reporting) counts as "not idle": AwayMode never acts on a guess.
+/// it. Unknown idle time (no UI reporting) counts as "not idle": Away Mode never acts on a guess.
 /// </para>
 /// <para>
 /// <b>Crash recovery.</b> While a feature holds a plan other than the baseline, the baseline is also kept in
 /// <see cref="IPowerPlanRecoveryStore"/>, written before the switch away from it and cleared once it is restored (or the
 /// user's own change makes it moot). If the engine dies in between, the next start restores it, unless a start-with
-/// plan is configured or the plan was changed since (another process manager's AwayModeRecoveryGUID).
+/// plan is configured or the plan was changed since.
 /// </para>
 /// <para>
 /// <b>Power mode.</b> Optionally Performance Mode also moves the Windows power-mode slider (an overlay on the plan) to
@@ -96,8 +95,8 @@ public class PowerManager : IPowerManager
     private string? _automaticReason;
     private bool _automaticSuppressed;   // turned off by hand while a game ran: wait for the games to go
 
-    // AwayMode
-    private bool _away modeEnabled;
+    // Away Mode
+    private bool _awayModeEnabled;
     private int _idleTimeoutMinutes = 15;
     private Guid _idlePlanId = Powrprof.PowerSaver;
     private bool _idleRequested;
@@ -156,7 +155,7 @@ public class PowerManager : IPowerManager
         get { lock (_sync) return _owner; }
     }
 
-    /// <summary>Whether Performance Mode is on (manually or automatically). MemoryTrim reads it to gate its standby list purge.</summary>
+    /// <summary>Whether Performance Mode is on (manually or automatically). Memory Trim reads it to gate its standby list purge.</summary>
     public bool IsPerformanceModeActive
     {
         get { lock (_sync) return PerformanceModeWanted; }
@@ -288,13 +287,13 @@ public class PowerManager : IPowerManager
         catch (OperationCanceledException) { }
     }
 
-    /// <summary>One AwayMode step. Runs every <see cref="IdleCheckInterval"/>; tests call it directly.</summary>
+    /// <summary>One Away Mode step. Runs every <see cref="IdleCheckInterval"/>; tests call it directly.</summary>
     internal void CheckIdle()
     {
         lock (_sync)
         {
-            var idle = _away modeEnabled ? _idleSource.GetIdleTime() : null;
-            // Performance Mode disables AwayMode outright, so it starts over once Performance Mode ends.
+            var idle = _awayModeEnabled ? _idleSource.GetIdleTime() : null;
+            // Performance Mode disables Away Mode outright, so it starts over once Performance Mode ends.
             var wanted = idle >= TimeSpan.FromMinutes(_idleTimeoutMinutes) && !PerformanceModeWanted && _idlePlanId != Guid.Empty;
             if (wanted == _idleRequested)
             {
@@ -303,8 +302,8 @@ public class PowerManager : IPowerManager
             }
 
             _idleRequested = wanted;
-            Arbitrate(wanted ? $"AwayMode: no input for {(int)idle!.Value.TotalMinutes} min"
-                : idle == null ? "AwayMode: idle time unknown" : "AwayMode: user input");
+            Arbitrate(wanted ? $"Away Mode: no input for {(int)idle!.Value.TotalMinutes} min"
+                : idle == null ? "Away Mode: idle time unknown" : "Away Mode: user input");
         }
     }
 
@@ -668,12 +667,12 @@ public class PowerManager : IPowerManager
         {
             // Undo a switch made under the old settings; the next check applies the new ones if the user is still away.
             _idleRequested = false;
-            _away modeEnabled = enable;
+            _awayModeEnabled = enable;
             _idleTimeoutMinutes = Math.Max(1, timeoutMinutes);
             _idlePlanId = idlePlanId;
-            Arbitrate(enable ? "AwayMode settings changed" : "AwayMode disabled");
+            Arbitrate(enable ? "Away Mode settings changed" : "Away Mode disabled");
         }
-        _logger.LogInformation("AwayMode configured: Enabled={Enabled}, Timeout={Timeout}min, Plan={Plan}",
+        _logger.LogInformation("Away Mode configured: Enabled={Enabled}, Timeout={Timeout}min, Plan={Plan}",
             enable, timeoutMinutes, idlePlanId);
     }
 

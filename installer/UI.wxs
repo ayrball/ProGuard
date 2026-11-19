@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   The installer's dialogs: WixUI's standard ones plus two of ours.
-    Install:   Welcome > License > Options (start at sign-in, another process manager note) > Ready > Progress > Finish
+    Install:   Welcome > License > Options (start at sign-in, start as administrator) > Ready > Progress > Finish
     Uninstall: Maintenance > Repair or Remove > (Remove only) Remove options (delete data?) > Ready > Progress > Finish
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
@@ -61,12 +61,6 @@
                  Text="Start ProGuard with &amp;administrator rights (recommended)" />
         <Control Id="StartAsAdminNote" Type="Text" X="37" Y="124" Width="313" Height="30" NoPrefix="yes"
                  Text="ProGuard asks with a UAC prompt each time it starts, so Realtime and High I/O priority work for everyone. Each user can turn it off in ProGuard's System page." />
-        <Control Id="otherpmTitle" Type="Text" X="20" Y="162" Width="330" Height="13" NoPrefix="yes"
-                 HideCondition="NOT another process manager_FOUND" ShowCondition="another process manager_FOUND"
-                 Text="{\WixUI_Font_Title}another process manager is installed" />
-        <Control Id="otherpmWarning" Type="Text" X="20" Y="177" Width="330" Height="52" NoPrefix="yes"
-                 HideCondition="NOT another process manager_FOUND" ShowCondition="another process manager_FOUND"
-                 Text="Both programs adjust the same processes and will fight over them. ProGuard won't remove or change another process manager: uninstall it yourself, or at least stop its ProcessOrchestrator service, before relying on ProGuard." />
       </Dialog>
 
       <Dialog Id="RemoveDataDlg" Width="370" Height="270" Title="!(loc.WelcomeDlg_Title)">

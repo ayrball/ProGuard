@@ -3,7 +3,7 @@ using ProGuard.Shared.Reporting;
 namespace ProGuard.SessionAgent;
 
 /// <summary>
-/// ProGuard's counterpart to another process manager's the vendorsessionagent.exe. The engine runs as a service in session 0 and can't
+/// The session agent. The engine runs as a service in session 0 and can't
 /// see any user's desktop, so it starts this in every signed-in session, as that session's user, and keeps it running.
 /// It tells the engine which process owns the session's foreground window and how long the user has been idle,
 /// whether or not the ProGuard window is open (<see cref="ForegroundReporter"/>).

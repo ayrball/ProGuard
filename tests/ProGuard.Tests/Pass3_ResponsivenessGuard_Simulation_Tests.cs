@@ -7,7 +7,7 @@ using ProGuard.Engine.Services;
 namespace ProGuard.Tests;
 
 /// <summary>
-/// Timeline simulations of ResponsivenessGuard's timing and hysteresis rules on a fake clock, using another process manager's
+/// Timeline simulations of Responsiveness Guard's timing and hysteresis rules on a fake clock, using the
 /// defaults unless a test says otherwise: system >= 10 %, process >= 5 % for 900 ms, restore at <= 2 % after
 /// >= 4200 ms restrained.
 /// </summary>

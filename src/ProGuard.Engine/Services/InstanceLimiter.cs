@@ -9,7 +9,7 @@ using ProGuard.Core.Services;
 namespace ProGuard.Engine.Services;
 
 /// <summary>
-/// Enforces <see cref="ProcessRule.MaxInstances"/> (another process manager's instance count limits): when a matching
+/// Enforces <see cref="ProcessRule.MaxInstances"/> (instance count limits): when a matching
 /// process starts and there are more instances than the limit, the newest ones are terminated. Instances are
 /// counted in the new process's session unless the rule says <see cref="ProcessRule.MaxInstancesAllSessions"/>.
 /// </summary>

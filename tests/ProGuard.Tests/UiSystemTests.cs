@@ -293,7 +293,7 @@ public class UiSystemTests
         var s = saved[^1];
         Assert.True(s.ResponsivenessGuardEnabled);
         Assert.Equal(3, s.ResponsivenessGuardSensitivity);
-        // No control on the page (the engine's ResponsivenessGuard doesn't use them): they go back exactly as stored.
+        // No control on the page (the engine's Responsiveness Guard doesn't use them): they go back exactly as stored.
         Assert.Equal(33.3, s.ResponsivenessGuardCpuThreshold);
         Assert.Equal(7.5, s.ResponsivenessGuardRecoveryThreshold);
         Assert.False(s.ResponsivenessGuardRestrainByAffinity);
@@ -1083,7 +1083,7 @@ public class UiSystemTests
         Assert.Null(seed.MemoryPriority);
         Assert.Equal(0x0F, seed.AffinityMask);
 
-        // ResponsivenessGuard's lowered priority and the CPU Limiter's cores are temporary; all cores and Normal I/O are defaults.
+        // Responsiveness Guard's lowered priority and the CPU Limiter's cores are temporary; all cores and Normal I/O are defaults.
         s.IsRestrained = true;
         s.IsAffinityLimited = true;
         s.IoPriority = 2;

@@ -6,7 +6,7 @@ using ProGuard.Engine.Services;
 namespace ProGuard.Tests;
 
 /// <summary>
-/// PowerManager's crash recovery: whichever feature switched away from the user's plan (AwayMode, Performance Mode or
+/// PowerManager's crash recovery: whichever feature switched away from the user's plan (Away Mode, Performance Mode or
 /// the load switcher), the user's plan is recorded before the switch, so if the engine dies holding it the next start
 /// restores it, unless a start-with plan is configured or the plan was changed since. A clean stop restores it and
 /// leaves no record. Plans, idle time, CPU load and the clock are fakes; the record is kept in memory, except in the

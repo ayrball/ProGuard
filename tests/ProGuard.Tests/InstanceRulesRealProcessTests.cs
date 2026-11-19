@@ -9,7 +9,7 @@ namespace ProGuard.Tests;
 
 /// <summary>
 /// The Win32 side of the instance limit / Instance Spread / startup boost, against real processes. Uses an idle
-/// ping.exe as the stand-in, and sets its priority explicitly: another process manager runs on the dev machine and lowers
+/// ping.exe as the stand-in, and sets its priority explicitly: another process manager on the dev machine may lower
 /// busy processes, so nothing here may assume a process starts at Normal.
 /// </summary>
 public sealed class InstanceRulesRealProcessTests : IDisposable
@@ -133,7 +133,7 @@ public class InstanceRulesCompositionTests
         var orchestrator = services.GetService(typeof(ProcessOrchestrator));
         Assert.NotNull(orchestrator);
         // Optional constructor parameters: make sure DI filled them rather than leaving the defaults.
-        foreach (var field in new[] { "_instanceLimiter", "_instance spread", "_startupBoost" })
+        foreach (var field in new[] { "_instanceLimiter", "_instanceSpread", "_startupBoost" })
             Assert.NotNull(typeof(ProcessOrchestrator).GetField(field, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(orchestrator));
         Assert.NotNull(services.GetService(typeof(InstanceLimiter)));
         Assert.NotNull(services.GetService(typeof(InstanceSpread)));

@@ -8,7 +8,7 @@ public enum LogSource
 {
     /// <summary>The engine's text log (%ProgramData%\ProGuard\logs\engine.log and the file it last rolled over into). Administrators only.</summary>
     Engine,
-    /// <summary>The action log in the database: ResponsivenessGuard restraints and restores, CPU Limiter actions and power plan changes.</summary>
+    /// <summary>The action log in the database: Responsiveness Guard restraints and restores, CPU Limiter actions and power plan changes.</summary>
     Actions,
 }
 

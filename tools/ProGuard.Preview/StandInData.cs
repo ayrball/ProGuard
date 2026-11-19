@@ -106,7 +106,7 @@ public static class StandInData
             tweak: p => p.CpuLimitPercent = 15);
         P(6320, 5120, "Spotify", @"C:\Users\Tee\AppData\Roaming\Spotify\Spotify.exe", Me, 1.4, 186, 62, ageMinutes: 400);
 
-        // ---- Chrome: ResponsivenessGuard has stepped on one noisy renderer
+        // ---- Chrome: Responsiveness Guard has stepped on one noisy renderer
         const string Chrome = @"C:\Program Files\Google\Chrome\Application\chrome.exe";
         P(7040, 5120, "chrome", Chrome, Me, 1.2, 322, 48, ageMinutes: 300);
         P(7100, 7040, "chrome", Chrome, Me, 2.2, 468, 31, ageMinutes: 300);
@@ -173,12 +173,12 @@ public static class StandInData
         new()
         {
             Id = 5, ProcessName = "HandBrakeCLI.exe", MaxInstances = 2, MaxInstancesAllSessions = true,
-            InstanceSpreadMode = BalancerMode.EqualCoresPerInstance, InstanceSpreadAvoidSmt = true,
+            InstanceSpreadMode = SpreadMode.EqualCoresPerInstance, InstanceSpreadAvoidSmt = true,
             InstanceSpreadReservedCores = 2, InstanceSpreadMinCpuPercent = 5,
         },
         new()
         {
-            Id = 6, ProcessName = "blender.exe", InstanceSpreadMode = BalancerMode.FixedCoresPerInstance, InstanceSpreadCoresPerInstance = 8,
+            Id = 6, ProcessName = "blender.exe", InstanceSpreadMode = SpreadMode.FixedCoresPerInstance, InstanceSpreadCoresPerInstance = 8,
             MaxInstances = 3,
         },
         new()
@@ -350,14 +350,14 @@ public static class StandInData
         A(47, ActivityKind.Rule, "ffmpeg", 11200, "CPU Limiter: over 85% for 10s, removed 4 cores for 30s.");
         A(88, ActivityKind.Restrained, "chrome", 7220, "CPU 5.8% while the machine was at 88%. Lowered to Below normal.");
         A(140, ActivityKind.Watchdog, "chrome", 7388, "Memory above 4096 MB for 60s. Logged an alert.");
-        A(205, ActivityKind.Memory, "", 0, "MemoryTrim trimmed 31 processes and freed 1.4 GB.");
+        A(205, ActivityKind.Memory, "", 0, "Memory Trim trimmed 31 processes and freed 1.4 GB.");
         A(262, ActivityKind.Restored, "SearchIndexer", 2700, "Load back under 50%. Priority kept at Idle by its rule.");
         A(340, ActivityKind.Rule, "Discord", 8812, "Rule applied: CPU cap 10%, cores 16-23, priority Below normal.");
         A(410, ActivityKind.Manual, "Steam", 4400, "Paused.");
         A(515, ActivityKind.Restored, "chrome", 7168, "Load back under 50%. Priority restored to Normal.");
         A(640, ActivityKind.Watchdog, "ms-teams", 7600, "Memory above 1500 MB for 60s. Working set trimmed.");
         A(780, ActivityKind.Power, "", 0, "Power plan changed to Balanced (Performance Mode ended).");
-        A(905, ActivityKind.Rule, "obs64", 9921, "Rule applied: priority High, I/O priority High, left out of ResponsivenessGuard.");
+        A(905, ActivityKind.Rule, "obs64", 9921, "Rule applied: priority High, I/O priority High, left out of Responsiveness Guard.");
         A(1190, ActivityKind.Rule, "Cyberpunk2077", 13760, "Startup boost: High for the first 60s, then back to Normal.");
         A(1260, ActivityKind.Power, "", 0, "Power plan changed to High performance (Performance Mode: Cyberpunk2077.exe started).");
         A(1480, ActivityKind.Restrained, "MsMpEng", 2480, "CPU 7.9% while the machine was at 94%. Lowered to Below normal.");
@@ -372,7 +372,7 @@ public static class StandInData
         A(4820, ActivityKind.Restored, "dotnet", 10600, "Load back under 50%. Priority restored to Normal.");
         A(5300, ActivityKind.Watchdog, "MsMpEng", 2480, "CPU above 40% for 30s. Priority set to Below normal for 5 minutes.");
         A(6100, ActivityKind.System, "", 0, "Settings saved.");
-        A(7400, ActivityKind.Memory, "", 0, "MemoryTrim trimmed 28 processes and freed 1.1 GB.");
+        A(7400, ActivityKind.Memory, "", 0, "Memory Trim trimmed 28 processes and freed 1.1 GB.");
         A(8200, ActivityKind.Rule, "SearchIndexer", 2700, "Rule applied: priority Idle, I/O priority Very low, Efficiency Mode on.");
         A(9400, ActivityKind.System, "", 0, "Power plan recovery: restored Balanced after the engine stopped during a switch.");
         A(11500, ActivityKind.System, "", 0, "Engine started with administrator rights.");
@@ -395,18 +395,18 @@ public static class StandInData
         }
 
         L(4, LogLevelDto.Debug, "IpcDispatcher", "IPC command GetSnapshot (pid , arg ) from " + Me);
-        L(12, LogLevelDto.Information, "ResponsivenessGuardEngine", "ResponsivenessGuard restrained MsMpEng (2480) from Normal to BelowNormal at 6.4% CPU", "MsMpEng", 2480);
+        L(12, LogLevelDto.Information, "ResponsivenessGuardEngine", "Responsiveness Guard restrained MsMpEng (2480) from Normal to BelowNormal at 6.4% CPU", "MsMpEng", 2480);
         L(33, LogLevelDto.Information, "IpcDispatcher", "IPC command SetCpuLimit (pid 3300, arg 15) from " + Me, null, 3300);
         L(34, LogLevelDto.Information, "CpuLimiter", "Limited PID 3300 to 15% CPU", null, 3300);
         L(49, LogLevelDto.Information, "CpuAffinityLimiter", "Constraining CPU affinity of ffmpeg (11200): over 85% for 10s, removing 4 cores for 30s", "ffmpeg", 11200);
         L(61, LogLevelDto.Warning, "SessionAgentSupervisor", "Session agent 2772 in session 1 exited with code -1 after 0:00:50; restarting in 0:00:02", null, 2772);
         L(63, LogLevelDto.Information, "UserSessionLauncher", "Launched \"C:\\Program Files\\ProGuard\\Engine\\ProGuard.SessionAgent.exe\" as process 38508 in session 1", "ProGuard.SessionAgent.exe", 38508);
-        L(90, LogLevelDto.Information, "ResponsivenessGuardEngine", "ResponsivenessGuard restrained chrome (7220) from Normal to BelowNormal at 5.8% CPU", "chrome", 7220);
+        L(90, LogLevelDto.Information, "ResponsivenessGuardEngine", "Responsiveness Guard restrained chrome (7220) from Normal to BelowNormal at 5.8% CPU", "chrome", 7220);
         L(142, LogLevelDto.Information, "WatchdogService", "Watchdog: chrome (7388) memory above 4096 MB for 60s; logged an alert", "chrome", 7388);
-        L(207, LogLevelDto.Information, "MemoryTrimService", "MemoryTrim trimmed 31 processes, 1.4 GB reclaimed");
+        L(207, LogLevelDto.Information, "MemoryTrimService", "Memory Trim trimmed 31 processes, 1.4 GB reclaimed");
         L(240, LogLevelDto.Debug, "ProcessMonitor", "Polled 412 processes in 18 ms");
-        L(264, LogLevelDto.Information, "ResponsivenessGuardEngine", "ResponsivenessGuard restored SearchIndexer (2700) to Idle: CPU usage dropped to 0.2%", "SearchIndexer", 2700);
-        L(301, LogLevelDto.Error, "RuleStore", "Failed to log ResponsivenessGuard action", detail:
+        L(264, LogLevelDto.Information, "ResponsivenessGuardEngine", "Responsiveness Guard restored SearchIndexer (2700) to Idle: CPU usage dropped to 0.2%", "SearchIndexer", 2700);
+        L(301, LogLevelDto.Error, "RuleStore", "Failed to log Responsiveness Guard action", detail:
             "Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.\n" +
             " ---> Microsoft.Data.Sqlite.SqliteException (0x80004005): SQLite Error 5: 'database is locked'.\n" +
             "   at Microsoft.Data.Sqlite.SqliteException.ThrowExceptionForRC(Int32 rc, sqlite3 db)\n" +
@@ -415,7 +415,7 @@ public static class StandInData
         L(342, LogLevelDto.Information, "ProcessOrchestrator", "Applied rule to Discord (8812): CPU cap 10%, cores 16-23, priority BelowNormal", "Discord", 8812);
         L(412, LogLevelDto.Information, "IpcDispatcher", "IPC command SuspendProcess (pid 4400, arg ) from " + Me, null, 4400);
         L(470, LogLevelDto.Warning, "IpcDispatcher", "Refused IPC request Command/PurgeMemory (pid (null)) from DESKTOP-9F2K1TE\\guest");
-        L(517, LogLevelDto.Information, "ResponsivenessGuardEngine", "ResponsivenessGuard restored chrome (7168) to Normal: CPU usage dropped to 0.0%", "chrome", 7168);
+        L(517, LogLevelDto.Information, "ResponsivenessGuardEngine", "Responsiveness Guard restored chrome (7168) to Normal: CPU usage dropped to 0.0%", "chrome", 7168);
         L(642, LogLevelDto.Information, "WatchdogService", "Watchdog: ms-teams (7600) memory above 1500 MB for 60s; working set trimmed", "ms-teams", 7600);
         L(700, LogLevelDto.Trace, "ForegroundTracker", "Foreground changed to Code (6120), session 1", "Code", 6120);
         L(782, LogLevelDto.Information, "PowerManager", "Performance Mode ended; restoring the Balanced power plan");

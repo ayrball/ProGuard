@@ -4,7 +4,7 @@ The MSI from `installer/build.ps1`, installed, upgraded and uninstalled on the d
 2026-10-16 with `msiexec /qn /l*v` from one elevated script per run. The UI checks ran unelevated: the installed
 `ProGuard.UI.exe` on a separate desktop (`tools/volt-uia`), read through UI Automation, with no mouse or keyboard
 input. The dev engine, UI and session agent that were running were stopped first. `%ProgramData%\ProGuard` was backed
-up first and restored after the run that deleted it. another process manager wasn't installed.
+up first and restored after the run that deleted it.
 
 ## Run 1: found a bug
 
@@ -18,7 +18,7 @@ rolling back.
 
 | Check | Result |
 | --- | --- |
-| Install 0.0.1 with a fake `HKLM\SOFTWARE\another process manager\Install_Dir` | exit 0; log has `another process manager_FOUND` = 1; install went ahead; fake key deleted after |
+| Install 0.0.1 | exit 0 |
 | Service | `ProGuardEngine`, "ProGuard Engine", Running, Automatic, LocalSystem, `"C:\Program Files\ProGuard\ProGuard.Engine.exe"`, description as in install-service.ps1 |
 | `sc qfailure` | reset 86400 s; RESTART 5000 / 10000 / 60000 ms |
 | Files | engine, UI, session agent, 6 native DLLs, appsettings.json, LICENSE.txt, NOTICE.txt; no `*.runtimeconfig.json` |
@@ -26,7 +26,7 @@ rolling back.
 | Session agent | started by the service from `C:\Program Files\ProGuard` in session 1; foreground reporter connected 130 ms later |
 | UI, unelevated | **ENGINE ONLINE · STANDARD RIGHTS · UP 4m 11s** |
 | ARP | one "ProGuard" entry, 0.0.1, publisher ayrball |
-| Upgrade to 0.0.2 (UI left running) | exit 0; another process manager not detected; engine PID changed and service Running; one ARP entry, 0.0.2; engine exe version 0.0.2; running UI closed; `proguard.db` same file (creation time unchanged); recovery actions kept; session agent restarted |
+| Upgrade to 0.0.2 (UI left running) | exit 0; engine PID changed and service Running; one ARP entry, 0.0.2; engine exe version 0.0.2; running UI closed; `proguard.db` same file (creation time unchanged); recovery actions kept; session agent restarted |
 | UI after upgrade | **ENGINE ONLINE · STANDARD RIGHTS · UP 0m 37s** |
 | Uninstall (UI left running) | exit 0; service, install folder, shortcut and ARP entry gone; no ProGuard process left; `%ProgramData%\ProGuard` kept |
 | `install-service.ps1`, then the MSI over it with `START_AT_SIGNIN=0` | exit 0; service now the MSI's path; `Program Files\ProGuard\Engine` removed; service Running |
@@ -64,14 +64,13 @@ through a different view from the one Windows Installer uses:
   desktop app, which is an MSIX package (`Claude_pzs8sxrjxfjjc`). Its processes get the package's registry
   virtualization: writes under `HKCU\Software` go to a private hive
   (`%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\SystemAppData\Helium\User.dat`), and deleting a value there hides the
-  real one. HKLM isn't virtualized: the fake another process manager key the elevated test script wrote was seen by
-  the MSI.
+  real one. HKLM isn't virtualized.
 - The Windows Installer service, and the `reg delete` it starts, use the real registry.
 
 Checked on 2026-10-17. With the value set from a test shell, `reg query` in that shell shows it, but the same query
 from a process started through WMI (`Win32_Process.Create`, outside the app's process tree, same user) reports it
 missing. The same is true with the shell's command sandbox off. The real registry after the runs: no `ProGuard.UI`
-Run value and no `HKLM\SOFTWARE\another process manager`.
+Run value.
 
 The supposed flips are exactly the gaps between the two views: the MSI wrote and removed the real value, and the test
 read and wrote the overlay. So the installer's start-at-sign-in handling is verified by its logs, and the "Run value",
@@ -85,7 +84,7 @@ through WMI, for example
 `Invoke-CimMethod Win32_Process -MethodName Create -Arguments @{ CommandLine = 'cmd /c reg query ... > out.txt' }`.
 ## After the runs
 
-No ProGuard service, `C:\Program Files\ProGuard`, Start menu shortcut, ARP entry, ProGuard process, Run value or fake
-another process manager key. `%ProgramData%\ProGuard` is kept, as designed. Its database was used by the installed engine during
-run 3, so it differs from the pre-test backup in `E:\projects\proguard-wt\installer-test\ProgramData-ProGuard-backup`.
+No ProGuard service, `C:\Program Files\ProGuard`, Start menu shortcut, ARP entry, ProGuard process or Run value.
+`%ProgramData%\ProGuard` is kept, as designed. Its database was used by the installed engine during run 3, so it
+differs from the pre-test backup.
 The dev engine and UI that were running before the test weren't restarted.

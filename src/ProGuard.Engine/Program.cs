@@ -38,7 +38,7 @@ public class Program
                 services.AddSingleton<IForegroundTracker>(sp => sp.GetRequiredService<ForegroundTracker>());
                 // The UI's foreground reports also carry the user's idle time, which a session-0 service can't read.
                 services.AddSingleton<IUserIdleSource>(sp => sp.GetRequiredService<ForegroundTracker>());
-                // With no report at all, ResponsivenessGuard spares every program that could be the one in use.
+                // With no report at all, Responsiveness Guard spares every program that could be the one in use.
                 services.AddSingleton<IForegroundFallback, GuiProgramFallback>();
 
                 services.AddSingleton<ProcessMonitor>();
@@ -91,11 +91,11 @@ public class Program
                         sp.GetRequiredService<IProcessMonitor>(),
                         sp.GetRequiredService<IRuleStore>());
                     // Re-applying a rule's CPU priority must not fight what holds it for a while: those put it back.
-                    var responsiveness guard = sp.GetRequiredService<IResponsivenessGuardEngine>();
+                    var responsivenessGuard = sp.GetRequiredService<IResponsivenessGuardEngine>();
                     var startupBoost = sp.GetRequiredService<StartupBoostService>();
                     var foregroundBoost = sp.GetRequiredService<ForegroundBoostService>();
                     persistent.PriorityAccess = sp.GetRequiredService<IRuleProcessAccess>();
-                    persistent.PriorityHeld = pid => responsiveness guard.RestrainedPids.Contains(pid) || startupBoost.IsBoosting(pid) || foregroundBoost.BoostedPid == pid;
+                    persistent.PriorityHeld = pid => responsivenessGuard.RestrainedPids.Contains(pid) || startupBoost.IsBoosting(pid) || foregroundBoost.BoostedPid == pid;
                     return persistent;
                 });
 

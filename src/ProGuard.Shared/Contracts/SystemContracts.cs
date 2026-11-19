@@ -5,14 +5,14 @@ namespace ProGuard.Shared.Contracts;
 
 /// <summary>
 /// Wire copy of ProGuard.Core.Models.AppSettings (every property except the database key), with the same names and
-/// meanings; another process manager's otherpm.ini key is given where there is one. Power plan fields hold a plan GUID as text,
+/// meanings. Power plan fields hold a plan GUID as text,
 /// or null for the default named in the comment.
 /// </summary>
 public sealed class EngineSettingsDto
 {
-    // ResponsivenessGuard
+    // Responsiveness Guard
     public bool ResponsivenessGuardEnabled { get; set; } = true;
-    /// <summary>1 (step in only under extreme load) to 10 (step in early); 5 = another process manager's defaults.</summary>
+    /// <summary>1 (step in only under extreme load) to 10 (step in early); 5 = the default.</summary>
     public int ResponsivenessGuardSensitivity { get; set; } = 5;
     public double ResponsivenessGuardCpuThreshold { get; set; } = 25.0;
     public double ResponsivenessGuardRecoveryThreshold { get; set; } = 10.0;
@@ -24,13 +24,13 @@ public sealed class EngineSettingsDto
     public bool ResponsivenessGuardDoNotLowerPriorityClass { get; set; }
     public bool ResponsivenessGuardDisableWhenSysIdle { get; set; }
     public int ResponsivenessGuardDisableIfSysIdleMs { get; set; } = 30000;
-    /// <summary>Unpark every core while ResponsivenessGuard restrains anything (OocDisableCoreParkingWhileIn). Administrators only.</summary>
+    /// <summary>Unpark every core while Responsiveness Guard restrains anything. Administrators only.</summary>
     public bool ResponsivenessGuardDisableCoreParking { get; set; }
 
     /// <summary>Raise the foreground process from Normal to Above Normal while it has focus.</summary>
     public bool ForegroundBoostEnabled { get; set; } = false;
 
-    // MemoryTrim
+    // Memory Trim
     public bool MemoryTrimEnabled { get; set; }
     public int MemoryTrimIntervalSeconds { get; set; } = 900;
     public long MemoryTrimMemoryThresholdMB { get; set; } = 196;
@@ -42,7 +42,7 @@ public sealed class EngineSettingsDto
     public bool StandbyPurgeOnlyInPerformanceMode { get; set; } = true;
     public bool FileCachePurgeEnabled { get; set; }
 
-    // AwayMode
+    // Away Mode
     public bool AwayModeEnabled { get; set; }
     public int IdleTimeoutMinutes { get; set; } = 15;
     /// <summary>null = Power saver.</summary>
@@ -164,13 +164,13 @@ public sealed class CpuSetDto
 
 public enum ActivityKind
 {
-    /// <summary>ResponsivenessGuard lowered a process's priority.</summary>
+    /// <summary>Responsiveness Guard lowered a process's priority.</summary>
     Restrained,
 
-    /// <summary>ResponsivenessGuard or another timed action gave a process its settings back.</summary>
+    /// <summary>Responsiveness Guard or another timed action gave a process its settings back.</summary>
     Restored,
 
-    /// <summary>A persistent rule, startup boost, CPU Limiter, instance limit or balancer acted on a process.</summary>
+    /// <summary>A persistent rule, startup boost, CPU Limiter, instance limit or Instance Spread acted on a process.</summary>
     Rule,
 
     /// <summary>A watchdog rule fired, or Keep Running relaunched a process.</summary>
@@ -179,7 +179,7 @@ public enum ActivityKind
     /// <summary>The active power plan changed.</summary>
     Power,
 
-    /// <summary>MemoryTrim trimmed working sets or purged memory.</summary>
+    /// <summary>Memory Trim trimmed working sets or purged memory.</summary>
     Memory,
 
     /// <summary>Someone did something from the UI.</summary>

@@ -12,7 +12,7 @@ namespace ProGuard.Tests;
 /// <summary>
 /// The engine checks each request by impersonating the pipe client. Whatever it does afterwards (later requests,
 /// timers a request creates, await continuations) must run as the engine again: on the installed service a leaked
-/// client identity made "Purge now" fail to open SYSTEM's token and MemoryTrim timers set up over IPC run as the user.
+/// client identity made "Purge now" fail to open SYSTEM's token and Memory Trim timers set up over IPC run as the user.
 /// <para>
 /// Limitation: here the test runner is both server and client, as the same user and not as a service, and in that
 /// setup the leak doesn't show even with PipeCaller's RunAsClient wrapper removed. These tests guard the paths

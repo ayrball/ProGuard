@@ -19,7 +19,7 @@ using ProGuard.UI.ViewModels;
 namespace ProGuard.Tests;
 
 /// <summary>
-/// MemoryTrim follows another process manager's [MemoryManagement] rules: trims are gated on memory load, purges on free RAM and
+/// Memory Trim's rules: trims are gated on memory load, purges on free RAM and
 /// (optionally) Performance Mode, and the foreground, protected and excluded processes are never trimmed. The gates
 /// run against fake memory readings and a fake native layer, so they don't depend on the test machine.
 /// </summary>
@@ -398,7 +398,7 @@ public class MemoryTrimTests
     // ---------- Settings ----------
 
     [Fact]
-    public void AppSettings_DefaultToanother process managersMemoryManagementValues()
+    public void AppSettings_DefaultToTheDocumentedMemoryTrimValues()
     {
         var s = new AppSettings();
         Assert.Equal(15 * 60, s.MemoryTrimIntervalSeconds);
@@ -477,9 +477,9 @@ public class MemoryTrimTests
         var monitor = new Mock<IProcessMonitor>();
         var trim = new Mock<IMemoryTrimService>();
         var power = new Mock<IPowerManager>();
-        var responsiveness guard = new Mock<IResponsivenessGuardEngine>();
-        var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, monitor.Object, trim.Object, power.Object, responsiveness guard.Object);
-        var dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, store.Object, applier, responsiveness guard.Object, power.Object,
+        var responsivenessGuard = new Mock<IResponsivenessGuardEngine>();
+        var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, monitor.Object, trim.Object, power.Object, responsivenessGuard.Object);
+        var dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, store.Object, applier, responsivenessGuard.Object, power.Object,
             trim.Object, new Mock<ICpuLimiter>().Object, new Mock<IProcessController>().Object, monitor.Object);
         return (dispatcher, trim);
     }

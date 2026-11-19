@@ -1678,6 +1678,9 @@ LOGGED.</value>
   <data name="SignIn_NeedsAdmin" xml:space="preserve">
     <value>ProGuard starts at sign-in through a task that only an administrator can remove. Restart ProGuard as administrator to turn this off.</value>
   </data>
+  <data name="SignIn_NotProtected" xml:space="preserve">
+    <value>ProGuard starts at sign-in with standard rights and asks for administrator rights when it opens, because this copy can be replaced by users other than administrators ({0}). Install ProGuard to start it as administrator without a prompt.</value>
+  </data>
   <data name="SignIn_Refused" xml:space="preserve">
     <value>Task Scheduler refused the change.</value>
   </data>

@@ -31,6 +31,9 @@ public sealed class InstanceLimiter
         _access = access ?? new Win32RuleProcessAccess();
     }
 
+    /// <summary>Which processes a rule may act on (see <see cref="RuleScope"/>). Tests supply fake owners.</summary>
+    internal RuleScope Scope { get; init; } = RuleScope.Default;
+
     /// <summary>
     /// Call when <paramref name="started"/> starts (or is first seen) and matches <paramref name="rule"/>.
     /// Returns true if <paramref name="started"/> itself was terminated, so the caller applies nothing else to it.
@@ -48,10 +51,13 @@ public sealed class InstanceLimiter
             if (session == null) return false; // can't tell which instances it competes with
         }
 
+        // A standard user's limit counts, and ends, only that user's own instances.
+        if (!Scope.AppliesTo(rule, started)) return false;
+
         lock (_gate)
         {
             var pids = _monitor.GetAllProcesses()
-                .Where(p => ProcessExtensions.NormalizeName(p.Name) == key)
+                .Where(p => ProcessExtensions.NormalizeName(p.Name) == key && p.Pid != started.Pid && Scope.AppliesTo(rule, p))
                 .Select(p => p.Pid)
                 .Append(started.Pid) // the monitor normally lists it already
                 .Distinct()

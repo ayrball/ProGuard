@@ -9,18 +9,47 @@ using ProGuard.Engine.Services.ProcessRules;
 using ProGuard.Engine.Services.SessionAgents;
 using ProGuard.Engine.IPC;
 using ProGuard.Engine.Logging;
+using ProGuard.Engine.Security;
 
 namespace ProGuard.Engine;
 
 public class Program
 {
-    public static void Main(string[] args)
+    public static int Main(string[] args)
     {
         System.IO.Directory.SetCurrentDirectory(System.AppContext.BaseDirectory);
-        CreateHostBuilder(args).Build().Run();
+
+        // Before anything opens a file there: the logger and the database both create the folder when they start.
+        var guard = DataDirectoryGuard.ForThisProcess();
+        var dataDirectory = System.IO.Path.GetDirectoryName(System.IO.Path.GetDirectoryName(FileLoggerProvider.DefaultPath))!;
+        var ownDirectoryUsable = guard.SecureOwnDirectory(dataDirectory);
+        var databaseDirectory = System.IO.Path.GetDirectoryName(ProGuardDbContext.DatabasePath)!;
+        var databaseUsable = SamePath(databaseDirectory, dataDirectory)
+            ? ownDirectoryUsable
+            : guard.CheckOtherDirectory(databaseDirectory);
+
+        using var host = CreateHostBuilder(args, fileLogging: ownDirectoryUsable).Build();
+        var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("ProGuard.Engine.DataDirectory");
+        foreach (var finding in guard.Findings)
+            logger.Log(finding.Level, "{Finding}", finding.Message);
+        if (!ownDirectoryUsable || !databaseUsable)
+        {
+            logger.LogCritical("The engine is not starting: its data folder isn't safe to use (see the messages above).");
+            return 1;
+        }
+
+        host.Run();
+        return 0;
     }
 
-    public static IHostBuilder CreateHostBuilder(string[] args) =>
+    private static bool SamePath(string a, string b) =>
+        string.Equals(System.IO.Path.TrimEndingDirectorySeparator(System.IO.Path.GetFullPath(a)),
+            System.IO.Path.TrimEndingDirectorySeparator(System.IO.Path.GetFullPath(b)), System.StringComparison.OrdinalIgnoreCase);
+
+    public static IHostBuilder CreateHostBuilder(string[] args) => CreateHostBuilder(args, fileLogging: true);
+
+    /// <param name="fileLogging">False when the data folder couldn't be made safe: then nothing is written there.</param>
+    public static IHostBuilder CreateHostBuilder(string[] args, bool fileLogging) =>
         Host.CreateDefaultBuilder(args)
             .UseWindowsService(options =>
             {
@@ -148,6 +177,6 @@ public class Program
             {
                 logging.AddConsole();
                 // A service has no console: keep a text log next to the database for diagnosis.
-                logging.AddProvider(new FileLoggerProvider(FileLoggerProvider.DefaultPath));
+                if (fileLogging) logging.AddProvider(new FileLoggerProvider(FileLoggerProvider.DefaultPath));
             });
 }

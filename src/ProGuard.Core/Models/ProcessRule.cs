@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ProGuard.Core.Models;
 
-public class ProcessRule
+public class ProcessRule : IAuthoredRule
 {
     [Key]
     public int Id { get; set; }
@@ -77,4 +77,10 @@ public class ProcessRule
 
     /// <summary>Relaunch the process with its last command line whenever it exits.</summary>
     public bool KeepRunning { get; set; }
+
+    /// <inheritdoc/>
+    public string? AuthorSid { get; set; }
+
+    /// <inheritdoc/>
+    public bool AuthorIsAdministrator { get; set; } = true;
 }

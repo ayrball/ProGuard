@@ -584,7 +584,7 @@ public class PersistentRuleIpcAndUiTests
         _store.Setup(s => s.SaveProcessRule(It.IsAny<ProcessRule>())).Callback<ProcessRule>(r => _saved = r);
         var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, monitor.Object, Mock.Of<IMemoryTrimService>(), Mock.Of<IPowerManager>(), Mock.Of<IResponsivenessGuardEngine>());
         _dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, _store.Object, applier, Mock.Of<IResponsivenessGuardEngine>(), Mock.Of<IPowerManager>(),
-            Mock.Of<IMemoryTrimService>(), Mock.Of<ICpuLimiter>(), Mock.Of<IProcessController>(), monitor.Object);
+            Mock.Of<IMemoryTrimService>(), Mock.Of<ICpuLimiter>(), Mock.Of<IProcessController>(), monitor.Object) { PinProcess = TestPins.Any };
     }
 
     private CommandResult SetRule(ProcessRuleDto dto, bool admin = true)

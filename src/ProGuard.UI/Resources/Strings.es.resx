@@ -1678,6 +1678,9 @@ REGISTRADO.</value>
   <data name="SignIn_NeedsAdmin" xml:space="preserve">
     <value>ProGuard se inicia al iniciar sesión mediante una tarea que solo un administrador puede quitar. Reinicia ProGuard como administrador para desactivarlo.</value>
   </data>
+  <data name="SignIn_NotProtected" xml:space="preserve">
+    <value>ProGuard se inicia al iniciar sesión con permisos estándar y pide permisos de administrador al abrirse, porque esta copia la pueden reemplazar usuarios que no son administradores ({0}). Instala ProGuard para iniciarlo como administrador sin confirmación.</value>
+  </data>
   <data name="SignIn_Refused" xml:space="preserve">
     <value>El Programador de tareas rechazó el cambio.</value>
   </data>

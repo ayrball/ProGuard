@@ -9,19 +9,23 @@ using ProGuard.Engine.Services;
 namespace ProGuard.Engine.IPC;
 
 /// <summary>
-/// What a non-administrator may put in a process or Watchdog rule. The engine applies rules as SYSTEM to every user's
-/// processes, so a standard user may only create rules whose effects they could cause themselves. A rule may be changed
-/// or deleted only by someone who could have created it, so a standard user can't lift an administrator's rule either.
+/// What a non-administrator may put in a process or Watchdog rule. The engine applies rules as SYSTEM, so a standard
+/// user may only create rules whose effects they could cause themselves.
 /// <list type="bullet">
-/// <item>No rules for session and security processes or ProGuard itself (<see cref="CriticalProcesses"/>).</item>
+/// <item>The engine records who saved each rule (<see cref="IAuthoredRule"/>), and a standard user's rule acts only on
+/// that user's own unelevated processes (<see cref="RuleScope"/>), however many processes of that name start later.
+/// The checks below come on top of that.</item>
+/// <item>A standard user may change or delete only rules they saved themselves (<see cref="CheckMayChange"/>): changing an
+/// administrator's rule would otherwise quietly narrow it to one user, and deleting it would lift it for everyone.</item>
+/// <item>No rules for session and security processes, the shell, service and installer hosts, consoles, or ProGuard
+/// itself (<see cref="CriticalProcesses.IsAdministratorOnlyRuleTarget"/>).</item>
 /// <item>No Realtime priority, as a rule's priority, startup boost or Watchdog action, and no High I/O priority, as a
 /// rule's I/O priority or Watchdog action: setting either directly is administrator-only too (see <see cref="IpcAuthorization"/>).</item>
 /// <item>Every other rule, and every Watchdog action that changes a process, only for a name whose running instances
 /// the caller could change themselves; rules that end processes (Disallow, an instance limit, Watchdog Terminate or
 /// Restart) also need the right to end them, and a CPU cap the right to put them in a job. Without this a standard
 /// user could have the engine lower the priority of, cap or trim a service (spoolsv.exe, svchost.exe) that Windows
-/// won't let them touch. Instances started later by other users are not checked: the rule names a program, and a
-/// standard user can already run that program and close it.</item>
+/// won't let them touch. Instances started later are kept out by <see cref="RuleScope"/>.</item>
 /// <item>No launch-time priorities (<see cref="ProcessRule.ApplyPrioritiesAtCreation"/>): they are written to
 /// Image File Execution Options under HKLM, a machine-wide setting only administrators may change, and apply to every
 /// user's copy of the program from the moment it is created.</item>
@@ -35,7 +39,7 @@ internal static class RuleAuthorization
     public static string? CheckProcessRule(ProcessRule rule, IIpcCaller caller, IProcessMonitor monitor)
     {
         if (caller.IsAdministrator) return null;
-        if (CriticalProcesses.IsCriticalName(rule.ProcessName)) return $"change rules for {rule.ProcessName}, a system process";
+        if (CriticalProcesses.IsAdministratorOnlyRuleTarget(rule.ProcessName)) return $"change rules for {rule.ProcessName}, a system process";
         if (IsRealtime(rule.PriorityClass) || IsRealtime(rule.StartupBoostPriorityClass)) return "set Realtime priority";
         if (rule.IoPriority == WatchdogArguments.IoHigh) return "set High I/O priority";
         if (rule.ApplyPrioritiesAtCreation) return "apply priorities at launch: they are written to the machine-wide Image File Execution Options";
@@ -52,7 +56,7 @@ internal static class RuleAuthorization
     public static string? CheckWatchdogRule(WatchdogRule rule, IIpcCaller caller, IProcessMonitor monitor)
     {
         if (caller.IsAdministrator) return null;
-        if (CriticalProcesses.IsCriticalName(rule.TargetProcessName)) return $"change rules for {rule.TargetProcessName}, a system process";
+        if (CriticalProcesses.IsAdministratorOnlyRuleTarget(rule.TargetProcessName)) return $"change rules for {rule.TargetProcessName}, a system process";
         switch (rule.ActionType)
         {
             case WatchdogAction.Launch:
@@ -76,6 +80,31 @@ internal static class RuleAuthorization
                 return null; // LogAlert and Notify only report
         }
     }
+
+    /// <summary>
+    /// Null when <paramref name="caller"/> may change or delete the stored rule <paramref name="existing"/>: any
+    /// administrator, or the standard user who saved it, and only while the rule itself is still one they could save.
+    /// </summary>
+    public static string? CheckMayChange(ProcessRule existing, IIpcCaller caller, IProcessMonitor monitor)
+    {
+        if (caller.IsAdministrator) return null;
+        if (!existing.IsAuthor(caller.Sid)) return NotTheirs(existing.ProcessName);
+        return CheckProcessRule(existing, caller, monitor);
+    }
+
+    /// <inheritdoc cref="CheckMayChange(ProcessRule, IIpcCaller, IProcessMonitor)"/>
+    public static string? CheckMayChange(WatchdogRule existing, IIpcCaller caller, IProcessMonitor monitor)
+    {
+        if (caller.IsAdministrator) return null;
+        if (!existing.IsAuthor(caller.Sid)) return NotTheirs(existing.TargetProcessName);
+        return CheckWatchdogRule(existing, caller, monitor);
+    }
+
+    private static string NotTheirs(string processName) =>
+        $"change or delete the rule for {processName}: an administrator or another user saved it";
+
+    /// <summary>Records <paramref name="caller"/> as the author of a rule it is saving.</summary>
+    public static void Stamp(IAuthoredRule rule, IIpcCaller caller) => rule.SetAuthor(caller.Sid, caller.IsAdministrator);
 
     private static bool IsRealtime(int? priorityClass) => priorityClass == (int)System.Diagnostics.ProcessPriorityClass.RealTime;
 

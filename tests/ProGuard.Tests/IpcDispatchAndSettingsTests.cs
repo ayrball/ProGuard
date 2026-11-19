@@ -53,7 +53,7 @@ public class IpcDispatchAndSettingsTests
 
             Applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, Monitor.Object, MemoryTrim.Object, Power.Object, ResponsivenessGuard.Object);
             Dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, RuleStore.Object, Applier, ResponsivenessGuard.Object,
-                Power.Object, MemoryTrim.Object, CpuLimiter.Object, Processes.Object, Monitor.Object);
+                Power.Object, MemoryTrim.Object, CpuLimiter.Object, Processes.Object, Monitor.Object) { PinProcess = TestPins.Any };
         }
 
         public CommandResult Send(string command, int? pid = null, string? argument = null)
@@ -216,18 +216,19 @@ public class IpcDispatchAndSettingsTests
     }
 
     [Fact]
-    public void SetSetting_ReplacesSettingsButKeepsStoredId()
+    public void SetSetting_IsRetired_AndChangesNothing()
     {
+        // It copied every AppSettings property without validation (a Memory Trim interval of 0 included) and nothing sends it
+        // any more; SaveSettings, which validates, replaces it.
         var h = new Harness();
-        var incoming = new AppSettings { Id = 99, MemoryTrimEnabled = true, MemoryTrimMemoryThresholdMB = 2048, PollingIntervalMs = 2000 };
+        var incoming = new AppSettings { Id = 99, MemoryTrimEnabled = true, MemoryTrimIntervalSeconds = 0, PollingIntervalMs = 2000 };
 
         var reply = h.Dispatcher.Dispatch(new CommandMessage { Type = MessageType.SetSetting, Payload = JsonSerializer.Serialize(incoming) });
 
-        Assert.True(JsonSerializer.Deserialize<CommandResult>(reply.Payload)!.Success);
+        Assert.False(JsonSerializer.Deserialize<CommandResult>(reply.Payload)!.Success);
         Assert.Equal(1, h.Stored.Id);
-        Assert.Equal(2048, h.Stored.MemoryTrimMemoryThresholdMB);
-        h.Monitor.Verify(m => m.SetPollingInterval(TimeSpan.FromMilliseconds(2000)), Times.Once);
-        h.MemoryTrim.Verify(t => t.Configure(true, It.IsAny<TimeSpan>(), 2048L * 1024 * 1024), Times.Once);
+        Assert.False(h.Stored.MemoryTrimEnabled);
+        h.MemoryTrim.Verify(t => t.Configure(It.IsAny<bool>(), It.IsAny<TimeSpan>(), It.IsAny<long>()), Times.Never);
     }
 
     [Theory]

@@ -289,14 +289,17 @@
                     </StackPanel>
 
                     <TextBlock Text="{x:Static r:Strings.StandbyList}" Style="{StaticResource Sub}"/>
-                    <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding StandbyPurgeEnabled}" Margin="0,0,0,16" Content="{x:Static r:Strings.PurgeTheStandbyListWhenFree}"/>
-                    <StackPanel IsEnabled="{Binding StandbyPurgeEnabled}">
-                        <ContentControl Content="{Binding StandbyFreeRamMb}" Focusable="False"/>
-                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding StandbyOnlyInPerformanceMode}" Margin="0" Content="{x:Static r:Strings.OnlyWhilePerformanceModeIsOn}"/>
-                    </StackPanel>
+                    <!-- The automatic purges are administrator-only settings, like "Purge now" (IpcAuthorization). -->
+                    <StackPanel IsEnabled="{Binding IsAdministrator}">
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding StandbyPurgeEnabled}" Margin="0,0,0,16" Content="{x:Static r:Strings.PurgeTheStandbyListWhenFree}"/>
+                        <StackPanel IsEnabled="{Binding StandbyPurgeEnabled}">
+                            <ContentControl Content="{Binding StandbyFreeRamMb}" Focusable="False"/>
+                            <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding StandbyOnlyInPerformanceMode}" Margin="0" Content="{x:Static r:Strings.OnlyWhilePerformanceModeIsOn}"/>
+                        </StackPanel>
 
-                    <TextBlock Text="{x:Static r:Strings.FileCache}" Style="{StaticResource Sub}"/>
-                    <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding FileCachePurgeEnabled}" Margin="0" Content="{x:Static r:Strings.AlsoFlushTheSystemFileCache}"/>
+                        <TextBlock Text="{x:Static r:Strings.FileCache}" Style="{StaticResource Sub}"/>
+                        <CheckBox Style="{StaticResource Sw}" IsChecked="{Binding FileCachePurgeEnabled}" Margin="0" Content="{x:Static r:Strings.AlsoFlushTheSystemFileCache}"/>
+                    </StackPanel>
 
                     <TextBlock Text="{x:Static r:Strings.RightNow}" Style="{StaticResource Sub}"/>
                     <WrapPanel>
@@ -591,6 +594,8 @@
                         <TextBlock Text="{x:Static r:Strings.StartWithWindows}" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>
                     <TextBlock Style="{StaticResource Note}" Text="{x:Static r:Strings.StartsProguardInTheTrayWhen}"/>
+                    <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0" Text="{Binding StartupNotice}"
+                               Visibility="{Binding StartupNotice, Converter={StaticResource VisibleWhen}}"/>
                     <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding MinimizeToTray}" Margin="0,22,0,0">
                         <TextBlock Text="{x:Static r:Strings.KeepRunningInTheTray}" FontWeight="Bold" FontSize="15"/>
                     </CheckBox>

@@ -1125,6 +1125,8 @@ public static class Strings
 
     public static string SignIn_NeedsAdmin => Get(nameof(SignIn_NeedsAdmin));
 
+    public static string SignIn_NotProtected => Get(nameof(SignIn_NotProtected));
+
     public static string SignIn_Refused => Get(nameof(SignIn_Refused));
 
     public static string Source => Get(nameof(Source));

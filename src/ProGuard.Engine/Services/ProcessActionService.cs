@@ -65,29 +65,69 @@ public sealed class ProcessActionService
         var root = _monitor.GetProcess(rootPid);
         var descendants = DescendantsDeepestFirst(rootPid, root).Where(p => !IsProtected(p)).ToList();
 
-        if (!caller.IsAdministrator && descendants.Count > 0)
+        // For a standard user each descendant is pinned before it is checked and kept pinned until it has been ended, so
+        // the check and the kill reach the same process (see ProcessPin); one that is gone, or whose id now belongs to
+        // a process that started later than the one listed, is left out.
+        var pins = new List<IDisposable>();
+        try
         {
-            var allowed = caller.FilterOpenable(descendants.Select(p => (p.Pid, p.StartTime)).ToList(), ProcessAccessFlags.Terminate);
-            descendants = descendants.Where(p => allowed.Contains(p.Pid)).ToList();
-        }
+            if (!caller.IsAdministrator && descendants.Count > 0)
+            {
+                var pinned = new List<ProcessInfo>();
+                foreach (var p in descendants)
+                {
+                    if (PinProcess(p.Pid) is not { } pin) continue;
+                    if (p.StartTime != DateTime.MinValue && pin.StartTimeUtc is { } started && started != p.StartTime)
+                    {
+                        pin.Dispose();
+                        continue;
+                    }
+                    pins.Add(pin);
+                    pinned.Add(p);
+                }
+                var allowed = caller.FilterOpenable(pinned.Select(p => (p.Pid, p.StartTime)).ToList(), ProcessAccessFlags.Terminate);
+                descendants = pinned.Where(p => allowed.Contains(p.Pid)).ToList();
+            }
 
-        var ended = 0;
-        foreach (var child in descendants)
+            var ended = 0;
+            foreach (var child in descendants)
+            {
+                try
+                {
+                    _controller.Terminate(child.Pid);
+                    ended++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Could not end {Name} ({Pid}) with its tree", child.Name, child.Pid);
+                }
+            }
+
+            _controller.Terminate(rootPid); // throws when it is gone or refused: the caller asked for this one above all
+            return ended + 1;
+        }
+        finally
         {
-            try
-            {
-                _controller.Terminate(child.Pid);
-                ended++;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Could not end {Name} ({Pid}) with its tree", child.Name, child.Pid);
-            }
+            foreach (var pin in pins) pin.Dispose();
         }
-
-        _controller.Terminate(rootPid); // throws when it is gone or refused: the caller asked for this one above all
-        return ended + 1;
     }
+
+    /// <summary>A pinned process with the start time Windows reports for it.</summary>
+    internal interface IPinnedProcess : IDisposable
+    {
+        DateTime? StartTimeUtc { get; }
+    }
+
+    private sealed class Win32Pin : IPinnedProcess
+    {
+        private readonly ProcessPin _pin;
+        public Win32Pin(ProcessPin pin) => _pin = pin;
+        public DateTime? StartTimeUtc => _pin.StartTimeUtc;
+        public void Dispose() => _pin.Dispose();
+    }
+
+    /// <summary>Pins a descendant before it is checked. Tests of fake process trees replace it.</summary>
+    internal Func<int, IPinnedProcess?> PinProcess { get; init; } = pid => ProcessPin.Open(pid) is { } pin ? new Win32Pin(pin) : null;
 
     private static bool IsProtected(ProcessInfo p) =>
         p.Pid <= 4 || p.Pid == Environment.ProcessId || CriticalProcesses.IsCriticalName(p.Name);

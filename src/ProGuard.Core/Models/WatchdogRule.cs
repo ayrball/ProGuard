@@ -9,7 +9,7 @@ public enum WatchdogAction { Terminate, Restart, SetPriority, SetAffinity, LogAl
 /// <summary>Which memory figure a <see cref="WatchdogCondition.RamAbove"/> rule compares against its threshold.</summary>
 public enum WatchdogMemoryMetric { WorkingSet, PrivateBytes }
 
-public class WatchdogRule
+public class WatchdogRule : IAuthoredRule
 {
     [Key]
     public int Id { get; set; }
@@ -35,4 +35,10 @@ public class WatchdogRule
     /// has passed with the condition still holding. 0 waits for the condition to clear.
     /// </summary>
     public int CooldownSeconds { get; set; } = 60;
+
+    /// <inheritdoc/>
+    public string? AuthorSid { get; set; }
+
+    /// <inheritdoc/>
+    public bool AuthorIsAdministrator { get; set; } = true;
 }

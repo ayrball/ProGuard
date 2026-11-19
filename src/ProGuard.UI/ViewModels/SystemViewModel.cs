@@ -168,6 +168,8 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
 
     // General
     [ObservableProperty] private bool startWithWindows;
+    /// <summary>Why ProGuard can't start at sign-in the way the user chose (see SignInStartup.Notice); null when it can.</summary>
+    [ObservableProperty] private string? startupNotice;
     [ObservableProperty] private bool minimizeToTray;
 
     public string SensitivityDescription => SensitivityLevel switch
@@ -297,6 +299,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
 
                 // What this user's Windows will really do, not what the engine remembers: only the toggle changes the setting.
                 StartWithWindows = _startup.IsEnabled;
+                StartupNotice = _startup.Notice;
                 MinimizeToTray = settings.MinimizeToTray;
                 PollingInterval.Load(settings.PollingIntervalMs);
 

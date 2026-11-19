@@ -18,6 +18,12 @@ public interface IIpcCaller
     /// <summary>True for SYSTEM and for an elevated administrator; false for a UAC-filtered administrator token.</summary>
     bool IsAdministrator { get; }
 
+    /// <summary>
+    /// The caller's account SID, recorded as the author of the rules and profiles it saves. Null when unknown; a
+    /// standard user's rule then matches no process (see <see cref="ProGuard.Core.Models.RuleAuthorship"/>).
+    /// </summary>
+    string? Sid => null;
+
     /// <summary>Whether the caller's own token could open process <paramref name="pid"/> with <paramref name="access"/>.</summary>
     bool CanOpenProcess(int pid, ProcessAccessFlags access);
 
@@ -66,14 +72,16 @@ internal sealed class PipeCaller : IIpcCaller
     private readonly object _cacheLock = new();
     private Dictionary<(int Pid, long StartTicks, ProcessAccessFlags Access), bool> _openable = new();
 
-    private PipeCaller(NamedPipeServerStream pipe, string name, bool isAdministrator)
+    private PipeCaller(NamedPipeServerStream pipe, string name, string? sid, bool isAdministrator)
     {
         _pipe = pipe;
         Name = name;
+        Sid = sid;
         IsAdministrator = isAdministrator;
     }
 
     public string Name { get; }
+    public string? Sid { get; }
     public bool IsAdministrator { get; }
 
     /// <summary>
@@ -84,6 +92,7 @@ internal sealed class PipeCaller : IIpcCaller
     public static PipeCaller? Identify(NamedPipeServerStream pipe)
     {
         string? name = null;
+        string? sid = null;
         var isAdministrator = false;
         try
         {
@@ -91,6 +100,7 @@ internal sealed class PipeCaller : IIpcCaller
             {
                 using var identity = WindowsIdentity.GetCurrent(TokenAccessLevels.Query);
                 name = identity.Name;
+                sid = identity.User?.Value;
                 isAdministrator = identity.IsSystem || new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
             });
         }
@@ -98,7 +108,7 @@ internal sealed class PipeCaller : IIpcCaller
         {
             return null;
         }
-        return name == null ? null : new PipeCaller(pipe, name, isAdministrator);
+        return name == null ? null : new PipeCaller(pipe, name, sid, isAdministrator);
     }
 
     public IReadOnlySet<int> FilterOpenable(IReadOnlyList<(int Pid, DateTime StartTimeUtc)> processes, ProcessAccessFlags access)

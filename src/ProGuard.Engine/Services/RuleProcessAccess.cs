@@ -81,15 +81,50 @@ public sealed class Win32RuleProcessAccess : IRuleProcessAccess
     }
 }
 
-/// <summary>Processes the per-rule features never act on, whatever a rule says.</summary>
+/// <summary>
+/// Programs ProGuard treats specially by name. Two tiers:
+/// <list type="bullet">
+/// <item><see cref="IsCriticalName"/>: processes the per-rule features never end, limit, spread or boost, whatever a
+/// rule says and whoever wrote it, and that ending a process tree skips. Session, logon and security processes whose
+/// loss logs the user off, breaks UAC or sign-in, or takes services down with them.</item>
+/// <item><see cref="IsAdministratorOnlyRuleTarget"/>: those, plus the shell, the service and installer hosts, consoles
+/// and script hosts, and the shell's helper processes. Standard users may not write rules for them at all
+/// (<c>RuleAuthorization</c>); administrators may, and their rules act as before. These are left out of the first tier
+/// on purpose: an administrator may legitimately limit RuntimeBroker or end a tree that contains cmd and conhost, and
+/// such a process is often elevated or another user's, which is what a standard user must not reach.</item>
+/// </list>
+/// </summary>
 public static class CriticalProcesses
 {
     private static readonly HashSet<string> Names = new(StringComparer.Ordinal)
     {
         "system", "idle", "registry", "memory compression", "secure system", "smss", "csrss", "wininit",
-        "winlogon", "services", "lsass", "lsaiso", "dwm", "fontdrvhost", "proguard.engine", "proguard.ui", "proguard.sessionagent"
+        "winlogon", "services", "lsass", "lsaiso", "dwm", "fontdrvhost", "proguard.engine", "proguard.ui", "proguard.sessionagent",
+        // Sign-in, UAC and the session shell host: ending them logs the user off or breaks elevation prompts.
+        "consent", "logonui", "userinit", "sihost",
+        // Hosts many services at once: ending one by name takes unrelated services down.
+        "svchost",
+        // Windows Security's service.
+        "securityhealthservice",
+    };
+
+    private static readonly HashSet<string> AdministratorOnlyNames = new(StringComparer.Ordinal)
+    {
+        // The shell and its helpers.
+        "explorer", "startmenuexperiencehost", "shellexperiencehost", "searchhost", "runtimebroker", "taskhostw", "ctfmon",
+        // Service, installer and management hosts, which run as SYSTEM or elevated.
+        "spoolsv", "msiexec", "mmc",
+        // Consoles and script hosts, often running elevated for the same user.
+        "cmd", "conhost", "powershell", "pwsh",
     };
 
     /// <summary>True for session/security processes and ProGuard itself, by name.</summary>
     public static bool IsCriticalName(string? processName) => Names.Contains(ProcessExtensions.NormalizeName(processName));
+
+    /// <summary>True for the programs only administrators may write rules for: <see cref="IsCriticalName"/> and the shell, host and console processes above.</summary>
+    public static bool IsAdministratorOnlyRuleTarget(string? processName)
+    {
+        var name = ProcessExtensions.NormalizeName(processName);
+        return Names.Contains(name) || AdministratorOnlyNames.Contains(name);
+    }
 }

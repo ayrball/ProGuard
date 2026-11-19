@@ -20,8 +20,12 @@ namespace ProGuard.Tests;
 /// <summary>An account at the other end of the pipe: which processes it may open is up to the test.</summary>
 internal sealed class ThinCaller : IIpcCaller
 {
+    public const string StandardSid = "S-1-5-21-1111-2222-3333-1001";
+    public const string AdminSid = "S-1-5-21-1111-2222-3333-500";
+
     public string Name { get; init; } = @"TEST\standard";
     public bool IsAdministrator { get; init; }
+    public string? Sid { get; init; } = StandardSid;
     public HashSet<int> OpenablePids { get; } = new();
     public List<(int Pid, ProcessAccessFlags Access)> Checks { get; } = new();
     public int BatchCalls { get; private set; }
@@ -38,7 +42,7 @@ internal sealed class ThinCaller : IIpcCaller
         return processes.Select(p => p.Pid).Where(pid => IsAdministrator || OpenablePids.Contains(pid)).ToHashSet();
     }
 
-    public static ThinCaller Admin() => new() { Name = @"TEST\admin", IsAdministrator = true };
+    public static ThinCaller Admin() => new() { Name = @"TEST\admin", IsAdministrator = true, Sid = AdminSid };
 }
 
 internal sealed class FakeDetails : IProcessDetailsReader
@@ -78,6 +82,8 @@ internal sealed class ThinHarness
     public FakeProcessMonitor Monitor { get; } = new();
     public FakeProcessTuning Tuning { get; } = new();
     public FakeDetails Details { get; } = new();
+    /// <summary>Who owns each fake process, for rules a standard user saved (see RuleScope). Empty: such rules match nothing.</summary>
+    public FakeOwners Owners { get; } = new();
     public ActivityLog Manual { get; } = new();
     public ListLogger<IpcDispatcher> Log { get; } = new();
     public WatchdogEventLog WatchdogEvents { get; } = new();
@@ -150,16 +156,16 @@ internal sealed class ThinHarness
         Snapshots = new SnapshotBuilder(Monitor, ResponsivenessGuard.Object, CpuLimiter.Object, Store.Object, Power.Object, Details,
             foregroundBoost: ForegroundBoost, metrics: () => { MetricsReads++; return Metrics; }, clockMs: () => NowMs, engineIsElevated: true);
 
-        var actions = new ProcessActionService(NullLogger<ProcessActionService>.Instance, Tuning, Monitor, Controller.Object);
+        var actions = new ProcessActionService(NullLogger<ProcessActionService>.Instance, Tuning, Monitor, Controller.Object) { PinProcess = TestPins.AnyDescendant };
         var rules = new RuleService(NullLogger<RuleService>.Instance, Store.Object, Monitor, CpuLimiter.Object, ResponsivenessGuard.Object,
-            Access.Object, Manual, launchPriorities: new LaunchPriorityService(registry: LaunchRegistry));
+            Access.Object, Manual, launchPriorities: new LaunchPriorityService(registry: LaunchRegistry)) { Scope = new RuleScope(Owners) };
         var feed = new ActivityFeed(Store.Object, Manual, WatchdogEvents);
         CpuTuning = new CpuTuningService(power: PowerSettings, originals: new MemoryCpuTuningOriginalsStore());
         var thin = new ThinClientCommands(NullLogger<ThinClientCommands>.Instance, Snapshots, actions, rules, feed, Manual,
             Store.Object, Power.Object, Monitor, Tuning, CpuTuning,
             new LogQueryService(new EngineLogReader(engineLogPath ?? Path.Combine(Path.GetTempPath(), "ProGuard.Tests.NoLog", "engine.log")), Store.Object));
         Dispatcher = new IpcDispatcher(Log, Store.Object, applier, ResponsivenessGuard.Object, Power.Object,
-            MemoryTrim.Object, CpuLimiter.Object, Controller.Object, Monitor, WatchdogEvents, thin, timerResolution: TimerResolution);
+            MemoryTrim.Object, CpuLimiter.Object, Controller.Object, Monitor, WatchdogEvents, thin, timerResolution: TimerResolution) { PinProcess = TestPins.Any };
     }
 
     public CommandResult Send(IIpcCaller caller, string command, int? pid = null, object? argument = null)

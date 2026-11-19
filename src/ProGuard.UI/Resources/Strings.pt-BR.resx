@@ -1678,6 +1678,9 @@ REGISTRADO.</value>
   <data name="SignIn_NeedsAdmin" xml:space="preserve">
     <value>O ProGuard inicia no logon por meio de uma tarefa que só um administrador pode remover. Reinicie o ProGuard como administrador para desativar isto.</value>
   </data>
+  <data name="SignIn_NotProtected" xml:space="preserve">
+    <value>O ProGuard inicia no logon com direitos padrão e pede direitos de administrador ao abrir, porque esta cópia pode ser substituída por usuários que não são administradores ({0}). Instale o ProGuard para iniciá-lo como administrador sem confirmação.</value>
+  </data>
   <data name="SignIn_Refused" xml:space="preserve">
     <value>O Agendador de Tarefas recusou a alteração.</value>
   </data>

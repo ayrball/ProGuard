@@ -225,4 +225,8 @@ public static class Kernel32
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetNamedPipeClientSessionId(SafeHandle pipe, out uint clientSessionId);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetNamedPipeClientProcessId(SafeHandle pipe, out uint clientProcessId);
 }

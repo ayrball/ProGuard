@@ -40,7 +40,7 @@ internal sealed class FakeCoreParkingPower : ICoreParkingPower
 }
 
 /// <summary>
-/// ProBalance's OocDisableCoreParkingWhileIn: the active plan's core parking minimum goes to 100 % while anything is
+/// Unparking cores while Responsiveness Guard restrains: the active plan's core parking minimum goes to 100 % while anything is
 /// restrained and comes back afterwards, also after an engine crash. Only administrators may switch it on.
 /// </summary>
 public class CoreParkingTests
@@ -61,10 +61,10 @@ public class CoreParkingTests
     }
 
     [Fact]
-    public void Off_ByDefault_AsInProcessLasso()
+    public void Off_ByDefault()
     {
-        Assert.False(new ProGuard.Core.Models.AppSettings().ProBalanceDisableCoreParking);
-        Assert.False(new EngineSettingsDto().ProBalanceDisableCoreParking);
+        Assert.False(new ProGuard.Core.Models.AppSettings().ResponsivenessGuardDisableCoreParking);
+        Assert.False(new EngineSettingsDto().ResponsivenessGuardDisableCoreParking);
 
         var (service, power, _) = New(enabled: false);
         service.Update(true);
@@ -217,15 +217,15 @@ public class CoreParkingTests
         Assert.InRange(values.Value.Dc, 0u, 100u);
     }
 
-    // ------------------------------------------------------------------ ProBalance drives it
+    // ------------------------------------------------------------------ Responsiveness Guard drives it
 
     [Fact]
-    public void ProBalance_ReportsAfterEachPass_WhetherAnythingIsRestrained()
+    public void ResponsivenessGuard_ReportsAfterEachPass_WhetherAnythingIsRestrained()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         var reports = new List<bool>();
         h.Engine.RestraintsUpdated += reports.Add;
-        h.Engine.TimeOverQuotaBeforeRestraint = 0;
+        h.Engine.RestrainAfterMs = 0;
         var hog = h.Add(100, cpu: 50);
 
         h.At(0);
@@ -248,12 +248,12 @@ public class CoreParkingTests
     }
 
     [Fact]
-    public void ProBalanceAndCoreParking_TogetherUnparkAndRestore()
+    public void ResponsivenessGuardAndCoreParking_TogetherUnparkAndRestore()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         var (service, power, _) = New();
         h.Engine.RestraintsUpdated += service.Update;
-        h.Engine.TimeOverQuotaBeforeRestraint = 0;
+        h.Engine.RestrainAfterMs = 0;
         var hog = h.Add(100, cpu: 50);
 
         h.At(0);
@@ -272,18 +272,18 @@ public class CoreParkingTests
     {
         var h = new ThinHarness();
         var settings = h.Data<EngineSettingsDto>(h.SendAsAdmin(CommandTypes.GetSettings));
-        settings.ProBalanceDisableCoreParking = true;
+        settings.ResponsivenessGuardDisableCoreParking = true;
 
         var refused = h.Send(new ThinCaller(), CommandTypes.SaveSettings, argument: settings);
         Assert.Contains("Access denied", refused.Error);
         Assert.Contains("unparks cores", refused.Error);
-        Assert.False(h.Stored.ProBalanceDisableCoreParking);
+        Assert.False(h.Stored.ResponsivenessGuardDisableCoreParking);
 
         Assert.True(h.SendAsAdmin(CommandTypes.SaveSettings, argument: settings).Success);
-        Assert.True(h.Stored.ProBalanceDisableCoreParking);
+        Assert.True(h.Stored.ResponsivenessGuardDisableCoreParking);
 
         // Once on, a standard user can still save other settings, sending it back as it is.
-        settings.SmartTrimEnabled = true;
+        settings.MemoryTrimEnabled = true;
         Assert.True(h.Send(new ThinCaller(), CommandTypes.SaveSettings, argument: settings).Success);
     }
 
@@ -292,10 +292,10 @@ public class CoreParkingTests
     {
         var (service, _, _) = New(enabled: false);
         var applier = new SettingsApplier(Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsApplier>.Instance, new FakeProcessMonitor(),
-            new Moq.Mock<ProGuard.Core.Services.ISmartTrimService>().Object, new Moq.Mock<ProGuard.Core.Services.IPowerManager>().Object,
-            new Moq.Mock<ProGuard.Core.Services.IProBalanceEngine>().Object, coreParking: service);
+            new Moq.Mock<ProGuard.Core.Services.IMemoryTrimService>().Object, new Moq.Mock<ProGuard.Core.Services.IPowerManager>().Object,
+            new Moq.Mock<ProGuard.Core.Services.IResponsivenessGuardEngine>().Object, coreParking: service);
 
-        applier.Apply(new ProGuard.Core.Models.AppSettings { ProBalanceDisableCoreParking = true });
+        applier.Apply(new ProGuard.Core.Models.AppSettings { ResponsivenessGuardDisableCoreParking = true });
         Assert.True(service.IsEnabled);
     }
 }

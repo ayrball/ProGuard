@@ -38,8 +38,8 @@ and run `.\drive.ps1 check.ps1`.
 
 Limits:
 - Nothing composites a second desktop, so `Shot` (PrintWindow) returns black there; read the UI through `Texts`/`Dump`.
-- A UI on that desktop has no foreground window to report, so the engine sees no foreground process: ProBalance can
-  then restrain whatever the user is really using. Turn ProBalance off while such a UI is the only one running.
+- A UI on that desktop has no foreground window to report, so the engine sees no foreground process: Responsiveness Guard can
+  then restrain whatever the user is really using. Turn Responsiveness Guard off while such a UI is the only one running.
 - No tray icon (there is no taskbar on that desktop), and context menus need real input.
 - An elevated UI needs an elevated client (UIPI): start both from an elevated shell.
 - Started from a shell inside the Claude desktop app (an MSIX package), the UI reads and writes a virtualized HKCU. Its

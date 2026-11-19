@@ -16,7 +16,7 @@ namespace ProGuard.Tests;
 
 /// <summary>
 /// The appliers against real Windows: a ping.exe this test starts (so it is ours to change) and the current user's
-/// own registry hive. None of this assumes a CPU priority: Process Lasso on this machine lowers busy processes.
+/// own registry hive. None of this assumes a CPU priority: another process manager on this machine may lower busy processes.
 /// </summary>
 public sealed class PersistentProcessRuleRealProcessTests : IDisposable
 {

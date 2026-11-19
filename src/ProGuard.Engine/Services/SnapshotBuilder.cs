@@ -56,7 +56,7 @@ public sealed class SnapshotBuilder
     private static readonly TimeSpan PlanRetryInterval = TimeSpan.FromSeconds(2);
 
     private readonly IProcessMonitor _monitor;
-    private readonly IProBalanceEngine _proBalance;
+    private readonly IResponsivenessGuardEngine _responsivenessGuard;
     private readonly ICpuLimiter _cpuLimiter;
     private readonly CpuAffinityLimiter? _affinityLimiter;
     private readonly IRuleStore _ruleStore;
@@ -88,7 +88,7 @@ public sealed class SnapshotBuilder
 
     public SnapshotBuilder(
         IProcessMonitor monitor,
-        IProBalanceEngine proBalance,
+        IResponsivenessGuardEngine responsivenessGuard,
         ICpuLimiter cpuLimiter,
         IRuleStore ruleStore,
         IPowerManager power,
@@ -101,7 +101,7 @@ public sealed class SnapshotBuilder
         bool? engineIsElevated = null)
     {
         _monitor = monitor;
-        _proBalance = proBalance;
+        _responsivenessGuard = responsivenessGuard;
         _cpuLimiter = cpuLimiter;
         _ruleStore = ruleStore;
         _power = power;
@@ -180,13 +180,13 @@ public sealed class SnapshotBuilder
 
         var rules = _ruleStore.GetProcessRules()?.ToList() ?? new List<ProcessRule>();
         var ruleNames = new HashSet<string>(rules.Select(r => ProcessExtensions.NormalizeName(r.ProcessName)), StringComparer.Ordinal);
-        var restrained = new HashSet<int>(_proBalance.RestrainedPids ?? Array.Empty<int>());
+        var restrained = new HashSet<int>(_responsivenessGuard.RestrainedPids ?? Array.Empty<int>());
         var caps = _cpuLimiter.GetActiveLimits();
         var affinityLimited = new HashSet<int>(_affinityLimiter?.GetConstrainedPids() ?? Array.Empty<int>());
         var foregroundPid = _monitor.GetForegroundPid();
         var (activePlanId, activePlanName) = ActivePlan();
 
-        var enabled = _proBalance.IsEnabled;
+        var enabled = _responsivenessGuard.IsEnabled;
         var snapshot = new EngineSnapshot
         {
             TakenAtUtc = now,
@@ -199,10 +199,10 @@ public sealed class SnapshotBuilder
             TotalMemoryBytes = metrics.TotalMemoryBytes,
             AvailableMemoryBytes = metrics.AvailableMemoryBytes,
             LogicalProcessors = metrics.LogicalProcessors,
-            ProBalanceEnabled = enabled,
-            ProBalancePaused = enabled && _proBalance.IsPausedForIdle,
-            ProBalanceRestrained = restrained.Count,
-            ProBalanceRestraintsTotal = _proBalance.TotalRestraints,
+            ResponsivenessGuardEnabled = enabled,
+            ResponsivenessGuardPaused = enabled && _responsivenessGuard.IsPausedForIdle,
+            ResponsivenessGuardRestrained = restrained.Count,
+            ResponsivenessGuardRestraintsTotal = _responsivenessGuard.TotalRestraints,
             ForegroundBoostEnabled = _foregroundBoost?.IsEnabled ?? false,
             ForegroundPid = foregroundPid,
             PerformanceModeActive = _power.IsPerformanceModeActive,

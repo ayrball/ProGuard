@@ -468,7 +468,7 @@ public class PersistentRuleServiceTests
         // Already High: nothing to do.
         Assert.Equal(0, service.ReapplyChanged());
 
-        // ProBalance (or a boost) holds it lower for a while: left alone, so they don't fight.
+        // Responsiveness Guard (or a boost) holds it lower for a while: left alone, so they don't fight.
         priorities[1] = ProcessPriorityClass.BelowNormal;
         held.Add(1);
         Assert.Equal(0, service.ReapplyChanged());
@@ -511,7 +511,7 @@ public class PersistentRuleServiceTests
         boost.OnProcessExited(5);
         Assert.False(boost.IsBoosting(5));
 
-        var foreground = new ForegroundBoostService(NullLogger<ForegroundBoostService>.Instance, Mock.Of<IProBalanceEngine>(), Mock.Of<IForegroundTracker>());
+        var foreground = new ForegroundBoostService(NullLogger<ForegroundBoostService>.Instance, Mock.Of<IResponsivenessGuardEngine>(), Mock.Of<IForegroundTracker>());
         Assert.Equal(0, foreground.BoostedPid);
     }
 
@@ -535,31 +535,31 @@ public class PersistentRuleServiceTests
     }
 
     [Fact]
-    public void Governor_AppliesTheNewSettingsWhenAProcessStarts()
+    public void Orchestrator_AppliesTheNewSettingsWhenAProcessStarts()
     {
         var self = Environment.ProcessId;
         _rules.Setup(r => r.GetProcessRule("testhost")).Returns(new ProcessRule { ProcessName = "testhost.exe", IoPriority = 1, GpuPriority = 1 });
-        var governor = new ProcessGovernor(NullLogger<ProcessGovernor>.Instance, _monitor.Object, Mock.Of<IProBalanceEngine>(), Mock.Of<ICpuLimiter>(),
-            Mock.Of<ISmartTrimService>(), Mock.Of<IPowerManager>(), Mock.Of<IWatchdogService>(), _rules.Object, persistentRules: Create());
+        var orchestrator = new ProcessOrchestrator(NullLogger<ProcessOrchestrator>.Instance, _monitor.Object, Mock.Of<IResponsivenessGuardEngine>(), Mock.Of<ICpuLimiter>(),
+            Mock.Of<IMemoryTrimService>(), Mock.Of<IPowerManager>(), Mock.Of<IWatchdogService>(), _rules.Object, persistentRules: Create());
 
         _monitor.Raise(m => m.ProcessStarted += null, _monitor.Object, new ProcessInfo { Pid = self, Name = "testhost" });
 
         Assert.Equal(1, _native.Io[self]);
         Assert.Equal(1, _native.Gpu[self]);
-        governor.Stop();
+        orchestrator.Stop();
     }
 
     [Fact]
-    public void Governor_DoesNotApplySettingsToADisallowedProcess()
+    public void Orchestrator_DoesNotApplySettingsToADisallowedProcess()
     {
         _rules.Setup(r => r.GetProcessRule("ghost")).Returns(new ProcessRule { IoPriority = 1, DisallowExecution = true });
-        var governor = new ProcessGovernor(NullLogger<ProcessGovernor>.Instance, _monitor.Object, Mock.Of<IProBalanceEngine>(), Mock.Of<ICpuLimiter>(),
-            Mock.Of<ISmartTrimService>(), Mock.Of<IPowerManager>(), Mock.Of<IWatchdogService>(), _rules.Object, persistentRules: Create());
+        var orchestrator = new ProcessOrchestrator(NullLogger<ProcessOrchestrator>.Instance, _monitor.Object, Mock.Of<IResponsivenessGuardEngine>(), Mock.Of<ICpuLimiter>(),
+            Mock.Of<IMemoryTrimService>(), Mock.Of<IPowerManager>(), Mock.Of<IWatchdogService>(), _rules.Object, persistentRules: Create());
 
         _monitor.Raise(m => m.ProcessStarted += null, _monitor.Object, new ProcessInfo { Pid = int.MaxValue - 1, Name = "ghost" });
 
         Assert.Empty(_native.Writes);
-        governor.Stop();
+        orchestrator.Stop();
     }
 }
 
@@ -582,9 +582,9 @@ public class PersistentRuleIpcAndUiTests
         monitor.Setup(m => m.GetAllProcesses()).Returns(Array.Empty<ProcessInfo>());
         _store.Setup(s => s.GetSettings()).Returns(new AppSettings { Id = 1 });
         _store.Setup(s => s.SaveProcessRule(It.IsAny<ProcessRule>())).Callback<ProcessRule>(r => _saved = r);
-        var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, monitor.Object, Mock.Of<ISmartTrimService>(), Mock.Of<IPowerManager>(), Mock.Of<IProBalanceEngine>());
-        _dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, _store.Object, applier, Mock.Of<IProBalanceEngine>(), Mock.Of<IPowerManager>(),
-            Mock.Of<ISmartTrimService>(), Mock.Of<ICpuLimiter>(), Mock.Of<IProcessController>(), monitor.Object);
+        var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, monitor.Object, Mock.Of<IMemoryTrimService>(), Mock.Of<IPowerManager>(), Mock.Of<IResponsivenessGuardEngine>());
+        _dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, _store.Object, applier, Mock.Of<IResponsivenessGuardEngine>(), Mock.Of<IPowerManager>(),
+            Mock.Of<IMemoryTrimService>(), Mock.Of<ICpuLimiter>(), Mock.Of<IProcessController>(), monitor.Object);
     }
 
     private CommandResult SetRule(ProcessRuleDto dto, bool admin = true)

@@ -42,7 +42,7 @@ public class RuleDtoMapperTests
     }
 
     [Theory]
-    [InlineData(typeof(InstanceBalancerMode), typeof(BalancerMode))]
+    [InlineData(typeof(InstanceSpreadMode), typeof(SpreadMode))]
     [InlineData(typeof(WatchdogCondition), typeof(WatchdogTrigger))]
     [InlineData(typeof(WatchdogAction), typeof(WatchdogResponse))]
     [InlineData(typeof(WatchdogMemoryMetric), typeof(MemoryMetric))]
@@ -129,16 +129,16 @@ public class RuleDtoMapperTests
     {
         var dto = RuleDtoMapper.ToDto(new ProcessRule { ProcessName = "x.exe" });
         Assert.Null(dto.PriorityClass);
-        Assert.Null(dto.InstanceBalancerMode);
+        Assert.Null(dto.InstanceSpreadMode);
         Assert.Null(dto.EfficiencyMode);
     }
 
     [Fact]
-    public void UnknownBalancerMode_IsStoredAsOff()
+    public void UnknownSpreadMode_IsStoredAsOff()
     {
-        var copy = new ProcessRule { InstanceBalancerMode = InstanceBalancerMode.FixedCoresPerInstance };
-        RuleDtoMapper.CopyTo(new ProcessRuleDto { ProcessName = "x.exe", InstanceBalancerMode = (BalancerMode)99 }, copy);
-        Assert.Null(copy.InstanceBalancerMode);
+        var copy = new ProcessRule { InstanceSpreadMode = InstanceSpreadMode.FixedCoresPerInstance };
+        RuleDtoMapper.CopyTo(new ProcessRuleDto { ProcessName = "x.exe", InstanceSpreadMode = (SpreadMode)99 }, copy);
+        Assert.Null(copy.InstanceSpreadMode);
     }
 
     [Fact]

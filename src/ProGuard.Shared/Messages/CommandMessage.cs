@@ -35,30 +35,30 @@ public static class CommandTypes
     /// <summary>TargetPid.</summary>
     public const string ResumeProcess = "ResumeProcess";
     /// <summary>
-    /// TargetPid, or no pid to trim every process above the SmartTrim threshold. Data = bytes reclaimed (a number),
+    /// TargetPid, or no pid to trim every process above the Memory Trim threshold. Data = bytes reclaimed (a number),
     /// when known.
     /// </summary>
     public const string TrimWorkingSet = "TrimWorkingSet";
     /// <summary>
-    /// SmartTrim's "Purge now": trims eligible working sets, purges the standby list and, if enabled, the file cache.
+    /// Memory Trim's "Purge now": trims eligible working sets, purges the standby list and, if enabled, the file cache.
     /// Administrators only. Data = <see cref="Contracts.MemoryPurgeResultDto"/>.
     /// </summary>
     public const string PurgeMemory = "PurgeMemory";
 
     // The commands below change persisted settings, so the engine saves them as well as applying them.
-    public const string EnableProBalance = "EnableProBalance";
-    public const string DisableProBalance = "DisableProBalance";
+    public const string EnableResponsivenessGuard = "EnableResponsivenessGuard";
+    public const string DisableResponsivenessGuard = "DisableResponsivenessGuard";
     /// <summary>Argument = sensitivity level 1-10.</summary>
     public const string SetSensitivity = "SetSensitivity";
-    /// <summary>Argument = serialized <see cref="IdleSaverArgument"/>.</summary>
-    public const string ConfigureIdleSaver = "ConfigureIdleSaver";
-    /// <summary>Argument = serialized <see cref="SmartTrimArgument"/>.</summary>
-    public const string ConfigureSmartTrim = "ConfigureSmartTrim";
+    /// <summary>Argument = serialized <see cref="AwayModeArgument"/>.</summary>
+    public const string ConfigureAwayMode = "ConfigureAwayMode";
+    /// <summary>Argument = serialized <see cref="MemoryTrimArgument"/>.</summary>
+    public const string ConfigureMemoryTrim = "ConfigureMemoryTrim";
 
     /// <summary>
     /// TargetPid = process owning the foreground window, 0 if none. Sent by the UI on
     /// <see cref="PipeNames.Foreground"/> only: the engine runs as a service in session 0 and can't see the desktop.
-    /// Argument = milliseconds since the last keyboard/mouse input on that desktop (for IdleSaver), or null if unknown.
+    /// Argument = milliseconds since the last keyboard/mouse input on that desktop (for Away Mode), or null if unknown.
     /// </summary>
     public const string ReportForeground = "ReportForeground";
 
@@ -200,11 +200,11 @@ public static class CommandTypes
         _ => "run " + System.Text.RegularExpressions.Regex.Replace(commandType, "(?<=[a-z])(?=[A-Z])", " ").ToLowerInvariant()
     };
 
-    /// <summary>No args. Administrators only. Deletes the logged ProBalance, CPU Limiter and power-plan actions the activity feed shows.</summary>
+    /// <summary>No args. Administrators only. Deletes the logged Responsiveness Guard, CPU Limiter and power-plan actions the activity feed shows.</summary>
     public const string ClearActionLog = "ClearActionLog";
 }
 
-public class IdleSaverArgument
+public class AwayModeArgument
 {
     public bool Enabled { get; set; }
     public int TimeoutMinutes { get; set; } = 15;
@@ -220,7 +220,7 @@ public class TimerResolutionArgument
     public bool? GlobalRequests { get; set; }
 }
 
-public class SmartTrimArgument
+public class MemoryTrimArgument
 {
     public bool Enabled { get; set; }
     public int IntervalSeconds { get; set; } = 300;

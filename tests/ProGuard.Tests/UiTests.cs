@@ -183,7 +183,7 @@ public class UiTests
     [Fact]
     public void RuleEditor_RoundTripsAnExistingRule()
     {
-        var original = new ProcessRuleDto { Id = 5, ProcessName = "obs64", PriorityClass = (int)ProcessPriorityClass.BelowNormal, CpuLimitPercent = 40, AffinityMask = 0b1010, ExcludeFromProBalance = true };
+        var original = new ProcessRuleDto { Id = 5, ProcessName = "obs64", PriorityClass = (int)ProcessPriorityClass.BelowNormal, CpuLimitPercent = 40, AffinityMask = 0b1010, ExcludeFromResponsivenessGuard = true };
         var dto = new RuleEditor(4, original).ToDto();
 
         Assert.Equal(5, dto.Id);
@@ -191,7 +191,7 @@ public class UiTests
         Assert.Equal((int)ProcessPriorityClass.BelowNormal, dto.PriorityClass);
         Assert.Equal(40, dto.CpuLimitPercent);
         Assert.Equal(0b1010L, dto.AffinityMask);
-        Assert.True(dto.ExcludeFromProBalance);
+        Assert.True(dto.ExcludeFromResponsivenessGuard);
     }
 
     [Fact]
@@ -200,7 +200,7 @@ public class UiTests
         var original = new ProcessRuleDto
         {
             Id = 9, ProcessName = "game.exe", IoPriority = 1, MemoryPriority = 3, EfficiencyMode = false, KeepRunning = true,
-            CpuLimitThresholdPercent = 40, InstanceBalancerMode = BalancerMode.FixedCoresPerInstance, StartupBoostPriorityClass = 0x80
+            CpuLimitThresholdPercent = 40, InstanceSpreadMode = SpreadMode.FixedCoresPerInstance, StartupBoostPriorityClass = 0x80
         };
         var dto = new RuleEditor(8, original).ToDto();
 
@@ -209,7 +209,7 @@ public class UiTests
         Assert.False(dto.EfficiencyMode);
         Assert.True(dto.KeepRunning);
         Assert.Equal(40, dto.CpuLimitThresholdPercent);
-        Assert.Equal(BalancerMode.FixedCoresPerInstance, dto.InstanceBalancerMode);
+        Assert.Equal(SpreadMode.FixedCoresPerInstance, dto.InstanceSpreadMode);
         Assert.Equal(0x80, dto.StartupBoostPriorityClass);
     }
 

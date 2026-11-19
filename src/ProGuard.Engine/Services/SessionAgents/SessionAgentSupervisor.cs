@@ -43,8 +43,7 @@ public interface ISessionAgentPlatform
 
 /// <summary>
 /// Keeps one session agent (ProGuard.SessionAgent) running in every signed-in user's session, so the engine hears
-/// about each desktop's foreground process and idle time whether or not the ProGuard window is open. This is what
-/// Process Lasso's service does with bitsumsessionagent.exe.
+/// about each desktop's foreground process and idle time whether or not the ProGuard window is open.
 /// <list type="bullet">
 /// <item>As a service: an agent in every active session (console or remote), started as that session's user through
 /// <see cref="UserSessionLauncher"/>. Sessions are listed every <see cref="CheckInterval"/>, and at once when the

@@ -234,7 +234,7 @@ public class UiProfileTests
         {
             new ConfigChangeDto { Kind = ConfigChangeKind.Added, Area = "Process rule", Name = "render.exe", Detail = "priority Below normal" },
             new ConfigChangeDto { Kind = ConfigChangeKind.Removed, Area = "Watchdog rule", Name = "chrome.exe", Detail = "memory above 4000 MB → Trim working set" },
-            new ConfigChangeDto { Kind = ConfigChangeKind.Changed, Area = "Setting", Name = "ProBalance sensitivity", Detail = "5 → 8" },
+            new ConfigChangeDto { Kind = ConfigChangeKind.Changed, Area = "Setting", Name = "Responsiveness Guard sensitivity", Detail = "5 → 8" },
         },
         MachineSpecific =
         {

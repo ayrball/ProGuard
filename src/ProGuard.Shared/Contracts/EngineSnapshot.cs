@@ -25,7 +25,7 @@ public sealed class EngineSnapshot
     /// </summary>
     public List<bool> CoreParked { get; set; } = new();
 
-    /// <summary>Process Lasso's "responsiveness" (from the processor queue length), 0-100; null before the first reading.</summary>
+    /// <summary>Responsiveness (from the processor queue length), 0-100; null before the first reading.</summary>
     public double? ResponsivenessPercent { get; set; }
 
     /// <summary>Physical memory in use, 0-100.</summary>
@@ -34,16 +34,16 @@ public sealed class EngineSnapshot
     public long AvailableMemoryBytes { get; set; }
     public int LogicalProcessors { get; set; }
 
-    public bool ProBalanceEnabled { get; set; }
+    public bool ResponsivenessGuardEnabled { get; set; }
 
-    /// <summary>ProBalance is enabled but paused because the user is idle (DisableProBalanceWhenSysIdle).</summary>
-    public bool ProBalancePaused { get; set; }
+    /// <summary>Responsiveness Guard is enabled but paused because the user is idle.</summary>
+    public bool ResponsivenessGuardPaused { get; set; }
 
-    /// <summary>Processes ProBalance is holding at a lowered priority right now.</summary>
-    public int ProBalanceRestrained { get; set; }
+    /// <summary>Processes Responsiveness Guard is holding at a lowered priority right now.</summary>
+    public int ResponsivenessGuardRestrained { get; set; }
 
-    /// <summary>Restraints ProBalance started since the engine started.</summary>
-    public int ProBalanceRestraintsTotal { get; set; }
+    /// <summary>Restraints Responsiveness Guard started since the engine started.</summary>
+    public int ResponsivenessGuardRestraintsTotal { get; set; }
 
     public bool ForegroundBoostEnabled { get; set; }
 
@@ -52,7 +52,7 @@ public sealed class EngineSnapshot
 
     public bool PerformanceModeActive { get; set; }
 
-    /// <summary>Who set the active power plan: "User", "PerformanceMode", "IdleSaver", "LoadSwitcher", "StartWith".</summary>
+    /// <summary>Who set the active power plan: "User", "PerformanceMode", "AwayMode", "LoadSwitcher", "StartWith".</summary>
     public string PowerPlanOwner { get; set; } = string.Empty;
     public Guid ActivePowerPlanId { get; set; }
     public string ActivePowerPlanName { get; set; } = string.Empty;
@@ -120,7 +120,7 @@ public sealed class ProcessSnapshot
     public bool IsSuspended { get; set; }
     public bool IsEfficiencyMode { get; set; }
 
-    /// <summary>ProBalance has lowered this process's priority and will restore it when the load drops.</summary>
+    /// <summary>Responsiveness Guard has lowered this process's priority and will restore it when the load drops.</summary>
     public bool IsRestrained { get; set; }
 
     /// <summary>The CPU Limiter has taken cores away from it for now.</summary>

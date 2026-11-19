@@ -8,7 +8,7 @@ using ProGuard.Engine.Services;
 
 namespace ProGuard.Tests;
 
-/// <summary>In-memory processes for the instance limit, Instance Balancer and startup boost tests.</summary>
+/// <summary>In-memory processes for the instance limit, Instance Spread and startup boost tests.</summary>
 internal sealed class FakeRuleProcessAccess : IRuleProcessAccess
 {
     public Dictionary<int, int> Session { get; } = new();

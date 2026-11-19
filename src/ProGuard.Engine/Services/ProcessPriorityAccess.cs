@@ -7,7 +7,7 @@ using ProGuard.Engine.Services.ProcessRules;
 namespace ProGuard.Engine.Services;
 
 /// <summary>
-/// The live-process reads and writes ProBalance needs. Kept behind an interface so the restraint timing
+/// The live-process reads and writes Responsiveness Guard needs. Kept behind an interface so the restraint timing
 /// rules can be tested against fake processes instead of real ones.
 /// </summary>
 public interface IProcessPriorityAccess

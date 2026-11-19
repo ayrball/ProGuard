@@ -12,7 +12,7 @@ namespace ProGuard.Engine.Services.ProcessRules;
 
 /// <summary>
 /// Applies a rule's persistent per-process defaults (I/O and memory priority, efficiency mode, priority boost, CPU Sets,
-/// GPU priority and GPU preference) when <see cref="ProcessGovernor"/> sees the process start, and, for rules with
+/// GPU priority and GPU preference) when <see cref="ProcessOrchestrator"/> sees the process start, and, for rules with
 /// <see cref="ProcessRule.ReapplyIfChanged"/>, re-checks them at the process poll interval and puts back any that
 /// something else changed. The re-check covers the rule's CPU priority too (see <see cref="PriorityAccess"/>), which is
 /// otherwise applied once as the process starts. Every apply is logged; failures are logged and returned, never thrown.
@@ -41,7 +41,7 @@ public sealed class PersistentRuleService : IDisposable
     public IRuleProcessAccess? PriorityAccess { get; set; }
 
     /// <summary>
-    /// True while something else holds the process's CPU priority for now: a ProBalance restraint, a startup boost or
+    /// True while something else holds the process's CPU priority for now: a Responsiveness Guard restraint, a startup boost or
     /// Foreground Boost. The re-apply check leaves it alone then; each of those puts the priority back itself.
     /// </summary>
     public Func<int, bool>? PriorityHeld { get; set; }

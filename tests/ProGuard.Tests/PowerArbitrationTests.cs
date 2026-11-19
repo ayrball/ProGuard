@@ -7,7 +7,7 @@ using ProGuard.Engine.Services;
 namespace ProGuard.Tests;
 
 /// <summary>
-/// PowerManager's single arbitration point: Performance Mode beats IdleSaver, which beats the load switcher; IdleSaver
+/// PowerManager's single arbitration point: Performance Mode beats Away Mode, which beats the load switcher; Away Mode
 /// is off during Performance Mode; manual Performance Mode outlives the automatic one; manual plan changes win; and
 /// every switch is logged with a reason. Plans, idle time, CPU load and the clock are all fakes.
 /// </summary>
@@ -55,7 +55,7 @@ public class PowerArbitrationTests
         Enabled = true,
         LowThreshold = 10,
         HighThreshold = 50,
-        AveragingWindowSamples = 1,
+        SampleWindow = 1,
         MinimumTimeInPlanMs = 0,
         LowPlan = LoadLow,
         HighPlan = LoadHigh,
@@ -69,7 +69,7 @@ public class PowerArbitrationTests
         _power.SampleLoad();
     }
 
-    private void EnableIdleSaver() => _power.ConfigureIdleSaver(true, IdleMinutes, Powrprof.PowerSaver);
+    private void EnableAwayMode() => _power.ConfigureAwayMode(true, IdleMinutes, Powrprof.PowerSaver);
     private void Away() { _idle.Idle = TimeSpan.FromMinutes(IdleMinutes + 1); _power.CheckIdle(); }
     private void Back() { _idle.Idle = TimeSpan.FromSeconds(1); _power.CheckIdle(); }
 
@@ -101,7 +101,7 @@ public class PowerArbitrationTests
     [Fact]
     public void LoadSwitcher_InvalidSettings_AreRefused()
     {
-        _power.ConfigureLoadSwitcher(new LoadSwitcherOptions { Enabled = true, LowThreshold = 60, HighThreshold = 50, AveragingWindowSamples = 1 });
+        _power.ConfigureLoadSwitcher(new LoadSwitcherOptions { Enabled = true, LowThreshold = 60, HighThreshold = 50, SampleWindow = 1 });
         Load(80);
         Load(80);
         Assert.Empty(_plans.Writes);
@@ -130,9 +130,9 @@ public class PowerArbitrationTests
     }
 
     [Fact]
-    public void IdleSaver_BeatsTheLoadSwitcher()
+    public void AwayMode_BeatsTheLoadSwitcher()
     {
-        EnableIdleSaver();
+        EnableAwayMode();
         EnableLoadSwitcher();
         Load(80);
         Away();
@@ -147,9 +147,9 @@ public class PowerArbitrationTests
     }
 
     [Fact]
-    public void PerformanceMode_BeatsIdleSaver_AndDisablesIt()
+    public void PerformanceMode_BeatsAwayMode_AndDisablesIt()
     {
-        EnableIdleSaver();
+        EnableAwayMode();
         _power.EnablePerformanceMode(true);
         Away();
         Away();
@@ -157,7 +157,7 @@ public class PowerArbitrationTests
         Assert.Equal(PowerPlanOwner.PerformanceMode, _power.Owner);
 
         _power.EnablePerformanceMode(false);
-        Assert.Equal(Balanced, _plans.Active);   // IdleSaver starts over rather than taking over at once
+        Assert.Equal(Balanced, _plans.Active);   // Away Mode starts over rather than taking over at once
         Away();
         Assert.Equal(Powrprof.PowerSaver, _plans.Active);
     }
@@ -165,7 +165,7 @@ public class PowerArbitrationTests
     [Fact]
     public void AllThree_UnwindToTheUsersPlan()
     {
-        EnableIdleSaver();
+        EnableAwayMode();
         EnableLoadSwitcher();
         Load(80);
         Away();
@@ -269,7 +269,7 @@ public class PowerArbitrationTests
     [Fact]
     public void ManualChange_DuringPerformanceMode_BecomesThePlanToReturnTo_AfterTheNextFeature()
     {
-        EnableIdleSaver();
+        EnableAwayMode();
         _power.EnablePerformanceMode(true);
         _plans.Active = Ultimate;
         _power.EnablePerformanceMode(false);
@@ -305,7 +305,7 @@ public class PowerArbitrationTests
     {
         var raised = new List<PowerPlanChange>();
         _power.PlanChanged += (_, c) => raised.Add(c);
-        EnableIdleSaver();
+        EnableAwayMode();
         EnableLoadSwitcher();
 
         Load(80);
@@ -321,10 +321,10 @@ public class PowerArbitrationTests
         Assert.All(changes, c => Assert.False(string.IsNullOrWhiteSpace(c.Reason)));
         Assert.Collection(changes,
             c => { Assert.Equal(PowerPlanOwner.LoadSwitcher, c.Owner); Assert.Contains("above 50%", c.Reason); },
-            c => { Assert.Equal(PowerPlanOwner.IdleSaver, c.Owner); Assert.Contains("no input", c.Reason); },
+            c => { Assert.Equal(PowerPlanOwner.AwayMode, c.Owner); Assert.Contains("no input", c.Reason); },
             c => { Assert.Equal(PowerPlanOwner.PerformanceMode, c.Owner); Assert.Contains("game.exe is running", c.Reason); },
-            // Performance Mode ends while the user is still away: IdleSaver is off during it, so the load switcher's
-            // plan comes back first and IdleSaver gets its turn on the next check.
+            // Performance Mode ends while the user is still away: Away Mode is off during it, so the load switcher's
+            // plan comes back first and Away Mode gets its turn on the next check.
             c => { Assert.Equal(LoadHigh, c.To); Assert.Contains("game.exe exited", c.Reason); },
             c => { Assert.Equal(Balanced, c.To); Assert.Contains("below 10%", c.Reason); });
     }
@@ -332,10 +332,10 @@ public class PowerArbitrationTests
     [Fact]
     public void EveryPlanChange_ReachesTheLogsPage()
     {
-        var logged = new List<ProBalanceAction>();
+        var logged = new List<ResponsivenessGuardAction>();
         var store = new Mock<IRuleStore>();
-        store.Setup(r => r.LogProBalanceActionAsync(It.IsAny<ProBalanceAction>()))
-             .Callback<ProBalanceAction>(logged.Add).Returns(Task.CompletedTask);
+        store.Setup(r => r.LogResponsivenessGuardActionAsync(It.IsAny<ResponsivenessGuardAction>()))
+             .Callback<ResponsivenessGuardAction>(logged.Add).Returns(Task.CompletedTask);
         var power = new PowerManager(null, _idle, () => _plans.Active, _plans.Write, ruleStore: store.Object);
 
         power.EnablePerformanceMode(true);
@@ -344,7 +344,7 @@ public class PowerArbitrationTests
         Assert.Equal(2, logged.Count);
         Assert.All(logged, a =>
         {
-            Assert.Equal(ProBalanceAction.PowerPlanEntryName, a.ProcessName);
+            Assert.Equal(ResponsivenessGuardAction.PowerPlanEntryName, a.ProcessName);
             Assert.Equal(0, a.Pid);
             Assert.True(a.IsRestored);   // not counted as a restrained process on the dashboard
         });

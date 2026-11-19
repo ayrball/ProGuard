@@ -24,7 +24,7 @@ public sealed record ProcessorSample(double? UtilityPercent, IReadOnlyList<doubl
 }
 
 /// <summary>
-/// The PDH counters Process Lasso's GUI (and Task Manager) use for CPU load, in one query so a single collection
+/// The PDH counters Task Manager uses for CPU load, in one query so a single collection
 /// reads them all. Rate counters need two collections, so the first <see cref="Collect"/> has no CPU figures.
 /// Each counter is optional: one that can't be added (an old Windows without <c>% Processor Utility</c>, disabled
 /// performance counters) just reads as null.
@@ -166,7 +166,7 @@ public sealed class ProcessorCounters : IDisposable
 }
 
 /// <summary>
-/// Turns <c>\System\Processor Queue Length</c> into Process Lasso's "responsiveness" figure. The counter is the
+/// Turns <c>\System\Processor Queue Length</c> into a "responsiveness" figure. The counter is the
 /// number of threads ready to run but waiting for a CPU, across all CPUs; Microsoft's rule of thumb is that more
 /// than two waiting per CPU, sustained, means the CPU is the bottleneck. So responsiveness is 100 % with nothing
 /// waiting and falls linearly to 0 % at <see cref="SaturatedQueuePerCpu"/> waiting per CPU. The counter is an

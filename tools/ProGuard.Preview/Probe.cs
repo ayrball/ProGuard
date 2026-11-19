@@ -48,9 +48,9 @@ internal static class Probe
         // Measure only: keep this engine from changing any real process's priority meanwhile, then put the settings back.
         var original = Task.Run(() => client.QueryAsync<EngineSettingsDto>(CommandTypes.GetSettings)).GetAwaiter().GetResult();
         var quiet = DtoClone(original);
-        quiet.ProBalanceEnabled = false;
+        quiet.ResponsivenessGuardEnabled = false;
         quiet.ForegroundBoostEnabled = false;
-        quiet.SmartTrimEnabled = false;
+        quiet.MemoryTrimEnabled = false;
         Task.Run(() => client.CommandAsync(CommandTypes.SaveSettings, argument: quiet)).GetAwaiter().GetResult();
 
         try

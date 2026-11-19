@@ -19,7 +19,7 @@ public struct PDH_FMT_COUNTERVALUE_ITEM
     public PDH_FMT_COUNTERVALUE Value;
 }
 
-/// <summary>Performance Data Helper: the counters Task Manager and Process Lasso's GUI read.</summary>
+/// <summary>Performance Data Helper: the counters Task Manager reads.</summary>
 public static class Pdh
 {
     public const uint ERROR_SUCCESS = 0;

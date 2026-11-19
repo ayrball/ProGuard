@@ -8,7 +8,7 @@ public enum LogSource
 {
     /// <summary>The engine's text log (%ProgramData%\ProGuard\logs\engine.log and the file it last rolled over into). Administrators only.</summary>
     Engine,
-    /// <summary>The action log in the database: ProBalance restraints and restores, CPU Limiter actions and power plan changes.</summary>
+    /// <summary>The action log in the database: Responsiveness Guard restraints and restores, CPU Limiter actions and power plan changes.</summary>
     Actions,
 }
 
@@ -36,7 +36,7 @@ public class LogQuery
     /// <summary>Inclusive bounds, UTC.</summary>
     public DateTime? FromUtc { get; set; }
     public DateTime? ToUtc { get; set; }
-    /// <summary>Category, case-insensitive substring: the engine log's logger name ("ProBalanceEngine") or the action log's kind ("ProBalance", "Power", "CpuLimiter").</summary>
+    /// <summary>Category, case-insensitive substring: the engine log's logger name ("ResponsivenessGuardEngine") or the action log's kind ("ResponsivenessGuard", "Power", "CpuLimiter").</summary>
     public string? Category { get; set; }
     /// <summary>A process id (all digits) or part of a process name, case-insensitive.</summary>
     public string? Process { get; set; }

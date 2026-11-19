@@ -150,16 +150,16 @@ public class UiSystemTests
     /// <summary>Every setting different from its default, with awkward values: odd units, mixed case GUIDs, a missing plan.</summary>
     private static EngineSettingsDto OddSettings() => new()
     {
-        ProBalanceEnabled = false, ProBalanceSensitivity = 11, ProBalanceCpuThreshold = 33.3, ProBalanceRecoveryThreshold = 7.5,
-        ProBalanceRestrainByAffinity = true, ProBalanceRestraintAffinity = 0x0AB0_0000_0000_00F0L,
-        ProBalanceDropOneRandomCore = true, ProBalanceLowerIoPriority = true, ProBalanceUseEfficiencyMode = true,
-        ProBalanceDoNotLowerPriorityClass = true, ProBalanceDisableWhenSysIdle = true, ProBalanceDisableIfSysIdleMs = 12345,
-        ProBalanceDisableCoreParking = true,
+        ResponsivenessGuardEnabled = false, ResponsivenessGuardSensitivity = 11, ResponsivenessGuardCpuThreshold = 33.3, ResponsivenessGuardRecoveryThreshold = 7.5,
+        ResponsivenessGuardRestrainByAffinity = true, ResponsivenessGuardRestraintAffinity = 0x0AB0_0000_0000_00F0L,
+        ResponsivenessGuardDropOneRandomCore = true, ResponsivenessGuardLowerIoPriority = true, ResponsivenessGuardUseEfficiencyMode = true,
+        ResponsivenessGuardDoNotLowerPriorityClass = true, ResponsivenessGuardDisableWhenSysIdle = true, ResponsivenessGuardDisableIfSysIdleMs = 12345,
+        ResponsivenessGuardDisableCoreParking = true,
         ForegroundBoostEnabled = false,
-        SmartTrimEnabled = true, SmartTrimIntervalSeconds = 95, SmartTrimMemoryThresholdMB = 197, SmartTrimMinimumRamLoadPercent = 71,
-        SmartTrimExclusions = "chrome.exe, code.exe;obs64.exe", SmartTrimLogNoAction = true,
+        MemoryTrimEnabled = true, MemoryTrimIntervalSeconds = 95, MemoryTrimMemoryThresholdMB = 197, MemoryTrimMinimumRamLoadPercent = 71,
+        MemoryTrimExclusions = "chrome.exe, code.exe;obs64.exe", MemoryTrimLogNoAction = true,
         StandbyPurgeEnabled = true, StandbyPurgeFreeRamThresholdMB = 1500, StandbyPurgeOnlyInPerformanceMode = false, FileCachePurgeEnabled = true,
-        IdleSaverEnabled = true, IdleTimeoutMinutes = 7, IdlePowerPlanGuid = PowerSaver.ToString().ToUpperInvariant(),
+        AwayModeEnabled = true, IdleTimeoutMinutes = 7, IdlePowerPlanGuid = PowerSaver.ToString().ToUpperInvariant(),
         PerformanceModePlanGuid = "11111111-2222-3333-4444-555555555555",
         AutoPerformanceModeProcesses = "game*.exe;C:\\Games\\a, b\\x.exe", AutoPerformanceModeExclusions = "launcher.exe",
         AutoPerformanceModeDetectGames = true, PerformanceModeEngageForSteam = true, PerformanceModeSetBestPerformance = true,
@@ -167,7 +167,7 @@ public class UiSystemTests
         LoadSwitcherMinimumTimeInPlanMs = 7777, LoadSwitcherLowPlanGuid = PowerSaver.ToString("N"), LoadSwitcherHighPlanGuid = HighPerformance.ToString("B"),
         LoadSwitcherDeferLowPlan = false,
         StartWithPowerPlanGuid = Balanced.ToString(),
-        SetTimerResolutionAtStartup = 7777,
+        TimerResolutionRequest = 7777,
         StartWithWindows = true, MinimizeToTray = false, Theme = "Dark", PollingIntervalMs = 1500
     };
 
@@ -190,16 +190,16 @@ public class UiSystemTests
     {
         var (vm, _, startup) = NewSystem(OddSettings());
 
-        Assert.False(vm.ProBalanceEnabled);
+        Assert.False(vm.ResponsivenessGuardEnabled);
         Assert.Equal(10, vm.SensitivityLevel);
-        Assert.True(vm.RestrainByAffinity);
+        Assert.True(vm.RestrictAffinity);
         Assert.Equal(new[] { 4, 5, 6, 7 }, vm.RestraintCores.Where(c => c.IsOn).Select(c => c.Index).ToArray());
         Assert.Equal(8, vm.RestraintCores.Count);
-        Assert.True(vm.DropOneRandomCore && vm.LowerIoPriority && vm.UseEfficiencyMode && vm.DoNotLowerPriorityClass && vm.PauseWhenIdle);
+        Assert.True(vm.DropOneRandomCore && vm.LowerIoPriority && vm.EfficiencyModeWhileRestrained && vm.KeepPriorityClass && vm.PauseWhenIdle);
         Assert.Equal("12345", vm.IdlePauseMs.Text);
         Assert.False(vm.ForegroundBoostEnabled);
 
-        Assert.True(vm.SmartTrimEnabled);
+        Assert.True(vm.MemoryTrimEnabled);
         Assert.Equal("1.58", vm.TrimInterval.Text);          // seconds shown as minutes
         Assert.Equal("197", vm.TrimThresholdMb.Text);
         Assert.Equal("71", vm.TrimMinRamLoad.Text);
@@ -208,7 +208,7 @@ public class UiSystemTests
         Assert.False(vm.StandbyOnlyInPerformanceMode);
         Assert.Equal("1500", vm.StandbyFreeRamMb.Text);
 
-        Assert.True(vm.IdleSaverEnabled);
+        Assert.True(vm.AwayModeEnabled);
         Assert.Equal("7", vm.IdleTimeout.Text);
         Assert.Equal("POWER SAVER", vm.IdlePlan.Options.Single(o => o.IsOn).Label);
 
@@ -241,20 +241,20 @@ public class UiSystemTests
         var stored = OddSettings();
         var (vm, saved, _) = NewSystem(stored);
 
-        vm.ProBalanceEnabled = true;
+        vm.ResponsivenessGuardEnabled = true;
         vm.SetSensitivityCommand.Execute(3);
-        vm.RestrainByAffinity = false;
+        vm.RestrictAffinity = false;
         vm.RestraintCores[0].IsOn = true; // cores 0 and 4-7
         vm.DropOneRandomCore = false;
         vm.LowerIoPriority = false;
-        vm.UseEfficiencyMode = false;
-        vm.DoNotLowerPriorityClass = false;
+        vm.EfficiencyModeWhileRestrained = false;
+        vm.KeepPriorityClass = false;
         vm.PauseWhenIdle = false;
         vm.UnparkCoresWhileRestraining = false;
         vm.IdlePauseMs.Text = "60000";
         vm.ForegroundBoostEnabled = true;
 
-        vm.SmartTrimEnabled = false;
+        vm.MemoryTrimEnabled = false;
         vm.TrimInterval.Text = "30";
         vm.TrimThresholdMb.Text = "512";
         vm.TrimMinRamLoad.Text = "80";
@@ -265,7 +265,7 @@ public class UiSystemTests
         vm.StandbyOnlyInPerformanceMode = true;
         vm.FileCachePurgeEnabled = false;
 
-        vm.IdleSaverEnabled = false;
+        vm.AwayModeEnabled = false;
         vm.IdleTimeout.Text = "20";
         vm.IdlePlan.PickCommand.Execute(vm.IdlePlan.Options.Single(o => o.Label == "BALANCED"));
 
@@ -291,30 +291,30 @@ public class UiSystemTests
         await vm.PendingSave;
 
         var s = saved[^1];
-        Assert.True(s.ProBalanceEnabled);
-        Assert.Equal(3, s.ProBalanceSensitivity);
-        // No control on the page (the engine's ProBalance doesn't use them): they go back exactly as stored.
-        Assert.Equal(33.3, s.ProBalanceCpuThreshold);
-        Assert.Equal(7.5, s.ProBalanceRecoveryThreshold);
-        Assert.False(s.ProBalanceRestrainByAffinity);
-        Assert.Equal(0x0AB0_0000_0000_00F1L, s.ProBalanceRestraintAffinity); // bits for cores that aren't shown survive
-        Assert.False(s.ProBalanceDropOneRandomCore || s.ProBalanceLowerIoPriority || s.ProBalanceUseEfficiencyMode || s.ProBalanceDoNotLowerPriorityClass || s.ProBalanceDisableWhenSysIdle);
-        Assert.False(s.ProBalanceDisableCoreParking);
-        Assert.Equal(60000, s.ProBalanceDisableIfSysIdleMs);
+        Assert.True(s.ResponsivenessGuardEnabled);
+        Assert.Equal(3, s.ResponsivenessGuardSensitivity);
+        // No control on the page (the engine's Responsiveness Guard doesn't use them): they go back exactly as stored.
+        Assert.Equal(33.3, s.ResponsivenessGuardCpuThreshold);
+        Assert.Equal(7.5, s.ResponsivenessGuardRecoveryThreshold);
+        Assert.False(s.ResponsivenessGuardRestrainByAffinity);
+        Assert.Equal(0x0AB0_0000_0000_00F1L, s.ResponsivenessGuardRestraintAffinity); // bits for cores that aren't shown survive
+        Assert.False(s.ResponsivenessGuardDropOneRandomCore || s.ResponsivenessGuardLowerIoPriority || s.ResponsivenessGuardUseEfficiencyMode || s.ResponsivenessGuardDoNotLowerPriorityClass || s.ResponsivenessGuardDisableWhenSysIdle);
+        Assert.False(s.ResponsivenessGuardDisableCoreParking);
+        Assert.Equal(60000, s.ResponsivenessGuardDisableIfSysIdleMs);
         Assert.True(s.ForegroundBoostEnabled);
 
-        Assert.False(s.SmartTrimEnabled);
-        Assert.Equal(1800, s.SmartTrimIntervalSeconds);
-        Assert.Equal(512, s.SmartTrimMemoryThresholdMB);
-        Assert.Equal(80, s.SmartTrimMinimumRamLoadPercent);
-        Assert.Equal("a.exe;b.exe", s.SmartTrimExclusions);
-        Assert.False(s.SmartTrimLogNoAction);
+        Assert.False(s.MemoryTrimEnabled);
+        Assert.Equal(1800, s.MemoryTrimIntervalSeconds);
+        Assert.Equal(512, s.MemoryTrimMemoryThresholdMB);
+        Assert.Equal(80, s.MemoryTrimMinimumRamLoadPercent);
+        Assert.Equal("a.exe;b.exe", s.MemoryTrimExclusions);
+        Assert.False(s.MemoryTrimLogNoAction);
         Assert.False(s.StandbyPurgeEnabled);
         Assert.Equal(2048, s.StandbyPurgeFreeRamThresholdMB);
         Assert.True(s.StandbyPurgeOnlyInPerformanceMode);
         Assert.False(s.FileCachePurgeEnabled);
 
-        Assert.False(s.IdleSaverEnabled);
+        Assert.False(s.AwayModeEnabled);
         Assert.Equal(20, s.IdleTimeoutMinutes);
         Assert.Equal(Balanced.ToString(), s.IdlePowerPlanGuid);
 
@@ -371,7 +371,7 @@ public class UiSystemTests
         await vm.PendingSave;
 
         Assert.Single(saved);
-        Assert.Equal(512, saved[0].SmartTrimMemoryThresholdMB);
+        Assert.Equal(512, saved[0].MemoryTrimMemoryThresholdMB);
     }
 
     [Theory]
@@ -381,7 +381,7 @@ public class UiSystemTests
     [InlineData("1.5")] // whole numbers only
     public async Task System_NumbersOutOfRange_AreFlagged_AndNeverSaved(string text)
     {
-        var stored = new EngineSettingsDto { SmartTrimMemoryThresholdMB = 196 };
+        var stored = new EngineSettingsDto { MemoryTrimMemoryThresholdMB = 196 };
         var (vm, saved, _) = NewSystem(stored);
 
         vm.TrimThresholdMb.Text = text;
@@ -389,7 +389,7 @@ public class UiSystemTests
         await vm.PendingSave;
 
         Assert.False(vm.TrimThresholdMb.IsValid);
-        Assert.Equal(196, saved[^1].SmartTrimMemoryThresholdMB); // the engine's own value, not the junk
+        Assert.Equal(196, saved[^1].MemoryTrimMemoryThresholdMB); // the engine's own value, not the junk
         Assert.True(saved[^1].FileCachePurgeEnabled);
     }
 
@@ -676,14 +676,14 @@ public class UiSystemTests
     // ------------------------------------------------------------------ Overview
 
     [Fact]
-    public void Overview_ShowsResponsiveness_PerCoreLoad_ProBalance_PerformanceMode_AndThePlan()
+    public void Overview_ShowsResponsiveness_PerCoreLoad_ResponsivenessGuard_PerformanceMode_AndThePlan()
     {
         var overview = NewShell().Overview;
         overview.Apply(new EngineSnapshot
         {
             LogicalProcessors = 4, CpuPercent = 41.6, MemoryPercent = 63.2,
             ResponsivenessPercent = 87.4, CoreCpuPercent = new List<double> { 90, 10, 0, 100 },
-            ProBalanceEnabled = true, ProBalancePaused = false, ProBalanceRestrained = 2, ProBalanceRestraintsTotal = 31,
+            ResponsivenessGuardEnabled = true, ResponsivenessGuardPaused = false, ResponsivenessGuardRestrained = 2, ResponsivenessGuardRestraintsTotal = 31,
             PerformanceModeActive = true, PowerPlanOwner = "PerformanceMode", ActivePowerPlanName = "High performance",
             CallerIsAdministrator = true
         });
@@ -691,7 +691,7 @@ public class UiSystemTests
         Assert.Equal(87.4, overview.Responsiveness);
         Assert.Equal("87%", overview.ResponsivenessText);
         Assert.Equal(new[] { 90.0, 10, 0, 100 }, overview.CoreLoads.ToArray());
-        Assert.Equal("ARMED", overview.ProBalanceState);
+        Assert.Equal("ARMED", overview.ResponsivenessGuardState);
         Assert.Equal(31, overview.RestraintsTotal);
         Assert.Equal("2 NOW · 31 TOTAL", overview.RestraintsText);
         Assert.True(overview.PerformanceModeActive);
@@ -703,19 +703,19 @@ public class UiSystemTests
     }
 
     [Fact]
-    public void Overview_ProBalanceShowsPausedAndOff_AndNoResponsivenessYetIsADash()
+    public void Overview_ResponsivenessGuardShowsPausedAndOff_AndNoResponsivenessYetIsADash()
     {
         var overview = NewShell().Overview;
 
-        overview.Apply(new EngineSnapshot { ProBalanceEnabled = true, ProBalancePaused = true, ResponsivenessPercent = null });
-        Assert.Equal("PAUSED · IDLE", overview.ProBalanceState);
-        Assert.True(overview.ProBalancePaused);
+        overview.Apply(new EngineSnapshot { ResponsivenessGuardEnabled = true, ResponsivenessGuardPaused = true, ResponsivenessPercent = null });
+        Assert.Equal("PAUSED · IDLE", overview.ResponsivenessGuardState);
+        Assert.True(overview.ResponsivenessGuardPaused);
         Assert.Equal("—", overview.ResponsivenessText);
         Assert.Equal("OFF", overview.PerformanceModeText);
 
-        overview.Apply(new EngineSnapshot { ProBalanceEnabled = false, ProBalancePaused = true });
-        Assert.Equal("OFF", overview.ProBalanceState); // "paused" means nothing while it is off
-        Assert.False(overview.ProBalancePaused);
+        overview.Apply(new EngineSnapshot { ResponsivenessGuardEnabled = false, ResponsivenessGuardPaused = true });
+        Assert.Equal("OFF", overview.ResponsivenessGuardState); // "paused" means nothing while it is off
+        Assert.False(overview.ResponsivenessGuardPaused);
     }
 
     [Fact]
@@ -1083,7 +1083,7 @@ public class UiSystemTests
         Assert.Null(seed.MemoryPriority);
         Assert.Equal(0x0F, seed.AffinityMask);
 
-        // ProBalance's lowered priority and the CPU Limiter's cores are temporary; all cores and Normal I/O are defaults.
+        // Responsiveness Guard's lowered priority and the CPU Limiter's cores are temporary; all cores and Normal I/O are defaults.
         s.IsRestrained = true;
         s.IsAffinityLimited = true;
         s.IoPriority = 2;

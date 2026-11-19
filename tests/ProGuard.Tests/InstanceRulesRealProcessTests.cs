@@ -8,8 +8,8 @@ using ProGuard.Engine.Services;
 namespace ProGuard.Tests;
 
 /// <summary>
-/// The Win32 side of the instance limit / Instance Balancer / startup boost, against real processes. Uses an idle
-/// ping.exe as the stand-in, and sets its priority explicitly: Process Lasso runs on the dev machine and lowers
+/// The Win32 side of the instance limit / Instance Spread / startup boost, against real processes. Uses an idle
+/// ping.exe as the stand-in, and sets its priority explicitly: another process manager on the dev machine may lower
 /// busy processes, so nothing here may assume a process starts at Normal.
 /// </summary>
 public sealed class InstanceRulesRealProcessTests : IDisposable
@@ -66,7 +66,7 @@ public sealed class InstanceRulesRealProcessTests : IDisposable
     }
 
     [Fact]
-    public void Governor_AppliesRulePriority_ThenBoosts_ThenRestoresTheRulePriority()
+    public void Orchestrator_AppliesRulePriority_ThenBoosts_ThenRestoresTheRulePriority()
     {
         var p = Spawn(ProcessPriorityClass.Idle);
         var monitor = new FakeProcessMonitor();
@@ -79,7 +79,7 @@ public sealed class InstanceRulesRealProcessTests : IDisposable
             StartupBoostPriorityClass = (int)ProcessPriorityClass.AboveNormal,
             StartupBoostSeconds = 30,
         };
-        var governor = NewGovernor(monitor, rule, startupBoost: boost);
+        var orchestrator = NewOrchestrator(monitor, rule, startupBoost: boost);
 
         monitor.Start(p.Id, "PING");
         p.Refresh();
@@ -89,11 +89,11 @@ public sealed class InstanceRulesRealProcessTests : IDisposable
         boost.Tick();
         p.Refresh();
         Assert.Equal(ProcessPriorityClass.BelowNormal, p.PriorityClass);
-        governor.Stop();
+        orchestrator.Stop();
     }
 
     [Fact]
-    public void Governor_TerminatesTheNewestInstanceOverTheLimit()
+    public void Orchestrator_TerminatesTheNewestInstanceOverTheLimit()
     {
         var older = Spawn();
         Thread.Sleep(50); // distinct start times
@@ -101,22 +101,22 @@ public sealed class InstanceRulesRealProcessTests : IDisposable
         var monitor = new FakeProcessMonitor();
         var limiter = new InstanceLimiter(NullLogger<InstanceLimiter>.Instance, monitor, new Win32RuleProcessAccess());
         var rule = new ProcessRule { ProcessName = "ping.exe", MaxInstances = 1 };
-        var governor = NewGovernor(monitor, rule, instanceLimiter: limiter);
+        var orchestrator = NewOrchestrator(monitor, rule, instanceLimiter: limiter);
 
         monitor.Start(older.Id, "PING");
         monitor.Start(newer.Id, "PING");
 
         Assert.True(newer.WaitForExit(ExitTimeoutMs));
         Assert.False(older.HasExited);
-        governor.Stop();
+        orchestrator.Stop();
     }
 
-    private static ProcessGovernor NewGovernor(FakeProcessMonitor monitor, ProcessRule rule,
+    private static ProcessOrchestrator NewOrchestrator(FakeProcessMonitor monitor, ProcessRule rule,
         InstanceLimiter? instanceLimiter = null, StartupBoostService? startupBoost = null)
     {
         var store = FakeRules.Store(new List<ProcessRule> { rule });
-        return new ProcessGovernor(NullLogger<ProcessGovernor>.Instance, monitor,
-            Mock.Of<IProBalanceEngine>(), Mock.Of<ICpuLimiter>(), Mock.Of<ISmartTrimService>(),
+        return new ProcessOrchestrator(NullLogger<ProcessOrchestrator>.Instance, monitor,
+            Mock.Of<IResponsivenessGuardEngine>(), Mock.Of<ICpuLimiter>(), Mock.Of<IMemoryTrimService>(),
             Mock.Of<IPowerManager>(), Mock.Of<IWatchdogService>(), store.Object,
             instanceLimiter, startupBoost: startupBoost);
     }
@@ -125,18 +125,18 @@ public sealed class InstanceRulesRealProcessTests : IDisposable
 public class InstanceRulesCompositionTests
 {
     [Fact]
-    public void EngineHost_ResolvesTheGovernorWithTheNewServices()
+    public void EngineHost_ResolvesTheOrchestratorWithTheNewServices()
     {
         using var host = ProGuard.Engine.Program.CreateHostBuilder(Array.Empty<string>()).Build();
         var services = host.Services;
 
-        var governor = services.GetService(typeof(ProcessGovernor));
-        Assert.NotNull(governor);
+        var orchestrator = services.GetService(typeof(ProcessOrchestrator));
+        Assert.NotNull(orchestrator);
         // Optional constructor parameters: make sure DI filled them rather than leaving the defaults.
-        foreach (var field in new[] { "_instanceLimiter", "_instanceBalancer", "_startupBoost" })
-            Assert.NotNull(typeof(ProcessGovernor).GetField(field, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(governor));
+        foreach (var field in new[] { "_instanceLimiter", "_instanceSpread", "_startupBoost" })
+            Assert.NotNull(typeof(ProcessOrchestrator).GetField(field, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(orchestrator));
         Assert.NotNull(services.GetService(typeof(InstanceLimiter)));
-        Assert.NotNull(services.GetService(typeof(InstanceBalancer)));
+        Assert.NotNull(services.GetService(typeof(InstanceSpread)));
         Assert.NotNull(services.GetService(typeof(StartupBoostService)));
     }
 }

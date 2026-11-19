@@ -48,7 +48,7 @@ public class SnapshotPerformanceTests
         power.Setup(p => p.GetAvailablePlans()).Returns(ProGuard.Core.Helpers.PowerPlans.Enumerate().Select(p => (p.Id, p.Name)).ToList());
         power.Setup(p => p.GetActivePlan()).Returns(ProGuard.Core.Native.Powrprof.Balanced);
         var now = 0L;
-        var builder = new SnapshotBuilder(monitor, new Mock<IProBalanceEngine>().Object, new CpuLimiter(NullLogger<CpuLimiter>.Instance),
+        var builder = new SnapshotBuilder(monitor, new Mock<IResponsivenessGuardEngine>().Object, new CpuLimiter(NullLogger<CpuLimiter>.Instance),
             store.Object, power.Object, new Win32ProcessDetailsReader(), clockMs: () => now);
 
         var builds = new double[6];

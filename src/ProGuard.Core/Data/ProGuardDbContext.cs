@@ -8,7 +8,7 @@ public class ProGuardDbContext : DbContext
     public DbSet<ProcessRule> ProcessRules { get; set; } = null!;
     public DbSet<WatchdogRule> WatchdogRules { get; set; } = null!;
     public DbSet<PowerProfile> PowerProfiles { get; set; } = null!;
-    public DbSet<ProBalanceAction> ProBalanceActions { get; set; } = null!;
+    public DbSet<ResponsivenessGuardAction> ResponsivenessGuardActions { get; set; } = null!;
     public DbSet<AppSettings> Settings { get; set; } = null!;
     public DbSet<ConfigProfile> ConfigProfiles { get; set; } = null!;
 

@@ -5,45 +5,45 @@ namespace ProGuard.Shared.Contracts;
 
 /// <summary>
 /// Wire copy of ProGuard.Core.Models.AppSettings (every property except the database key), with the same names and
-/// meanings; Process Lasso's prolasso.ini key is given where there is one. Power plan fields hold a plan GUID as text,
+/// meanings. Power plan fields hold a plan GUID as text,
 /// or null for the default named in the comment.
 /// </summary>
 public sealed class EngineSettingsDto
 {
-    // ProBalance
-    public bool ProBalanceEnabled { get; set; } = true;
-    /// <summary>1 (step in only under extreme load) to 10 (step in early); 5 = Process Lasso's defaults.</summary>
-    public int ProBalanceSensitivity { get; set; } = 5;
-    public double ProBalanceCpuThreshold { get; set; } = 25.0;
-    public double ProBalanceRecoveryThreshold { get; set; } = 10.0;
-    public bool ProBalanceRestrainByAffinity { get; set; }
-    public long ProBalanceRestraintAffinity { get; set; }
-    public bool ProBalanceDropOneRandomCore { get; set; }
-    public bool ProBalanceLowerIoPriority { get; set; }
-    public bool ProBalanceUseEfficiencyMode { get; set; }
-    public bool ProBalanceDoNotLowerPriorityClass { get; set; }
-    public bool ProBalanceDisableWhenSysIdle { get; set; }
-    public int ProBalanceDisableIfSysIdleMs { get; set; } = 30000;
-    /// <summary>Unpark every core while ProBalance restrains anything (OocDisableCoreParkingWhileIn). Administrators only.</summary>
-    public bool ProBalanceDisableCoreParking { get; set; }
+    // Responsiveness Guard
+    public bool ResponsivenessGuardEnabled { get; set; } = true;
+    /// <summary>1 (step in only under extreme load) to 10 (step in early); 5 = the default.</summary>
+    public int ResponsivenessGuardSensitivity { get; set; } = 5;
+    public double ResponsivenessGuardCpuThreshold { get; set; } = 25.0;
+    public double ResponsivenessGuardRecoveryThreshold { get; set; } = 10.0;
+    public bool ResponsivenessGuardRestrainByAffinity { get; set; }
+    public long ResponsivenessGuardRestraintAffinity { get; set; }
+    public bool ResponsivenessGuardDropOneRandomCore { get; set; }
+    public bool ResponsivenessGuardLowerIoPriority { get; set; }
+    public bool ResponsivenessGuardUseEfficiencyMode { get; set; }
+    public bool ResponsivenessGuardDoNotLowerPriorityClass { get; set; }
+    public bool ResponsivenessGuardDisableWhenSysIdle { get; set; }
+    public int ResponsivenessGuardDisableIfSysIdleMs { get; set; } = 30000;
+    /// <summary>Unpark every core while Responsiveness Guard restrains anything. Administrators only.</summary>
+    public bool ResponsivenessGuardDisableCoreParking { get; set; }
 
     /// <summary>Raise the foreground process from Normal to Above Normal while it has focus.</summary>
     public bool ForegroundBoostEnabled { get; set; } = false;
 
-    // SmartTrim
-    public bool SmartTrimEnabled { get; set; }
-    public int SmartTrimIntervalSeconds { get; set; } = 900;
-    public long SmartTrimMemoryThresholdMB { get; set; } = 196;
-    public int SmartTrimMinimumRamLoadPercent { get; set; } = 65;
-    public string? SmartTrimExclusions { get; set; }
-    public bool SmartTrimLogNoAction { get; set; }
+    // Memory Trim
+    public bool MemoryTrimEnabled { get; set; }
+    public int MemoryTrimIntervalSeconds { get; set; } = 900;
+    public long MemoryTrimMemoryThresholdMB { get; set; } = 196;
+    public int MemoryTrimMinimumRamLoadPercent { get; set; } = 65;
+    public string? MemoryTrimExclusions { get; set; }
+    public bool MemoryTrimLogNoAction { get; set; }
     public bool StandbyPurgeEnabled { get; set; }
     public long StandbyPurgeFreeRamThresholdMB { get; set; } = 1024;
     public bool StandbyPurgeOnlyInPerformanceMode { get; set; } = true;
     public bool FileCachePurgeEnabled { get; set; }
 
-    // IdleSaver
-    public bool IdleSaverEnabled { get; set; }
+    // Away Mode
+    public bool AwayModeEnabled { get; set; }
     public int IdleTimeoutMinutes { get; set; } = 15;
     /// <summary>null = Power saver.</summary>
     public string? IdlePowerPlanGuid { get; set; }
@@ -75,7 +75,7 @@ public sealed class EngineSettingsDto
     public string? StartWithPowerPlanGuid { get; set; }
 
     /// <summary>Timer resolution the engine holds, in 100-ns units; 0 = none. Administrators only.</summary>
-    public int SetTimerResolutionAtStartup { get; set; }
+    public int TimerResolutionRequest { get; set; }
 
     // General
     public bool StartWithWindows { get; set; } = true;
@@ -97,7 +97,7 @@ public sealed class TimerResolutionDto
     public int Minimum { get; set; }
     /// <summary>The finest interval (typically 5000 = 0.5 ms).</summary>
     public int Maximum { get; set; }
-    /// <summary>The setting (<see cref="EngineSettingsDto.SetTimerResolutionAtStartup"/>); 0 = none.</summary>
+    /// <summary>The setting (<see cref="EngineSettingsDto.TimerResolutionRequest"/>); 0 = none.</summary>
     public int Requested { get; set; }
     /// <summary>What the engine is asking Windows for right now; 0 = nothing.</summary>
     public int Held { get; set; }
@@ -126,7 +126,7 @@ public sealed class PowerStateDto
     /// <summary>Performance Mode is on because a listed or detected game is running, not because the user turned it on.</summary>
     public bool PerformanceModeAutomatic { get; set; }
 
-    /// <summary>Who set the active plan: "User", "PerformanceMode", "IdleSaver", "LoadSwitcher", "StartWith".</summary>
+    /// <summary>Who set the active plan: "User", "PerformanceMode", "AwayMode", "LoadSwitcher", "StartWith".</summary>
     public string Owner { get; set; } = string.Empty;
 
     /// <summary>Windows has a power-mode slider (Windows 10 1709 and later).</summary>
@@ -164,13 +164,13 @@ public sealed class CpuSetDto
 
 public enum ActivityKind
 {
-    /// <summary>ProBalance lowered a process's priority.</summary>
+    /// <summary>Responsiveness Guard lowered a process's priority.</summary>
     Restrained,
 
-    /// <summary>ProBalance or another timed action gave a process its settings back.</summary>
+    /// <summary>Responsiveness Guard or another timed action gave a process its settings back.</summary>
     Restored,
 
-    /// <summary>A persistent rule, startup boost, CPU Limiter, instance limit or balancer acted on a process.</summary>
+    /// <summary>A persistent rule, startup boost, CPU Limiter, instance limit or Instance Spread acted on a process.</summary>
     Rule,
 
     /// <summary>A watchdog rule fired, or Keep Running relaunched a process.</summary>
@@ -179,7 +179,7 @@ public enum ActivityKind
     /// <summary>The active power plan changed.</summary>
     Power,
 
-    /// <summary>SmartTrim trimmed working sets or purged memory.</summary>
+    /// <summary>Memory Trim trimmed working sets or purged memory.</summary>
     Memory,
 
     /// <summary>Someone did something from the UI.</summary>

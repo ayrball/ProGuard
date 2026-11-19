@@ -7,11 +7,11 @@ using ProGuard.Engine.Services;
 namespace ProGuard.Tests;
 
 /// <summary>
-/// Timeline simulations of ProBalance's timing and hysteresis rules on a fake clock, using Process Lasso's
+/// Timeline simulations of Responsiveness Guard's timing and hysteresis rules on a fake clock, using the
 /// defaults unless a test says otherwise: system >= 10 %, process >= 5 % for 900 ms, restore at <= 2 % after
 /// >= 4200 ms restrained.
 /// </summary>
-public class Pass3_ProBalance_Simulation_Tests
+public class Pass3_ResponsivenessGuard_Simulation_Tests
 {
     private const ProcessPriorityClass Restrained = ProcessPriorityClass.BelowNormal;
     private const ProcessPriorityClass Normal = ProcessPriorityClass.Normal;
@@ -29,30 +29,30 @@ public class Pass3_ProBalance_Simulation_Tests
     [InlineData(10)]
     public void AllSensitivityLevels_KeepAValidHysteresisBand(int sensitivity)
     {
-        using var engine = new ProBalanceEngine(new Mock<ILogger<ProBalanceEngine>>().Object,
+        using var engine = new ResponsivenessGuardEngine(new Mock<ILogger<ResponsivenessGuardEngine>>().Object,
             new Mock<IProcessMonitor>().Object, new Mock<IRuleStore>().Object);
         engine.SetSensitivity(sensitivity);
 
-        Assert.True(engine.PerProcessUsageForRestore < engine.PerProcessUsageBeforeRestraint,
-            $"At sensitivity {sensitivity}, restore ({engine.PerProcessUsageForRestore}) must be below restrain ({engine.PerProcessUsageBeforeRestraint})");
-        Assert.True(engine.PerProcessUsageForRestore > 0);
-        Assert.True(engine.TotalProcessorUsageBeforeRestraint > 0);
-        Assert.True(engine.TimeOverQuotaBeforeRestraint > 0);
+        Assert.True(engine.RestoreAtProcessCpuPercent < engine.RestrainAtProcessCpuPercent,
+            $"At sensitivity {sensitivity}, restore ({engine.RestoreAtProcessCpuPercent}) must be below restrain ({engine.RestrainAtProcessCpuPercent})");
+        Assert.True(engine.RestoreAtProcessCpuPercent > 0);
+        Assert.True(engine.RestrainAtSystemCpuPercent > 0);
+        Assert.True(engine.RestrainAfterMs > 0);
     }
 
     [Fact]
     public void HigherSensitivity_RestrainsEarlier()
     {
-        using var low = new ProBalanceEngine(new Mock<ILogger<ProBalanceEngine>>().Object,
+        using var low = new ResponsivenessGuardEngine(new Mock<ILogger<ResponsivenessGuardEngine>>().Object,
             new Mock<IProcessMonitor>().Object, new Mock<IRuleStore>().Object);
-        using var high = new ProBalanceEngine(new Mock<ILogger<ProBalanceEngine>>().Object,
+        using var high = new ResponsivenessGuardEngine(new Mock<ILogger<ResponsivenessGuardEngine>>().Object,
             new Mock<IProcessMonitor>().Object, new Mock<IRuleStore>().Object);
         low.SetSensitivity(2);
         high.SetSensitivity(9);
 
-        Assert.True(high.TotalProcessorUsageBeforeRestraint < low.TotalProcessorUsageBeforeRestraint);
-        Assert.True(high.PerProcessUsageBeforeRestraint < low.PerProcessUsageBeforeRestraint);
-        Assert.True(high.TimeOverQuotaBeforeRestraint < low.TimeOverQuotaBeforeRestraint);
+        Assert.True(high.RestrainAtSystemCpuPercent < low.RestrainAtSystemCpuPercent);
+        Assert.True(high.RestrainAtProcessCpuPercent < low.RestrainAtProcessCpuPercent);
+        Assert.True(high.RestrainAfterMs < low.RestrainAfterMs);
     }
 
     // ---------- Restraint: time over quota ----------
@@ -60,7 +60,7 @@ public class Pass3_ProBalance_Simulation_Tests
     [Fact]
     public void Restrains_OnlyAfter900msContinuouslyOverQuota()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 30);
 
         h.At(0);
@@ -77,7 +77,7 @@ public class Pass3_ProBalance_Simulation_Tests
     public void With1sPoll_RestrainsOnSecondOverQuotaSample()
     {
         // Matches PL observed live: restraint ~1.9 s after launch = first sample at ~1 s + 900 ms rounded up to a poll.
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 0);
         h.At(0);                                // process just started, no usage sample yet
         h.Processes[0].CpuPercent = 99;
@@ -90,7 +90,7 @@ public class Pass3_ProBalance_Simulation_Tests
     [Fact]
     public void DipBelowQuota_RestartsTheOverQuotaClock()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         var hog = h.Add(100, cpu: 30);
 
         h.At(0);
@@ -111,7 +111,7 @@ public class Pass3_ProBalance_Simulation_Tests
     [InlineData(5.0, true)]
     public void PerProcessThreshold_IsFivePercentOfTotalCpu(double cpu, bool restrained)
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: cpu);
 
         h.At(0);
@@ -125,7 +125,7 @@ public class Pass3_ProBalance_Simulation_Tests
     [InlineData(10.0, true)]
     public void SystemCpuGate_IsTenPercent(double systemCpu, bool restrained)
     {
-        using var h = new ProBalanceHarness { SystemCpu = systemCpu };
+        using var h = new ResponsivenessGuardHarness { SystemCpu = systemCpu };
         h.Add(100, cpu: 8);
 
         h.At(0);
@@ -137,7 +137,7 @@ public class Pass3_ProBalance_Simulation_Tests
     [Fact]
     public void SystemDroppingBelowGate_RestartsTheOverQuotaClock()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 8);
 
         h.At(0);
@@ -153,7 +153,7 @@ public class Pass3_ProBalance_Simulation_Tests
     [Fact]
     public void LeavingTheForeground_StartsAFreshOverQuotaRun()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 90);
         h.ForegroundPid = 100;
         for (var t = 0; t <= 5000; t += 1000) h.At(t);
@@ -170,7 +170,7 @@ public class Pass3_ProBalance_Simulation_Tests
     [Fact]
     public void Restore_WaitsForMinimumRestraintTime()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         var hog = h.Add(100, cpu: 30);
         h.At(0);
         h.At(1000);                             // restrained at t=1000
@@ -189,7 +189,7 @@ public class Pass3_ProBalance_Simulation_Tests
     public void Restore_AfterMinimumTime_NeedsOneSampleAtOrBelowTwoPercent()
     {
         // PL observed live: a 6 s burst was restored ~1.7 s after the load stopped (one poll below 2 %).
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         var hog = h.Add(100, cpu: 30);
         h.At(0);
         h.At(1000);
@@ -207,7 +207,7 @@ public class Pass3_ProBalance_Simulation_Tests
     [InlineData(4.9, false)]
     public void Restore_ThresholdIsTwoPercent(double cpu, bool restored)
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         var hog = h.Add(100, cpu: 30);
         h.At(0);
         h.At(1000);
@@ -221,7 +221,7 @@ public class Pass3_ProBalance_Simulation_Tests
     [Fact]
     public void BetweenRestoreAndRestrainThresholds_NoFlapping()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         var hog = h.Add(100, cpu: 30);
         h.At(0);
         h.At(1000);
@@ -238,7 +238,7 @@ public class Pass3_ProBalance_Simulation_Tests
     [Fact]
     public void SystemLoadDoesNotGateRestore_OnlyTheProcessUsage()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         var hog = h.Add(100, cpu: 30);
         h.At(0);
         h.At(1000);
@@ -253,9 +253,9 @@ public class Pass3_ProBalance_Simulation_Tests
     [Fact]
     public void MaximumRestraintTime_ForcesRestore_ThenReRestrainsAfterAnotherQuotaRun()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 90);
-        h.Engine.MaximumTimeOfRestraint = 3000;
+        h.Engine.MaxRestraintMs = 3000;
 
         h.At(0);
         h.At(1000);                             // restrained
@@ -272,7 +272,7 @@ public class Pass3_ProBalance_Simulation_Tests
     [Fact]
     public void NoMaximumRestraintTime_ByDefault()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 90);
 
         for (var t = 0; t <= 120_000; t += 1000) h.At(t);
@@ -284,7 +284,7 @@ public class Pass3_ProBalance_Simulation_Tests
     [Fact]
     public void BecomingForeground_EndsRestraintImmediately_EvenBeforeMinimumTime()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 90);
         h.At(0);
         h.At(1000);
@@ -300,9 +300,9 @@ public class Pass3_ProBalance_Simulation_Tests
     [Fact]
     public void BecomingForeground_DoesNotEndRestraint_WhenForegroundExclusionOff()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 90);
-        h.Engine.ExcludeForegroundProcesses = false;
+        h.Engine.ExemptForeground = false;
         h.At(0);
         h.At(1000);
 
@@ -315,7 +315,7 @@ public class Pass3_ProBalance_Simulation_Tests
     [Fact]
     public void ManyProcesses_AreTrackedIndependently()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         var a = h.Add(100, cpu: 30);
         var b = h.Add(101, cpu: 0);
 

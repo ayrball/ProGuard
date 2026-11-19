@@ -8,20 +8,20 @@ using ProGuard.Shared.Reporting;
 namespace ProGuard.Tests;
 
 /// <summary>
-/// With no foreground report (no session agent or UI), ProBalance can't tell which program is in use, so it treats
+/// With no foreground report (no session agent or UI), Responsiveness Guard can't tell which program is in use, so it treats
 /// every program that could be (a GUI program in a user session) as the foreground process.
 /// </summary>
-public class ProBalanceForegroundFallbackTests
+public class ResponsivenessGuardForegroundFallbackTests
 {
     private const int Game = 100, Encoder = 101, Service = 102;
 
-    private static ProBalanceHarness Harness()
+    private static ResponsivenessGuardHarness Harness()
     {
-        var h = new ProBalanceHarness();
+        var h = new ResponsivenessGuardHarness();
         h.Add(Game, cpu: 50);
         h.Add(Encoder, cpu: 50);
         h.Add(Service, cpu: 50, session: 0);
-        h.Engine.ExcludeServices = false;   // so session 0 is decided by the fallback alone
+        h.Engine.ExemptServices = false;   // so session 0 is decided by the fallback alone
         h.Fallback.Windowed.UnionWith(new[] { Game, Service });
         return h;
     }
@@ -67,7 +67,7 @@ public class ProBalanceForegroundFallbackTests
         h.At(2000);
         Assert.Equal(ProcessPriorityClass.Normal, h.PriorityOf(Game));
         Assert.Equal(ProcessPriorityClass.BelowNormal, h.PriorityOf(Encoder));
-        h.Store.Verify(s => s.LogProBalanceActionAsync(It.Is<ProBalanceAction>(a =>
+        h.Store.Verify(s => s.LogResponsivenessGuardActionAsync(It.Is<ResponsivenessGuardAction>(a =>
             a.Pid == Game && a.Reason.Contains("No foreground report"))));
 
         // Reports are back and the game isn't in front: it can be restrained again.
@@ -81,7 +81,7 @@ public class ProBalanceForegroundFallbackTests
     public void WithTheForegroundExemptionOff_TheFallbackIsOffToo()
     {
         using var h = Harness();
-        h.Engine.ExcludeForegroundProcesses = false;
+        h.Engine.ExemptForeground = false;
         h.Fallback.IsForegroundKnown = false;
 
         h.At(0);

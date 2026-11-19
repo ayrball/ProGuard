@@ -38,7 +38,7 @@ public sealed partial class CpuTuningRow : ObservableObject
     [ObservableProperty] private string valueText = string.Empty;
     /// <summary>"WINDOWS DEFAULT 10 % · BEFORE PROGUARD 5 %".</summary>
     [ObservableProperty] private string reference = string.Empty;
-    /// <summary>Set while ProBalance holds another value in force for now.</summary>
+    /// <summary>Set while Responsiveness Guard holds another value in force for now.</summary>
     [ObservableProperty] private string liveNote = string.Empty;
     [ObservableProperty] private bool hiddenInWindows;
 
@@ -60,7 +60,7 @@ public sealed partial class CpuTuningRow : ObservableObject
             Value = dc ? setting.Dc : setting.Ac;
             HiddenInWindows = setting.Hidden;
             var live = dc ? setting.LiveDc : setting.LiveAc;
-            LiveNote = live is { } l && l != (uint)Value ? string.Format(Strings.Tune_ProBalanceHolds, Format(l)) : string.Empty;
+            LiveNote = live is { } l && l != (uint)Value ? string.Format(Strings.Tune_ResponsivenessGuardHolds, Format(l)) : string.Empty;
             var parts = new List<string>();
             if ((dc ? setting.DefaultDc : setting.DefaultAc) is { } d) parts.Add(string.Format(Strings.Tune_WindowsDefault, Format(d)));
             if ((dc ? setting.OriginalDc : setting.OriginalAc) is { } o) parts.Add(string.Format(Strings.Tune_BeforeProGuard, Format(o)));

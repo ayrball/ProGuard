@@ -16,9 +16,9 @@ public class SettingsApplier
 {
     private readonly ILogger<SettingsApplier> _logger;
     private readonly IProcessMonitor _processMonitor;
-    private readonly ISmartTrimService _smartTrim;
+    private readonly IMemoryTrimService _memoryTrim;
     private readonly IPowerManager _powerManager;
-    private readonly IProBalanceEngine _proBalance;
+    private readonly IResponsivenessGuardEngine _responsivenessGuard;
     private readonly IAutoPerformanceMode? _autoPerformanceMode;
     private readonly ForegroundBoostService? _foregroundBoost;
     private readonly TimerResolutionService? _timerResolution;
@@ -30,9 +30,9 @@ public class SettingsApplier
     public SettingsApplier(
         ILogger<SettingsApplier> logger,
         IProcessMonitor processMonitor,
-        ISmartTrimService smartTrim,
+        IMemoryTrimService memoryTrim,
         IPowerManager powerManager,
-        IProBalanceEngine proBalance,
+        IResponsivenessGuardEngine responsivenessGuard,
         IAutoPerformanceMode? autoPerformanceMode = null,
         ForegroundBoostService? foregroundBoost = null,
         TimerResolutionService? timerResolution = null,
@@ -40,9 +40,9 @@ public class SettingsApplier
     {
         _logger = logger;
         _processMonitor = processMonitor;
-        _smartTrim = smartTrim;
+        _memoryTrim = memoryTrim;
         _powerManager = powerManager;
-        _proBalance = proBalance;
+        _responsivenessGuard = responsivenessGuard;
         _autoPerformanceMode = autoPerformanceMode;
         _foregroundBoost = foregroundBoost;
         _timerResolution = timerResolution;
@@ -70,28 +70,28 @@ public class SettingsApplier
             if (_foregroundBoost != null && (all || previous!.ForegroundBoostEnabled != settings.ForegroundBoostEnabled))
                 TryApply("Foreground Boost", () => _foregroundBoost.IsEnabled = settings.ForegroundBoostEnabled);
 
-            if (all || previous!.SmartTrimEnabled != settings.SmartTrimEnabled
-                    || previous.SmartTrimIntervalSeconds != settings.SmartTrimIntervalSeconds
-                    || previous.SmartTrimMemoryThresholdMB != settings.SmartTrimMemoryThresholdMB)
-                TryApply("SmartTrim", () => _smartTrim.Configure(
-                    settings.SmartTrimEnabled,
-                    TimeSpan.FromSeconds(settings.SmartTrimIntervalSeconds),
-                    settings.SmartTrimMemoryThresholdMB * 1024L * 1024L));
+            if (all || previous!.MemoryTrimEnabled != settings.MemoryTrimEnabled
+                    || previous.MemoryTrimIntervalSeconds != settings.MemoryTrimIntervalSeconds
+                    || previous.MemoryTrimMemoryThresholdMB != settings.MemoryTrimMemoryThresholdMB)
+                TryApply("Memory Trim", () => _memoryTrim.Configure(
+                    settings.MemoryTrimEnabled,
+                    TimeSpan.FromSeconds(settings.MemoryTrimIntervalSeconds),
+                    settings.MemoryTrimMemoryThresholdMB * 1024L * 1024L));
 
-            if (all || previous!.SmartTrimMinimumRamLoadPercent != settings.SmartTrimMinimumRamLoadPercent
-                    || previous.SmartTrimExclusions != settings.SmartTrimExclusions
-                    || previous.SmartTrimLogNoAction != settings.SmartTrimLogNoAction
+            if (all || previous!.MemoryTrimMinimumRamLoadPercent != settings.MemoryTrimMinimumRamLoadPercent
+                    || previous.MemoryTrimExclusions != settings.MemoryTrimExclusions
+                    || previous.MemoryTrimLogNoAction != settings.MemoryTrimLogNoAction
                     || previous.StandbyPurgeEnabled != settings.StandbyPurgeEnabled
                     || previous.StandbyPurgeFreeRamThresholdMB != settings.StandbyPurgeFreeRamThresholdMB
                     || previous.StandbyPurgeOnlyInPerformanceMode != settings.StandbyPurgeOnlyInPerformanceMode
                     || previous.FileCachePurgeEnabled != settings.FileCachePurgeEnabled)
-                TryApply("SmartTrim policy", () => _smartTrim.ConfigurePolicy(ToSmartTrimPolicy(settings)));
+                TryApply("Memory Trim policy", () => _memoryTrim.ConfigurePolicy(ToMemoryTrimPolicy(settings)));
 
-            if (all || previous!.IdleSaverEnabled != settings.IdleSaverEnabled
+            if (all || previous!.AwayModeEnabled != settings.AwayModeEnabled
                     || previous.IdleTimeoutMinutes != settings.IdleTimeoutMinutes
                     || previous.IdlePowerPlanGuid != settings.IdlePowerPlanGuid)
-                TryApply("IdleSaver", () => _powerManager.ConfigureIdleSaver(
-                    settings.IdleSaverEnabled,
+                TryApply("Away Mode", () => _powerManager.ConfigureAwayMode(
+                    settings.AwayModeEnabled,
                     Math.Max(1, settings.IdleTimeoutMinutes),
                     Guid.TryParse(settings.IdlePowerPlanGuid, out var plan) ? plan : Powrprof.PowerSaver));
 
@@ -111,42 +111,42 @@ public class SettingsApplier
             if (all || previous!.StartWithPowerPlanGuid != settings.StartWithPowerPlanGuid)
                 TryApply("startup power plan", () => _powerManager.ConfigureStartupPlan(ParsePlan(settings.StartWithPowerPlanGuid)));
 
-            if (all || previous!.ProBalanceEnabled != settings.ProBalanceEnabled
-                    || previous.ProBalanceSensitivity != settings.ProBalanceSensitivity
-                    || previous.ProBalanceCpuThreshold != settings.ProBalanceCpuThreshold
-                    || previous.ProBalanceRecoveryThreshold != settings.ProBalanceRecoveryThreshold)
-                TryApply("ProBalance", () => ApplyProBalanceSettings(settings));
+            if (all || previous!.ResponsivenessGuardEnabled != settings.ResponsivenessGuardEnabled
+                    || previous.ResponsivenessGuardSensitivity != settings.ResponsivenessGuardSensitivity
+                    || previous.ResponsivenessGuardCpuThreshold != settings.ResponsivenessGuardCpuThreshold
+                    || previous.ResponsivenessGuardRecoveryThreshold != settings.ResponsivenessGuardRecoveryThreshold)
+                TryApply("Responsiveness Guard", () => ApplyResponsivenessGuardSettings(settings));
 
-            if (all || ProBalanceRestraintOptions.FromSettings(previous!) != ProBalanceRestraintOptions.FromSettings(settings))
-                TryApply("ProBalance restraint actions", () => _proBalance.ConfigureRestraint(ProBalanceRestraintOptions.FromSettings(settings)));
+            if (all || ResponsivenessGuardRestraintOptions.FromSettings(previous!) != ResponsivenessGuardRestraintOptions.FromSettings(settings))
+                TryApply("Responsiveness Guard restraint actions", () => _responsivenessGuard.ConfigureRestraint(ResponsivenessGuardRestraintOptions.FromSettings(settings)));
 
-            if (_coreParking != null && (all || previous!.ProBalanceDisableCoreParking != settings.ProBalanceDisableCoreParking))
-                TryApply("core parking", () => _coreParking.Configure(settings.ProBalanceDisableCoreParking));
+            if (_coreParking != null && (all || previous!.ResponsivenessGuardDisableCoreParking != settings.ResponsivenessGuardDisableCoreParking))
+                TryApply("core parking", () => _coreParking.Configure(settings.ResponsivenessGuardDisableCoreParking));
 
-            if (_timerResolution != null && (all || previous!.SetTimerResolutionAtStartup != settings.SetTimerResolutionAtStartup))
-                TryApply("timer resolution", () => _timerResolution.Configure(settings.SetTimerResolutionAtStartup));
+            if (_timerResolution != null && (all || previous!.TimerResolutionRequest != settings.TimerResolutionRequest))
+                TryApply("timer resolution", () => _timerResolution.Configure(settings.TimerResolutionRequest));
 
             _applied = settings.Clone();
         }
     }
 
     /// <summary>
-    /// Hook for the ProBalance settings. Only the members <see cref="IProBalanceEngine"/> exposes today are
-    /// applied; when the engine grows setters for <see cref="AppSettings.ProBalanceCpuThreshold"/> and
-    /// <see cref="AppSettings.ProBalanceRecoveryThreshold"/>, apply them here (change detection already
+    /// Hook for the Responsiveness Guard settings. Only the members <see cref="IResponsivenessGuardEngine"/> exposes today are
+    /// applied; when the engine grows setters for <see cref="AppSettings.ResponsivenessGuardCpuThreshold"/> and
+    /// <see cref="AppSettings.ResponsivenessGuardRecoveryThreshold"/>, apply them here (change detection already
     /// covers both).
     /// </summary>
-    protected virtual void ApplyProBalanceSettings(AppSettings settings)
+    protected virtual void ApplyResponsivenessGuardSettings(AppSettings settings)
     {
-        _proBalance.SetEnabled(settings.ProBalanceEnabled);
-        _proBalance.SetSensitivity(settings.ProBalanceSensitivity);
+        _responsivenessGuard.SetEnabled(settings.ResponsivenessGuardEnabled);
+        _responsivenessGuard.SetSensitivity(settings.ResponsivenessGuardSensitivity);
     }
 
-    internal static SmartTrimPolicy ToSmartTrimPolicy(AppSettings settings) => new()
+    internal static MemoryTrimPolicy ToMemoryTrimPolicy(AppSettings settings) => new()
     {
-        MinimumRamLoadPercent = settings.SmartTrimMinimumRamLoadPercent,
-        Exclusions = SplitProcessList(settings.SmartTrimExclusions),
-        LogNoAction = settings.SmartTrimLogNoAction,
+        MinimumRamLoadPercent = settings.MemoryTrimMinimumRamLoadPercent,
+        Exclusions = SplitProcessList(settings.MemoryTrimExclusions),
+        LogNoAction = settings.MemoryTrimLogNoAction,
         StandbyPurgeEnabled = settings.StandbyPurgeEnabled,
         StandbyFreeRamThresholdBytes = Math.Max(0, settings.StandbyPurgeFreeRamThresholdMB) * 1024L * 1024L,
         StandbyOnlyInPerformanceMode = settings.StandbyPurgeOnlyInPerformanceMode,

@@ -38,26 +38,26 @@ public class Program
                 services.AddSingleton<IForegroundTracker>(sp => sp.GetRequiredService<ForegroundTracker>());
                 // The UI's foreground reports also carry the user's idle time, which a session-0 service can't read.
                 services.AddSingleton<IUserIdleSource>(sp => sp.GetRequiredService<ForegroundTracker>());
-                // With no report at all, ProBalance spares every program that could be the one in use.
+                // With no report at all, Responsiveness Guard spares every program that could be the one in use.
                 services.AddSingleton<IForegroundFallback, GuiProgramFallback>();
 
                 services.AddSingleton<ProcessMonitor>();
                 services.AddSingleton<IProcessMonitor>(sp => sp.GetRequiredService<ProcessMonitor>());
 
-                services.AddSingleton<ProBalanceEngine>();
-                services.AddSingleton<IProBalanceEngine>(sp => sp.GetRequiredService<ProBalanceEngine>());
+                services.AddSingleton<ResponsivenessGuardEngine>();
+                services.AddSingleton<IResponsivenessGuardEngine>(sp => sp.GetRequiredService<ResponsivenessGuardEngine>());
 
                 services.AddSingleton<CpuLimiter>();
                 services.AddSingleton<ICpuLimiter>(sp => sp.GetRequiredService<CpuLimiter>());
                 services.AddSingleton<CpuAffinityLimiter>();
 
-                services.AddSingleton<SmartTrimService>(sp => new SmartTrimService(
-                    sp.GetRequiredService<ILogger<SmartTrimService>>(), sp.GetRequiredService<IProcessMonitor>())
+                services.AddSingleton<MemoryTrimService>(sp => new MemoryTrimService(
+                    sp.GetRequiredService<ILogger<MemoryTrimService>>(), sp.GetRequiredService<IProcessMonitor>())
                 {
                     // PowerManager owns the Performance Mode state; resolved lazily, at the first check.
                     IsPerformanceModeActive = () => sp.GetRequiredService<PowerManager>().IsPerformanceModeActive
                 });
-                services.AddSingleton<ISmartTrimService>(sp => sp.GetRequiredService<SmartTrimService>());
+                services.AddSingleton<IMemoryTrimService>(sp => sp.GetRequiredService<MemoryTrimService>());
 
                 services.AddSingleton<PowerManager>();
                 services.AddSingleton<IPowerManager>(sp => sp.GetRequiredService<PowerManager>());
@@ -73,11 +73,11 @@ public class Program
                 services.AddSingleton<WatchdogService>();
                 services.AddSingleton<IWatchdogService>(sp => sp.GetRequiredService<WatchdogService>());
 
-                // Per-rule features the governor drives as matching processes start and exit.
+                // Per-rule features the orchestrator drives as matching processes start and exit.
                 services.AddSingleton<IRuleProcessAccess, Win32RuleProcessAccess>();
                 services.AddSingleton(TimeProvider.System);
                 services.AddSingleton<InstanceLimiter>();
-                services.AddSingleton<InstanceBalancer>();
+                services.AddSingleton<InstanceSpread>();
                 services.AddSingleton<StartupBoostService>();
 
                 services.AddSingleton<IProcessTuningNative, Win32ProcessTuning>();
@@ -91,18 +91,18 @@ public class Program
                         sp.GetRequiredService<IProcessMonitor>(),
                         sp.GetRequiredService<IRuleStore>());
                     // Re-applying a rule's CPU priority must not fight what holds it for a while: those put it back.
-                    var proBalance = sp.GetRequiredService<IProBalanceEngine>();
+                    var responsivenessGuard = sp.GetRequiredService<IResponsivenessGuardEngine>();
                     var startupBoost = sp.GetRequiredService<StartupBoostService>();
                     var foregroundBoost = sp.GetRequiredService<ForegroundBoostService>();
                     persistent.PriorityAccess = sp.GetRequiredService<IRuleProcessAccess>();
-                    persistent.PriorityHeld = pid => proBalance.RestrainedPids.Contains(pid) || startupBoost.IsBoosting(pid) || foregroundBoost.BoostedPid == pid;
+                    persistent.PriorityHeld = pid => responsivenessGuard.RestrainedPids.Contains(pid) || startupBoost.IsBoosting(pid) || foregroundBoost.BoostedPid == pid;
                     return persistent;
                 });
 
                 services.AddSingleton(sp => new LaunchPriorityService(sp.GetRequiredService<ILogger<LaunchPriorityService>>()));
 
-                services.AddSingleton<ProcessGovernor>();
-                services.AddSingleton<IProcessGovernor>(sp => sp.GetRequiredService<ProcessGovernor>());
+                services.AddSingleton<ProcessOrchestrator>();
+                services.AddSingleton<IProcessOrchestrator>(sp => sp.GetRequiredService<ProcessOrchestrator>());
                 
                 services.AddSingleton<ProcessController>();
                 services.AddSingleton<IProcessController>(sp => sp.GetRequiredService<ProcessController>());

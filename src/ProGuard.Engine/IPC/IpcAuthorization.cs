@@ -19,10 +19,10 @@ namespace ProGuard.Engine.IPC;
 /// terminating the System process or the engine) still apply.</item>
 /// <item>Anyone may read the Watchdog event log (GetLogs), whose notifications every desktop's UI shows. It holds
 /// process names and ids, which any user can list anyway, and the rules' own notification text.</item>
-/// <item>Anyone may Ping, GetStatus, read the process rules (GetRules), change the engine settings (SetSetting and the ProBalance, SmartTrim and
-/// IdleSaver commands), toggle Performance Mode and trim all working sets. These are the machine-wide preferences the
-/// UI shows on every desktop, as Process Lasso's GUI does. None of them reads or changes another user's data, and
-/// trimming everything is what SmartTrim does anyway once it is enabled.</item>
+/// <item>Anyone may Ping, GetStatus, read the process rules (GetRules), change the engine settings (SetSetting and the Responsiveness Guard, Memory Trim and
+/// Away Mode commands), toggle Performance Mode and trim all working sets. These are the machine-wide preferences the
+/// UI shows on every desktop. None of them reads or changes another user's data, and
+/// trimming everything is what Memory Trim does anyway once it is enabled.</item>
 /// <item>A process action is allowed only when the caller could do it themselves: their own token must be able to open
 /// the target with the access that action needs. This rules out other users' processes, elevated processes and
 /// protected processes.</item>
@@ -37,7 +37,7 @@ namespace ProGuard.Engine.IPC;
 /// preferences and the process list any user can see anyway.</item>
 /// <item>SaveSettings and SetPowerPlan are open to any user, like SetSetting and Performance Mode: they are the same
 /// machine-wide preferences, and a power plan the user picks is what Windows would let them pick in Power Options.
-/// A plan chosen this way wins over Performance Mode or IdleSaver (see <c>IPowerManager.SetActivePlan</c>).</item>
+/// A plan chosen this way wins over Performance Mode or Away Mode (see <c>IPowerManager.SetActivePlan</c>).</item>
 /// <item>SetPowerMode is open to any user too: it is the Windows power-mode slider, which every user may move in Windows'
 /// own settings.</item>
 /// <item>Anyone may save and delete process and Watchdog rules, as the unelevated UI must. The dispatcher then checks the
@@ -51,10 +51,10 @@ namespace ProGuard.Engine.IPC;
 /// <item>Clearing the action log (<see cref="CommandTypes.ClearActionLog"/>) is administrator-only: it is the record of
 /// what the engine did to every user's processes.</item>
 /// <item>The system timer resolution is administrator-only to change (<see cref="CommandTypes.SetTimerResolution"/>, and
-/// <see cref="AppSettings.SetTimerResolutionAtStartup"/> through SaveSettings or SetSetting): it is machine-wide, costs
+/// <see cref="AppSettings.TimerResolutionRequest"/> through SaveSettings or SetSetting): it is machine-wide, costs
 /// every user battery life, and the GlobalTimerResolutionRequests switch it can set lives under HKLM. Reading it
 /// (<see cref="CommandTypes.GetTimerResolution"/>) is open to anyone, as the rest of the System page is.</item>
-/// <item>Unparking cores while ProBalance restrains (<see cref="AppSettings.ProBalanceDisableCoreParking"/>) is
+/// <item>Unparking cores while Responsiveness Guard restrains (<see cref="AppSettings.ResponsivenessGuardDisableCoreParking"/>) is
 /// administrator-only: it rewrites the active power plan's processor settings for everyone.</item>
 /// <item>CPU tuning (<see cref="CommandTypes.SetCpuTuning"/>) is administrator-only too: it rewrites a power plan's core
 /// parking and frequency settings, which are machine-wide (Windows itself needs elevation to write them), and shows
@@ -80,11 +80,11 @@ public static class IpcAuthorization
 {
     private static readonly HashSet<string> UnrestrictedCommands = new(StringComparer.Ordinal)
     {
-        CommandTypes.EnableProBalance,
-        CommandTypes.DisableProBalance,
+        CommandTypes.EnableResponsivenessGuard,
+        CommandTypes.DisableResponsivenessGuard,
         CommandTypes.SetSensitivity,
-        CommandTypes.ConfigureIdleSaver,
-        CommandTypes.ConfigureSmartTrim,
+        CommandTypes.ConfigureAwayMode,
+        CommandTypes.ConfigureMemoryTrim,
         CommandTypes.EnablePerformanceMode,
         CommandTypes.DisablePerformanceMode,
         CommandTypes.SaveSettings,
@@ -165,9 +165,9 @@ public static class IpcAuthorization
     /// </summary>
     internal static readonly IReadOnlyList<string> AdministratorOnlySettings = new[]
     {
-        nameof(AppSettings.SetTimerResolutionAtStartup),
+        nameof(AppSettings.TimerResolutionRequest),
         // Rewrites the active power plan's hidden processor settings, machine-wide (powercfg needs elevation for it too).
-        nameof(AppSettings.ProBalanceDisableCoreParking),
+        nameof(AppSettings.ResponsivenessGuardDisableCoreParking),
     };
 
     /// <summary>
@@ -188,8 +188,8 @@ public static class IpcAuthorization
 
     private static string DescribeSetting(string setting) => setting switch
     {
-        nameof(AppSettings.SetTimerResolutionAtStartup) => "the system timer resolution",
-        nameof(AppSettings.ProBalanceDisableCoreParking) => "whether ProBalance unparks cores (it edits the power plan)",
+        nameof(AppSettings.TimerResolutionRequest) => "the system timer resolution",
+        nameof(AppSettings.ResponsivenessGuardDisableCoreParking) => "whether Responsiveness Guard unparks cores (it edits the power plan)",
         _ => System.Text.RegularExpressions.Regex.Replace(setting, "(?<=[a-z])(?=[A-Z])", " ").ToLowerInvariant(),
     };
 

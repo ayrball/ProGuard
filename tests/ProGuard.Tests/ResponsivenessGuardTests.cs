@@ -9,7 +9,7 @@ using ProGuard.Engine.Services.ProcessRules;
 
 namespace ProGuard.Tests;
 
-/// <summary>In-memory processes for ProBalance: priorities, affinities, I/O priorities, efficiency mode, parents and
+/// <summary>In-memory processes for Responsiveness Guard: priorities, affinities, I/O priorities, efficiency mode, parents and
 /// sessions without touching real PIDs.</summary>
 internal sealed class FakeProcessAccess : IProcessPriorityAccess
 {
@@ -71,10 +71,10 @@ internal sealed class FakeIdleSource : IUserIdleSource
 }
 
 /// <summary>
-/// Drives a <see cref="ProBalanceEngine"/> on a fake clock. <see cref="At"/> moves the clock to an absolute time
+/// Drives a <see cref="ResponsivenessGuardEngine"/> on a fake clock. <see cref="At"/> moves the clock to an absolute time
 /// and runs one evaluation, the way the 1 s poll would.
 /// </summary>
-internal sealed class ProBalanceHarness : IDisposable
+internal sealed class ResponsivenessGuardHarness : IDisposable
 {
     public long Now { get; set; }
     public double SystemCpu { get; set; } = 50;
@@ -85,15 +85,15 @@ internal sealed class ProBalanceHarness : IDisposable
     public FakeForegroundFallback Fallback { get; } = new();
     public Mock<IRuleStore> Store { get; } = new();
     public Mock<IProcessMonitor> Monitor { get; } = new();
-    public ProBalanceEngine Engine { get; }
+    public ResponsivenessGuardEngine Engine { get; }
 
-    public ProBalanceHarness()
+    public ResponsivenessGuardHarness()
     {
         var monitor = Monitor;
         monitor.Setup(m => m.GetAllProcesses()).Returns(() => Processes.ToList());
         monitor.Setup(m => m.GetProcess(It.IsAny<int>())).Returns((int pid) => Processes.FirstOrDefault(p => p.Pid == pid));
         monitor.Setup(m => m.GetForegroundPid()).Returns(() => ForegroundPid);
-        Engine = new ProBalanceEngine(NullLogger<ProBalanceEngine>.Instance, monitor.Object, Store.Object,
+        Engine = new ResponsivenessGuardEngine(NullLogger<ResponsivenessGuardEngine>.Instance, monitor.Object, Store.Object,
             () => SystemCpu, Access, () => Now, IdleSource, Fallback);
     }
 
@@ -131,51 +131,51 @@ internal sealed class ProBalanceHarness : IDisposable
     public void Dispose() => Engine.Dispose();
 }
 
-public class ProBalanceTests
+public class ResponsivenessGuardTests
 {
-    private static ProBalanceEngine NewEngine() =>
-        new(new Mock<ILogger<ProBalanceEngine>>().Object, new Mock<IProcessMonitor>().Object, new Mock<IRuleStore>().Object);
+    private static ResponsivenessGuardEngine NewEngine() =>
+        new(new Mock<ILogger<ResponsivenessGuardEngine>>().Object, new Mock<IProcessMonitor>().Object, new Mock<IRuleStore>().Object);
 
     [Fact]
-    public void Defaults_MatchProcessLassoIni()
+    public void Defaults_AreTheDocumentedOnes()
     {
         using var engine = NewEngine();
 
-        Assert.Equal(10.0, engine.TotalProcessorUsageBeforeRestraint);
-        Assert.Equal(5.0, engine.PerProcessUsageBeforeRestraint);
-        Assert.Equal(900, engine.TimeOverQuotaBeforeRestraint);
-        Assert.Equal(2.0, engine.PerProcessUsageForRestore);
-        Assert.Equal(4200, engine.MinimumTimeOfRestraint);
-        Assert.Equal(0, engine.MaximumTimeOfRestraint);
-        Assert.True(engine.TameOnlyNormal);
-        Assert.False(engine.LowerToIdleInsteadOfBelowNormal);
-        Assert.True(engine.ExcludeForegroundProcesses);
-        Assert.True(engine.ExcludeChildrenOfForeground);
-        Assert.True(engine.ExcludeServices);
-        Assert.False(engine.RestrainByAffinity);
-        Assert.Equal(0, engine.RestraintAffinity);
-        Assert.False(engine.ProBalanceDropOneRandomCore);
-        Assert.False(engine.LowerIOPriorityDuringRestraint);
-        Assert.False(engine.UseEfficiencyMode);
-        Assert.False(engine.DoNotLowerPriorityClass);
-        Assert.False(engine.DisableProBalanceWhenSysIdle);
-        Assert.Equal(30000, engine.DisableProBalanceIfSysIdleThisManyMS);
+        Assert.Equal(10.0, engine.RestrainAtSystemCpuPercent);
+        Assert.Equal(5.0, engine.RestrainAtProcessCpuPercent);
+        Assert.Equal(900, engine.RestrainAfterMs);
+        Assert.Equal(2.0, engine.RestoreAtProcessCpuPercent);
+        Assert.Equal(4200, engine.MinRestraintMs);
+        Assert.Equal(0, engine.MaxRestraintMs);
+        Assert.True(engine.RestrainOnlyNormalPriority);
+        Assert.False(engine.LowerToIdle);
+        Assert.True(engine.ExemptForeground);
+        Assert.True(engine.ExemptForegroundChildren);
+        Assert.True(engine.ExemptServices);
+        Assert.False(engine.RestrictAffinity);
+        Assert.Equal(0, engine.RestrictedAffinity);
+        Assert.False(engine.DropOneRandomCore);
+        Assert.False(engine.LowerIoPriority);
+        Assert.False(engine.EfficiencyModeWhileRestrained);
+        Assert.False(engine.KeepPriorityClass);
+        Assert.False(engine.PauseWhenIdle);
+        Assert.Equal(30000, engine.PauseAfterIdleMs);
     }
 
     [Fact]
     public void RestraintOptionDefaults_AreAllOff_InOptionsAndSettings()
     {
-        Assert.Equal(new ProBalanceRestraintOptions(), ProBalanceRestraintOptions.FromSettings(new AppSettings()));
-        var o = new ProBalanceRestraintOptions();
-        Assert.False(o.RestrainByAffinity || o.ProBalanceDropOneRandomCore || o.LowerIOPriorityDuringRestraint
-                     || o.UseEfficiencyMode || o.DoNotLowerPriorityClass || o.DisableProBalanceWhenSysIdle);
-        Assert.Equal(30000, o.DisableProBalanceIfSysIdleThisManyMS);
+        Assert.Equal(new ResponsivenessGuardRestraintOptions(), ResponsivenessGuardRestraintOptions.FromSettings(new AppSettings()));
+        var o = new ResponsivenessGuardRestraintOptions();
+        Assert.False(o.RestrictAffinity || o.DropOneRandomCore || o.LowerIoPriority
+                     || o.EfficiencyModeWhileRestrained || o.KeepPriorityClass || o.PauseWhenIdle);
+        Assert.Equal(30000, o.PauseAfterIdleMs);
     }
 
     [Fact]
     public void Defaults_TouchOnlyThePriorityClass()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 50);
 
         h.At(0);
@@ -188,16 +188,16 @@ public class ProBalanceTests
     }
 
     [Fact]
-    public void SetSensitivity_Level5_IsProcessLassoDefaults()
+    public void SetSensitivity_Level5_IsTheDefaultTiming()
     {
         using var engine = NewEngine();
         engine.SetSensitivity(1);
         engine.SetSensitivity(5);
 
-        Assert.Equal(10.0, engine.TotalProcessorUsageBeforeRestraint);
-        Assert.Equal(5.0, engine.PerProcessUsageBeforeRestraint);
-        Assert.Equal(900, engine.TimeOverQuotaBeforeRestraint);
-        Assert.Equal(2.0, engine.PerProcessUsageForRestore);
+        Assert.Equal(10.0, engine.RestrainAtSystemCpuPercent);
+        Assert.Equal(5.0, engine.RestrainAtProcessCpuPercent);
+        Assert.Equal(900, engine.RestrainAfterMs);
+        Assert.Equal(2.0, engine.RestoreAtProcessCpuPercent);
     }
 
     [Fact]
@@ -212,9 +212,9 @@ public class ProBalanceTests
     [Fact]
     public void ExcludeProcess_ExemptsByName_AndRemoveExclusionLiftsIt()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 50, name: "game");
-        h.Engine.TimeOverQuotaBeforeRestraint = 0;
+        h.Engine.RestrainAfterMs = 0;
 
         h.Engine.ExcludeProcess("game.exe");
         h.At(0);
@@ -226,12 +226,12 @@ public class ProBalanceTests
     }
 
     [Fact]
-    public void RuleExcludeFromProBalance_IsRespected()
+    public void RuleExcludeFromResponsivenessGuard_IsRespected()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 50, name: "render");
-        h.Store.Setup(s => s.GetProcessRule("render")).Returns(new ProcessRule { ExcludeFromProBalance = true });
-        h.Engine.TimeOverQuotaBeforeRestraint = 0;
+        h.Store.Setup(s => s.GetProcessRule("render")).Returns(new ProcessRule { ExcludeFromResponsivenessGuard = true });
+        h.Engine.RestrainAfterMs = 0;
 
         h.At(0);
         h.At(1000);
@@ -249,7 +249,7 @@ public class ProBalanceTests
     [InlineData(ProcessPriorityClass.Idle)]
     public void TameOnlyNormal_LeavesNonNormalProcessesAlone(ProcessPriorityClass priority)
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 50, priority: priority);
 
         h.At(0);
@@ -267,9 +267,9 @@ public class ProBalanceTests
     [InlineData(ProcessPriorityClass.Idle, false)]
     public void TameOnlyNormalOff_RestrainsAnythingAboveTheTarget(ProcessPriorityClass priority, bool restrained)
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 50, priority: priority);
-        h.Engine.TameOnlyNormal = false;
+        h.Engine.RestrainOnlyNormalPriority = false;
 
         h.At(0);
         h.At(1000);
@@ -280,9 +280,9 @@ public class ProBalanceTests
     [Fact]
     public void LowerToIdleInsteadOfBelowNormal_RestrainsToIdle()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 50);
-        h.Engine.LowerToIdleInsteadOfBelowNormal = true;
+        h.Engine.LowerToIdle = true;
 
         h.At(0);
         h.At(1000);
@@ -293,7 +293,7 @@ public class ProBalanceTests
     [Fact]
     public void ForegroundProcess_IsNeverRestrained()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 90);
         h.ForegroundPid = 100;
 
@@ -305,7 +305,7 @@ public class ProBalanceTests
     [Fact]
     public void ForegroundFlagFromMonitor_IsHonouredWhenForegroundPidUnknown()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 90).IsForeground = true;
 
         for (var t = 0; t <= 5000; t += 1000) h.At(t);
@@ -316,7 +316,7 @@ public class ProBalanceTests
     [Fact]
     public void ChildOfForeground_IsExempt_ByParentPidFromMonitorOrLookup()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(10, cpu: 1);                        // foreground app
         h.Add(100, cpu: 50, parent: 10);          // parent known from the snapshot
         h.Add(101, cpu: 50);                      // parent only known via lookup
@@ -335,11 +335,11 @@ public class ProBalanceTests
     [Fact]
     public void ChildOfForeground_IsRestrained_WhenExclusionOff()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(10, cpu: 1);
         h.Add(100, cpu: 50, parent: 10);
         h.ForegroundPid = 10;
-        h.Engine.ExcludeChildrenOfForeground = false;
+        h.Engine.ExemptForegroundChildren = false;
 
         h.At(0);
         h.At(1000);
@@ -352,9 +352,9 @@ public class ProBalanceTests
     [InlineData(false, true)]
     public void Session0Services_AreExemptUnlessExcludeServicesOff(bool excludeServices, bool restrained)
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 50, session: 0);
-        h.Engine.ExcludeServices = excludeServices;
+        h.Engine.ExemptServices = excludeServices;
 
         h.At(0);
         h.At(1000);
@@ -367,7 +367,7 @@ public class ProBalanceTests
     [Fact]
     public void ReleaseRestraint_RestoresImmediately()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 50);
         h.At(0);
         h.At(1000);
@@ -382,7 +382,7 @@ public class ProBalanceTests
     [Fact]
     public void UserChangeDuringRestraint_IsNotOverwritten()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         var hog = h.Add(100, cpu: 50);
         h.At(0);
         h.At(1000);
@@ -399,7 +399,7 @@ public class ProBalanceTests
     [Fact]
     public void UserChangeDuringRestraint_IsNotOverwritten_WhenDisabled()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 50);
         h.At(0);
         h.At(1000);
@@ -413,7 +413,7 @@ public class ProBalanceTests
     [Fact]
     public void Disabling_RestoresEverything()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 50);
         h.Add(101, cpu: 50);
         h.At(0);
@@ -433,7 +433,7 @@ public class ProBalanceTests
     [Fact]
     public void ExitedProcess_IsForgottenWithoutWritingItsPid()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 50);
         h.At(0);
         h.At(1000);
@@ -449,7 +449,7 @@ public class ProBalanceTests
     [Fact]
     public async Task EvaluatesAfterEachProcessRefresh_OnlyWhileStarted()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 50);
         void Refresh(long ms) { h.Now = ms; h.Monitor.Raise(m => m.Refreshed += null, EventArgs.Empty); }
 
@@ -472,16 +472,16 @@ public class ProBalanceTests
     [Fact]
     public void RestraintAndRestore_AreBothLogged()
     {
-        using var h = new ProBalanceHarness();
+        using var h = new ResponsivenessGuardHarness();
         var hog = h.Add(100, cpu: 50);
         h.At(0);
         h.At(1000);
         hog.CpuPercent = 0;
         h.At(6000);
 
-        h.Store.Verify(s => s.LogProBalanceActionAsync(It.Is<ProBalanceAction>(a => !a.IsRestored && a.Pid == 100
+        h.Store.Verify(s => s.LogResponsivenessGuardActionAsync(It.Is<ResponsivenessGuardAction>(a => !a.IsRestored && a.Pid == 100
             && a.NewPriority == (int)ProcessPriorityClass.BelowNormal)), Times.Once);
-        h.Store.Verify(s => s.LogProBalanceActionAsync(It.Is<ProBalanceAction>(a => a.IsRestored && a.Pid == 100
+        h.Store.Verify(s => s.LogResponsivenessGuardActionAsync(It.Is<ResponsivenessGuardAction>(a => a.IsRestored && a.Pid == 100
             && a.NewPriority == (int)ProcessPriorityClass.Normal)), Times.Once);
     }
 }

@@ -83,16 +83,16 @@ internal sealed class ProfileHarness
                 T.Store.Object.UpdateSettings(settings);
             });
 
-        var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, T.Monitor, T.SmartTrim.Object, T.Power.Object, T.ProBalance.Object,
+        var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, T.Monitor, T.MemoryTrim.Object, T.Power.Object, T.ResponsivenessGuard.Object,
             foregroundBoost: T.ForegroundBoost, timerResolution: T.TimerResolution);
-        var rules = new RuleService(NullLogger<RuleService>.Instance, T.Store.Object, T.Monitor, T.CpuLimiter.Object, T.ProBalance.Object,
+        var rules = new RuleService(NullLogger<RuleService>.Instance, T.Store.Object, T.Monitor, T.CpuLimiter.Object, T.ResponsivenessGuard.Object,
             T.Access.Object, T.Manual, launchPriorities: new LaunchPriorityService(registry: T.LaunchRegistry));
         var actions = new ProcessActionService(NullLogger<ProcessActionService>.Instance, T.Tuning, T.Monitor, T.Controller.Object);
         var thin = new ThinClientCommands(NullLogger<ThinClientCommands>.Instance, T.Snapshots, actions, rules,
             new ActivityFeed(T.Store.Object, T.Manual, T.WatchdogEvents), T.Manual, T.Store.Object, T.Power.Object, T.Monitor, T.Tuning);
         var profiles = new ConfigProfileService(NullLogger<ConfigProfileService>.Instance, T.Store.Object, Profiles, rules, applier,
             T.Monitor, T.Power.Object, T.Tuning, T.Manual);
-        Dispatcher = new IpcDispatcher(T.Log, T.Store.Object, applier, T.ProBalance.Object, T.Power.Object, T.SmartTrim.Object,
+        Dispatcher = new IpcDispatcher(T.Log, T.Store.Object, applier, T.ResponsivenessGuard.Object, T.Power.Object, T.MemoryTrim.Object,
             T.CpuLimiter.Object, T.Controller.Object, T.Monitor, T.WatchdogEvents, thin, timerResolution: T.TimerResolution, profiles: profiles);
     }
 
@@ -151,10 +151,10 @@ public class ConfigProfileTests
     {
         var h = new ProfileHarness();
         h.AddRule("game.exe", r => { r.PriorityClass = (int)ProcessPriorityClass.High; r.AffinityMask = 0x3; r.IoPriority = 3; r.EfficiencyMode = false; });
-        h.AddRule("chrome", r => { r.CpuLimitPercent = 40; r.ExcludeFromProBalance = true; });
+        h.AddRule("chrome", r => { r.CpuLimitPercent = 40; r.ExcludeFromResponsivenessGuard = true; });
         h.AddWatchdog("leaky.exe", WatchdogAction.TrimWorkingSet, "continuous");
         h.AddWatchdog("hog.exe", WatchdogAction.SetAffinity, "0x1");
-        h.Settings(s => { s.ProBalanceSensitivity = 8; s.SmartTrimEnabled = true; s.SmartTrimExclusions = "game.exe"; s.IdlePowerPlanGuid = Powrprof.PowerSaver.ToString(); });
+        h.Settings(s => { s.ResponsivenessGuardSensitivity = 8; s.MemoryTrimEnabled = true; s.MemoryTrimExclusions = "game.exe"; s.IdlePowerPlanGuid = Powrprof.PowerSaver.ToString(); });
 
         var exported = h.Export();
         var file = ConfigDocuments.Serialize(exported);
@@ -165,7 +165,7 @@ public class ConfigProfileTests
         // Somebody wipes everything.
         h.T.Rules.Clear();
         h.T.WatchdogRules.Clear();
-        h.Settings(s => { s.ProBalanceSensitivity = 3; s.SmartTrimEnabled = false; s.SmartTrimExclusions = null; s.IdlePowerPlanGuid = null; });
+        h.Settings(s => { s.ResponsivenessGuardSensitivity = 3; s.MemoryTrimEnabled = false; s.MemoryTrimExclusions = null; s.IdlePowerPlanGuid = null; });
 
         var preview = h.Data<ConfigPreviewDto>(h.Admin(CommandTypes.ImportConfig, new ImportConfigArgument { Document = file, Preview = true }));
         Assert.False(preview.Applied);
@@ -173,7 +173,7 @@ public class ConfigProfileTests
         Assert.Empty(h.T.Rules); // a preview changes nothing
         Assert.Contains(preview.Changes, c => c.Kind == ConfigChangeKind.Added && c.Area == "Process rule" && c.Name == "game.exe");
         Assert.Contains(preview.Changes, c => c.Kind == ConfigChangeKind.Added && c.Area == "Watchdog rule" && c.Name == "leaky.exe");
-        Assert.Contains(preview.Changes, c => c.Area == "Setting" && c.Name == "ProBalance sensitivity" && c.Detail == "3 → 8");
+        Assert.Contains(preview.Changes, c => c.Area == "Setting" && c.Name == "Responsiveness Guard sensitivity" && c.Detail == "3 → 8");
         Assert.Empty(preview.MachineSpecific);
 
         var applied = h.Data<ConfigPreviewDto>(h.Admin(CommandTypes.ImportConfig, new ImportConfigArgument { Document = file }));
@@ -182,7 +182,7 @@ public class ConfigProfileTests
 
         var again = h.Export();
         Assert.Equal(Comparable(exported), Comparable(again));
-        Assert.Equal(8, h.T.Stored.ProBalanceSensitivity);
+        Assert.Equal(8, h.T.Stored.ResponsivenessGuardSensitivity);
         Assert.Equal(1, h.T.Stored.Id); // the stored settings row keeps its key
         Assert.NotNull(h.Profiles.Named(ConfigProfileService.BeforeImport));
     }
@@ -263,7 +263,7 @@ public class ConfigProfileTests
         doc.ProcessRules.Add(new ProcessRuleDto { ProcessName = "a.exe", CpuLimitPercent = 150 });
         doc.ProcessRules.Add(new ProcessRuleDto { ProcessName = "b.exe" });
         doc.ProcessRules.Add(new ProcessRuleDto { ProcessName = "B" });
-        doc.Settings.ProBalanceSensitivity = 42;
+        doc.Settings.ResponsivenessGuardSensitivity = 42;
         var file = ConfigDocuments.Serialize(doc);
 
         var preview = h.Data<ConfigPreviewDto>(h.Admin(CommandTypes.ImportConfig, new ImportConfigArgument { Document = file, Preview = true }));
@@ -286,13 +286,13 @@ public class ConfigProfileTests
         var h = new ProfileHarness();
         h.AddRule("game.exe", r => r.PriorityClass = (int)ProcessPriorityClass.High);
         h.AddWatchdog("hog.exe");
-        h.Settings(s => s.ProBalanceSensitivity = 9);
+        h.Settings(s => s.ResponsivenessGuardSensitivity = 9);
         var gaming = h.SaveProfile("Gaming");
 
         h.T.Rules.Clear();
         h.AddRule("backup.exe", r => r.PriorityClass = (int)ProcessPriorityClass.Idle);
         h.T.WatchdogRules.Clear();
-        h.Settings(s => s.ProBalanceSensitivity = 2);
+        h.Settings(s => s.ResponsivenessGuardSensitivity = 2);
         var work = Comparable(h.Export());
 
         var switched = h.Data<ConfigPreviewDto>(h.Admin(CommandTypes.SwitchProfile, new SwitchProfileArgument { Id = gaming }));
@@ -301,8 +301,8 @@ public class ConfigProfileTests
         Assert.Equal(1, h.Replacements); // one replacement, not a rule at a time
         Assert.Equal(new[] { "game.exe" }, h.T.Rules.Select(r => r.ProcessName));
         Assert.Equal(new[] { "hog.exe" }, h.T.WatchdogRules.Select(r => r.TargetProcessName));
-        Assert.Equal(9, h.T.Stored.ProBalanceSensitivity);
-        h.T.ProBalance.Verify(p => p.SetSensitivity(9)); // applied through the SettingsApplier
+        Assert.Equal(9, h.T.Stored.ResponsivenessGuardSensitivity);
+        h.T.ResponsivenessGuard.Verify(p => p.SetSensitivity(9)); // applied through the SettingsApplier
         Assert.Contains(switched.Changes, c => c.Kind == ConfigChangeKind.Removed && c.Name == "backup.exe");
 
         // What was in force was kept, and switching to it undoes the switch.
@@ -314,7 +314,7 @@ public class ConfigProfileTests
 
         h.Data<ConfigPreviewDto>(h.Admin(CommandTypes.SwitchProfile, new SwitchProfileArgument { Id = before.Id }));
         Assert.Equal(work, Comparable(h.Export()));
-        Assert.Equal(2, h.T.Stored.ProBalanceSensitivity);
+        Assert.Equal(2, h.T.Stored.ResponsivenessGuardSensitivity);
 
         // ...and that switch saved Gaming's state as the new "Before switch", so undo works both ways.
         var undoAgain = h.Data<List<ConfigProfileDto>>(h.Admin(CommandTypes.ListProfiles)).Single(p => p.Name == ConfigProfileService.BeforeSwitch);
@@ -393,13 +393,13 @@ public class ConfigProfileTests
         var h = new ProfileHarness();
         var doc = h.Export();
         doc.ProcessRules.Add(new ProcessRuleDto { ProcessName = "game.exe", PriorityClass = (int)ProcessPriorityClass.AboveNormal });
-        doc.Settings.SmartTrimEnabled = true;
+        doc.Settings.MemoryTrimEnabled = true;
 
         var result = h.Data<ConfigPreviewDto>(h.Send(Standard, CommandTypes.ImportConfig, new ImportConfigArgument { Document = ConfigDocuments.Serialize(doc) }));
 
         Assert.True(result.Applied);
         Assert.Single(h.T.Rules);
-        Assert.True(h.T.Stored.SmartTrimEnabled);
+        Assert.True(h.T.Stored.MemoryTrimEnabled);
     }
 
     [Fact]
@@ -450,29 +450,29 @@ public class ConfigProfileTests
     {
         var h = new ProfileHarness();
         h.AddRule("game.exe", r => r.PriorityClass = (int)ProcessPriorityClass.RealTime);
-        h.Settings(s => s.SmartTrimEnabled = true);
+        h.Settings(s => s.MemoryTrimEnabled = true);
         var profile = h.SaveProfile("Trim off");
-        h.Settings(s => s.SmartTrimEnabled = false);
+        h.Settings(s => s.MemoryTrimEnabled = false);
 
         var result = h.Send(Standard, CommandTypes.SwitchProfile, new SwitchProfileArgument { Id = profile });
 
         Assert.True(result.Success, result.Error);
-        Assert.True(h.T.Stored.SmartTrimEnabled);
+        Assert.True(h.T.Stored.MemoryTrimEnabled);
     }
 
     [Fact]
     public void StandardUser_CantChangeAdministratorOnlySettings_ThroughAProfile()
     {
         var h = new ProfileHarness();
-        h.Settings(s => s.SetTimerResolutionAtStartup = 5000);
+        h.Settings(s => s.TimerResolutionRequest = 5000);
         var profile = h.SaveProfile("Fine timer");
-        h.Settings(s => s.SetTimerResolutionAtStartup = 0);
+        h.Settings(s => s.TimerResolutionRequest = 0);
 
         var result = h.Send(Standard, CommandTypes.SwitchProfile, new SwitchProfileArgument { Id = profile });
 
         Assert.False(result.Success);
         Assert.Contains("timer resolution", result.Error);
-        Assert.Equal(0, h.T.Stored.SetTimerResolutionAtStartup);
+        Assert.Equal(0, h.T.Stored.TimerResolutionRequest);
         Assert.Equal(0, h.Replacements);
     }
 
@@ -493,7 +493,7 @@ public class ConfigProfileTests
         doc.ProcessRules.Add(new ProcessRuleDto { ProcessName = "game.exe", AffinityMask = 0xF0, CpuSetIds = "256,257", PowerProfileGuid = Ultimate.ToString(), PriorityClass = (int)ProcessPriorityClass.High });
         doc.ProcessRules.Add(new ProcessRuleDto { ProcessName = "ok.exe", AffinityMask = 0x3, CpuSetIds = "" });
         doc.WatchdogRules.Add(new WatchdogRuleDto { TargetProcessName = "hog.exe", ThresholdValue = 50, ActionType = WatchdogResponse.SetAffinity, ActionArgument = "0x100" });
-        doc.Settings.ProBalanceRestraintAffinity = 0xFF00;
+        doc.Settings.ResponsivenessGuardRestraintAffinity = 0xFF00;
         doc.Settings.PerformanceModePlanGuid = Ultimate.ToString();
         doc.Settings.IdlePowerPlanGuid = Powrprof.PowerSaver.ToString(); // installed here: kept
         var file = ConfigDocuments.Serialize(doc);
@@ -505,7 +505,7 @@ public class ConfigProfileTests
         Assert.Contains(flags, f => f.Where == "Process rule game.exe" && f.Setting == "CPU Sets" && f.Value == "256,257" && f.Reason.Contains("laid out differently"));
         Assert.Contains(flags, f => f.Where == "Process rule game.exe" && f.Setting == "Power plan" && f.Value.StartsWith("Ultimate Performance"));
         Assert.Contains(flags, f => f.Where == "Watchdog rule hog.exe" && f.Outcome.Contains("turned off"));
-        Assert.Contains(flags, f => f.Where == "Settings" && f.Setting == "ProBalance restraint cores");
+        Assert.Contains(flags, f => f.Where == "Settings" && f.Setting == "Responsiveness Guard restraint cores");
         Assert.Contains(flags, f => f.Where == "Settings" && f.Setting == "Performance Mode plan" && f.Outcome.Contains("High performance"));
         Assert.Equal(6, flags.Count); // ok.exe's mask fits and its empty CPU Set list travels; the installed idle plan is kept
         Assert.True(preview.CanApply);
@@ -518,7 +518,7 @@ public class ConfigProfileTests
         Assert.Equal((int)ProcessPriorityClass.High, game.PriorityClass); // the rest of the rule is kept
         Assert.Equal(0x3, h.T.Rules.Single(r => r.ProcessName == "ok.exe").AffinityMask);
         Assert.False(h.T.WatchdogRules.Single().IsEnabled);
-        Assert.Equal(0, h.T.Stored.ProBalanceRestraintAffinity);
+        Assert.Equal(0, h.T.Stored.ResponsivenessGuardRestraintAffinity);
         Assert.Null(h.T.Stored.PerformanceModePlanGuid);
         Assert.Equal(Powrprof.PowerSaver.ToString(), h.T.Stored.IdlePowerPlanGuid);
     }
@@ -587,36 +587,36 @@ public class ConfigProfileTests
             store.AddWatchdogRule(new WatchdogRule { TargetProcessName = "old.exe", ThresholdValue = 1 });
 
             var settings = store.GetSettings().Clone();
-            settings.ProBalanceSensitivity = 9;
+            settings.ResponsivenessGuardSensitivity = 9;
             store.ReplaceConfiguration(
                 new[] { new ProcessRule { ProcessName = "new.exe", PriorityClass = 128 }, new ProcessRule { ProcessName = "two.exe" } },
                 new[] { new WatchdogRule { TargetProcessName = "new.exe", ThresholdValue = 2 } },
                 settings);
 
             Assert.Equal(new[] { "new.exe", "two.exe" }, store.GetProcessRules().Select(r => r.ProcessName).OrderBy(n => n));
-            Assert.Equal(9, store.GetSettings().ProBalanceSensitivity);
+            Assert.Equal(9, store.GetSettings().ResponsivenessGuardSensitivity);
             using (var db = new TempDbContext(path))
             {
                 Assert.Equal(2, db.ProcessRules.Count());
                 Assert.Equal("new.exe", db.WatchdogRules.Single().TargetProcessName);
-                Assert.Equal(9, db.Settings.Single().ProBalanceSensitivity);
+                Assert.Equal(9, db.Settings.Single().ResponsivenessGuardSensitivity);
             }
 
             // A rule the database refuses (no name: NOT NULL) part-way through: nothing changes, on disk or in memory.
             var worse = settings.Clone();
-            worse.ProBalanceSensitivity = 1;
+            worse.ResponsivenessGuardSensitivity = 1;
             Assert.ThrowsAny<Exception>(() => store.ReplaceConfiguration(
                 new[] { new ProcessRule { ProcessName = "third.exe" }, new ProcessRule { ProcessName = null! } },
                 Array.Empty<WatchdogRule>(), worse));
 
             Assert.Equal(new[] { "new.exe", "two.exe" }, store.GetProcessRules().Select(r => r.ProcessName).OrderBy(n => n));
             Assert.Single(store.GetWatchdogRules());
-            Assert.Equal(9, store.GetSettings().ProBalanceSensitivity);
+            Assert.Equal(9, store.GetSettings().ResponsivenessGuardSensitivity);
             using (var db = new TempDbContext(path))
             {
                 Assert.Equal(2, db.ProcessRules.Count());
                 Assert.Single(db.WatchdogRules);
-                Assert.Equal(9, db.Settings.Single().ProBalanceSensitivity);
+                Assert.Equal(9, db.Settings.Single().ResponsivenessGuardSensitivity);
             }
         });
     }

@@ -7,74 +7,74 @@ public class AppSettings
     [Key]
     public int Id { get; set; }
     
-    // ProBalance
-    public bool ProBalanceEnabled { get; set; } = true;
-    public int ProBalanceSensitivity { get; set; } = 5;
-    public double ProBalanceCpuThreshold { get; set; } = 25.0;
-    public double ProBalanceRecoveryThreshold { get; set; } = 10.0;
-    // Optional restraint actions ([OutOfControlProcessRestraint], see ProBalanceRestraintOptions). All off, as in Process Lasso.
-    /// <summary>[RestrainByAffinity] Also restrict a restrained process to <see cref="ProBalanceRestraintAffinity"/>.</summary>
-    public bool ProBalanceRestrainByAffinity { get; set; } = false;
-    /// <summary>[RestraintAffinity] CPU mask for <see cref="ProBalanceRestrainByAffinity"/>; 0 = none chosen.</summary>
-    public long ProBalanceRestraintAffinity { get; set; } = 0;
-    /// <summary>[ProBalanceDropOneRandomCore] Restrict affinity by removing one random CPU instead.</summary>
-    public bool ProBalanceDropOneRandomCore { get; set; } = false;
-    /// <summary>[LowerIOPriorityDuringRestraint] I/O priority Low while restrained.</summary>
-    public bool ProBalanceLowerIoPriority { get; set; } = false;
-    /// <summary>[UseEfficiencyMode] EcoQoS while restrained.</summary>
-    public bool ProBalanceUseEfficiencyMode { get; set; } = false;
-    /// <summary>[DoNotLowerPriorityClass] Restrain only through the actions above.</summary>
-    public bool ProBalanceDoNotLowerPriorityClass { get; set; } = false;
-    /// <summary>[DisableProBalanceWhenSysIdle] Pause while the user is idle.</summary>
-    public bool ProBalanceDisableWhenSysIdle { get; set; } = false;
-    /// <summary>[DisableProBalanceIfSysIdleThisManyMS] 30000.</summary>
-    public int ProBalanceDisableIfSysIdleMs { get; set; } = 30000;
+    // Responsiveness Guard
+    public bool ResponsivenessGuardEnabled { get; set; } = true;
+    public int ResponsivenessGuardSensitivity { get; set; } = 5;
+    public double ResponsivenessGuardCpuThreshold { get; set; } = 25.0;
+    public double ResponsivenessGuardRecoveryThreshold { get; set; } = 10.0;
+    // Optional restraint actions (see ResponsivenessGuardRestraintOptions). All off by default.
+    /// <summary>Also restrict a restrained process to <see cref="ResponsivenessGuardRestraintAffinity"/>.</summary>
+    public bool ResponsivenessGuardRestrainByAffinity { get; set; } = false;
+    /// <summary>CPU mask for <see cref="ResponsivenessGuardRestrainByAffinity"/>; 0 = none chosen.</summary>
+    public long ResponsivenessGuardRestraintAffinity { get; set; } = 0;
+    /// <summary>Restrict affinity by removing one random CPU instead.</summary>
+    public bool ResponsivenessGuardDropOneRandomCore { get; set; } = false;
+    /// <summary>I/O priority Low while restrained.</summary>
+    public bool ResponsivenessGuardLowerIoPriority { get; set; } = false;
+    /// <summary>EcoQoS while restrained.</summary>
+    public bool ResponsivenessGuardUseEfficiencyMode { get; set; } = false;
+    /// <summary>Restrain only through the actions above.</summary>
+    public bool ResponsivenessGuardDoNotLowerPriorityClass { get; set; } = false;
+    /// <summary>Pause while the user is idle.</summary>
+    public bool ResponsivenessGuardDisableWhenSysIdle { get; set; } = false;
+    /// <summary>How long the user must be idle before the pause, in ms.</summary>
+    public int ResponsivenessGuardDisableIfSysIdleMs { get; set; } = 30000;
     /// <summary>
-    /// [OocDisableCoreParkingWhileIn] While any process is restrained, set the active plan's core parking minimum to
+    /// While any process is restrained, set the active plan's core parking minimum to
     /// 100 % (no parked cores), and put it back afterwards. Administrators only: it edits a machine-wide power plan.
     /// </summary>
-    public bool ProBalanceDisableCoreParking { get; set; } = false;
+    public bool ResponsivenessGuardDisableCoreParking { get; set; } = false;
     
-    /// <summary>Raise the foreground process from Normal to Above Normal while it has focus (ForegroundBoostService). Off by default, as in Process Lasso.</summary>
+    /// <summary>Raise the foreground process from Normal to Above Normal while it has focus (ForegroundBoostService). Off by default.</summary>
     public bool ForegroundBoostEnabled { get; set; } = false;
 
-    // SmartTrim. Defaults are Process Lasso's [MemoryManagement] ones (prolasso.ini key in brackets).
-    public bool SmartTrimEnabled { get; set; } = false;
-    /// <summary>[SmartTrimIntervalMins] 15.</summary>
-    public int SmartTrimIntervalSeconds { get; set; } = 900;
-    /// <summary>[MinimumProcessWSSInMb] Only processes with at least this working set are trimmed.</summary>
-    public long SmartTrimMemoryThresholdMB { get; set; } = 196;
-    /// <summary>[SmartTrimAutoMinimumRAMLoad] Periodic trims only run while memory load is at least this percent.</summary>
-    public int SmartTrimMinimumRamLoadPercent { get; set; } = 65;
-    /// <summary>Process names SmartTrim never trims, separated by commas, semicolons or new lines.</summary>
-    public string? SmartTrimExclusions { get; set; }
+    // Memory Trim
+    public bool MemoryTrimEnabled { get; set; } = false;
+    /// <summary>Time between periodic trims; 15 minutes by default.</summary>
+    public int MemoryTrimIntervalSeconds { get; set; } = 900;
+    /// <summary>Only processes with at least this working set are trimmed.</summary>
+    public long MemoryTrimMemoryThresholdMB { get; set; } = 196;
+    /// <summary>Periodic trims only run while memory load is at least this percent.</summary>
+    public int MemoryTrimMinimumRamLoadPercent { get; set; } = 65;
+    /// <summary>Process names Memory Trim never trims, separated by commas, semicolons or new lines.</summary>
+    public string? MemoryTrimExclusions { get; set; }
     /// <summary>Also log the passes that find nothing to do.</summary>
-    public bool SmartTrimLogNoAction { get; set; } = false;
+    public bool MemoryTrimLogNoAction { get; set; } = false;
     /// <summary>Purge the standby list when free RAM drops below <see cref="StandbyPurgeFreeRamThresholdMB"/>.</summary>
     public bool StandbyPurgeEnabled { get; set; } = false;
-    /// <summary>[ClearStandbyFreeRAMThresholdMB] 1024.</summary>
+    /// <summary>Free RAM below which the standby list is purged; 1024 MB by default.</summary>
     public long StandbyPurgeFreeRamThresholdMB { get; set; } = 1024;
-    /// <summary>Only purge automatically while Performance Mode is on (Process Lasso's default).</summary>
+    /// <summary>Only purge automatically while Performance Mode is on (the default).</summary>
     public bool StandbyPurgeOnlyInPerformanceMode { get; set; } = true;
     /// <summary>Also flush the system file cache when free RAM is low, and on "Purge now".</summary>
     public bool FileCachePurgeEnabled { get; set; } = false;
     
-    // IdleSaver
-    public bool IdleSaverEnabled { get; set; } = false;
+    // Away Mode
+    public bool AwayModeEnabled { get; set; } = false;
     public int IdleTimeoutMinutes { get; set; } = 15;
     public string? IdlePowerPlanGuid { get; set; }
     
-    // Performance Mode (Process Lasso's [GamingMode])
-    /// <summary>Plan Performance Mode switches to (TargetPowerPlan); null = High Performance.</summary>
+    // Performance Mode
+    /// <summary>Plan Performance Mode switches to; null = High Performance.</summary>
     public string? PerformanceModePlanGuid { get; set; }
-    /// <summary>Processes that turn Performance Mode on while they run (AutomaticGamingModeProcessPaths): exe names
+    /// <summary>Processes that turn Performance Mode on while they run: exe names
     /// or full paths, '*' wildcards allowed, separated by ';'.</summary>
     public string? AutoPerformanceModeProcesses { get; set; }
-    /// <summary>Processes that never turn it on, even if listed or detected (AutomaticGamingModeUserExclusions).</summary>
+    /// <summary>Processes that never turn it on, even if listed or detected.</summary>
     public string? AutoPerformanceModeExclusions { get; set; }
     /// <summary>Turn it on while a game detected from its install path (Steam, Epic, GOG, ...) runs.</summary>
     public bool AutoPerformanceModeDetectGames { get; set; } = false;
-    /// <summary>Turn it on while a game from one of the Steam libraries runs (GamingModeEngageForSteam).</summary>
+    /// <summary>Turn it on while a game from one of the Steam libraries runs.</summary>
     public bool PerformanceModeEngageForSteam { get; set; } = false;
     /// <summary>
     /// Also move the Windows power-mode slider to Best performance while Performance Mode is on, and back afterwards.
@@ -82,7 +82,7 @@ public class AppSettings
     /// </summary>
     public bool PerformanceModeSetBestPerformance { get; set; } = false;
 
-    // Load-based power switcher ([LoadBasedPowerSwitcher])
+    // Load-based power switcher
     public bool LoadSwitcherEnabled { get; set; } = false;
     public double LoadSwitcherLowThreshold { get; set; } = 10.0;
     public double LoadSwitcherHighThreshold { get; set; } = 50.0;
@@ -95,16 +95,16 @@ public class AppSettings
     /// <summary>At low load, go back to the plan from before instead of switching to the low plan.</summary>
     public bool LoadSwitcherDeferLowPlan { get; set; } = true;
 
-    // [PowerManagement]
-    /// <summary>Plan to switch to when the engine starts (StartWithPowerPlan); null = leave it.</summary>
+    // Power plan at engine start
+    /// <summary>Plan to switch to when the engine starts; null = leave it.</summary>
     public string? StartWithPowerPlanGuid { get; set; }
 
-    // System timer ([Performance] SetTimerResolutionAtStartup)
+    // System timer
     /// <summary>
     /// Timer resolution the engine asks Windows for while it runs, in 100-ns units (5000 = 0.5 ms); 0 = don't ask
-    /// (Process Lasso's default). Administrators only.
+    /// (the default). Administrators only.
     /// </summary>
-    public int SetTimerResolutionAtStartup { get; set; } = 0;
+    public int TimerResolutionRequest { get; set; } = 0;
 
     // General
     public bool StartWithWindows { get; set; } = true;

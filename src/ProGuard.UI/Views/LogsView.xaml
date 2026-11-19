@@ -116,7 +116,7 @@
                     <TextBlock Text="{x:Static r:Strings.Admin}" Style="{StaticResource Tag.Text}"/>
                 </Border>
                 <Button Style="{StaticResource Btn.Outline}" Content="{x:Static r:Strings.ClearActionLog}" Command="{Binding ClearActionLogCommand}"
-                        ToolTip="{x:Static r:Strings.DeletesTheLoggedProbalanceCpuLimiter}"/>
+                        ToolTip="{x:Static r:Strings.DeletesTheLoggedResponsivenessGuardCpuLimiter}"/>
             </StackPanel>
 
             <StackPanel Orientation="Horizontal">
@@ -131,7 +131,7 @@
                 <TextBox Width="160" Margin="0,0,20,0" AutomationProperties.Name="PROCESS OR PID" Style="{StaticResource Field}" Tag="{x:Static r:Strings.ProcessOrPid}"
                          Text="{Binding Process, UpdateSourceTrigger=PropertyChanged}"/>
                 <TextBox Width="160" AutomationProperties.Name="CATEGORY" Style="{StaticResource Field}" Tag="{x:Static r:Strings.Category}"
-                         ToolTip="{x:Static r:Strings.TheLoggerProbalanceengineIpcdispatcherOrFor}"
+                         ToolTip="{x:Static r:Strings.TheLoggerResponsivenessGuardEngineIpcdispatcherOrFor}"
                          Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}"/>
             </StackPanel>
         </DockPanel>

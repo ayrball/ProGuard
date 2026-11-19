@@ -69,7 +69,7 @@ internal static class Fmt
     {
         "User" => Strings.Fmt_SetByYou,
         "PerformanceMode" => Strings.Fmt_SetByPerformanceMode,
-        "IdleSaver" => Strings.Fmt_SetByIdleSaver,
+        "AwayMode" => Strings.Fmt_SetByAwayMode,
         "LoadSwitcher" => Strings.Fmt_SetByLoadSwitcher,
         "StartWith" => Strings.Fmt_SetWhenEngineStarted,
         null or "" => "—",

@@ -27,7 +27,7 @@ public interface IProcessMonitor
 
     /// <summary>
     /// Raised at the end of each refresh, once every process's CPU usage has been updated. Work that judges
-    /// usage (ProBalance) runs on this rather than its own timer, so it never acts on a sample up to a whole
+    /// usage (Responsiveness Guard) runs on this rather than its own timer, so it never acts on a sample up to a whole
     /// polling interval old.
     /// </summary>
     event EventHandler Refreshed;

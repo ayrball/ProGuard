@@ -5,8 +5,8 @@ namespace ProGuard.Shared.Contracts;
 // them by name. A test fails if a model property has no counterpart here. Enums mirror the Core enums value for
 // value; they have their own names so engine code can use both namespaces without ambiguity.
 
-/// <summary>Mirror of ProGuard.Core.Models.InstanceBalancerMode.</summary>
-public enum BalancerMode { EqualCoresPerInstance, FixedCoresPerInstance }
+/// <summary>Mirror of ProGuard.Core.Models.InstanceSpreadMode.</summary>
+public enum SpreadMode { EqualCoresPerInstance, FixedCoresPerInstance }
 
 /// <summary>Mirror of ProGuard.Core.Models.WatchdogCondition.</summary>
 public enum WatchdogTrigger { CpuAbove, RamAbove, RunningLongerThan, InstanceCountAbove }
@@ -36,7 +36,7 @@ public sealed class ProcessRuleDto
     public double? CpuLimitPercent { get; set; }
     public int? MaxInstances { get; set; }
     public string? PowerProfileGuid { get; set; }
-    public bool ExcludeFromProBalance { get; set; }
+    public bool ExcludeFromResponsivenessGuard { get; set; }
     public bool DisallowExecution { get; set; }
 
     // CPU Limiter (affinity reduction). Off while the threshold is null.
@@ -45,13 +45,13 @@ public sealed class ProcessRuleDto
     public int? CpuLimitCoresToRemove { get; set; }
     public int? CpuLimitDurationSeconds { get; set; }
 
-    // Instance limit and Instance Balancer. Balancer off while the mode is null.
+    // Instance limit and Instance Spread. Instance Spread is off while the mode is null.
     public bool MaxInstancesAllSessions { get; set; }
-    public BalancerMode? InstanceBalancerMode { get; set; }
-    public int? InstanceBalancerCoresPerInstance { get; set; }
-    public bool InstanceBalancerAvoidSmt { get; set; }
-    public int? InstanceBalancerReservedCores { get; set; }
-    public double? InstanceBalancerMinCpuPercent { get; set; }
+    public SpreadMode? InstanceSpreadMode { get; set; }
+    public int? InstanceSpreadCoresPerInstance { get; set; }
+    public bool InstanceSpreadAvoidSmt { get; set; }
+    public int? InstanceSpreadReservedCores { get; set; }
+    public double? InstanceSpreadMinCpuPercent { get; set; }
 
     // Startup boost. Off while the priority class is null.
     public int? StartupBoostPriorityClass { get; set; }

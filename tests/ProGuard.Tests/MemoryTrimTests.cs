@@ -19,11 +19,11 @@ using ProGuard.UI.ViewModels;
 namespace ProGuard.Tests;
 
 /// <summary>
-/// SmartTrim follows Process Lasso's [MemoryManagement] rules: trims are gated on memory load, purges on free RAM and
+/// Memory Trim's rules: trims are gated on memory load, purges on free RAM and
 /// (optionally) Performance Mode, and the foreground, protected and excluded processes are never trimmed. The gates
 /// run against fake memory readings and a fake native layer, so they don't depend on the test machine.
 /// </summary>
-public class SmartTrimTests
+public class MemoryTrimTests
 {
     private const long Mb = 1024 * 1024;
 
@@ -87,7 +87,7 @@ public class SmartTrimTests
         }
     }
 
-    private sealed class ListLogger : ILogger<SmartTrimService>
+    private sealed class ListLogger : ILogger<MemoryTrimService>
     {
         public List<(LogLevel Level, string Message)> Entries { get; } = new();
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
@@ -104,20 +104,20 @@ public class SmartTrimTests
         public ListLogger Log { get; } = new();
         public DateTime Now { get; set; } = new(2026, 10, 11, 12, 0, 0, DateTimeKind.Utc);
         public bool PerformanceMode { get; set; }
-        public SmartTrimService Service { get; }
+        public MemoryTrimService Service { get; }
 
         public Harness(params ProcessInfo[] processes)
         {
             Native = new FakeNative(Memory);
             Monitor.Setup(m => m.GetAllProcesses()).Returns(processes);
-            Service = new SmartTrimService(Log, Monitor.Object, Memory, Native, () => Now)
+            Service = new MemoryTrimService(Log, Monitor.Object, Memory, Native, () => Now)
             {
                 IsPerformanceModeActive = () => PerformanceMode
             };
             Service.Configure(true, TimeSpan.FromMinutes(15), 196 * Mb);
         }
 
-        public void Policy(SmartTrimPolicy policy) => Service.ConfigurePolicy(policy);
+        public void Policy(MemoryTrimPolicy policy) => Service.ConfigurePolicy(policy);
     }
 
     private static ProcessInfo Proc(int pid, string name, long workingSetMb, bool foreground = false) =>
@@ -155,7 +155,7 @@ public class SmartTrimTests
     public void TrimPass_HonoursCustomMinimumLoad()
     {
         var h = new Harness(Proc(1000, "chrome", 500));
-        h.Policy(new SmartTrimPolicy { MinimumRamLoadPercent = 90 });
+        h.Policy(new MemoryTrimPolicy { MinimumRamLoadPercent = 90 });
         h.Memory.Load = 85;
 
         h.Service.RunTrimPass();
@@ -178,7 +178,7 @@ public class SmartTrimTests
             Proc(4, "System", 400),
             Proc(Environment.ProcessId, "ProGuard.Engine", 400));
         h.Monitor.Setup(m => m.GetForegroundPid()).Returns(1005);
-        h.Policy(new SmartTrimPolicy { Exclusions = new[] { " keepme.EXE " } });
+        h.Policy(new MemoryTrimPolicy { Exclusions = new[] { " keepme.EXE " } });
 
         var report = h.Service.RunTrimPass();
 
@@ -214,7 +214,7 @@ public class SmartTrimTests
     public void NoActionPasses_AreLoggedAtInformationOnlyWhenConfigured(bool logNoAction, LogLevel expected)
     {
         var h = new Harness(Proc(1001, "chrome", 500));
-        h.Policy(new SmartTrimPolicy { LogNoAction = logNoAction });
+        h.Policy(new MemoryTrimPolicy { LogNoAction = logNoAction });
         h.Memory.Load = 20;
 
         h.Service.RunTrimPass();
@@ -243,7 +243,7 @@ public class SmartTrimTests
     public void LowMemoryCheck_ByDefaultOnlyPurgesInPerformanceMode()
     {
         var h = new Harness();
-        h.Policy(new SmartTrimPolicy { StandbyPurgeEnabled = true });
+        h.Policy(new MemoryTrimPolicy { StandbyPurgeEnabled = true });
         h.Memory.Free = 500 * Mb;
 
         h.Service.RunLowMemoryCheck();
@@ -260,7 +260,7 @@ public class SmartTrimTests
     public void LowMemoryCheck_PurgesOutsidePerformanceMode_WhenThatGateIsOff()
     {
         var h = new Harness();
-        h.Policy(new SmartTrimPolicy { StandbyPurgeEnabled = true, StandbyOnlyInPerformanceMode = false });
+        h.Policy(new MemoryTrimPolicy { StandbyPurgeEnabled = true, StandbyOnlyInPerformanceMode = false });
         h.Memory.Free = 500 * Mb;
 
         h.Service.RunLowMemoryCheck();
@@ -275,7 +275,7 @@ public class SmartTrimTests
     public void LowMemoryCheck_PurgesOnlyBelowTheFreeRamThreshold(long freeMb, bool purges)
     {
         var h = new Harness();
-        h.Policy(new SmartTrimPolicy { StandbyPurgeEnabled = true, StandbyOnlyInPerformanceMode = false });
+        h.Policy(new MemoryTrimPolicy { StandbyPurgeEnabled = true, StandbyOnlyInPerformanceMode = false });
         h.Memory.Free = freeMb * Mb;
 
         h.Service.RunLowMemoryCheck();
@@ -287,7 +287,7 @@ public class SmartTrimTests
     public void LowMemoryCheck_DoesNothing_WhenFreeRamIsUnknown()
     {
         var h = new Harness();
-        h.Policy(new SmartTrimPolicy { StandbyPurgeEnabled = true, StandbyOnlyInPerformanceMode = false });
+        h.Policy(new MemoryTrimPolicy { StandbyPurgeEnabled = true, StandbyOnlyInPerformanceMode = false });
         h.Memory.Free = null;
 
         h.Service.RunLowMemoryCheck();
@@ -299,16 +299,16 @@ public class SmartTrimTests
     public void LowMemoryCheck_WaitsOutTheCooldownBetweenAutomaticPurges()
     {
         var h = new Harness();
-        h.Policy(new SmartTrimPolicy { StandbyPurgeEnabled = true, StandbyOnlyInPerformanceMode = false });
+        h.Policy(new MemoryTrimPolicy { StandbyPurgeEnabled = true, StandbyOnlyInPerformanceMode = false });
         h.Native.StandbyFrees = 0; // free RAM stays low, as when the standby list was already empty
         h.Memory.Free = 200 * Mb;
 
         h.Service.RunLowMemoryCheck();
-        h.Now += SmartTrimService.LowMemoryCheckInterval;
+        h.Now += MemoryTrimService.LowMemoryCheckInterval;
         h.Service.RunLowMemoryCheck();
         Assert.Equal(1, h.Native.StandbyPurges);
 
-        h.Now += SmartTrimService.AutomaticPurgeCooldown;
+        h.Now += MemoryTrimService.AutomaticPurgeCooldown;
         h.Service.RunLowMemoryCheck();
         Assert.Equal(2, h.Native.StandbyPurges);
     }
@@ -317,7 +317,7 @@ public class SmartTrimTests
     public void LowMemoryCheck_PurgesOnlyTheEnabledLists()
     {
         var h = new Harness();
-        h.Policy(new SmartTrimPolicy { FileCachePurgeEnabled = true, StandbyOnlyInPerformanceMode = false });
+        h.Policy(new MemoryTrimPolicy { FileCachePurgeEnabled = true, StandbyOnlyInPerformanceMode = false });
         h.Memory.Free = 200 * Mb;
 
         var report = h.Service.RunLowMemoryCheck();
@@ -332,7 +332,7 @@ public class SmartTrimTests
     public void Purge_ReportsNativeFailures()
     {
         var h = new Harness();
-        h.Policy(new SmartTrimPolicy { StandbyPurgeEnabled = true, StandbyOnlyInPerformanceMode = false });
+        h.Policy(new MemoryTrimPolicy { StandbyPurgeEnabled = true, StandbyOnlyInPerformanceMode = false });
         h.Native.StandbyError = "Standby list purge failed: SeProfileSingleProcessPrivilege is not enabled";
         h.Memory.Free = 200 * Mb;
 
@@ -366,7 +366,7 @@ public class SmartTrimTests
     public void PurgeNow_AlsoPurgesTheFileCache_WhenEnabled()
     {
         var h = new Harness();
-        h.Policy(new SmartTrimPolicy { FileCachePurgeEnabled = true });
+        h.Policy(new MemoryTrimPolicy { FileCachePurgeEnabled = true });
 
         var report = h.Service.PurgeNow();
 
@@ -398,34 +398,34 @@ public class SmartTrimTests
     // ---------- Settings ----------
 
     [Fact]
-    public void AppSettings_DefaultToProcessLassosMemoryManagementValues()
+    public void AppSettings_DefaultToTheDocumentedMemoryTrimValues()
     {
         var s = new AppSettings();
-        Assert.Equal(15 * 60, s.SmartTrimIntervalSeconds);
-        Assert.Equal(196, s.SmartTrimMemoryThresholdMB);
-        Assert.Equal(65, s.SmartTrimMinimumRamLoadPercent);
+        Assert.Equal(15 * 60, s.MemoryTrimIntervalSeconds);
+        Assert.Equal(196, s.MemoryTrimMemoryThresholdMB);
+        Assert.Equal(65, s.MemoryTrimMinimumRamLoadPercent);
         Assert.Equal(1024, s.StandbyPurgeFreeRamThresholdMB);
         Assert.True(s.StandbyPurgeOnlyInPerformanceMode);
         Assert.False(s.StandbyPurgeEnabled);
         Assert.False(s.FileCachePurgeEnabled);
-        Assert.False(s.SmartTrimLogNoAction);
+        Assert.False(s.MemoryTrimLogNoAction);
     }
 
     [Fact]
-    public void SettingsApplier_PassesThePolicyToSmartTrim_OnlyWhenItChanges()
+    public void SettingsApplier_PassesThePolicyToMemoryTrim_OnlyWhenItChanges()
     {
-        var trim = new Mock<ISmartTrimService>();
+        var trim = new Mock<IMemoryTrimService>();
         var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, new Mock<IProcessMonitor>().Object, trim.Object,
-            new Mock<IPowerManager>().Object, new Mock<IProBalanceEngine>().Object);
+            new Mock<IPowerManager>().Object, new Mock<IResponsivenessGuardEngine>().Object);
         var settings = new AppSettings
         {
-            SmartTrimMinimumRamLoadPercent = 70,
-            SmartTrimExclusions = "obs64.exe, game.exe;\r\nfoo",
+            MemoryTrimMinimumRamLoadPercent = 70,
+            MemoryTrimExclusions = "obs64.exe, game.exe;\r\nfoo",
             StandbyPurgeEnabled = true,
             StandbyPurgeFreeRamThresholdMB = 2048,
             StandbyPurgeOnlyInPerformanceMode = false,
             FileCachePurgeEnabled = true,
-            SmartTrimLogNoAction = true,
+            MemoryTrimLogNoAction = true,
         };
 
         applier.Apply(settings);
@@ -434,8 +434,8 @@ public class SmartTrimTests
         unrelated.PollingIntervalMs = 5000;
         applier.Apply(unrelated);
 
-        trim.Verify(t => t.ConfigurePolicy(It.IsAny<SmartTrimPolicy>()), Times.Once);
-        trim.Verify(t => t.ConfigurePolicy(It.Is<SmartTrimPolicy>(p =>
+        trim.Verify(t => t.ConfigurePolicy(It.IsAny<MemoryTrimPolicy>()), Times.Once);
+        trim.Verify(t => t.ConfigurePolicy(It.Is<MemoryTrimPolicy>(p =>
             p.MinimumRamLoadPercent == 70
             && p.Exclusions.SequenceEqual(new[] { "obs64.exe", "game.exe", "foo" })
             && p.StandbyPurgeEnabled && !p.StandbyOnlyInPerformanceMode
@@ -445,7 +445,7 @@ public class SmartTrimTests
         var changed = unrelated.Clone();
         changed.StandbyPurgeFreeRamThresholdMB = 512;
         applier.Apply(changed);
-        trim.Verify(t => t.ConfigurePolicy(It.IsAny<SmartTrimPolicy>()), Times.Exactly(2));
+        trim.Verify(t => t.ConfigurePolicy(It.IsAny<MemoryTrimPolicy>()), Times.Exactly(2));
     }
 
     [Fact]
@@ -470,16 +470,16 @@ public class SmartTrimTests
         public bool CanOpenProcess(int pid, ProcessAccessFlags access) => true;
     }
 
-    private static (IpcDispatcher Dispatcher, Mock<ISmartTrimService> Trim) Dispatcher()
+    private static (IpcDispatcher Dispatcher, Mock<IMemoryTrimService> Trim) Dispatcher()
     {
         var store = new Mock<IRuleStore>();
         store.Setup(s => s.GetSettings()).Returns(new AppSettings { Id = 1 });
         var monitor = new Mock<IProcessMonitor>();
-        var trim = new Mock<ISmartTrimService>();
+        var trim = new Mock<IMemoryTrimService>();
         var power = new Mock<IPowerManager>();
-        var proBalance = new Mock<IProBalanceEngine>();
-        var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, monitor.Object, trim.Object, power.Object, proBalance.Object);
-        var dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, store.Object, applier, proBalance.Object, power.Object,
+        var responsivenessGuard = new Mock<IResponsivenessGuardEngine>();
+        var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, monitor.Object, trim.Object, power.Object, responsivenessGuard.Object);
+        var dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, store.Object, applier, responsivenessGuard.Object, power.Object,
             trim.Object, new Mock<ICpuLimiter>().Object, new Mock<IProcessController>().Object, monitor.Object);
         return (dispatcher, trim);
     }
@@ -553,7 +553,7 @@ public sealed class ElevationFactAttribute : FactAttribute
 /// The real Win32 memory layer. The purges need privileges only an elevated (or SYSTEM) token holds, so those tests skip
 /// unless the host is elevated; the unelevated counterpart checks that the failure is reported clearly instead.
 /// </summary>
-public class SmartTrimNativeIntegrationTests
+public class MemoryTrimNativeIntegrationTests
 {
     [Fact]
     public void MemoryStatus_ReadsLoadAndFreeRam_WithoutPrivileges()
@@ -568,7 +568,7 @@ public class SmartTrimNativeIntegrationTests
     [Fact]
     public void TrimWorkingSet_TrimsAProcessThisUserOwns()
     {
-        // ping is a low-CPU stand-in; its priority (which Process Lasso may change) doesn't matter here.
+        // ping is a low-CPU stand-in; its priority (which another process manager may change) doesn't matter here.
         var psi = new ProcessStartInfo("ping.exe", "-n 30 127.0.0.1") { CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true };
         using var p = Process.Start(psi)!;
         try

@@ -57,8 +57,8 @@ public class StandInEngineTests
         CommandTypes.ResumeProcess => (Steam, null),
         CommandTypes.TrimWorkingSet => (Code, null),
         CommandTypes.SetSensitivity => (null, 7),
-        CommandTypes.ConfigureIdleSaver => (null, new IdleSaverArgument { Enabled = true, TimeoutMinutes = 10, PlanGuid = StandInData.PowerSaver.ToString() }),
-        CommandTypes.ConfigureSmartTrim => (null, new SmartTrimArgument { Enabled = true, IntervalSeconds = 600, ThresholdMb = 512 }),
+        CommandTypes.ConfigureAwayMode => (null, new AwayModeArgument { Enabled = true, TimeoutMinutes = 10, PlanGuid = StandInData.PowerSaver.ToString() }),
+        CommandTypes.ConfigureMemoryTrim => (null, new MemoryTrimArgument { Enabled = true, IntervalSeconds = 600, ThresholdMb = 512 }),
         CommandTypes.ReportForeground => (Code, 1500),
         CommandTypes.EnablePerformanceMode => (null, true),
         CommandTypes.DisablePerformanceMode => (null, null),
@@ -157,7 +157,7 @@ public class StandInEngineTests
         Assert.Contains(s.Processes, p => p.AffinityMask != StandInData.AllCores);
         Assert.Equal(1, s.Processes.Count(p => p.IsForeground));
         Assert.Equal(s.ForegroundPid, s.Processes.Single(p => p.IsForeground).Pid);
-        Assert.Equal(s.ProBalanceRestrained, s.Processes.Count(p => p.IsRestrained));
+        Assert.Equal(s.ResponsivenessGuardRestrained, s.Processes.Count(p => p.IsRestrained));
         Assert.Equal(s.ProcessRuleCount, (await rig.Client.QueryAsync<List<ProcessRuleDto>>(CommandTypes.GetProcessRules)).Count);
         Assert.Contains(s.Processes, p => s.Processes.Any(c => c.ParentPid == p.Pid && c.Pid != p.Pid));
     }
@@ -182,15 +182,15 @@ public class StandInEngineTests
         Assert.True(rules.Count >= 10);
         Assert.Equal(rules.Count, rules.Select(r => r.Id).Distinct().Count());
         Assert.Contains(rules, r => r.CpuLimitThresholdPercent.HasValue && r.CpuLimitCoresToRemove.HasValue);
-        Assert.Contains(rules, r => r.InstanceBalancerMode == BalancerMode.EqualCoresPerInstance);
-        Assert.Contains(rules, r => r.InstanceBalancerMode == BalancerMode.FixedCoresPerInstance);
+        Assert.Contains(rules, r => r.InstanceSpreadMode == SpreadMode.EqualCoresPerInstance);
+        Assert.Contains(rules, r => r.InstanceSpreadMode == SpreadMode.FixedCoresPerInstance);
         Assert.Contains(rules, r => r.StartupBoostPriorityClass.HasValue && r.StartupBoostSeconds.HasValue);
         Assert.Contains(rules, r => r.IoPriority.HasValue);
         Assert.Contains(rules, r => r.MemoryPriority.HasValue);
         Assert.Contains(rules, r => r.GpuPriority.HasValue && r.GpuPreference.HasValue);
         Assert.Contains(rules, r => r.KeepRunning);
         Assert.Contains(rules, r => r.DisallowExecution);
-        Assert.Contains(rules, r => r.ExcludeFromProBalance);
+        Assert.Contains(rules, r => r.ExcludeFromResponsivenessGuard);
         Assert.Contains(rules, r => r.MaxInstances.HasValue && r.MaxInstancesAllSessions);
         Assert.Contains(rules, r => r.EfficiencyMode == true);
         Assert.Contains(rules, r => r.EfficiencyMode == false);
@@ -217,7 +217,7 @@ public class StandInEngineTests
         await using var rig = new Rig();
 
         var settings = await rig.Client.QueryAsync<EngineSettingsDto>(CommandTypes.GetSettings);
-        Assert.InRange(settings.ProBalanceSensitivity, 1, 10);
+        Assert.InRange(settings.ResponsivenessGuardSensitivity, 1, 10);
         Assert.False(string.IsNullOrEmpty(settings.IdlePowerPlanGuid));
 
         var power = await rig.Client.QueryAsync<PowerStateDto>(CommandTypes.GetPower);

@@ -52,7 +52,7 @@ public sealed class Win32TimerResolution : ITimerResolutionNative
 }
 
 /// <summary>
-/// Holds the system timer resolution Process Lasso's <c>SetTimerResolutionAtStartup</c> asks for, with
+/// Holds the system timer resolution the settings ask for, with
 /// <c>NtSetTimerResolution</c>, for as long as the engine runs. A finer timer makes sleeps and timer waits more precise
 /// (some games and audio software want it) at the cost of more wake-ups and power.
 /// <para>

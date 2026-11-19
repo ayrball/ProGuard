@@ -53,7 +53,7 @@ public sealed class LogQueryService
         var (useEngine, useActions) = Sources(query, includeEngineLog);
 
         var lines = useEngine ? _engineLog.Read() : Array.Empty<EngineLogLine>();
-        var newestAction = useActions ? _store.GetActions(null, null, 1) : Array.Empty<ProBalanceAction>();
+        var newestAction = useActions ? _store.GetActions(null, null, 1) : Array.Empty<ResponsivenessGuardAction>();
         var head = new LogCursor(
             lines.Length > 0 ? SourcePosition.At(lines[^1].Key) : SourcePosition.Unbounded,
             newestAction.Count > 0 ? SourcePosition.At(newestAction[0].Id) : SourcePosition.Unbounded);
@@ -150,7 +150,7 @@ public sealed class LogQueryService
         int scanned = 0;
         while (true)
         {
-            var batch = _store.GetActions(before, null, ActionBatch) ?? Array.Empty<ProBalanceAction>();
+            var batch = _store.GetActions(before, null, ActionBatch) ?? Array.Empty<ResponsivenessGuardAction>();
             foreach (var action in batch)
             {
                 before = action.Id;
@@ -219,7 +219,7 @@ public sealed class LogQueryService
             int found = 0;
             while (true)
             {
-                var batch = _store.GetActions(before, afterId, ActionBatch) ?? Array.Empty<ProBalanceAction>();
+                var batch = _store.GetActions(before, afterId, ActionBatch) ?? Array.Empty<ResponsivenessGuardAction>();
                 foreach (var action in batch)
                 {
                     before = action.Id;
@@ -312,14 +312,14 @@ public sealed class LogQueryService
     };
 
     /// <summary>An action-log row as the activity feed words it, under the feature that logged it.</summary>
-    internal static LogEntryDto ToDto(ProBalanceAction action)
+    internal static LogEntryDto ToDto(ResponsivenessGuardAction action)
     {
         var activity = ActivityFeed.FromAction(action);
         var category = activity.Kind switch
         {
             ActivityKind.Power => "Power",
             ActivityKind.Rule => "CpuLimiter",
-            _ => "ProBalance",
+            _ => "ResponsivenessGuard",
         };
         string? detail = null;
         if (activity.Kind is ActivityKind.Restrained or ActivityKind.Restored && action.OriginalPriority != action.NewPriority)

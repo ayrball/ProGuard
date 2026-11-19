@@ -83,7 +83,7 @@ public struct PDH_FMT_COUNTERVALUE_LARGE
 }
 
 /// <summary>
-/// System memory-management APIs used by SmartTrim: the memory lists (standby purge), the file cache, per-process
+/// System memory-management APIs used by Memory Trim: the memory lists (standby purge), the file cache, per-process
 /// working sets, token privileges and the PDH memory counters.
 /// </summary>
 public static class MemoryApi

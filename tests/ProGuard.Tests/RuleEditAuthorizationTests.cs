@@ -217,9 +217,9 @@ public class RuleEditAuthorizationTests
     {
         var h = new ThinHarness();
         AssertDenied(h.Send(Standard, CommandTypes.ClearActionLog), "clear the action log");
-        h.Store.Verify(s => s.ClearProBalanceActions(), Times.Never);
+        h.Store.Verify(s => s.ClearResponsivenessGuardActions(), Times.Never);
 
         Assert.True(h.Send(Admin, CommandTypes.ClearActionLog).Success);
-        h.Store.Verify(s => s.ClearProBalanceActions(), Times.Once);
+        h.Store.Verify(s => s.ClearResponsivenessGuardActions(), Times.Once);
     }
 }

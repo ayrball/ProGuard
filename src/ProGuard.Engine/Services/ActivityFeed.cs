@@ -11,7 +11,7 @@ namespace ProGuard.Engine.Services;
 
 /// <summary>
 /// The activity feed the UI shows, merged from the three places the engine records what happened: the action log in
-/// the database (ProBalance restraints and restores, CPU Limiter, power plan changes), the Watchdog event log, and the
+/// the database (Responsiveness Guard restraints and restores, CPU Limiter, power plan changes), the Watchdog event log, and the
 /// in-memory log of what users did through the command pipe.
 /// </summary>
 public sealed class ActivityFeed
@@ -42,7 +42,7 @@ public sealed class ActivityFeed
     /// </summary>
     public void Clear()
     {
-        _ruleStore.ClearProBalanceActions();
+        _ruleStore.ClearResponsivenessGuardActions();
         Interlocked.Exchange(ref _clearedTicks, _time.GetUtcNow().UtcDateTime.Ticks);
     }
 
@@ -65,7 +65,7 @@ public sealed class ActivityFeed
     }
 
     /// <summary>An action-log row: restraint, restore, CPU Limiter constraint or power plan change.</summary>
-    internal static ActivityEntry FromAction(ProBalanceAction action)
+    internal static ActivityEntry FromAction(ResponsivenessGuardAction action)
     {
         var reason = action.Reason ?? string.Empty;
         var entry = new ActivityEntry
@@ -75,7 +75,7 @@ public sealed class ActivityFeed
             Pid = action.Pid,
         };
 
-        if (action.ProcessName == ProBalanceAction.PowerPlanEntryName)
+        if (action.ProcessName == ResponsivenessGuardAction.PowerPlanEntryName)
         {
             entry.Kind = ActivityKind.Power;
             entry.ProcessName = string.Empty; // the page's process column would only repeat "Power plan"

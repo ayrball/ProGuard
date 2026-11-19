@@ -59,7 +59,7 @@ public sealed class EngineLogReader : IDisposable
 {
     public static readonly TimeSpan IdleRelease = TimeSpan.FromMinutes(5);
 
-    // "2026-10-16 14:03:22.123 INF ProBalanceEngine: message"
+    // "2026-10-16 14:03:22.123 INF ResponsivenessGuardEngine: message"
     private static readonly Regex LinePattern = new(
         @"^(?<time>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}) (?<level>TRC|DBG|INF|WRN|ERR|CRT|\?\?\?) (?<category>\S*?): (?<message>.*)$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);

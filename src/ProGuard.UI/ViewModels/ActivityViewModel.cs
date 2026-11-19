@@ -23,7 +23,7 @@ public sealed class ActivityRow
         Time = entry.TimestampUtc.ToLocalTime().ToString("HH:mm:ss");
         Kind = entry.Kind switch
         {
-            ActivityKind.Restrained => Strings.Balanced,
+            ActivityKind.Restrained => Strings.Restrained,
             ActivityKind.Restored => Strings.Act_Restored,
             ActivityKind.Rule => Strings.Rule,
             ActivityKind.Watchdog => Strings.Watchdog,
@@ -47,7 +47,7 @@ public sealed partial class ActivityViewModel : ObservableObject, IPage
     public IReadOnlyList<Choice<ActivityKind?>> Kinds { get; } = new Choice<ActivityKind?>[]
     {
         new(Strings.All, null),
-        new(Strings.Balanced, ActivityKind.Restrained),
+        new(Strings.Restrained, ActivityKind.Restrained),
         new(Strings.Act_Restored, ActivityKind.Restored),
         new(Strings.Rules, ActivityKind.Rule),
         new(Strings.Watchdog, ActivityKind.Watchdog),

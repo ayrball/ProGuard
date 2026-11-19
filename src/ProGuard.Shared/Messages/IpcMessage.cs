@@ -7,7 +7,7 @@ public enum MessageType
     Ping, Pong, GetProcesses, ProcessList, GetStatus, Status, 
     SetRule, RemoveRule, GetRules, RuleList, SetSetting, 
     GetLogs, LogList, SubscribeUpdates, UnsubscribeUpdates, 
-    ProcessUpdate, ProBalanceEvent, Command,
+    ProcessUpdate, ResponsivenessGuardEvent, Command,
     // Appended so the numeric values of the members above stay the same on the wire.
     CommandResult
 }

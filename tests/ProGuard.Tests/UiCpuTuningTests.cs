@@ -216,7 +216,7 @@ public class UiCpuTuningTests
     }
 
     [Fact]
-    public void WhileProBalanceHoldsCoresUnparked_TheRowSaysSo()
+    public void WhileResponsivenessGuardHoldsCoresUnparked_TheRowSaysSo()
     {
         var tuning = Tuning();
         tuning.ParkingOverrideActive = true;
@@ -228,7 +228,7 @@ public class UiCpuTuningTests
 
         Assert.True(vm.ParkingOverrideActive);
         Assert.Equal(30, Row(vm, "CPMINCORES").Value); // the user's value
-        Assert.Equal("PROBALANCE HOLDS 100 % WHILE IT RESTRAINS", Row(vm, "CPMINCORES").LiveNote);
+        Assert.Equal("GUARD HOLDS 100 % WHILE IT RESTRAINS", Row(vm, "CPMINCORES").LiveNote);
         Assert.Equal(string.Empty, Row(vm, "CPMAXCORES").LiveNote);
     }
 

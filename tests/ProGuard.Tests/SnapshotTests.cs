@@ -38,12 +38,12 @@ public class SnapshotTests
     public void MapsMachineWideFields()
     {
         var h = new ThinHarness();
-        h.ProBalance.SetupGet(p => p.IsEnabled).Returns(true);
-        h.ProBalance.SetupGet(p => p.IsPausedForIdle).Returns(true);
-        h.ProBalance.SetupGet(p => p.TotalRestraints).Returns(12);
-        h.ProBalance.SetupGet(p => p.RestrainedPids).Returns(new[] { 500, 501 });
+        h.ResponsivenessGuard.SetupGet(p => p.IsEnabled).Returns(true);
+        h.ResponsivenessGuard.SetupGet(p => p.IsPausedForIdle).Returns(true);
+        h.ResponsivenessGuard.SetupGet(p => p.TotalRestraints).Returns(12);
+        h.ResponsivenessGuard.SetupGet(p => p.RestrainedPids).Returns(new[] { 500, 501 });
         h.Power.SetupGet(p => p.IsPerformanceModeActive).Returns(true);
-        h.Power.SetupGet(p => p.PlanOwnerName).Returns("IdleSaver");
+        h.Power.SetupGet(p => p.PlanOwnerName).Returns("AwayMode");
         h.ActivePlan = Powrprof.HighPerformance;
         h.Rules.Add(new ProcessRule { Id = 1, ProcessName = "chrome.exe" });
         h.Rules.Add(new ProcessRule { Id = 2, ProcessName = "other.exe" });
@@ -62,13 +62,13 @@ public class SnapshotTests
         Assert.Equal(16L << 30, s.TotalMemoryBytes);
         Assert.Equal(6L << 30, s.AvailableMemoryBytes);
         Assert.Equal(4, s.LogicalProcessors);
-        Assert.True(s.ProBalanceEnabled);
-        Assert.True(s.ProBalancePaused);
-        Assert.Equal(2, s.ProBalanceRestrained);
-        Assert.Equal(12, s.ProBalanceRestraintsTotal);
+        Assert.True(s.ResponsivenessGuardEnabled);
+        Assert.True(s.ResponsivenessGuardPaused);
+        Assert.Equal(2, s.ResponsivenessGuardRestrained);
+        Assert.Equal(12, s.ResponsivenessGuardRestraintsTotal);
         Assert.True(s.ForegroundBoostEnabled);
         Assert.True(s.PerformanceModeActive);
-        Assert.Equal("IdleSaver", s.PowerPlanOwner);
+        Assert.Equal("AwayMode", s.PowerPlanOwner);
         Assert.Equal(Powrprof.HighPerformance, s.ActivePowerPlanId);
         Assert.Equal("High performance", s.ActivePowerPlanName);
         Assert.True(s.EngineIsElevated);
@@ -78,16 +78,16 @@ public class SnapshotTests
     }
 
     [Fact]
-    public void ProBalancePaused_OnlyMeansSomethingWhileProBalanceIsOn()
+    public void ResponsivenessGuardPaused_OnlyMeansSomethingWhileResponsivenessGuardIsOn()
     {
         var h = new ThinHarness();
-        h.ProBalance.SetupGet(p => p.IsEnabled).Returns(false);
-        h.ProBalance.SetupGet(p => p.IsPausedForIdle).Returns(true);
+        h.ResponsivenessGuard.SetupGet(p => p.IsEnabled).Returns(false);
+        h.ResponsivenessGuard.SetupGet(p => p.IsPausedForIdle).Returns(true);
 
         var s = h.Snapshots.GetShared();
 
-        Assert.False(s.ProBalanceEnabled);
-        Assert.False(s.ProBalancePaused);
+        Assert.False(s.ResponsivenessGuardEnabled);
+        Assert.False(s.ResponsivenessGuardPaused);
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public class SnapshotTests
         h.Details.Tuning[500] = new ProcessTuning(IoPriority: 1, MemoryPriority: 3, EfficiencyMode: true);
         h.Details.Users[500] = @"PC\tee";
         h.Rules.Add(new ProcessRule { Id = 1, ProcessName = "Chrome.exe" });
-        h.ProBalance.SetupGet(p => p.RestrainedPids).Returns(new[] { 500 });
+        h.ResponsivenessGuard.SetupGet(p => p.RestrainedPids).Returns(new[] { 500 });
         h.CpuLimiter.Setup(c => c.GetActiveLimits()).Returns(new Dictionary<int, double> { [500] = 35 });
         h.Monitor.GetProcess(500)!.IsForeground = false;
         h.Monitor.Add(600, "svc").SessionId = 0;
@@ -166,7 +166,7 @@ public class SnapshotTests
         Assert.Equal(new[] { 100 }, limits.Limiter.GetConstrainedPids());
 
         var h = new ThinHarness();
-        var builder = new SnapshotBuilder(limits.Monitor.Object, h.ProBalance.Object, h.CpuLimiter.Object, h.Store.Object, h.Power.Object,
+        var builder = new SnapshotBuilder(limits.Monitor.Object, h.ResponsivenessGuard.Object, h.CpuLimiter.Object, h.Store.Object, h.Power.Object,
             h.Details, limits.Limiter, metrics: () => h.Metrics, clockMs: () => h.NowMs, engineIsElevated: false);
 
         var s = builder.GetShared();

@@ -35,18 +35,18 @@ public class UiEditorTests
         CpuLimitPercent = 60,
         MaxInstances = 3,
         PowerProfileGuid = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c",
-        ExcludeFromProBalance = true,
+        ExcludeFromResponsivenessGuard = true,
         DisallowExecution = false,
         CpuLimitThresholdPercent = 45.5,
         CpuLimitOverThresholdSeconds = 12,
         CpuLimitCoresToRemove = 3,
         CpuLimitDurationSeconds = 90,
         MaxInstancesAllSessions = true,
-        InstanceBalancerMode = BalancerMode.FixedCoresPerInstance,
-        InstanceBalancerCoresPerInstance = 2,
-        InstanceBalancerAvoidSmt = true,
-        InstanceBalancerReservedCores = 2,
-        InstanceBalancerMinCpuPercent = 7.5,
+        InstanceSpreadMode = SpreadMode.FixedCoresPerInstance,
+        InstanceSpreadCoresPerInstance = 2,
+        InstanceSpreadAvoidSmt = true,
+        InstanceSpreadReservedCores = 2,
+        InstanceSpreadMinCpuPercent = 7.5,
         StartupBoostPriorityClass = (int)ProcessPriorityClass.High,
         StartupBoostSeconds = 20,
         IoPriority = 1,
@@ -69,7 +69,7 @@ public class UiEditorTests
         e.Priority = e.Priorities.Single(c => c.Value == ProcessPriorityClass.AboveNormal);
         e.AffinityEnabled = true;
         e.CorePicker.SetMask(0b1111_0000);
-        e.ExcludeFromProBalance = true;
+        e.ExcludeFromResponsivenessGuard = true;
         e.KeepRunning = true;
 
         e.LimitEnabled = true;
@@ -82,11 +82,11 @@ public class UiEditorTests
 
         e.MaxInstances = "2";
         e.MaxInstancesAllSessions = true;
-        e.Balancer = e.BalancerModes.Single(m => m.Value == BalancerMode.FixedCoresPerInstance);
-        e.BalancerCores = "4";
-        e.BalancerAvoidSmt = true;
-        e.BalancerReserved = "2";
-        e.BalancerMinCpu = "5";
+        e.Spread = e.SpreadModes.Single(m => m.Value == SpreadMode.FixedCoresPerInstance);
+        e.SpreadCores = "4";
+        e.SpreadAvoidSmt = true;
+        e.SpreadReserved = "2";
+        e.SpreadMinCpu = "5";
 
         e.BoostPriority = e.BoostPriorities.Single(c => c.Value == ProcessPriorityClass.High);
         e.BoostSeconds = "30";
@@ -105,7 +105,7 @@ public class UiEditorTests
         Assert.Equal("game.exe", dto.ProcessName);
         Assert.Equal((int)ProcessPriorityClass.AboveNormal, dto.PriorityClass);
         Assert.Equal(0b1111_0000L, dto.AffinityMask);
-        Assert.True(dto.ExcludeFromProBalance);
+        Assert.True(dto.ExcludeFromResponsivenessGuard);
         Assert.False(dto.DisallowExecution);
         Assert.True(dto.KeepRunning);
 
@@ -118,11 +118,11 @@ public class UiEditorTests
 
         Assert.Equal(2, dto.MaxInstances);
         Assert.True(dto.MaxInstancesAllSessions);
-        Assert.Equal(BalancerMode.FixedCoresPerInstance, dto.InstanceBalancerMode);
-        Assert.Equal(4, dto.InstanceBalancerCoresPerInstance);
-        Assert.True(dto.InstanceBalancerAvoidSmt);
-        Assert.Equal(2, dto.InstanceBalancerReservedCores);
-        Assert.Equal(5, dto.InstanceBalancerMinCpuPercent);
+        Assert.Equal(SpreadMode.FixedCoresPerInstance, dto.InstanceSpreadMode);
+        Assert.Equal(4, dto.InstanceSpreadCoresPerInstance);
+        Assert.True(dto.InstanceSpreadAvoidSmt);
+        Assert.Equal(2, dto.InstanceSpreadReservedCores);
+        Assert.Equal(5, dto.InstanceSpreadMinCpuPercent);
 
         Assert.Equal((int)ProcessPriorityClass.High, dto.StartupBoostPriorityClass);
         Assert.Equal(30, dto.StartupBoostSeconds);
@@ -149,7 +149,7 @@ public class UiEditorTests
     public void RuleEditor_EmptyBoxesMeanTheEnginesDefaults()
     {
         var e = new RuleEditor(8) { ProcessName = "x", LimiterThreshold = "30" };
-        e.Balancer = e.BalancerModes.Single(m => m.Value == BalancerMode.EqualCoresPerInstance);
+        e.Spread = e.SpreadModes.Single(m => m.Value == SpreadMode.EqualCoresPerInstance);
         e.BoostPriority = e.BoostPriorities.Single(c => c.Value == ProcessPriorityClass.High);
 
         Assert.True(e.TryBuild(out var dto, out _));
@@ -157,9 +157,9 @@ public class UiEditorTests
         Assert.Null(dto.CpuLimitOverThresholdSeconds);
         Assert.Null(dto.CpuLimitCoresToRemove);
         Assert.Null(dto.CpuLimitDurationSeconds);
-        Assert.Null(dto.InstanceBalancerCoresPerInstance);
-        Assert.Null(dto.InstanceBalancerReservedCores);
-        Assert.Null(dto.InstanceBalancerMinCpuPercent);
+        Assert.Null(dto.InstanceSpreadCoresPerInstance);
+        Assert.Null(dto.InstanceSpreadReservedCores);
+        Assert.Null(dto.InstanceSpreadMinCpuPercent);
         Assert.Null(dto.StartupBoostSeconds);
     }
 
@@ -198,23 +198,23 @@ public class UiEditorTests
     }
 
     [Fact]
-    public void RuleEditor_HiddenBalancerSettings_AreOnlyWrittenWhileTheBalancerIsOn()
+    public void RuleEditor_HiddenSpreadSettings_AreOnlyWrittenWhileSpreadIsOn()
     {
         var original = FullRule();
         var e = new RuleEditor(16, original);
 
-        // Switch the balancer to EQUAL: cores-per-instance is hidden, so what was stored stays.
-        e.Balancer = e.BalancerModes.Single(m => m.Value == BalancerMode.EqualCoresPerInstance);
-        e.BalancerCores = "9";
+        // Switch the spread to EQUAL: cores-per-instance is hidden, so what was stored stays.
+        e.Spread = e.SpreadModes.Single(m => m.Value == SpreadMode.EqualCoresPerInstance);
+        e.SpreadCores = "9";
         Assert.True(e.TryBuild(out var dto, out _));
-        Assert.Equal(2, dto.InstanceBalancerCoresPerInstance);
+        Assert.Equal(2, dto.InstanceSpreadCoresPerInstance);
 
-        // Off: nothing about the balancer is validated or touched.
-        e.Balancer = e.BalancerModes[0];
-        e.BalancerReserved = "garbage";
+        // Off: nothing about the spread is validated or touched.
+        e.Spread = e.SpreadModes[0];
+        e.SpreadReserved = "garbage";
         Assert.True(e.TryBuild(out dto, out _));
-        Assert.Null(dto.InstanceBalancerMode);
-        Assert.Equal(2, dto.InstanceBalancerReservedCores);
+        Assert.Null(dto.InstanceSpreadMode);
+        Assert.Equal(2, dto.InstanceSpreadReservedCores);
     }
 
     // ------------------------------------------------------------------ rules: round trip
@@ -276,9 +276,9 @@ public class UiEditorTests
         ("cpu sets garbage", e => e.CpuSetIds = "1,two", "CPU Sets"),
         ("max instances zero", e => e.MaxInstances = "0", "Max instances"),
         ("max instances text", e => e.MaxInstances = "two", "Max instances"),
-        ("balancer cores too many", e => { e.Balancer = e.BalancerModes[2]; e.BalancerCores = "9"; }, "Cores per instance"),
-        ("balancer reserves everything", e => { e.Balancer = e.BalancerModes[1]; e.BalancerReserved = "8"; }, "Reserved cores"),
-        ("balancer min cpu over 100", e => { e.Balancer = e.BalancerModes[1]; e.BalancerMinCpu = "101"; }, "minimum CPU"),
+        ("spread cores too many", e => { e.Spread = e.SpreadModes[2]; e.SpreadCores = "9"; }, "Cores per instance"),
+        ("spread reserves everything", e => { e.Spread = e.SpreadModes[1]; e.SpreadReserved = "8"; }, "Reserved cores"),
+        ("spread min cpu over 100", e => { e.Spread = e.SpreadModes[1]; e.SpreadMinCpu = "101"; }, "minimum CPU"),
         ("boost zero seconds", e => { e.BoostPriority = e.BoostPriorities[5]; e.BoostSeconds = "0"; }, "1 to 3600"),
         ("boost too long", e => { e.BoostPriority = e.BoostPriorities[5]; e.BoostSeconds = "3601"; }, "1 to 3600"),
         ("block and keep running", e => { e.DisallowExecution = true; e.KeepRunning = true; }, "block a program and keep it running"),
@@ -338,8 +338,8 @@ public class UiEditorTests
         Assert.Contains("LIMITER ≥40% →-1 CORE 30s", Effects(new() { CpuLimitThresholdPercent = 40 })); // engine defaults
         Assert.Contains("MAX 2", Effects(new() { MaxInstances = 2 }));
         Assert.Contains("MAX 2 (ALL SESSIONS)", Effects(new() { MaxInstances = 2, MaxInstancesAllSessions = true }));
-        Assert.Contains("BALANCE EQUAL", Effects(new() { InstanceBalancerMode = BalancerMode.EqualCoresPerInstance }));
-        Assert.Contains("BALANCE FIXED 3", Effects(new() { InstanceBalancerMode = BalancerMode.FixedCoresPerInstance, InstanceBalancerCoresPerInstance = 3 }));
+        Assert.Contains("SPREAD EQUAL", Effects(new() { InstanceSpreadMode = SpreadMode.EqualCoresPerInstance }));
+        Assert.Contains("SPREAD FIXED 3", Effects(new() { InstanceSpreadMode = SpreadMode.FixedCoresPerInstance, InstanceSpreadCoresPerInstance = 3 }));
         Assert.Contains("BOOST HIGH 10s", Effects(new() { StartupBoostPriorityClass = (int)ProcessPriorityClass.High, StartupBoostSeconds = 10 }));
         Assert.Contains("BOOST HIGH 5m", Effects(new() { StartupBoostPriorityClass = (int)ProcessPriorityClass.High, StartupBoostSeconds = 300 }));
         Assert.Contains("I/O LOW", Effects(new() { IoPriority = 1 }));
@@ -357,7 +357,7 @@ public class UiEditorTests
         Assert.Contains("CAP 25%", Effects(new() { CpuLimitPercent = 25 }));
         Assert.Contains("PRIORITY LOW", Effects(new() { PriorityClass = (int)ProcessPriorityClass.BelowNormal }));
         Assert.Contains("CORES 4/16", Effects(new() { AffinityMask = 0xF }));
-        Assert.Contains("PROBALANCE OFF", Effects(new() { ExcludeFromProBalance = true }));
+        Assert.Contains("GUARD OFF", Effects(new() { ExcludeFromResponsivenessGuard = true }));
         Assert.Equal(new[] { "NO EFFECT" }, Effects(new()));
     }
 
@@ -382,7 +382,7 @@ public class UiEditorTests
         e.LimiterThreshold = "40";
         e.LimiterCores = "2";
         e.MaxInstances = "2";
-        e.Balancer = e.BalancerModes[1];
+        e.Spread = e.SpreadModes[1];
         e.BoostPriority = e.BoostPriorities.Single(c => c.Value == ProcessPriorityClass.High);
         e.BoostSeconds = "10";
         e.IoPriority = e.IoPriorities.Single(c => c.Value == 1);
@@ -390,7 +390,7 @@ public class UiEditorTests
 
         Assert.Equal("KEEP RUNNING", e.BasicsSummary);
         Assert.Equal("LIMITER ≥40% →-2 CORES 30s", e.CpuSummary);
-        Assert.Equal("MAX 2 · BALANCE EQUAL", e.InstancesSummary);
+        Assert.Equal("MAX 2 · SPREAD EQUAL", e.InstancesSummary);
         Assert.Equal("BOOST HIGH 10s", e.BoostSummary);
         Assert.Equal("I/O LOW · ECO ON", e.AdvancedSummary);
 

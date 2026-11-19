@@ -23,17 +23,17 @@ namespace ProGuard.Tests;
 
 /// <summary>
 /// The UI's settings and commands must actually reach the engine services: IPC commands are routed to the
-/// right service, and settings (from IPC or from the shared database) are applied to SmartTrim, the power
-/// manager, the process monitor and ProBalance.
+/// right service, and settings (from IPC or from the shared database) are applied to Memory Trim, the power
+/// manager, the process monitor and Responsiveness Guard.
 /// </summary>
 public class IpcDispatchAndSettingsTests
 {
     private sealed class Harness
     {
         public Mock<IRuleStore> RuleStore { get; } = new();
-        public Mock<IProBalanceEngine> ProBalance { get; } = new();
+        public Mock<IResponsivenessGuardEngine> ResponsivenessGuard { get; } = new();
         public Mock<IPowerManager> Power { get; } = new();
-        public Mock<ISmartTrimService> SmartTrim { get; } = new();
+        public Mock<IMemoryTrimService> MemoryTrim { get; } = new();
         public Mock<ICpuLimiter> CpuLimiter { get; } = new();
         public Mock<IProcessController> Processes { get; } = new();
         public Mock<IProcessMonitor> Monitor { get; } = new();
@@ -51,9 +51,9 @@ public class IpcDispatchAndSettingsTests
             RuleStore.Setup(s => s.GetProcessRules()).Returns(Array.Empty<ProcessRule>());
             Monitor.Setup(m => m.GetAllProcesses()).Returns(new[] { new ProcessInfo { Pid = 1 }, new ProcessInfo { Pid = 2 } });
 
-            Applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, Monitor.Object, SmartTrim.Object, Power.Object, ProBalance.Object);
-            Dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, RuleStore.Object, Applier, ProBalance.Object,
-                Power.Object, SmartTrim.Object, CpuLimiter.Object, Processes.Object, Monitor.Object);
+            Applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, Monitor.Object, MemoryTrim.Object, Power.Object, ResponsivenessGuard.Object);
+            Dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, RuleStore.Object, Applier, ResponsivenessGuard.Object,
+                Power.Object, MemoryTrim.Object, CpuLimiter.Object, Processes.Object, Monitor.Object);
         }
 
         public CommandResult Send(string command, int? pid = null, string? argument = null)
@@ -106,15 +106,15 @@ public class IpcDispatchAndSettingsTests
     public void GetStatus_RepliesWithEngineStatus()
     {
         var h = new Harness();
-        h.ProBalance.SetupGet(p => p.ActiveInterventions).Returns(3);
-        h.ProBalance.SetupGet(p => p.IsEngaged).Returns(true);
+        h.ResponsivenessGuard.SetupGet(p => p.ActiveInterventions).Returns(3);
+        h.ResponsivenessGuard.SetupGet(p => p.IsEngaged).Returns(true);
 
         var reply = h.Dispatcher.Dispatch(new CommandMessage { Type = MessageType.GetStatus });
 
         Assert.Equal(MessageType.Status, reply.Type);
         var status = JsonSerializer.Deserialize<EngineStatus>(reply.Payload)!;
         Assert.True(status.IsRunning);
-        Assert.True(status.ProBalanceEngaged);
+        Assert.True(status.ResponsivenessGuardEngaged);
         Assert.Equal(3, status.ActiveInterventions);
         Assert.Equal(2, status.ProcessCount);
     }
@@ -139,14 +139,14 @@ public class IpcDispatchAndSettingsTests
     }
 
     [Fact]
-    public void SetSensitivity_IsPersistedAndAppliedToProBalance()
+    public void SetSensitivity_IsPersistedAndAppliedToResponsivenessGuard()
     {
         var h = new Harness();
         Assert.True(h.Send(CommandTypes.SetSensitivity, argument: "8").Success);
 
-        Assert.Equal(8, h.Stored.ProBalanceSensitivity);
-        h.RuleStore.Verify(s => s.UpdateSettings(It.Is<AppSettings>(a => a.ProBalanceSensitivity == 8)), Times.Once);
-        h.ProBalance.Verify(p => p.SetSensitivity(8), Times.Once);
+        Assert.Equal(8, h.Stored.ResponsivenessGuardSensitivity);
+        h.RuleStore.Verify(s => s.UpdateSettings(It.Is<AppSettings>(a => a.ResponsivenessGuardSensitivity == 8)), Times.Once);
+        h.ResponsivenessGuard.Verify(p => p.SetSensitivity(8), Times.Once);
     }
 
     [Theory]
@@ -161,73 +161,73 @@ public class IpcDispatchAndSettingsTests
         Assert.False(result.Success);
         Assert.False(string.IsNullOrEmpty(result.Error));
         h.RuleStore.Verify(s => s.UpdateSettings(It.IsAny<AppSettings>()), Times.Never);
-        h.ProBalance.Verify(p => p.SetSensitivity(It.IsAny<int>()), Times.Never);
+        h.ResponsivenessGuard.Verify(p => p.SetSensitivity(It.IsAny<int>()), Times.Never);
     }
 
     [Fact]
-    public void EnableAndDisableProBalance_ArePersistedAndApplied()
+    public void EnableAndDisableResponsivenessGuard_ArePersistedAndApplied()
     {
         var h = new Harness();
 
-        Assert.True(h.Send(CommandTypes.DisableProBalance).Success);
-        Assert.False(h.Stored.ProBalanceEnabled);
-        h.ProBalance.Verify(p => p.SetEnabled(false), Times.Once);
+        Assert.True(h.Send(CommandTypes.DisableResponsivenessGuard).Success);
+        Assert.False(h.Stored.ResponsivenessGuardEnabled);
+        h.ResponsivenessGuard.Verify(p => p.SetEnabled(false), Times.Once);
 
-        Assert.True(h.Send(CommandTypes.EnableProBalance).Success);
-        Assert.True(h.Stored.ProBalanceEnabled);
-        h.ProBalance.Verify(p => p.SetEnabled(true), Times.Once);
+        Assert.True(h.Send(CommandTypes.EnableResponsivenessGuard).Success);
+        Assert.True(h.Stored.ResponsivenessGuardEnabled);
+        h.ResponsivenessGuard.Verify(p => p.SetEnabled(true), Times.Once);
     }
 
     [Fact]
-    public void ConfigureIdleSaver_IsPersistedAndReachesPowerManager()
+    public void ConfigureAwayMode_IsPersistedAndReachesPowerManager()
     {
         var h = new Harness();
         var plan = Powrprof.Balanced;
-        var arg = JsonSerializer.Serialize(new IdleSaverArgument { Enabled = true, TimeoutMinutes = 20, PlanGuid = plan.ToString() });
+        var arg = JsonSerializer.Serialize(new AwayModeArgument { Enabled = true, TimeoutMinutes = 20, PlanGuid = plan.ToString() });
 
-        Assert.True(h.Send(CommandTypes.ConfigureIdleSaver, argument: arg).Success);
+        Assert.True(h.Send(CommandTypes.ConfigureAwayMode, argument: arg).Success);
 
-        Assert.True(h.Stored.IdleSaverEnabled);
+        Assert.True(h.Stored.AwayModeEnabled);
         Assert.Equal(20, h.Stored.IdleTimeoutMinutes);
         Assert.Equal(plan.ToString(), h.Stored.IdlePowerPlanGuid);
-        h.Power.Verify(p => p.ConfigureIdleSaver(true, 20, plan), Times.Once);
+        h.Power.Verify(p => p.ConfigureAwayMode(true, 20, plan), Times.Once);
     }
 
     [Fact]
-    public void ConfigureIdleSaver_RejectsBadPlanGuid()
+    public void ConfigureAwayMode_RejectsBadPlanGuid()
     {
         var h = new Harness();
-        var arg = JsonSerializer.Serialize(new IdleSaverArgument { Enabled = true, PlanGuid = "not-a-guid" });
+        var arg = JsonSerializer.Serialize(new AwayModeArgument { Enabled = true, PlanGuid = "not-a-guid" });
 
-        Assert.False(h.Send(CommandTypes.ConfigureIdleSaver, argument: arg).Success);
+        Assert.False(h.Send(CommandTypes.ConfigureAwayMode, argument: arg).Success);
         h.RuleStore.Verify(s => s.UpdateSettings(It.IsAny<AppSettings>()), Times.Never);
     }
 
     [Fact]
-    public void ConfigureSmartTrim_IsPersistedAndReachesSmartTrim()
+    public void ConfigureMemoryTrim_IsPersistedAndReachesMemoryTrim()
     {
         var h = new Harness();
-        var arg = JsonSerializer.Serialize(new SmartTrimArgument { Enabled = true, IntervalSeconds = 60, ThresholdMb = 256 });
+        var arg = JsonSerializer.Serialize(new MemoryTrimArgument { Enabled = true, IntervalSeconds = 60, ThresholdMb = 256 });
 
-        Assert.True(h.Send(CommandTypes.ConfigureSmartTrim, argument: arg).Success);
+        Assert.True(h.Send(CommandTypes.ConfigureMemoryTrim, argument: arg).Success);
 
-        Assert.True(h.Stored.SmartTrimEnabled);
-        h.SmartTrim.Verify(t => t.Configure(true, TimeSpan.FromSeconds(60), 256L * 1024 * 1024), Times.Once);
+        Assert.True(h.Stored.MemoryTrimEnabled);
+        h.MemoryTrim.Verify(t => t.Configure(true, TimeSpan.FromSeconds(60), 256L * 1024 * 1024), Times.Once);
     }
 
     [Fact]
     public void SetSetting_ReplacesSettingsButKeepsStoredId()
     {
         var h = new Harness();
-        var incoming = new AppSettings { Id = 99, SmartTrimEnabled = true, SmartTrimMemoryThresholdMB = 2048, PollingIntervalMs = 2000 };
+        var incoming = new AppSettings { Id = 99, MemoryTrimEnabled = true, MemoryTrimMemoryThresholdMB = 2048, PollingIntervalMs = 2000 };
 
         var reply = h.Dispatcher.Dispatch(new CommandMessage { Type = MessageType.SetSetting, Payload = JsonSerializer.Serialize(incoming) });
 
         Assert.True(JsonSerializer.Deserialize<CommandResult>(reply.Payload)!.Success);
         Assert.Equal(1, h.Stored.Id);
-        Assert.Equal(2048, h.Stored.SmartTrimMemoryThresholdMB);
+        Assert.Equal(2048, h.Stored.MemoryTrimMemoryThresholdMB);
         h.Monitor.Verify(m => m.SetPollingInterval(TimeSpan.FromMilliseconds(2000)), Times.Once);
-        h.SmartTrim.Verify(t => t.Configure(true, It.IsAny<TimeSpan>(), 2048L * 1024 * 1024), Times.Once);
+        h.MemoryTrim.Verify(t => t.Configure(true, It.IsAny<TimeSpan>(), 2048L * 1024 * 1024), Times.Once);
     }
 
     [Theory]
@@ -317,8 +317,8 @@ public class IpcDispatchAndSettingsTests
         Assert.True(h.Send(CommandTypes.TrimWorkingSet, 1234).Success);
         Assert.True(h.Send(CommandTypes.TrimWorkingSet).Success);
 
-        h.SmartTrim.Verify(t => t.TrimProcess(1234), Times.Once);
-        h.SmartTrim.Verify(t => t.TrimMemory(), Times.Once);
+        h.MemoryTrim.Verify(t => t.TrimProcess(1234), Times.Once);
+        h.MemoryTrim.Verify(t => t.TrimMemory(), Times.Once);
     }
 
     [Fact]
@@ -375,7 +375,7 @@ public class IpcDispatchAndSettingsTests
 
             reply = await RoundTrip(new CommandMessage { CommandType = CommandTypes.SetSensitivity, Argument = "3" });
             Assert.True(JsonSerializer.Deserialize<CommandResult>(reply.Payload)!.Success);
-            h.ProBalance.Verify(p => p.SetSensitivity(3), Times.Once);
+            h.ResponsivenessGuard.Verify(p => p.SetSensitivity(3), Times.Once);
         }
         finally
         {
@@ -393,16 +393,16 @@ public class IpcDispatchAndSettingsTests
         h.Applier.Apply(new AppSettings
         {
             PollingIntervalMs = 1500,
-            SmartTrimEnabled = true, SmartTrimIntervalSeconds = 120, SmartTrimMemoryThresholdMB = 512,
-            IdleSaverEnabled = true, IdleTimeoutMinutes = 10, IdlePowerPlanGuid = plan.ToString(),
-            ProBalanceEnabled = false, ProBalanceSensitivity = 6
+            MemoryTrimEnabled = true, MemoryTrimIntervalSeconds = 120, MemoryTrimMemoryThresholdMB = 512,
+            AwayModeEnabled = true, IdleTimeoutMinutes = 10, IdlePowerPlanGuid = plan.ToString(),
+            ResponsivenessGuardEnabled = false, ResponsivenessGuardSensitivity = 6
         });
 
         h.Monitor.Verify(m => m.SetPollingInterval(TimeSpan.FromMilliseconds(1500)), Times.Once);
-        h.SmartTrim.Verify(t => t.Configure(true, TimeSpan.FromSeconds(120), 512L * 1024 * 1024), Times.Once);
-        h.Power.Verify(p => p.ConfigureIdleSaver(true, 10, plan), Times.Once);
-        h.ProBalance.Verify(p => p.SetEnabled(false), Times.Once);
-        h.ProBalance.Verify(p => p.SetSensitivity(6), Times.Once);
+        h.MemoryTrim.Verify(t => t.Configure(true, TimeSpan.FromSeconds(120), 512L * 1024 * 1024), Times.Once);
+        h.Power.Verify(p => p.ConfigureAwayMode(true, 10, plan), Times.Once);
+        h.ResponsivenessGuard.Verify(p => p.SetEnabled(false), Times.Once);
+        h.ResponsivenessGuard.Verify(p => p.SetSensitivity(6), Times.Once);
     }
 
     [Fact]
@@ -415,83 +415,83 @@ public class IpcDispatchAndSettingsTests
         // Same values again (e.g. the DB was rewritten because a rule changed): nothing is reset.
         h.Applier.Apply(settings.Clone());
         h.Monitor.Verify(m => m.SetPollingInterval(It.IsAny<TimeSpan>()), Times.Once);
-        h.SmartTrim.Verify(t => t.Configure(It.IsAny<bool>(), It.IsAny<TimeSpan>(), It.IsAny<long>()), Times.Once);
-        h.Power.Verify(p => p.ConfigureIdleSaver(It.IsAny<bool>(), It.IsAny<int>(), It.IsAny<Guid>()), Times.Once);
-        h.ProBalance.Verify(p => p.SetSensitivity(It.IsAny<int>()), Times.Once);
+        h.MemoryTrim.Verify(t => t.Configure(It.IsAny<bool>(), It.IsAny<TimeSpan>(), It.IsAny<long>()), Times.Once);
+        h.Power.Verify(p => p.ConfigureAwayMode(It.IsAny<bool>(), It.IsAny<int>(), It.IsAny<Guid>()), Times.Once);
+        h.ResponsivenessGuard.Verify(p => p.SetSensitivity(It.IsAny<int>()), Times.Once);
 
         var changed = settings.Clone();
-        changed.SmartTrimEnabled = !settings.SmartTrimEnabled;
+        changed.MemoryTrimEnabled = !settings.MemoryTrimEnabled;
         h.Applier.Apply(changed);
-        h.SmartTrim.Verify(t => t.Configure(It.IsAny<bool>(), It.IsAny<TimeSpan>(), It.IsAny<long>()), Times.Exactly(2));
+        h.MemoryTrim.Verify(t => t.Configure(It.IsAny<bool>(), It.IsAny<TimeSpan>(), It.IsAny<long>()), Times.Exactly(2));
         h.Monitor.Verify(m => m.SetPollingInterval(It.IsAny<TimeSpan>()), Times.Once);
-        h.ProBalance.Verify(p => p.SetSensitivity(It.IsAny<int>()), Times.Once);
+        h.ResponsivenessGuard.Verify(p => p.SetSensitivity(It.IsAny<int>()), Times.Once);
     }
 
     [Fact]
-    public void SettingsApplier_ProBalanceRestraintActions_AreAppliedWhenTheyChange()
+    public void SettingsApplier_ResponsivenessGuardRestraintActions_AreAppliedWhenTheyChange()
     {
         var h = new Harness();
         var settings = new AppSettings();
         h.Applier.Apply(settings);
-        h.ProBalance.Verify(p => p.ConfigureRestraint(new ProBalanceRestraintOptions()), Times.Once);
+        h.ResponsivenessGuard.Verify(p => p.ConfigureRestraint(new ResponsivenessGuardRestraintOptions()), Times.Once);
 
         h.Applier.Apply(settings.Clone());
-        h.ProBalance.Verify(p => p.ConfigureRestraint(It.IsAny<ProBalanceRestraintOptions>()), Times.Once);
+        h.ResponsivenessGuard.Verify(p => p.ConfigureRestraint(It.IsAny<ResponsivenessGuardRestraintOptions>()), Times.Once);
 
         var changed = settings.Clone();
-        changed.ProBalanceRestrainByAffinity = true;
-        changed.ProBalanceRestraintAffinity = 0x3;
-        changed.ProBalanceLowerIoPriority = true;
-        changed.ProBalanceUseEfficiencyMode = true;
-        changed.ProBalanceDoNotLowerPriorityClass = true;
-        changed.ProBalanceDisableWhenSysIdle = true;
-        changed.ProBalanceDisableIfSysIdleMs = 60000;
+        changed.ResponsivenessGuardRestrainByAffinity = true;
+        changed.ResponsivenessGuardRestraintAffinity = 0x3;
+        changed.ResponsivenessGuardLowerIoPriority = true;
+        changed.ResponsivenessGuardUseEfficiencyMode = true;
+        changed.ResponsivenessGuardDoNotLowerPriorityClass = true;
+        changed.ResponsivenessGuardDisableWhenSysIdle = true;
+        changed.ResponsivenessGuardDisableIfSysIdleMs = 60000;
         h.Applier.Apply(changed);
 
-        h.ProBalance.Verify(p => p.ConfigureRestraint(new ProBalanceRestraintOptions
+        h.ResponsivenessGuard.Verify(p => p.ConfigureRestraint(new ResponsivenessGuardRestraintOptions
         {
-            RestrainByAffinity = true, RestraintAffinity = 0x3, LowerIOPriorityDuringRestraint = true, UseEfficiencyMode = true,
-            DoNotLowerPriorityClass = true, DisableProBalanceWhenSysIdle = true, DisableProBalanceIfSysIdleThisManyMS = 60000
+            RestrictAffinity = true, RestrictedAffinity = 0x3, LowerIoPriority = true, EfficiencyModeWhileRestrained = true,
+            KeepPriorityClass = true, PauseWhenIdle = true, PauseAfterIdleMs = 60000
         }), Times.Once);
-        h.ProBalance.Verify(p => p.SetSensitivity(It.IsAny<int>()), Times.Once);
+        h.ResponsivenessGuard.Verify(p => p.SetSensitivity(It.IsAny<int>()), Times.Once);
     }
 
     [Fact]
     public void SettingsApplier_MissingOrBadIdlePlan_FallsBackToPowerSaver()
     {
         var h = new Harness();
-        h.Applier.Apply(new AppSettings { IdleSaverEnabled = true, IdlePowerPlanGuid = "garbage" });
-        h.Power.Verify(p => p.ConfigureIdleSaver(true, It.IsAny<int>(), Powrprof.PowerSaver), Times.Once);
+        h.Applier.Apply(new AppSettings { AwayModeEnabled = true, IdlePowerPlanGuid = "garbage" });
+        h.Power.Verify(p => p.ConfigureAwayMode(true, It.IsAny<int>(), Powrprof.PowerSaver), Times.Once);
     }
 
     [Fact]
     public void SettingsApplier_OneFailingServiceDoesNotBlockTheOthers()
     {
         var h = new Harness();
-        h.SmartTrim.Setup(t => t.Configure(It.IsAny<bool>(), It.IsAny<TimeSpan>(), It.IsAny<long>())).Throws<InvalidOperationException>();
+        h.MemoryTrim.Setup(t => t.Configure(It.IsAny<bool>(), It.IsAny<TimeSpan>(), It.IsAny<long>())).Throws<InvalidOperationException>();
 
         h.Applier.Apply(new AppSettings());
 
-        h.Power.Verify(p => p.ConfigureIdleSaver(It.IsAny<bool>(), It.IsAny<int>(), It.IsAny<Guid>()), Times.Once);
-        h.ProBalance.Verify(p => p.SetEnabled(It.IsAny<bool>()), Times.Once);
+        h.Power.Verify(p => p.ConfigureAwayMode(It.IsAny<bool>(), It.IsAny<int>(), It.IsAny<Guid>()), Times.Once);
+        h.ResponsivenessGuard.Verify(p => p.SetEnabled(It.IsAny<bool>()), Times.Once);
     }
 
     [Fact]
-    public void SmartTrimService_Configure_UpdatesStateAndClampsInterval()
+    public void MemoryTrimService_Configure_UpdatesStateAndClampsInterval()
     {
-        using var trim = new SmartTrimService(NullLogger<SmartTrimService>.Instance, new Mock<IProcessMonitor>().Object);
+        using var trim = new MemoryTrimService(NullLogger<MemoryTrimService>.Instance, new Mock<IProcessMonitor>().Object);
 
         trim.Configure(false, TimeSpan.FromSeconds(1), 300L * 1024 * 1024);
 
         Assert.False(trim.IsEnabled);
-        Assert.Equal(SmartTrimService.MinInterval, trim.Interval);
+        Assert.Equal(MemoryTrimService.MinInterval, trim.Interval);
         Assert.Equal(300L * 1024 * 1024, trim.ThresholdBytes);
     }
 
     [Fact]
-    public async Task SmartTrimService_ConfigureWhileRunning_DoesNotThrow()
+    public async Task MemoryTrimService_ConfigureWhileRunning_DoesNotThrow()
     {
-        using var trim = new SmartTrimService(NullLogger<SmartTrimService>.Instance, new Mock<IProcessMonitor>().Object);
+        using var trim = new MemoryTrimService(NullLogger<MemoryTrimService>.Instance, new Mock<IProcessMonitor>().Object);
         await trim.StartAsync(CancellationToken.None);
 
         trim.Configure(true, TimeSpan.FromMinutes(2), 1);
@@ -544,15 +544,15 @@ public class IpcDispatchAndSettingsTests
             using (var ui = new TempDbContext(dbPath))
             {
                 var s = ui.Settings.First();
-                s.SmartTrimEnabled = true;
-                s.SmartTrimMemoryThresholdMB = 768;
+                s.MemoryTrimEnabled = true;
+                s.MemoryTrimMemoryThresholdMB = 768;
                 s.PollingIntervalMs = 3000;
                 ui.SaveChanges();
             }
             Assert.True(store.ReloadIfChanged());
             h.Applier.Apply(store.GetSettings()); // what EngineWorker does on each reload
 
-            h.SmartTrim.Verify(t => t.Configure(true, It.IsAny<TimeSpan>(), 768L * 1024 * 1024), Times.Once);
+            h.MemoryTrim.Verify(t => t.Configure(true, It.IsAny<TimeSpan>(), 768L * 1024 * 1024), Times.Once);
             h.Monitor.Verify(m => m.SetPollingInterval(TimeSpan.FromMilliseconds(3000)), Times.Once);
         }
         finally

@@ -126,10 +126,10 @@ public sealed partial class StandInMachine
             if (WatchRefusal(rule) is { } refused) preview.Refusals.Add(Deny(refused).Error!);
         foreach (var rule in current.WatchdogRules.Where(r => unmatched.Contains(ConfigDocuments.WatchdogKey(r))))
             if (WatchRefusal(rule) is { } refused) preview.Refusals.Add(Deny(refused).Error!);
-        if (!_admin && fitted.Settings.SetTimerResolutionAtStartup != _settings.SetTimerResolutionAtStartup)
+        if (!_admin && fitted.Settings.TimerResolutionRequest != _settings.TimerResolutionRequest)
             preview.Refusals.Add(Deny("change the system timer resolution").Error!);
-        if (!_admin && fitted.Settings.ProBalanceDisableCoreParking != _settings.ProBalanceDisableCoreParking)
-            preview.Refusals.Add(Deny("change whether ProBalance unparks cores (it edits the power plan)").Error!);
+        if (!_admin && fitted.Settings.ResponsivenessGuardDisableCoreParking != _settings.ResponsivenessGuardDisableCoreParking)
+            preview.Refusals.Add(Deny("change whether Responsiveness Guard unparks cores (it edits the power plan)").Error!);
         preview.Refusals = preview.Refusals.Distinct().ToList();
 
         if (previewOnly) return Data(preview);
@@ -205,14 +205,14 @@ public sealed partial class StandInMachine
         var now = DateTime.UtcNow;
         var gaming = Capture("Gaming");
         gaming.SavedUtc = now.AddDays(-12);
-        gaming.Settings.ProBalanceSensitivity = 8;
+        gaming.Settings.ResponsivenessGuardSensitivity = 8;
         gaming.Settings.PerformanceModeEngageForSteam = true;
 
         var quiet = Capture("Quiet work");
         quiet.SavedUtc = now.AddDays(-3);
         quiet.ProcessRules.RemoveAll(r => r.PriorityClass is 128 or 256);
-        quiet.Settings.SmartTrimEnabled = true;
-        quiet.Settings.ProBalanceSensitivity = 4;
+        quiet.Settings.MemoryTrimEnabled = true;
+        quiet.Settings.ResponsivenessGuardSensitivity = 4;
 
         // Saved on a 32-thread desktop, with a power plan this machine hasn't got.
         var desktop = Capture("Old desktop");

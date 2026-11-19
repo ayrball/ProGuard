@@ -1,0 +1,8 @@
+<Project>
+  <!-- The Worker SDK (ProGuard.Engine) makes every *.json in the project folder content that is copied to the output
+       and the publish folder. The NuGet lock file is build input, not something to install. -->
+  <ItemGroup>
+    <Content Remove="packages.lock.json" />
+    <None Remove="packages.lock.json" />
+  </ItemGroup>
+</Project>

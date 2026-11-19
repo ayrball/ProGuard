@@ -124,7 +124,7 @@ run while the MSI is installed).
 .\installer\build.ps1 -Version 1.0.0 -Portable   # MSI and portable zip in artifacts\installer\
 ```
 
-The version in `src/Directory.Build.props` is what a plain build carries; `build.ps1` and the release workflow
+The version in `Directory.Build.props` is what a plain build carries; `build.ps1` and the release workflow
 override it with the version they are given, so a built installer always says what its tag says.
 
 ## CI
@@ -134,7 +134,8 @@ PNGs as the `ui-preview` artifact. Test results (TRX, plus dumps if a test hangs
 `test-results` when the tests fail. It also builds the MSI (version `0.0.<run number>`, unsigned) and uploads it as the
 `installer` artifact.
 
-Pushing a `v*` tag (`v1.0.0`, or `v1.1.0-beta.1` for a pre-release) runs `.github/workflows/release.yml`: it builds the
+Releases are built by CI only. Pushing a `v*` tag (`v1.0.0`, or `v1.1.0-beta.1` for a pre-release) runs
+`.github/workflows/release.yml`, which waits for the owner's approval and then builds the
 MSI and the portable zip at that version and attaches both, with checksums, to the GitHub Release for that tag,
 creating the release with generated notes if none exists yet. Code signing is wired in but off; see
 [docs/installer.md](docs/installer.md#code-signing).

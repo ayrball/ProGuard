@@ -20,3 +20,18 @@ artifacts/
 
 # Claude Code per-machine settings
 .claude/
+
+# Logs (msiexec /l*v, build logs)
+*.log
+
+# Signing keys and secrets: never commit these
+*.pfx
+*.p12
+*.snk
+.env
+
+# Publish output
+publish/
+
+# Wrangler (Cloudflare) local state
+.wrangler/

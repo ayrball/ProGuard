@@ -21,10 +21,15 @@ jobs:
   release:
     runs-on: windows-latest
     timeout-minutes: 30
+    # Needs the owner's approval, and only v* tags may deploy to it (both set on GitHub). Signing secrets can be kept
+    # in this environment rather than the repository, so nothing else can read them.
+    environment: release
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         id: dotnet
         with:
           dotnet-version: 10.0.x
@@ -44,40 +49,65 @@ jobs:
           "version=$($env:TAG.Substring(1))" >> $env:GITHUB_OUTPUT
           "prerelease=$(if ($env:TAG.Contains('-')) { 'true' } else { 'false' })" >> $env:GITHUB_OUTPUT
 
+      # The exes are self-contained, so each release must bundle the newest .NET 10 servicing patch: build.ps1 fails if
+      # the SDK set up above published an older runtime than Microsoft's release metadata lists as the latest.
+      - name: Find the latest .NET 10 runtime
+        id: runtime
+        shell: pwsh
+        run: |
+          $metadata = Invoke-RestMethod https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/10.0/releases.json
+          $latest = "$($metadata.'latest-runtime')"
+          if ($latest -notmatch '^10\.0\.\d+$') { throw "releases.json gave latest-runtime '$latest'." }
+          "Latest .NET 10 runtime: $latest (released $($metadata.'latest-release-date'))"
+          "version=$latest" >> $env:GITHUB_OUTPUT
+
+      # Publishing and packaging get no secrets. The restore is locked to the committed packages.lock.json files
+      # (CI=true, see Directory.Build.props). Only the two signing steps below see the signing variables.
+      - name: Publish and stage the exes (unsigned)
+        shell: pwsh
+        run: ./installer/build.ps1 -Step Stage -Version ${{ steps.version.outputs.version }} -MinRuntime ${{ steps.runtime.outputs.version }}
+
       # ----- SIGNING HOOK -----------------------------------------------------------------------------------------
-      # Off until the repository variable PROGUARD_SIGNING is set to pfx, trusted-signing or signpath. Add the
-      # matching secrets (and, for trusted-signing, variables) first; installer/sign.ps1 lists what each needs.
-      # This job holds the signing secrets, so the dlib it loads into signtool is pinned to one version and checked
-      # against nuget.org's own hash of that package (the catalog's packageHash, SHA-512) before anything uses it.
-      # To move to another version, take both values from
-      # https://api.nuget.org/v3/registration5-gz-semver2/microsoft.trusted.signing.client/index.json (the version,
-      # then its catalogEntry's packageHash).
-      - name: Fetch the Trusted Signing dlib
-        if: ${{ vars.PROGUARD_SIGNING == 'trusted-signing' }}
+      # Off until the repository variable PROGUARD_SIGNING is set to pfx, trusted-signing (Azure Artifact Signing,
+      # formerly Trusted Signing; artifact-signing means the same) or signpath. Add the matching secrets (and, for
+      # Artifact Signing, variables) first; installer/sign.ps1 lists what each needs.
+      # The dlib that signtool loads next to the signing secrets is pinned to one version of
+      # Microsoft.ArtifactSigning.Client (which replaces the unlisted Microsoft.Trusted.Signing.Client) and checked
+      # against a SHA-512 of that .nupkg before anything uses it. TS_SHA512 is the base64 SHA-512 of the .nupkg file
+      # itself, as downloaded from
+      # https://api.nuget.org/v3-flatcontainer/microsoft.artifactsigning.client/<version>/microsoft.artifactsigning.client.<version>.nupkg
+      # (it equals the packageHash nuget.org lists for that version). To move to another version, download that
+      # .nupkg, check it has bin/x64/Azure.CodeSigning.Dlib.dll, and set both values.
+      - name: Fetch the Artifact Signing dlib
+        if: ${{ vars.PROGUARD_SIGNING == 'trusted-signing' || vars.PROGUARD_SIGNING == 'artifact-signing' }}
         shell: pwsh
         env:
-          TS_VERSION: '1.0.95'
-          TS_SHA512: 'uTRnbWSg1agZUh8J5bqJXhJr4LZ9dzs6Xy9PNxK4yA9ubpGuPq71bz1AZMmiKs/HVbQc3NUChtGMVexqmuV+kA=='
+          TS_VERSION: '1.0.151'
+          TS_SHA512: 'BvPApD/Bxbzj2uf8qBYJ0wPoZYvAySHfrsIMZ2JkMQXy7NdTbQ81Gs71A0n/tOYOIWk3xpKY3YVZ1VtH0jcZhQ=='
         run: |
-          $out = Join-Path $env:RUNNER_TEMP 'trusted-signing'
-          nuget install Microsoft.Trusted.Signing.Client -Version $env:TS_VERSION -ExcludeVersion -NonInteractive `
+          $out = Join-Path $env:RUNNER_TEMP 'artifact-signing'
+          nuget install Microsoft.ArtifactSigning.Client -Version $env:TS_VERSION -ExcludeVersion -NonInteractive `
             -Source https://api.nuget.org/v3/index.json -OutputDirectory $out
           if ($LASTEXITCODE -ne 0) { throw "nuget install failed ($LASTEXITCODE)." }
-          $package = Join-Path $out 'Microsoft.Trusted.Signing.Client\Microsoft.Trusted.Signing.Client.nupkg'
+          $package = Join-Path $out 'Microsoft.ArtifactSigning.Client\Microsoft.ArtifactSigning.Client.nupkg'
           if (-not (Test-Path $package)) { throw "nuget didn't keep $package, so its hash can't be checked." }
           $hash = [Convert]::ToBase64String([Convert]::FromHexString((Get-FileHash $package -Algorithm SHA512).Hash))
-          if ($hash -ne $env:TS_SHA512) { throw "Microsoft.Trusted.Signing.Client $env:TS_VERSION has SHA-512 $hash, not the pinned $env:TS_SHA512. Not signing with it." }
-          "PROGUARD_SIGN_TS_DLIB=$out\Microsoft.Trusted.Signing.Client\bin\x64\Azure.CodeSigning.Dlib.dll" >> $env:GITHUB_ENV
+          if ($hash -ne $env:TS_SHA512) { throw "Microsoft.ArtifactSigning.Client $env:TS_VERSION has SHA-512 $hash, not the pinned $env:TS_SHA512. Not signing with it." }
+          $dlib = Join-Path $out 'Microsoft.ArtifactSigning.Client\bin\x64\Azure.CodeSigning.Dlib.dll'
+          if (-not (Test-Path $dlib)) { throw "Microsoft.ArtifactSigning.Client $env:TS_VERSION has no bin\x64\Azure.CodeSigning.Dlib.dll." }
+          "PROGUARD_SIGN_TS_DLIB=$dlib" >> $env:GITHUB_ENV
 
-      - name: Build the MSI and the portable zip
+      - name: Sign the exes
+        if: ${{ vars.PROGUARD_SIGNING != '' && vars.PROGUARD_SIGNING != 'none' }}
         shell: pwsh
+        # Keep this env block the same as the one in "Sign the MSI".
         env:
           PROGUARD_SIGNING: ${{ vars.PROGUARD_SIGNING }}
           PROGUARD_SIGN_TIMESTAMP_URL: ${{ vars.PROGUARD_SIGN_TIMESTAMP_URL }}
           # pfx
           PROGUARD_SIGN_PFX_BASE64: ${{ secrets.PROGUARD_SIGN_PFX_BASE64 }}
           PROGUARD_SIGN_PFX_PASSWORD: ${{ secrets.PROGUARD_SIGN_PFX_PASSWORD }}
-          # trusted-signing
+          # trusted-signing / artifact-signing
           PROGUARD_SIGN_TS_ENDPOINT: ${{ vars.PROGUARD_SIGN_TS_ENDPOINT }}
           PROGUARD_SIGN_TS_ACCOUNT: ${{ vars.PROGUARD_SIGN_TS_ACCOUNT }}
           PROGUARD_SIGN_TS_PROFILE: ${{ vars.PROGUARD_SIGN_TS_PROFILE }}
@@ -90,7 +120,36 @@ jobs:
           PROGUARD_SIGN_SIGNPATH_PROJECT: ${{ vars.PROGUARD_SIGN_SIGNPATH_PROJECT }}
           PROGUARD_SIGN_SIGNPATH_POLICY: ${{ vars.PROGUARD_SIGN_SIGNPATH_POLICY }}
           PROGUARD_SIGN_SIGNPATH_CONFIGURATION: ${{ vars.PROGUARD_SIGN_SIGNPATH_CONFIGURATION }}
-        run: ./installer/build.ps1 -Version ${{ steps.version.outputs.version }} -Portable
+        run: ./installer/sign.ps1 -Path (Get-ChildItem artifacts/installer/files -Filter 'ProGuard.*.exe').FullName
+
+      - name: Build the MSI and the portable zip
+        shell: pwsh
+        run: ./installer/build.ps1 -Step Package -Version ${{ steps.version.outputs.version }} -Portable
+
+      - name: Sign the MSI
+        if: ${{ vars.PROGUARD_SIGNING != '' && vars.PROGUARD_SIGNING != 'none' }}
+        shell: pwsh
+        # Keep this env block the same as the one in "Sign the exes".
+        env:
+          PROGUARD_SIGNING: ${{ vars.PROGUARD_SIGNING }}
+          PROGUARD_SIGN_TIMESTAMP_URL: ${{ vars.PROGUARD_SIGN_TIMESTAMP_URL }}
+          # pfx
+          PROGUARD_SIGN_PFX_BASE64: ${{ secrets.PROGUARD_SIGN_PFX_BASE64 }}
+          PROGUARD_SIGN_PFX_PASSWORD: ${{ secrets.PROGUARD_SIGN_PFX_PASSWORD }}
+          # trusted-signing / artifact-signing
+          PROGUARD_SIGN_TS_ENDPOINT: ${{ vars.PROGUARD_SIGN_TS_ENDPOINT }}
+          PROGUARD_SIGN_TS_ACCOUNT: ${{ vars.PROGUARD_SIGN_TS_ACCOUNT }}
+          PROGUARD_SIGN_TS_PROFILE: ${{ vars.PROGUARD_SIGN_TS_PROFILE }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          # signpath
+          PROGUARD_SIGN_SIGNPATH_TOKEN: ${{ secrets.PROGUARD_SIGN_SIGNPATH_TOKEN }}
+          PROGUARD_SIGN_SIGNPATH_ORGANIZATION: ${{ vars.PROGUARD_SIGN_SIGNPATH_ORGANIZATION }}
+          PROGUARD_SIGN_SIGNPATH_PROJECT: ${{ vars.PROGUARD_SIGN_SIGNPATH_PROJECT }}
+          PROGUARD_SIGN_SIGNPATH_POLICY: ${{ vars.PROGUARD_SIGN_SIGNPATH_POLICY }}
+          PROGUARD_SIGN_SIGNPATH_CONFIGURATION: ${{ vars.PROGUARD_SIGN_SIGNPATH_CONFIGURATION }}
+        run: ./installer/sign.ps1 -Path (Get-Item artifacts/installer/*.msi).FullName
 
       - name: Checksums
         shell: pwsh
@@ -102,7 +161,7 @@ jobs:
 
       # Kept even if creating the release fails, so the build isn't lost.
       - name: Upload the build
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-${{ steps.version.outputs.version }}
           path: |

@@ -122,35 +122,37 @@ public class RuleEditAuthorizationTests
         Assert.True(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("victim.exe", r => r.DisallowExecution = true)).Success);
     }
 
-    // Seen on an installed engine: a standard user could save a rule for spoolsv.exe (or svchost.exe) at Idle priority,
-    // which the engine applies as SYSTEM, and could delete an administrator's rule for it.
+    // Seen on an installed engine: a standard user could save a rule for a service at Idle priority, which the engine
+    // applies as SYSTEM, and could delete an administrator's rule for it. (spoolsv.exe and svchost.exe themselves are now
+    // refused by name: see CriticalProcessTiers below.)
     [Fact]
     public void EveryRule_NeedsTheRightToChangeEveryRunningInstance()
     {
         var h = new ThinHarness();
-        h.Process(60, "spoolsv");
+        h.Process(60, "searchindexer");
         var caller = new ThinCaller();
 
-        AssertDenied(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("spoolsv.exe", r => r.PriorityClass = (int)ProcessPriorityClass.Idle)), "pid 60");
-        AssertDenied(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("spoolsv.exe", r => r.AffinityMask = 1)), "pid 60");
-        AssertDenied(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("spoolsv.exe", r => r.IoPriority = 0)), "pid 60");
-        AssertDenied(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("spoolsv.exe", r => r.CpuLimitPercent = 1)), "pid 60");
+        AssertDenied(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("searchindexer.exe", r => r.PriorityClass = (int)ProcessPriorityClass.Idle)), "pid 60");
+        AssertDenied(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("searchindexer.exe", r => r.AffinityMask = 1)), "pid 60");
+        AssertDenied(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("searchindexer.exe", r => r.IoPriority = 0)), "pid 60");
+        AssertDenied(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("searchindexer.exe", r => r.CpuLimitPercent = 1)), "pid 60");
         foreach (var action in new[] { WatchdogResponse.SetPriority, WatchdogResponse.SetAffinity, WatchdogResponse.SetIoPriority, WatchdogResponse.TrimWorkingSet })
-            AssertDenied(h.Send(caller, CommandTypes.SaveWatchdogRule, null, Watch("spoolsv.exe", action, action == WatchdogResponse.SetAffinity ? "0x1" : null)), "pid 60");
+            AssertDenied(h.Send(caller, CommandTypes.SaveWatchdogRule, null, Watch("searchindexer.exe", action, action == WatchdogResponse.SetAffinity ? "0x1" : null)), "pid 60");
         Assert.Empty(h.Rules);
         Assert.Empty(h.WatchdogRules);
 
         // Watching it only to log or be told is fine: nothing is done to it.
-        Assert.True(h.Send(caller, CommandTypes.SaveWatchdogRule, null, Watch("spoolsv.exe", WatchdogResponse.Notify)).Success);
+        Assert.True(h.Send(caller, CommandTypes.SaveWatchdogRule, null, Watch("searchindexer.exe", WatchdogResponse.Notify)).Success);
 
-        // An administrator's harmless-looking rule for it stays out of reach too.
-        var adminRule = h.Data<ProcessRuleDto>(h.Send(Admin, CommandTypes.SaveProcessRule, null, Rule("spoolsv.exe", r => r.PriorityClass = (int)ProcessPriorityClass.Normal)));
-        AssertDenied(h.Send(caller, CommandTypes.DeleteProcessRule, null, adminRule.Id), "pid 60");
-
-        // Their own instance: fine.
+        // An administrator's harmless-looking rule for it stays out of reach, even once they could change the process.
+        var adminRule = h.Data<ProcessRuleDto>(h.Send(Admin, CommandTypes.SaveProcessRule, null, Rule("searchindexer.exe", r => r.PriorityClass = (int)ProcessPriorityClass.Normal)));
+        AssertDenied(h.Send(caller, CommandTypes.DeleteProcessRule, null, adminRule.Id), "an administrator or another user saved it");
         caller.OpenablePids.Add(60);
-        Assert.True(h.Send(caller, CommandTypes.DeleteProcessRule, null, adminRule.Id).Success);
-        Assert.True(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("spoolsv.exe", r => r.PriorityClass = (int)ProcessPriorityClass.Idle)).Success);
+        AssertDenied(h.Send(caller, CommandTypes.DeleteProcessRule, null, adminRule.Id), "an administrator or another user saved it");
+
+        // Once the administrator's rule is gone, their own instance: fine.
+        Assert.True(h.Send(Admin, CommandTypes.DeleteProcessRule, null, adminRule.Id).Success);
+        Assert.True(h.Send(caller, CommandTypes.SaveProcessRule, null, Rule("searchindexer.exe", r => r.PriorityClass = (int)ProcessPriorityClass.Idle)).Success);
     }
 
     [Fact]
@@ -191,10 +193,10 @@ public class RuleEditAuthorizationTests
         processRule.DisallowExecution = false;
         AssertDenied(h.Send(Standard, CommandTypes.SaveProcessRule, null, processRule), "victim.exe");
         AssertDenied(h.Send(Standard, CommandTypes.SaveProcessRule, null, Rule("victim.exe")), "victim.exe");
-        AssertDenied(h.Send(Standard, CommandTypes.DeleteWatchdogRule, null, watchdogRule.Id), "Launch");
+        AssertDenied(h.Send(Standard, CommandTypes.DeleteWatchdogRule, null, watchdogRule.Id), "an administrator or another user saved it");
         watchdogRule.ActionType = WatchdogResponse.LogAlert;
         watchdogRule.ActionArgument = null;
-        AssertDenied(h.Send(Standard, CommandTypes.SaveWatchdogRule, null, watchdogRule), "Launch");
+        AssertDenied(h.Send(Standard, CommandTypes.SaveWatchdogRule, null, watchdogRule), "an administrator or another user saved it");
 
         Assert.True(h.Rules.Single().DisallowExecution);
         Assert.Equal(WatchdogAction.Launch, h.WatchdogRules.Single().ActionType);

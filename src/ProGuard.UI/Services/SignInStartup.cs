@@ -5,6 +5,7 @@ using System.Security;
 using System.Security.Principal;
 using System.Text;
 using System.Xml.Linq;
+using ProGuard.Shared.Security;
 using ProGuard.UI.Resources;
 
 namespace ProGuard.UI.Services;
@@ -99,6 +100,13 @@ public sealed class SchtasksScheduler : ITaskScheduler
 /// Creating or removing a task that runs with highest rights takes administrator rights, so only an elevated copy
 /// changes it; <see cref="Reconcile"/> runs on every elevated start and puts the two back in line (an installer
 /// upgrade, for one, adds the Run key again). Only sign-in is affected: opening ProGuard from the Start menu still asks.
+/// <para>
+/// The task starts whatever file is at the exe's path with full rights at every sign-in, without asking. So it is only
+/// created for a copy no one but administrators can replace (<see cref="DirectoryTrust.WhyReplaceable"/>: the exe, its
+/// folder and the folder above, as an installed copy in Program Files is). A copy elsewhere (a portable folder on the
+/// desktop, a build output) starts through the Run key and asks for administrator rights when it opens;
+/// <see cref="Notice"/> says why, and an existing task for such a copy is removed.
+/// </para>
 /// </remarks>
 public sealed class SignInStartup : IStartupRegistration
 {
@@ -110,21 +118,35 @@ public sealed class SignInStartup : IStartupRegistration
     private readonly ITaskScheduler _tasks;
     private readonly string _exePath;
     private readonly string _userSid;
+    private readonly Lazy<string?> _whyReplaceable;
 
+    /// <param name="whyReplaceable">Why someone other than an administrator could replace the exe, or null; tests supply their own.</param>
     public SignInStartup(IElevationLauncher elevation, IStartupRegistration? runKey = null, ITaskScheduler? tasks = null,
-        string? exePath = null, string? userSid = null)
+        string? exePath = null, string? userSid = null, Func<string, string?>? whyReplaceable = null)
     {
         _elevation = elevation;
         _exePath = exePath ?? Environment.ProcessPath ?? throw new InvalidOperationException("The path of ProGuard.UI.exe is unknown.");
         _runKey = runKey ?? new RunKeyStartup(_exePath);
         _tasks = tasks ?? new SchtasksScheduler();
         _userSid = userSid ?? CurrentUserSid();
+        var check = whyReplaceable ?? DirectoryTrust.WhyReplaceable;
+        _whyReplaceable = new Lazy<string?>(() => check(_exePath));
     }
+
+    /// <summary>
+    /// Why sign-in can't go through the task although "Always start as administrator" is on, for the System page; null
+    /// when it can (or isn't wanted).
+    /// </summary>
+    public string? Notice =>
+        _elevation.AlwaysElevate && _whyReplaceable.Value is { } why ? string.Format(Strings.SignIn_NotProtected, why) : null;
 
     public string TaskName => $"{TaskFolder}Start at sign-in {_userSid}";
 
-    /// <summary>Whether sign-in should go through the task: only an elevated copy may set it up, and only if it's wanted.</summary>
-    private bool WantsTask => _elevation.IsElevated && _elevation.AlwaysElevate;
+    /// <summary>
+    /// Whether sign-in should go through the task: only an elevated copy may set it up, only if it's wanted, and only for
+    /// a copy no one but administrators can replace.
+    /// </summary>
+    private bool WantsTask => _elevation.IsElevated && _elevation.AlwaysElevate && _whyReplaceable.Value == null;
 
     private bool TaskExists => _tasks.Query(TaskName) != null;
 
@@ -169,13 +191,16 @@ public sealed class SignInStartup : IStartupRegistration
         bool task = TaskExists, runKey = _runKey.IsEnabled;
         if (!task && !runKey) return; // start-at-sign-in is off
 
-        if (_elevation.AlwaysElevate)
+        if (WantsTask)
         {
             if (!TaskStartsThisCopy) _tasks.Create(TaskName, TaskXml(_userSid, _exePath));
             if (runKey) _runKey.Disable();
         }
         else
         {
+            // A copy that may not have the task leaves alone one that starts a different (installed) copy: sign-in is
+            // already taken care of.
+            if (task && _elevation.AlwaysElevate && !TaskStartsThisCopy) return;
             if (task) _tasks.Delete(TaskName);
             if (!runKey) _runKey.Enable();
         }

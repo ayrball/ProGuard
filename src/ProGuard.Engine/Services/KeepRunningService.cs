@@ -36,6 +36,9 @@ public class KeepRunningService
     private readonly object _sync = new();
     private readonly Dictionary<string, Watch> _watches = new(StringComparer.Ordinal);
 
+    /// <summary>Which processes a rule may act on (see <see cref="RuleScope"/>). Tests supply fake owners.</summary>
+    internal RuleScope Scope { get; set; } = RuleScope.Default;
+
     public KeepRunningService(
         ILogger<KeepRunningService> logger,
         IRuleStore ruleStore,
@@ -69,19 +72,23 @@ public class KeepRunningService
         lock (_sync)
         {
             var now = _time.GetUtcNow().UtcDateTime;
-            var wanted = new Dictionary<string, string>(StringComparer.Ordinal);
+            var wanted = new Dictionary<string, ProcessRule>(StringComparer.Ordinal);
             foreach (var rule in _ruleStore.GetProcessRules().Where(r => r.KeepRunning))
             {
                 var key = ProcessExtensions.NormalizeName(rule.ProcessName);
-                if (key.Length > 0) wanted.TryAdd(key, rule.ProcessName);
+                if (key.Length > 0) wanted.TryAdd(key, rule);
             }
 
             foreach (var gone in _watches.Keys.Where(k => !wanted.ContainsKey(k)).ToList()) _watches.Remove(gone);
 
-            foreach (var (key, displayName) in wanted)
+            foreach (var (key, rule) in wanted)
             {
+                var displayName = rule.ProcessName;
                 if (!_watches.TryGetValue(key, out var watch)) _watches[key] = watch = new Watch(displayName);
-                try { Update(watch, processes.Where(p => ProcessExtensions.NormalizeName(p.Name) == key).ToList(), now); }
+                // A standard user's rule watches, and relaunches with the command line of, only that user's own
+                // instances: another user's copy neither counts as running nor lends its command line.
+                var running = processes.Where(p => ProcessExtensions.NormalizeName(p.Name) == key && Scope.AppliesTo(rule, p)).ToList();
+                try { Update(watch, running, now); }
                 catch (Exception ex) { _logger.LogError(ex, "Keep Running failed for {Name}", displayName); }
             }
         }

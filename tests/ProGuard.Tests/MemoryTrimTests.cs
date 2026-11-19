@@ -480,7 +480,7 @@ public class MemoryTrimTests
         var responsivenessGuard = new Mock<IResponsivenessGuardEngine>();
         var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, monitor.Object, trim.Object, power.Object, responsivenessGuard.Object);
         var dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, store.Object, applier, responsivenessGuard.Object, power.Object,
-            trim.Object, new Mock<ICpuLimiter>().Object, new Mock<IProcessController>().Object, monitor.Object);
+            trim.Object, new Mock<ICpuLimiter>().Object, new Mock<IProcessController>().Object, monitor.Object) { PinProcess = TestPins.Any };
         return (dispatcher, trim);
     }
 

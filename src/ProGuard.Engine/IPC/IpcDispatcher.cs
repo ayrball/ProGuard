@@ -72,6 +72,12 @@ public class IpcDispatcher
         _profiles = profiles;
     }
 
+    /// <summary>
+    /// Holds the target of a standard user's process request from before its check until after the action (see
+    /// <see cref="ProcessPin"/>); null when the process isn't running. Tests of fake processes replace it.
+    /// </summary>
+    internal Func<int, IDisposable?> PinProcess { get; init; } = ProcessPin.Open;
+
     /// <summary>Handles a request from code inside the engine, which needs no authorization.</summary>
     public string HandleLine(string line) => HandleLine(line, IpcCaller.InProcess);
 
@@ -99,8 +105,20 @@ public class IpcDispatcher
 
     public IpcMessage Dispatch(CommandMessage request, IIpcCaller caller)
     {
+        IDisposable? pin = null;
         try
         {
+            // The check opens the target as the caller and the action reopens it by id as SYSTEM: pin it first, so the
+            // id can't pass to another process in between.
+            if (!caller.IsAdministrator && request.Type == MessageType.Command
+                && IpcAuthorization.ProcessCommandAccess.ContainsKey(request.CommandType)
+                && request.TargetPid is int targetPid && targetPid > 0)
+            {
+                pin = PinProcess(targetPid);
+                if (pin == null)
+                    return Result(IpcAuthorization.Deny(caller, $"{CommandTypes.Describe(request.CommandType)} process {targetPid}: it is not running"));
+            }
+
             var denied = IpcAuthorization.Check(request, caller);
             if (denied != null)
             {
@@ -112,10 +130,11 @@ public class IpcDispatcher
             {
                 MessageType.Ping => new IpcMessage { Type = MessageType.Pong, Payload = "{}" },
                 MessageType.GetStatus => new IpcMessage { Type = MessageType.Status, Payload = JsonSerializer.Serialize(BuildStatus()) },
-                MessageType.SetSetting => Result(ReplaceSettings(request.Payload, caller)),
+                // Retired: it copied every AppSettings property unvalidated. Nothing sends it; SaveSettings replaces it.
+                MessageType.SetSetting => Result(CommandResult.Fail("SetSetting is no longer supported. Send the SaveSettings command instead.")),
                 MessageType.Command => Result(ExecuteCommand(request, caller)),
                 MessageType.GetRules => new IpcMessage { Type = MessageType.RuleList, Payload = JsonSerializer.Serialize(_ruleStore.GetProcessRules().Select(RuleDtoMapper.ToDto).ToList()) },
-                MessageType.SetRule => Result(SaveRule(request.Payload)),
+                MessageType.SetRule => Result(SaveRule(request.Payload, caller)),
                 MessageType.GetLogs => GetWatchdogEvents(request.Payload),
                 _ => Result(CommandResult.Fail($"Unsupported message type {request.Type}"))
             };
@@ -124,6 +143,10 @@ public class IpcDispatcher
         {
             _logger.LogError(ex, "IPC request {Type}/{Command} failed", request.Type, request.CommandType);
             return Result(CommandResult.Fail(ex.Message));
+        }
+        finally
+        {
+            pin?.Dispose();
         }
     }
 
@@ -218,6 +241,8 @@ public class IpcDispatcher
 
             case CommandTypes.ConfigureMemoryTrim:
                 var trim = ParseArgument<MemoryTrimArgument>(cmd.Argument);
+                if (trim.IntervalSeconds < 1) return CommandResult.Fail("The Memory Trim interval must be at least 1 second");
+                if (trim.ThresholdMb < 0) return CommandResult.Fail("The Memory Trim threshold can't be negative");
                 return UpdateSettings(s =>
                 {
                     s.MemoryTrimEnabled = trim.Enabled;
@@ -285,9 +310,9 @@ public class IpcDispatcher
         switch (cmd.CommandType)
         {
             case CommandTypes.ListProfiles: return _profiles.List();
-            case CommandTypes.SaveProfile: return _profiles.Save(cmd.Argument);
-            case CommandTypes.DeleteProfile: return _profiles.Delete(ParseInt(cmd.Argument));
-            case CommandTypes.RenameProfile: return _profiles.Rename(ParseArgument<RenameProfileArgument>(cmd.Argument));
+            case CommandTypes.SaveProfile: return _profiles.Save(cmd.Argument, caller);
+            case CommandTypes.DeleteProfile: return _profiles.Delete(ParseInt(cmd.Argument), caller);
+            case CommandTypes.RenameProfile: return _profiles.Rename(ParseArgument<RenameProfileArgument>(cmd.Argument), caller);
             case CommandTypes.ExportConfig: return _profiles.Export(cmd.Argument);
         }
 
@@ -317,19 +342,16 @@ public class IpcDispatcher
     {
         if (ValidateSettings(dto) is { } invalid) return CommandResult.Fail(invalid);
 
-        AppSettings stored;
-        lock (_settingsSync)
+        AppSettings? stored = null;
+        var result = UpdateSettings(settings =>
         {
-            var current = _ruleStore.GetSettings();
-            var settings = current.Clone();
             DtoMapper.CopyTo(dto, settings); // never touches Id: the DTO has none
-            if (IpcAuthorization.CheckSettingsChange(current, settings, caller) is { } denied) return denied;
-            _ruleStore.UpdateSettings(settings);
-            _settingsApplier.Apply(settings);
             stored = settings;
-        }
+            return null;
+        }, caller);
+        if (!result.Success) return result;
         _thinClient?.Record(0, "Saved the settings.", string.Empty);
-        return CommandResult.Ok(JsonSerializer.Serialize(DtoMapper.Map<AppSettings, EngineSettingsDto>(stored)));
+        return CommandResult.Ok(JsonSerializer.Serialize(DtoMapper.Map<AppSettings, EngineSettingsDto>(stored!)));
     }
 
     internal static string? ValidateSettings(EngineSettingsDto d)
@@ -354,15 +376,25 @@ public class IpcDispatcher
     private static bool Percent(double value) => value >= 0 && value <= 100;
 
     /// <summary>Saves a changed copy of the stored settings, then applies it to the services.</summary>
-    private CommandResult UpdateSettings(Action<AppSettings> change) => UpdateSettings(s => { change(s); return null; });
+    private CommandResult UpdateSettings(Action<AppSettings> change, IIpcCaller? caller = null) => UpdateSettings(s => { change(s); return null; }, caller);
 
-    /// <summary>As above; <paramref name="change"/> may refuse by returning a failure, and then nothing is saved.</summary>
-    private CommandResult UpdateSettings(Func<AppSettings, CommandResult?> change)
+    /// <summary>
+    /// As above; <paramref name="change"/> may refuse by returning a failure, and then nothing is saved. Every route that
+    /// changes settings comes through here, so each gets the same checks: the result must pass
+    /// <see cref="ValidateSettings"/> (unless the stored settings already failed it, so an old bad value doesn't block
+    /// every other change), and <paramref name="caller"/> may change administrator-only settings only if they are one.
+    /// </summary>
+    private CommandResult UpdateSettings(Func<AppSettings, CommandResult?> change, IIpcCaller? caller = null)
     {
         lock (_settingsSync)
         {
-            var settings = _ruleStore.GetSettings().Clone();
+            var current = _ruleStore.GetSettings();
+            var settings = current.Clone();
             if (change(settings) is { } refused) return refused;
+            if (ValidateSettings(DtoMapper.Map<AppSettings, EngineSettingsDto>(settings)) is { } invalid
+                && ValidateSettings(DtoMapper.Map<AppSettings, EngineSettingsDto>(current)) == null)
+                return CommandResult.Fail(invalid);
+            if (caller != null && IpcAuthorization.CheckSettingsChange(current, settings, caller) is { } denied) return denied;
             _ruleStore.UpdateSettings(settings);
             _settingsApplier.Apply(settings);
         }
@@ -404,26 +436,12 @@ public class IpcDispatcher
         };
     }
 
-    private CommandResult ReplaceSettings(string payload, IIpcCaller caller)
-    {
-        var incoming = ParseArgument<AppSettings>(payload);
-        return UpdateSettings(s =>
-        {
-            if (IpcAuthorization.CheckSettingsChange(s, incoming, caller) is { } denied) return denied;
-            var id = s.Id;
-            foreach (var property in typeof(AppSettings).GetProperties().Where(p => p.CanWrite))
-                property.SetValue(s, property.GetValue(incoming));
-            s.Id = id; // the stored row keeps its key whatever the client sent
-            return null;
-        });
-    }
-
     /// <summary>
     /// Creates or updates the process rule named in a <see cref="ProcessRuleDto"/>. The DTO carries every field, so
     /// it replaces the stored rule (keeping its Id). The engine applies it to processes as they start (or on the next
     /// re-apply check).
     /// </summary>
-    private CommandResult SaveRule(string payload)
+    private CommandResult SaveRule(string payload, IIpcCaller caller)
     {
         var dto = ParseArgument<ProcessRuleDto>(payload);
         if (string.IsNullOrWhiteSpace(dto.ProcessName)) return CommandResult.Fail("A rule needs a process name");
@@ -444,6 +462,7 @@ public class IpcDispatcher
         }
         RuleDtoMapper.CopyTo(dto, rule);
         if (existing != null) rule.Id = existing.Id; // the stored row keeps its key whatever the client sent
+        RuleAuthorization.Stamp(rule, caller); // administrator-only, so an administrator's rule
         _ruleStore.SaveProcessRule(rule);
         return CommandResult.Ok();
     }

@@ -48,6 +48,9 @@ public sealed class InstanceSpread : IDisposable
         public bool Released { get; set; }
     }
 
+    /// <summary>Which processes a rule may act on (see <see cref="RuleScope"/>). Tests supply fake owners.</summary>
+    internal RuleScope Scope { get; set; } = RuleScope.Default;
+
     public InstanceSpread(
         ILogger<InstanceSpread> logger,
         IProcessMonitor monitor,
@@ -92,7 +95,7 @@ public sealed class InstanceSpread : IDisposable
 
     public void OnProcessStarted(ProcessInfo process, ProcessRule rule)
     {
-        if (rule.InstanceSpreadMode == null) return;
+        if (rule.InstanceSpreadMode == null || !Scope.AppliesTo(rule, process)) return;
 
         lock (_gate)
         {
@@ -122,13 +125,14 @@ public sealed class InstanceSpread : IDisposable
         {
             var balanced = _ruleStore.GetProcessRules()
                 .Where(r => r.InstanceSpreadMode != null)
-                .Select(r => ProcessExtensions.NormalizeName(r.ProcessName))
-                .ToHashSet();
+                .GroupBy(r => ProcessExtensions.NormalizeName(r.ProcessName))
+                .ToDictionary(g => g.Key, g => g.First());
             if (balanced.Count > 0)
             {
                 foreach (var process in _monitor.GetAllProcesses())
                 {
-                    if (!_members.ContainsKey(process.Pid) && balanced.Contains(ProcessExtensions.NormalizeName(process.Name)))
+                    if (!_members.ContainsKey(process.Pid) && balanced.TryGetValue(ProcessExtensions.NormalizeName(process.Name), out var owning)
+                        && Scope.AppliesTo(owning, process))
                         Adopt(process);
                 }
             }
@@ -138,6 +142,12 @@ public sealed class InstanceSpread : IDisposable
                 var rule = _ruleStore.GetProcessRule(key);
                 if (rule?.InstanceSpreadMode != null)
                 {
+                    // Instances the rule may no longer act on (it was saved again by someone else) get their affinity back.
+                    foreach (var pid in _members.Where(m => m.Value.Key == key && !Scope.AppliesTo(rule, m.Key, m.Value.Start)).Select(m => m.Key).ToList())
+                    {
+                        Release(pid, restore: true);
+                        _members.Remove(pid);
+                    }
                     Rebalance(key, rule);
                     continue;
                 }

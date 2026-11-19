@@ -764,7 +764,7 @@ public class WatchdogTests
         var responsivenessGuard = new Mock<IResponsivenessGuardEngine>();
         var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, monitor.Object, memoryTrim.Object, power.Object, responsivenessGuard.Object);
         var dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, store.Object, applier, responsivenessGuard.Object, power.Object,
-            memoryTrim.Object, new Mock<ICpuLimiter>().Object, new Mock<IProcessController>().Object, monitor.Object, log);
+            memoryTrim.Object, new Mock<ICpuLimiter>().Object, new Mock<IProcessController>().Object, monitor.Object, log) { PinProcess = TestPins.Any };
 
         var request = new CommandMessage { Type = MessageType.GetLogs, Payload = JsonSerializer.Serialize(new WatchdogEventQuery { After = 0 }) };
         var reply = dispatcher.Dispatch(request, new StandardUser());

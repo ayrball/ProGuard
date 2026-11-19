@@ -206,9 +206,9 @@ public class TimerResolutionTests
         Assert.Contains("Access denied", refused.Error);
         Assert.Contains("timer resolution", refused.Error);
 
-        // The legacy whole-settings request too.
+        // The legacy whole-settings request is retired for everyone.
         var legacy = h.Dispatcher.Dispatch(new CommandMessage { Type = MessageType.SetSetting, Payload = JsonSerializer.Serialize(new AppSettings { TimerResolutionRequest = 5000 }) }, user);
-        Assert.Contains("Access denied", JsonSerializer.Deserialize<CommandResult>(legacy.Payload)!.Error);
+        Assert.False(JsonSerializer.Deserialize<CommandResult>(legacy.Payload)!.Success);
 
         Assert.Equal(0, h.Stored.TimerResolutionRequest);
         Assert.Null(h.Timer.Ours);

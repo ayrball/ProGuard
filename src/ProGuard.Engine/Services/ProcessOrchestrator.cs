@@ -31,6 +31,9 @@ public class ProcessOrchestrator : IProcessOrchestrator
     public PersistentRuleService? PersistentRules { get; }
     public bool IsRunning => _isRunning;
 
+    /// <summary>Which processes a rule may act on (see <see cref="RuleScope"/>). Tests supply fake owners.</summary>
+    internal RuleScope Scope { get; set; } = RuleScope.Default;
+
     public ProcessOrchestrator(
         ILogger<ProcessOrchestrator> logger,
         IProcessMonitor processMonitor,
@@ -100,7 +103,8 @@ public class ProcessOrchestrator : IProcessOrchestrator
 
     private void OnProcessStarted(object? sender, ProcessInfo e)
     {
-        var rule = RuleStore.GetProcessRule(e.Name);
+        // A standard user's rule acts only on that user's own processes; everyone else's start untouched.
+        var rule = Scope.RuleFor(RuleStore, e);
         if (rule == null) return;
 
         try

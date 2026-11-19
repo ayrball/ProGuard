@@ -51,6 +51,9 @@ public class WatchdogService : IWatchdogService, IDisposable
     private readonly Dictionary<(int Pid, RestoreKind Kind), PendingRestore> _restores = new();
     private readonly List<PendingRestart> _restarts = new();
 
+    /// <summary>Which processes a rule may act on (see <see cref="RuleScope"/>). Tests supply fake owners.</summary>
+    internal RuleScope Scope { get; set; } = RuleScope.Default;
+
     public WatchdogService(ILogger<WatchdogService> logger, IProcessMonitor processMonitor, IRuleStore ruleStore)
         : this(logger, processMonitor, ruleStore, new Win32ProcessActions()) { }
 
@@ -164,8 +167,9 @@ public class WatchdogService : IWatchdogService, IDisposable
     {
         var wanted = ProcessExtensions.NormalizeName(rule.TargetProcessName);
         if (wanted.Length == 0) return;
-        // Rules are stored the way the UI shows them ("chrome.exe"); the monitor reports "chrome".
-        var targets = processes.Where(p => ProcessExtensions.NormalizeName(p.Name) == wanted).ToList();
+        // Rules are stored the way the UI shows them ("chrome.exe"); the monitor reports "chrome". A standard user's
+        // rule sees, counts and acts on only that user's own unelevated processes.
+        var targets = processes.Where(p => ProcessExtensions.NormalizeName(p.Name) == wanted && Scope.AppliesTo(rule, p)).ToList();
 
         if (rule.ConditionType == WatchdogCondition.InstanceCountAbove)
         {

@@ -40,7 +40,9 @@ public class SignInStartupTests
         var elevation = new FakeElevation(elevated, always);
         var runKey = new FakeRunKey();
         var tasks = new FakeScheduler();
-        return (new SignInStartup(elevation, runKey, tasks, Exe, Sid), elevation, runKey, tasks);
+        // An installed copy, which no standard user can replace (see SecurityHardeningTests for the other kind), whether or
+        // not ProGuard is installed on the machine running the tests.
+        return (new SignInStartup(elevation, runKey, tasks, Exe, Sid, whyReplaceable: _ => null), elevation, runKey, tasks);
     }
 
     [Fact]

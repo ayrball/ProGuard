@@ -63,11 +63,17 @@
       <Directory Id="INSTALLFOLDER" Name="ProGuard" />
     </StandardDirectory>
     <StandardDirectory Id="ProgramMenuFolder" />
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="DATAFOLDER" Name="ProGuard">
+        <Directory Id="DATALOGSFOLDER" Name="logs" />
+      </Directory>
+    </StandardDirectory>
 
     <Feature Id="ProGuard" Title="ProGuard" AllowAbsent="no">
       <ComponentGroupRef Id="ProgramFiles" />
       <ComponentRef Id="StartAtSignIn" />
       <ComponentRef Id="StartAsAdministrator" />
+      <ComponentRef Id="DataFolder" />
     </Feature>
 
     <ComponentGroup Id="ProgramFiles" Directory="INSTALLFOLDER">
@@ -103,6 +109,22 @@
         <Exclude Files="$(var.StagingDir)\ProGuard.UI.exe" />
       </Files>
     </ComponentGroup>
+
+    <!-- %ProgramData%\ProGuard holds the database the engine (LocalSystem) reads its rules from, and logs\engine.log,
+         which records every user's processes. It would otherwise inherit %ProgramData%'s permissions, which let every
+         user read it and create files in it. A protected DACL instead: SYSTEM and Administrators full control, inherited
+         by everything below; nothing for Users, since the UI only ever talks to the engine over its pipes. No owner is
+         set here, so a folder a standard user created before the install keeps that user as its owner, and the engine
+         (DataDirectoryGuard) renames it aside on start rather than trusting what is in it. The engine applies the same
+         DACL itself on every start, for copies installed without this MSI. -->
+    <Component Id="DataFolder" Directory="DATAFOLDER" Guid="890E219F-3BB0-43A7-B79C-CE553A52EEF1">
+      <CreateFolder>
+        <PermissionEx Sddl="D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)" />
+      </CreateFolder>
+      <CreateFolder Directory="DATALOGSFOLDER">
+        <PermissionEx Sddl="D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)" />
+      </CreateFolder>
+    </Component>
 
     <!-- HKLM: the default for every user, so a copy handed out starts elevated without anyone looking for "Restart as
          administrator". Each user's own choice (HKCU, same name) overrides it. -->

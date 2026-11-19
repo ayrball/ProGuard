@@ -18,4 +18,18 @@ public class ConfigProfile
     // Kept alongside the document so the list doesn't have to read every one.
     public int ProcessRuleCount { get; set; }
     public int WatchdogRuleCount { get; set; }
+
+    /// <summary>
+    /// SID of the account that created the profile, set by the engine. Standard users may overwrite, rename or delete
+    /// only profiles they created; administrators may change any. Null for profiles from before this was recorded,
+    /// which only administrators may change.
+    /// </summary>
+    public string? CreatorSid { get; set; }
+
+    /// <summary>
+    /// Who had saved each rule when the profile was saved, as engine-written JSON (never part of the document, so never
+    /// exported or imported). Switching back to the profile restores a standard user's rule as theirs, rather than as an
+    /// administrator's that acts on everyone's processes.
+    /// </summary>
+    public string? RuleAuthors { get; set; }
 }

@@ -2,11 +2,13 @@ using System;
 using System.IO;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ProGuard.Shared.Messages;
+using ProGuard.Shared.Security;
 
 namespace ProGuard.Shared.Reporting;
 
@@ -93,14 +95,18 @@ public sealed class ForegroundReporter : IDisposable
             {
                 try
                 {
-                    using var pipe = new NamedPipeClientStream(".", _pipeName, PipeDirection.Out, PipeOptions.Asynchronous);
+                    // Identification: the engine only asks Windows which session we are in and never impersonates us,
+                    // so a program squatting on the name gets a token it can't act with.
+                    using var pipe = new NamedPipeClientStream(".", _pipeName, PipeDirection.Out, PipeOptions.Asynchronous, TokenImpersonationLevel.Identification);
                     // One attempt, no waiting: with a timeout, .NET retries a missing pipe in a spin loop until it runs
                     // out, which an agent that waits for the engine for hours can't afford. ReconnectDelay paces us.
                     await pipe.ConnectAsync(0, token);
+                    // Nothing is sent to a server that isn't the engine (see PipeServerCheck).
+                    PipeServerCheck.Verify(pipe.SafePipeHandle);
                     await ReportChangesAsync(pipe, token);
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested) { return; }
-                catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException or OperationCanceledException)
+                catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException or OperationCanceledException or UntrustedPipeServerException)
                 {
                     // Engine not running, restarting or refusing us: try again shortly.
                 }

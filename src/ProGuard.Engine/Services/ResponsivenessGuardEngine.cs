@@ -157,6 +157,9 @@ public class ResponsivenessGuardEngine : IResponsivenessGuardEngine, IDisposable
     /// </summary>
     public event Action<bool>? RestraintsUpdated;
 
+    /// <summary>Which processes a rule may act on (see <see cref="RuleScope"/>). Tests supply fake owners.</summary>
+    internal RuleScope Scope { get; set; } = RuleScope.Default;
+
     public ResponsivenessGuardEngine(
         ILogger<ResponsivenessGuardEngine> logger,
         IProcessMonitor processMonitor,
@@ -433,7 +436,8 @@ public class ResponsivenessGuardEngine : IResponsivenessGuardEngine, IDisposable
 
         if (ExemptForeground && (p.Pid == foregroundPid || p.IsForeground)) return true;
 
-        var rule = _ruleStore.GetProcessRule(p.Name);
+        // A standard user's exclusion spares only their own processes, not another user's of the same name.
+        var rule = Scope.RuleFor(_ruleStore, p);
         if (rule != null && rule.ExcludeFromResponsivenessGuard) return true;
 
         if (ExemptForegroundChildren && foregroundPid > 0

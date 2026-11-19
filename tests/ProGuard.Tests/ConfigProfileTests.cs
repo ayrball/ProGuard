@@ -55,6 +55,7 @@ internal sealed class FakeProfileStore : IConfigProfileStore
     private static ConfigProfile Copy(ConfigProfile p) => new()
     {
         Id = p.Id, Name = p.Name, SavedUtc = p.SavedUtc, Document = p.Document, ProcessRuleCount = p.ProcessRuleCount, WatchdogRuleCount = p.WatchdogRuleCount,
+        CreatorSid = p.CreatorSid, RuleAuthors = p.RuleAuthors,
     };
 }
 
@@ -86,14 +87,14 @@ internal sealed class ProfileHarness
         var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, T.Monitor, T.MemoryTrim.Object, T.Power.Object, T.ResponsivenessGuard.Object,
             foregroundBoost: T.ForegroundBoost, timerResolution: T.TimerResolution);
         var rules = new RuleService(NullLogger<RuleService>.Instance, T.Store.Object, T.Monitor, T.CpuLimiter.Object, T.ResponsivenessGuard.Object,
-            T.Access.Object, T.Manual, launchPriorities: new LaunchPriorityService(registry: T.LaunchRegistry));
-        var actions = new ProcessActionService(NullLogger<ProcessActionService>.Instance, T.Tuning, T.Monitor, T.Controller.Object);
+            T.Access.Object, T.Manual, launchPriorities: new LaunchPriorityService(registry: T.LaunchRegistry)) { Scope = new RuleScope(T.Owners) };
+        var actions = new ProcessActionService(NullLogger<ProcessActionService>.Instance, T.Tuning, T.Monitor, T.Controller.Object) { PinProcess = TestPins.AnyDescendant };
         var thin = new ThinClientCommands(NullLogger<ThinClientCommands>.Instance, T.Snapshots, actions, rules,
             new ActivityFeed(T.Store.Object, T.Manual, T.WatchdogEvents), T.Manual, T.Store.Object, T.Power.Object, T.Monitor, T.Tuning);
         var profiles = new ConfigProfileService(NullLogger<ConfigProfileService>.Instance, T.Store.Object, Profiles, rules, applier,
             T.Monitor, T.Power.Object, T.Tuning, T.Manual);
         Dispatcher = new IpcDispatcher(T.Log, T.Store.Object, applier, T.ResponsivenessGuard.Object, T.Power.Object, T.MemoryTrim.Object,
-            T.CpuLimiter.Object, T.Controller.Object, T.Monitor, T.WatchdogEvents, thin, timerResolution: T.TimerResolution, profiles: profiles);
+            T.CpuLimiter.Object, T.Controller.Object, T.Monitor, T.WatchdogEvents, thin, timerResolution: T.TimerResolution, profiles: profiles) { PinProcess = TestPins.Any };
     }
 
     public CommandResult Send(IIpcCaller caller, string command, object? argument = null)
@@ -406,17 +407,17 @@ public class ConfigProfileTests
     public void StandardUser_CantImportARuleTheyCouldntCreate()
     {
         var h = new ProfileHarness();
-        h.T.Process(900, "spoolsv.exe"); // a service the standard user can't open
+        h.T.Process(900, "searchindexer.exe"); // a service the standard user can't open
         var doc = h.Export();
         doc.ProcessRules.Add(new ProcessRuleDto { ProcessName = "game.exe", PriorityClass = (int)ProcessPriorityClass.RealTime });
-        doc.ProcessRules.Add(new ProcessRuleDto { ProcessName = "spoolsv.exe", PriorityClass = (int)ProcessPriorityClass.Idle });
+        doc.ProcessRules.Add(new ProcessRuleDto { ProcessName = "searchindexer.exe", PriorityClass = (int)ProcessPriorityClass.Idle });
         doc.WatchdogRules.Add(new WatchdogRuleDto { TargetProcessName = "x.exe", ThresholdValue = 5, ActionType = WatchdogResponse.Launch, ActionArgument = "calc.exe" });
         var file = ConfigDocuments.Serialize(doc);
 
         var preview = h.Data<ConfigPreviewDto>(h.Send(Standard, CommandTypes.ImportConfig, new ImportConfigArgument { Document = file, Preview = true }));
         Assert.False(preview.CanApply);
         Assert.Contains(preview.Refusals, r => r.StartsWith("Access denied") && r.Contains("Realtime"));
-        Assert.Contains(preview.Refusals, r => r.Contains("spoolsv.exe") && r.Contains("pid 900"));
+        Assert.Contains(preview.Refusals, r => r.Contains("searchindexer.exe") && r.Contains("pid 900"));
         Assert.Contains(preview.Refusals, r => r.Contains("Launch"));
 
         var result = h.Send(Standard, CommandTypes.ImportConfig, new ImportConfigArgument { Document = file });
@@ -441,7 +442,7 @@ public class ConfigProfileTests
         var result = h.Send(Standard, CommandTypes.SwitchProfile, new SwitchProfileArgument { Id = empty });
 
         Assert.False(result.Success);
-        Assert.Contains("Realtime", result.Error);
+        Assert.Contains("an administrator or another user saved it", result.Error);
         Assert.Single(h.T.Rules);
     }
 

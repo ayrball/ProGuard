@@ -31,6 +31,7 @@ public class CommandPipeSecurityTests
     {
         public string Name { get; init; } = @"TEST\standard";
         public bool IsAdministrator { get; init; }
+        public string? Sid { get; init; } = "S-1-5-21-1111-2222-3333-1001";
         public HashSet<int> OpenablePids { get; } = new();
         public List<(int Pid, ProcessAccessFlags Access)> Checks { get; } = new();
 
@@ -62,7 +63,7 @@ public class CommandPipeSecurityTests
 
             var applier = new SettingsApplier(NullLogger<SettingsApplier>.Instance, Monitor.Object, MemoryTrim.Object, Power.Object, ResponsivenessGuard.Object);
             Dispatcher = new IpcDispatcher(NullLogger<IpcDispatcher>.Instance, RuleStore.Object, applier, ResponsivenessGuard.Object,
-                Power.Object, MemoryTrim.Object, CpuLimiter.Object, Processes.Object, Monitor.Object);
+                Power.Object, MemoryTrim.Object, CpuLimiter.Object, Processes.Object, Monitor.Object) { PinProcess = TestPins.Any };
         }
 
         public IpcMessage Send(IIpcCaller caller, CommandMessage request) => Dispatcher.Dispatch(request, caller);
@@ -159,7 +160,7 @@ public class CommandPipeSecurityTests
     }
 
     [Fact]
-    public void StandardUser_MayPingGetStatusAndReplaceSettings()
+    public void StandardUser_MayPingGetStatusAndChangeSettings()
     {
         var h = new Harness();
         var caller = new FakeCaller();
@@ -167,9 +168,24 @@ public class CommandPipeSecurityTests
         Assert.Equal(MessageType.Pong, h.Send(caller, new CommandMessage { Type = MessageType.Ping }).Type);
         Assert.Equal(MessageType.Status, h.Send(caller, new CommandMessage { Type = MessageType.GetStatus }).Type);
 
-        var reply = h.Send(caller, new CommandMessage { Type = MessageType.SetSetting, Payload = JsonSerializer.Serialize(new AppSettings { ResponsivenessGuardSensitivity = 7 }) });
-        Assert.True(JsonSerializer.Deserialize<CommandResult>(reply.Payload)!.Success);
+        Assert.True(h.Command(caller, CommandTypes.SetSensitivity, argument: "7").Success);
         Assert.Equal(7, h.Stored.ResponsivenessGuardSensitivity);
+    }
+
+    [Fact]
+    public void TheLegacySetSetting_IsRetired_ForEveryone()
+    {
+        var h = new Harness();
+        foreach (var caller in new[] { new FakeCaller(), new FakeCaller { IsAdministrator = true } })
+        {
+            var reply = h.Send(caller, new CommandMessage { Type = MessageType.SetSetting, Payload = JsonSerializer.Serialize(new AppSettings { ResponsivenessGuardSensitivity = 7, MemoryTrimIntervalSeconds = 0 }) });
+            var result = JsonSerializer.Deserialize<CommandResult>(reply.Payload)!;
+            Assert.False(result.Success);
+            Assert.Contains("SaveSettings", result.Error);
+        }
+        Assert.Equal(new AppSettings().ResponsivenessGuardSensitivity, h.Stored.ResponsivenessGuardSensitivity);
+        Assert.Equal(new AppSettings().MemoryTrimIntervalSeconds, h.Stored.MemoryTrimIntervalSeconds);
+        h.MemoryTrim.Verify(m => m.Configure(It.IsAny<bool>(), It.IsAny<TimeSpan>(), It.IsAny<long>()), Times.Never);
     }
 
     public static IEnumerable<object?[]> ProcessCommands() => new[]

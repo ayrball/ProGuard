@@ -26,7 +26,9 @@ public class RuleDtoMapperTests
     public void EveryModelProperty_HasADtoCounterpart(System.Type model, System.Type dto)
     {
         // The database key is the one thing a client must not choose; it travels as Id only where a rule can be named.
-        var missing = DtoMapper.Unmapped(model, dto).Where(n => !(n == "Id" && dto == typeof(EngineSettingsDto)));
+        // Who saved a rule is the engine's to record, from the caller's token: it never travels at all.
+        var missing = DtoMapper.Unmapped(model, dto).Where(n => !(n == "Id" && dto == typeof(EngineSettingsDto)))
+            .Where(n => n is not (nameof(IAuthoredRule.AuthorSid) or nameof(IAuthoredRule.AuthorIsAdministrator)));
         // A report's computed totals have no DTO field of their own.
         if (model == typeof(MemoryPurgeReport)) missing = missing.Where(n => n is not (nameof(MemoryPurgeReport.TotalBytesReclaimed) or nameof(MemoryPurgeReport.AnyAction)));
 
@@ -101,15 +103,20 @@ public class RuleDtoMapperTests
         var copy = new ProcessRule();
         RuleDtoMapper.CopyTo(RuleDtoMapper.ToDto(rule), copy);
 
-        AssertSameValues(rule, copy);
+        AssertSameValues(rule, copy, Authorship);
+        // The author never travels: a copy made from a DTO is the default (an administrator's) until the engine stamps it.
+        Assert.Null(copy.AuthorSid);
+        Assert.True(copy.AuthorIsAdministrator);
     }
+
+    private static readonly string[] Authorship = { nameof(IAuthoredRule.AuthorSid), nameof(IAuthoredRule.AuthorIsAdministrator) };
 
     [Fact]
     public void RoundTrip_KeepsEverythingForWatchdogRulesAndSettings()
     {
         var watchdog = Filled<WatchdogRule>();
         watchdog.Id = 7;
-        AssertSameValues(watchdog, DtoMapper.Map<WatchdogRuleDto, WatchdogRule>(DtoMapper.Map<WatchdogRule, WatchdogRuleDto>(watchdog)));
+        AssertSameValues(watchdog, DtoMapper.Map<WatchdogRuleDto, WatchdogRule>(DtoMapper.Map<WatchdogRule, WatchdogRuleDto>(watchdog)), Authorship);
 
         var settings = Filled<AppSettings>(nameof(AppSettings.Id));
         var back = DtoMapper.Map<EngineSettingsDto, AppSettings>(DtoMapper.Map<AppSettings, EngineSettingsDto>(settings));

@@ -18,6 +18,9 @@ public interface IStartupRegistration
 
     /// <summary>Brings how ProGuard starts at sign-in in line with the user's other choices; most registrations have nothing to do.</summary>
     void Reconcile() { }
+
+    /// <summary>Something the user should know about how ProGuard starts at sign-in, or null.</summary>
+    string? Notice => null;
 }
 
 /// <summary>Starts ProGuard.UI.exe through <c>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</c>.</summary>

@@ -96,6 +96,9 @@ public sealed class CpuAffinityLimiter : IDisposable
         lock (_gate) return _constrained.Keys.ToList();
     }
 
+    /// <summary>Which processes a rule may act on (see <see cref="RuleScope"/>). Tests supply fake owners.</summary>
+    internal RuleScope Scope { get; set; } = RuleScope.Default;
+
     public CpuAffinityLimiter(
         ILogger<CpuAffinityLimiter> logger,
         IProcessMonitor processMonitor,
@@ -204,7 +207,7 @@ public sealed class CpuAffinityLimiter : IDisposable
 
             if (now >= c.UntilMs)
                 Restore(pid, "limit period ended");
-            else if (_ruleStore.GetProcessRule(c.Name)?.CpuLimitThresholdPercent == null)
+            else if (_ruleStore.GetProcessRule(c.Name) is not { CpuLimitThresholdPercent: not null } rule || !Scope.AppliesTo(rule, pid, c.StartTimeUtc))
                 Restore(pid, "rule removed");
         }
     }
@@ -215,7 +218,7 @@ public sealed class CpuAffinityLimiter : IDisposable
         {
             if (p.Pid <= 4 || _constrained.ContainsKey(p.Pid)) continue;
 
-            var rule = _ruleStore.GetProcessRule(p.Name);
+            var rule = Scope.RuleFor(_ruleStore, p); // a standard user's rule: their own processes only
             var threshold = rule?.CpuLimitThresholdPercent;
 
             // The over-threshold run must be unbroken: any sample below it starts the wait over.

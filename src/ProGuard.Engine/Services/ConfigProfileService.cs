@@ -101,7 +101,7 @@ public sealed class ConfigProfileService
         if (all.Count(p => !IsAutomatic(p.Name)) >= MaxProfiles && replacing == null)
             return CommandResult.Fail($"There are already {MaxProfiles} profiles. Delete one first.");
 
-        var saved = _profiles.Save(ToProfile(Capture(name), caller));
+        var saved = _profiles.Save(ToProfile(Capture(name), caller, CaptureAuthors()));
         _activity.Add(ActivityKind.Manual, string.Empty, 0, $"Saved the configuration as the {saved.Name} profile.");
         return CommandResult.Ok(JsonSerializer.Serialize(ToDto(saved)));
     }
@@ -151,7 +151,8 @@ public sealed class ConfigProfileService
     public CommandResult Switch(SwitchProfileArgument argument, IIpcCaller caller)
     {
         if (Load(argument.Id, out var document) is { } failed) return failed;
-        return PreviewOrApply(document!, argument.Preview, caller, BeforeSwitch, $"Switched to the {document!.Name} profile.");
+        var authors = ReadAuthors(_profiles.GetProfile(argument.Id)?.RuleAuthors);
+        return PreviewOrApply(document!, argument.Preview, caller, BeforeSwitch, $"Switched to the {document!.Name} profile.", authors);
     }
 
     /// <summary>Call under the dispatcher's settings lock.</summary>
@@ -163,9 +164,10 @@ public sealed class ConfigProfileService
         return PreviewOrApply(document, argument.Preview, caller, BeforeImport, $"Imported {label}.");
     }
 
-    private CommandResult PreviewOrApply(ConfigDocument document, bool previewOnly, IIpcCaller caller, string backupName, string activity)
+    private CommandResult PreviewOrApply(ConfigDocument document, bool previewOnly, IIpcCaller caller, string backupName, string activity,
+        List<AuthorEntry>? authors = null)
     {
-        var (preview, plan) = Prepare(document, caller);
+        var (preview, plan) = Prepare(document, caller, authors);
         if (previewOnly) return CommandResult.Ok(JsonSerializer.Serialize(preview));
 
         if (preview.Refusals.Count > 0) return CommandResult.Fail(preview.Refusals[0]);
@@ -173,7 +175,7 @@ public sealed class ConfigProfileService
 
         // The configuration in force, kept first so the switch can be undone. Saved before anything is replaced: if the
         // replacement fails, it is simply a copy of what is still in force.
-        _profiles.Save(ToProfile(Capture(backupName), caller));
+        _profiles.Save(ToProfile(Capture(backupName), caller, CaptureAuthors()));
 
         var previous = _store.GetProcessRules().ToList();
         _store.ReplaceConfiguration(plan!.ProcessRules, plan.WatchdogRules, plan.Settings);
@@ -190,7 +192,7 @@ public sealed class ConfigProfileService
     private sealed record Plan(List<ProcessRule> ProcessRules, List<WatchdogRule> WatchdogRules, AppSettings Settings);
 
     /// <summary>What applying <paramref name="document"/> would change, and the rules and settings it would store.</summary>
-    private (ConfigPreviewDto Preview, Plan? Plan) Prepare(ConfigDocument document, IIpcCaller caller)
+    private (ConfigPreviewDto Preview, Plan? Plan) Prepare(ConfigDocument document, IIpcCaller caller, List<AuthorEntry>? authors)
     {
         var current = Capture(ConfigDocuments.CurrentName);
         var fitted = ConfigDocuments.FitToMachine(document, current.Machine!, out var flags);
@@ -235,6 +237,7 @@ public sealed class ConfigProfileService
                 continue;
             }
             RuleAuthorization.Stamp(rule, caller);
+            NarrowToRecordedAuthor(rule, caller, authors, "p:" + key);
             if (RuleAuthorization.CheckProcessRule(rule, caller, _monitor) is { } denied) refusals.Add(denied);
         }
 
@@ -251,6 +254,7 @@ public sealed class ConfigProfileService
                 continue;
             }
             RuleAuthorization.Stamp(rule.Rule, caller);
+            NarrowToRecordedAuthor(rule.Rule, caller, authors, "w:" + rule.Key);
             if (RuleAuthorization.CheckWatchdogRule(rule.Rule, caller, _monitor) is { } denied) refusals.Add(denied);
         }
         foreach (var (rule, _) in unmatchedOld)
@@ -313,8 +317,51 @@ public sealed class ConfigProfileService
         return IpcAuthorization.Deny(caller, $"change or delete the {profile.Name} profile: an administrator or another user created it");
     }
 
-    private static ConfigProfile ToProfile(ConfigDocument document, IIpcCaller caller) => new()
+    /// <summary>Who saved each rule in a stored profile; see <see cref="ConfigProfile.RuleAuthors"/>.</summary>
+    internal sealed record AuthorEntry(string Key, string? Sid, bool Administrator);
+
+    private string CaptureAuthors()
     {
+        var entries = _store.GetProcessRules()
+            .Select(r => new AuthorEntry("p:" + ConfigDocuments.RuleKey(r.ProcessName), r.AuthorSid, r.AuthorIsAdministrator))
+            .Concat(_store.GetWatchdogRules().OrderBy(r => r.Id)
+                .Select(r => new AuthorEntry("w:" + ConfigDocuments.WatchdogKey(WatchdogDto(r)), r.AuthorSid, r.AuthorIsAdministrator)))
+            .ToList();
+        return JsonSerializer.Serialize(entries);
+    }
+
+    private static WatchdogRuleDto WatchdogDto(WatchdogRule rule)
+    {
+        var dto = DtoMapper.Map<WatchdogRule, WatchdogRuleDto>(rule);
+        dto.Id = 0;
+        return dto;
+    }
+
+    private static List<AuthorEntry>? ReadAuthors(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try { return JsonSerializer.Deserialize<List<AuthorEntry>>(json); }
+        catch (JsonException) { return null; }
+    }
+
+    /// <summary>
+    /// A rule an administrator puts back by switching to a saved profile stays scoped to the standard user who had saved
+    /// it, rather than becoming the administrator's and reaching everyone's processes. A standard user's switch already
+    /// scopes everything it adds to that user. Each recorded entry is used once.
+    /// </summary>
+    private static void NarrowToRecordedAuthor(IAuthoredRule rule, IIpcCaller caller, List<AuthorEntry>? authors, string key)
+    {
+        if (!caller.IsAdministrator || authors == null) return;
+        var index = authors.FindIndex(a => a.Key == key);
+        if (index < 0) return;
+        var recorded = authors[index];
+        authors.RemoveAt(index);
+        if (!recorded.Administrator && recorded.Sid != null) rule.SetAuthor(recorded.Sid, isAdministrator: false);
+    }
+
+    private static ConfigProfile ToProfile(ConfigDocument document, IIpcCaller caller, string ruleAuthors) => new()
+    {
+        RuleAuthors = ruleAuthors,
         CreatorSid = caller.Sid ?? (caller.IsAdministrator ? null : Core.Models.RuleAuthorship.NobodySid),
         Name = document.Name,
         SavedUtc = document.SavedUtc,

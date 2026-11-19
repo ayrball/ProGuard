@@ -47,7 +47,7 @@ public sealed class PersistentRuleService : IDisposable
     public Func<int, bool>? PriorityHeld { get; set; }
 
     /// <summary>Which processes a rule may act on (see <see cref="RuleScope"/>). Tests supply fake owners.</summary>
-    internal RuleScope Scope { get; init; } = RuleScope.Default;
+    internal RuleScope Scope { get; set; } = RuleScope.Default;
 
     public PersistentRuleService(ILogger<PersistentRuleService> logger, IProcessTuningNative native, IProcessMonitor monitor, IRuleStore ruleStore)
         : this(logger, CreateAppliers(native), monitor, ruleStore)

@@ -37,7 +37,7 @@ public class KeepRunningService
     private readonly Dictionary<string, Watch> _watches = new(StringComparer.Ordinal);
 
     /// <summary>Which processes a rule may act on (see <see cref="RuleScope"/>). Tests supply fake owners.</summary>
-    internal RuleScope Scope { get; init; } = RuleScope.Default;
+    internal RuleScope Scope { get; set; } = RuleScope.Default;
 
     public KeepRunningService(
         ILogger<KeepRunningService> logger,

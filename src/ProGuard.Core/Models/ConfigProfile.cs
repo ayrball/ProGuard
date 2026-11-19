@@ -25,4 +25,11 @@ public class ConfigProfile
     /// which only administrators may change.
     /// </summary>
     public string? CreatorSid { get; set; }
+
+    /// <summary>
+    /// Who had saved each rule when the profile was saved, as engine-written JSON (never part of the document, so never
+    /// exported or imported). Switching back to the profile restores a standard user's rule as theirs, rather than as an
+    /// administrator's that acts on everyone's processes.
+    /// </summary>
+    public string? RuleAuthors { get; set; }
 }

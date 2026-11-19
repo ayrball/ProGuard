@@ -189,7 +189,20 @@ public class PipeServer
 
                 // One reply line per request line; the dispatcher turns failures into an error reply.
                 var response = _dispatcher.HandleLine(line, caller);
-                await writer.WriteLineAsync(response);
+                // A client that asks and never reads would otherwise hold its instance on a blocked write.
+                using (var idle = CancellationTokenSource.CreateLinkedTokenSource(token))
+                {
+                    idle.CancelAfter(IdleTimeout);
+                    try
+                    {
+                        await writer.WriteLineAsync(response.AsMemory(), idle.Token);
+                    }
+                    catch (OperationCanceledException) when (!token.IsCancellationRequested)
+                    {
+                        _logger.LogDebug("Dropping a command pipe client that doesn't read its replies ({Account})", account);
+                        break;
+                    }
+                }
             }
         }
         catch (OperationCanceledException) { }

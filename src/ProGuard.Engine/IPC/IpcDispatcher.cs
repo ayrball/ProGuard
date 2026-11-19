@@ -463,6 +463,7 @@ public class IpcDispatcher
         RuleDtoMapper.CopyTo(dto, rule);
         if (existing != null) rule.Id = existing.Id; // the stored row keeps its key whatever the client sent
         RuleAuthorization.Stamp(rule, caller); // administrator-only, so an administrator's rule
+        if (RuleAuthorization.CheckCriticalTarget(rule) is { } critical) return IpcAuthorization.Deny(caller, critical);
         _ruleStore.SaveProcessRule(rule);
         return CommandResult.Ok();
     }

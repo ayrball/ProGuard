@@ -10,7 +10,9 @@ namespace ProGuard.Engine.IPC;
 
 /// <summary>
 /// What a non-administrator may put in a process or Watchdog rule. The engine applies rules as SYSTEM, so a standard
-/// user may only create rules whose effects they could cause themselves.
+/// user may only create rules whose effects they could cause themselves. One check applies to administrators as well:
+/// no rule may end, re-prioritise, cap or otherwise act on a session, security or ProGuard process
+/// (<see cref="CheckCriticalTarget(ProcessRule)"/>).
 /// <list type="bullet">
 /// <item>The engine records who saved each rule (<see cref="IAuthoredRule"/>), and a standard user's rule acts only on
 /// that user's own unelevated processes (<see cref="RuleScope"/>), however many processes of that name start later.
@@ -38,8 +40,9 @@ internal static class RuleAuthorization
     /// <summary>Null when <paramref name="caller"/> may store <paramref name="rule"/>, otherwise what they may not do (for <see cref="IpcAuthorization.Deny"/>).</summary>
     public static string? CheckProcessRule(ProcessRule rule, IIpcCaller caller, IProcessMonitor monitor)
     {
+        if (!caller.IsAdministrator && CriticalProcesses.IsAdministratorOnlyRuleTarget(rule.ProcessName)) return $"change rules for {rule.ProcessName}, a system process";
+        if (CheckCriticalTarget(rule) is { } critical) return critical; // administrators too
         if (caller.IsAdministrator) return null;
-        if (CriticalProcesses.IsAdministratorOnlyRuleTarget(rule.ProcessName)) return $"change rules for {rule.ProcessName}, a system process";
         if (IsRealtime(rule.PriorityClass) || IsRealtime(rule.StartupBoostPriorityClass)) return "set Realtime priority";
         if (rule.IoPriority == WatchdogArguments.IoHigh) return "set High I/O priority";
         if (rule.ApplyPrioritiesAtCreation) return "apply priorities at launch: they are written to the machine-wide Image File Execution Options";
@@ -55,8 +58,9 @@ internal static class RuleAuthorization
     /// <inheritdoc cref="CheckProcessRule"/>
     public static string? CheckWatchdogRule(WatchdogRule rule, IIpcCaller caller, IProcessMonitor monitor)
     {
+        if (!caller.IsAdministrator && CriticalProcesses.IsAdministratorOnlyRuleTarget(rule.TargetProcessName)) return $"change rules for {rule.TargetProcessName}, a system process";
+        if (CheckCriticalTarget(rule) is { } critical) return critical; // administrators too
         if (caller.IsAdministrator) return null;
-        if (CriticalProcesses.IsAdministratorOnlyRuleTarget(rule.TargetProcessName)) return $"change rules for {rule.TargetProcessName}, a system process";
         switch (rule.ActionType)
         {
             case WatchdogAction.Launch:
@@ -102,6 +106,40 @@ internal static class RuleAuthorization
 
     private static string NotTheirs(string processName) =>
         $"change or delete the rule for {processName}: an administrator or another user saved it";
+
+    /// <summary>
+    /// Null unless <paramref name="rule"/> names a session, security or ProGuard process
+    /// (<see cref="CriticalProcesses.IsCriticalName"/>) and would act on it. Applies to every caller, administrators
+    /// included: the engine never applies such a rule anyway, so storing one would only promise something that doesn't
+    /// happen, and a rule that ends or starves csrss, lsass or svchost would take Windows down with it. What stays
+    /// allowed is what leaves the process alone: excluding it from Responsiveness Guard and a power plan while it runs.
+    /// Deleting an older rule like this is never refused.
+    /// </summary>
+    public static string? CheckCriticalTarget(ProcessRule rule)
+    {
+        if (!CriticalProcesses.IsCriticalName(rule.ProcessName)) return null;
+        var acts = rule.DisallowExecution || rule.PriorityClass != null || rule.AffinityMask != null || rule.CpuLimitPercent != null
+            || rule.CpuLimitThresholdPercent != null || rule.MaxInstances != null || rule.InstanceSpreadMode != null
+            || rule.StartupBoostPriorityClass != null || rule.IoPriority != null || rule.MemoryPriority != null
+            || rule.EfficiencyMode != null || rule.DisablePriorityBoost != null || !string.IsNullOrWhiteSpace(rule.CpuSetIds)
+            || rule.GpuPriority != null || rule.GpuPreference != null || rule.ApplyPrioritiesAtCreation || rule.KeepRunning;
+        return acts ? CriticalRefusal(rule.ProcessName) : null;
+    }
+
+    /// <inheritdoc cref="CheckCriticalTarget(ProcessRule)"/>
+    public static string? CheckCriticalTarget(WatchdogRule rule)
+    {
+        if (!CriticalProcesses.IsCriticalName(rule.TargetProcessName)) return null;
+        return rule.ActionType switch
+        {
+            // These only report, or start something else: the process itself is left alone.
+            WatchdogAction.LogAlert or WatchdogAction.Notify or WatchdogAction.Launch => null,
+            _ => CriticalRefusal(rule.TargetProcessName),
+        };
+    }
+
+    private static string CriticalRefusal(string processName) =>
+        $"save a rule that changes or ends {processName}: Windows depends on it, so ProGuard never acts on it";
 
     /// <summary>Records <paramref name="caller"/> as the author of a rule it is saving.</summary>
     public static void Stamp(IAuthoredRule rule, IIpcCaller caller) => rule.SetAuthor(caller.Sid, caller.IsAdministrator);

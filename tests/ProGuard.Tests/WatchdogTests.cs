@@ -61,6 +61,9 @@ internal sealed class FakeProcessActions : IProcessActions
     public ProcessMemory? GetMemory(int pid) => Memory.TryGetValue(pid, out var m) ? m : null;
     public int? GetSessionId(int pid) => Sessions.TryGetValue(pid, out var s) ? s : null;
     public ProcessLaunchInfo? GetLaunchInfo(int pid) => LaunchInfo.TryGetValue(pid, out var info) ? info : null;
+    /// <summary>Pids Windows would report as critical (IsProcessCritical).</summary>
+    public HashSet<int> Critical { get; } = new();
+    public bool IsCritical(int pid) => Critical.Contains(pid);
 
     public int Count(string prefix) => Calls.Count(c => c.StartsWith(prefix, StringComparison.Ordinal));
 }
@@ -547,6 +550,63 @@ public class WatchdogTests
 
         h.Tick();
         Assert.Empty(h.Actions.Calls);
+    }
+
+    [Theory]
+    [InlineData("csrss")]
+    [InlineData("lsass")]
+    [InlineData("svchost")]
+    [InlineData("winlogon")]
+    [InlineData("ProGuard.UI")]
+    [InlineData("ProGuard.SessionAgent")]
+    public void CriticalAndProGuardProcesses_AreNeverTouched_ByName(string name)
+    {
+        foreach (var action in new[] { WatchdogAction.Terminate, WatchdogAction.Restart, WatchdogAction.SetPriority, WatchdogAction.SetAffinity, WatchdogAction.SetIoPriority, WatchdogAction.TrimWorkingSet })
+        {
+            var h = new Harness();
+            h.AddProcess(700, name: name, cpu: 90);
+            h.Actions.LaunchInfo[700] = new ProcessLaunchInfo($@"C:\Windows\System32\{name}.exe", name, null, 1);
+            var argument = action switch
+            {
+                WatchdogAction.SetPriority => "Idle",
+                WatchdogAction.SetAffinity => "0x1",
+                WatchdogAction.SetIoPriority => "0",
+                _ => null,
+            };
+            h.AddRule(action, argument: argument).TargetProcessName = name + ".exe";
+
+            h.Tick(3);
+            Assert.Empty(h.Actions.Calls);
+            Assert.Empty(h.Launcher.Requests);
+        }
+    }
+
+    [Fact]
+    public void AProcessWindowsMarksCritical_IsNeverTouched()
+    {
+        var h = new Harness();
+        h.AddProcess(100, cpu: 90);
+        h.AddProcess(101, cpu: 90);
+        h.Actions.Critical.Add(101);
+        h.AddRule(WatchdogAction.Terminate);
+
+        h.Tick();
+        Assert.Equal(new[] { "terminate 100" }, h.Actions.Calls);
+    }
+
+    [Fact]
+    public void ContinuousTrim_SkipsProtectedProcessesToo()
+    {
+        var h = new Harness();
+        h.AddProcess(100, cpu: 90);
+        h.AddProcess(101, cpu: 90);
+        h.Actions.Critical.Add(101);
+        h.AddRule(WatchdogAction.TrimWorkingSet, condition: WatchdogCondition.InstanceCountAbove, threshold: 0,
+            argument: WatchdogArguments.ContinuousTrim);
+
+        h.Tick(12);
+        Assert.True(h.Actions.Count("trim 100") >= 2);
+        Assert.Equal(0, h.Actions.Count("trim 101"));
     }
 
     [Fact]

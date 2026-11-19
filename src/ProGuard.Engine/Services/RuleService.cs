@@ -223,9 +223,11 @@ public sealed class RuleService
 
     private void ApplyTo(ProcessRule rule, ProcessInfo p)
     {
+        // Nothing a rule does reaches a process Windows can't do without, whoever saved the rule.
+        if (p.Pid <= 4 || p.Pid == Environment.ProcessId || CriticalProcesses.IsCriticalName(p.Name) || _access.IsCritical(p.Pid)) return;
+
         if (rule.DisallowExecution)
         {
-            if (p.Pid <= 4 || p.Pid == Environment.ProcessId || CriticalProcesses.IsCriticalName(p.Name) || _access.IsCritical(p.Pid)) return;
             if (_access.Terminate(p.Pid))
                 _activity.Add(ActivityKind.Rule, p.Name, p.Pid, $"Ended {p.Name}: a rule doesn't allow it to run.");
             return;

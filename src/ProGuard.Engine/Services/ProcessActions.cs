@@ -37,6 +37,11 @@ public interface IProcessActions
     ProcessMemory? GetMemory(int pid);
     int? GetSessionId(int pid);
     ProcessLaunchInfo? GetLaunchInfo(int pid);
+    /// <summary>
+    /// True if ending the process would bug-check Windows (<c>IsProcessCritical</c>), and also when it can't be queried,
+    /// so nothing acts on a process it knows nothing about.
+    /// </summary>
+    bool IsCritical(int pid);
 }
 
 public class Win32ProcessActions : IProcessActions
@@ -116,6 +121,8 @@ public class Win32ProcessActions : IProcessActions
 
     public int? GetSessionId(int pid) =>
         Kernel32.ProcessIdToSessionId((uint)pid, out var session) ? (int)session : null;
+
+    public bool IsCritical(int pid) => Win32RuleProcessAccess.IsCriticalOrUnknown(pid);
 
     public ProcessLaunchInfo? GetLaunchInfo(int pid)
     {

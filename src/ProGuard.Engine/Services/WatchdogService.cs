@@ -260,7 +260,7 @@ public class WatchdogService : IWatchdogService, IDisposable
             if (IsContinuousTrim(rule) && now - tracker.LastTrimUtc >= ContinuousTrimInterval)
             {
                 tracker.LastTrimUtc = now;
-                foreach (var victim in victims) TryRun(rule, victim, reason, quiet: true, () => Trim(victim));
+                foreach (var victim in victims.Where(v => !IsProtected(v))) TryRun(rule, victim, reason, quiet: true, () => Trim(victim));
             }
             return;
         }
@@ -292,7 +292,7 @@ public class WatchdogService : IWatchdogService, IDisposable
 
         foreach (var victim in victims)
         {
-            if (IsProtected(victim.Pid))
+            if (IsProtected(victim))
             {
                 _logger.LogWarning("Watchdog rule {Id} matched protected process {Pid}; not touching it", rule.Id, victim.Pid);
                 continue;
@@ -410,8 +410,14 @@ public class WatchdogService : IWatchdogService, IDisposable
 
     private static int? SinglePid(List<ProcessInfo> victims) => victims.Count == 1 ? victims[0].Pid : null;
 
-    // The System process, the idle process and the engine itself.
-    private static bool IsProtected(int pid) => pid <= 4 || pid == Environment.ProcessId;
+    /// <summary>
+    /// Processes no Watchdog action may touch: Idle, System and the engine itself; the session, security and ProGuard
+    /// processes by name (<see cref="CriticalProcesses.IsCriticalName"/>, which includes the UI and the session agent);
+    /// and any process Windows marks critical, or that can't be queried at all.
+    /// </summary>
+    internal bool IsProtected(ProcessInfo process) =>
+        process.Pid <= 4 || process.Pid == Environment.ProcessId || CriticalProcesses.IsCriticalName(process.Name)
+        || _actions.IsCritical(process.Pid);
 
     private static string Capitalize(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
 

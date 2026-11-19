@@ -445,7 +445,9 @@ public class SecurityHardeningTests
         var refused = h.Send(Standard, CommandTypes.SaveProcessRule, null, new ProcessRuleDto { ProcessName = name, PriorityClass = 16384 });
         Assert.False(refused.Success);
         Assert.Contains("a system process", refused.Error);
-        Assert.True(h.Send(Admin, CommandTypes.SaveProcessRule, null, new ProcessRuleDto { ProcessName = name, PriorityClass = 16384 }).Success);
+        // An administrator may, except for the session and security processes no rule acts on (SafetyGuardTests).
+        Assert.Equal(!CriticalProcesses.IsCriticalName(name),
+            h.Send(Admin, CommandTypes.SaveProcessRule, null, new ProcessRuleDto { ProcessName = name, PriorityClass = 16384 }).Success);
     }
 
     [Theory]

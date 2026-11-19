@@ -557,9 +557,66 @@ public class ThinClientCommandTests
         h.Access.Verify(a => a.Terminate(10), Times.Once);
         h.Access.Verify(a => a.Terminate(11), Times.Never);
 
+        // Not even an administrator may store a rule that ends a session or security process.
         h.Process(4, "System");
-        Assert.True(h.SendAsAdmin(CommandTypes.SaveProcessRule, null, new ProcessRuleDto { ProcessName = "system", DisallowExecution = true }).Success);
+        var refused = h.SendAsAdmin(CommandTypes.SaveProcessRule, null, new ProcessRuleDto { ProcessName = "system", DisallowExecution = true });
+        Assert.False(refused.Success);
+        Assert.Contains("Windows depends on it", refused.Error);
+        Assert.DoesNotContain("Run ProGuard as administrator", refused.Error);
+        Assert.DoesNotContain(h.Rules, r => r.ProcessName == "system");
         h.Access.Verify(a => a.Terminate(4), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("csrss.exe")]
+    [InlineData("lsass")]
+    [InlineData("svchost.exe")]
+    [InlineData("dwm.exe")]
+    [InlineData("ProGuard.UI.exe")]
+    public void NoOne_MaySaveARuleThatActsOnACriticalProcess(string name)
+    {
+        var h = new ThinHarness();
+        var acting = new Func<ProcessRuleDto>[]
+        {
+            () => new ProcessRuleDto { ProcessName = name, DisallowExecution = true },
+            () => new ProcessRuleDto { ProcessName = name, PriorityClass = (int)ProcessPriorityClass.Idle },
+            () => new ProcessRuleDto { ProcessName = name, AffinityMask = 1 },
+            () => new ProcessRuleDto { ProcessName = name, CpuLimitPercent = 10 },
+            () => new ProcessRuleDto { ProcessName = name, MaxInstances = 1 },
+            () => new ProcessRuleDto { ProcessName = name, IoPriority = 0 },
+            () => new ProcessRuleDto { ProcessName = name, KeepRunning = true },
+        };
+        foreach (var make in acting)
+            Assert.False(h.SendAsAdmin(CommandTypes.SaveProcessRule, null, make()).Success);
+        Assert.Empty(h.Rules);
+
+        // What leaves the process alone is still allowed.
+        Assert.True(h.SendAsAdmin(CommandTypes.SaveProcessRule, null, new ProcessRuleDto { ProcessName = name, ExcludeFromResponsivenessGuard = true }).Success);
+    }
+
+    [Fact]
+    public void AnAdministrator_MayStillDeleteAnOlderRuleForACriticalProcess()
+    {
+        var h = new ThinHarness();
+        h.Rules.Add(new ProcessRule { Id = 9, ProcessName = "csrss.exe", DisallowExecution = true });
+        Assert.True(h.SendAsAdmin(CommandTypes.DeleteProcessRule, null, 9).Success);
+        Assert.Empty(h.Rules);
+    }
+
+    [Theory]
+    [InlineData(WatchdogResponse.Terminate, null, false)]
+    [InlineData(WatchdogResponse.Restart, null, false)]
+    [InlineData(WatchdogResponse.SetPriority, "Idle", false)]
+    [InlineData(WatchdogResponse.SetAffinity, "0x1", false)]
+    [InlineData(WatchdogResponse.TrimWorkingSet, null, false)]
+    [InlineData(WatchdogResponse.LogAlert, null, true)]
+    [InlineData(WatchdogResponse.Notify, null, true)]
+    public void NoOne_MaySaveAWatchdogRuleThatActsOnACriticalProcess(WatchdogResponse action, string? argument, bool allowed)
+    {
+        var h = new ThinHarness();
+        var dto = Watch(action, argument);
+        dto.TargetProcessName = "lsass.exe";
+        Assert.Equal(allowed, h.SendAsAdmin(CommandTypes.SaveWatchdogRule, null, dto).Success);
     }
 
     [Fact]

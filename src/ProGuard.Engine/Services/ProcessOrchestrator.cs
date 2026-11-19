@@ -18,6 +18,8 @@ public class ProcessOrchestrator : IProcessOrchestrator
     private readonly InstanceLimiter? _instanceLimiter;
     private readonly InstanceSpread? _instanceSpread;
     private readonly StartupBoostService? _startupBoost;
+    /// <summary>Asks Windows whether a process is critical. Null (tests of fake processes) checks names only.</summary>
+    private readonly IRuleProcessAccess? _access;
     private bool _isRunning;
 
     public IProcessMonitor Monitor { get; }
@@ -46,8 +48,10 @@ public class ProcessOrchestrator : IProcessOrchestrator
         InstanceLimiter? instanceLimiter = null,
         InstanceSpread? instanceSpread = null,
         StartupBoostService? startupBoost = null,
-        PersistentRuleService? persistentRules = null)
+        PersistentRuleService? persistentRules = null,
+        IRuleProcessAccess? access = null)
     {
+        _access = access;
         _logger = logger;
         Monitor = processMonitor;
         ResponsivenessGuard = responsivenessGuard;
@@ -101,11 +105,28 @@ public class ProcessOrchestrator : IProcessOrchestrator
     public Task StartAsync(CancellationToken cancellationToken) { Start(); return Task.CompletedTask; }
     public Task StopAsync(CancellationToken cancellationToken) { Stop(); return Task.CompletedTask; }
 
+    /// <summary>
+    /// Whether every rule must leave <paramref name="process"/> alone, whatever it says: Idle and System, the engine
+    /// itself, the session, security and ProGuard processes (<see cref="CriticalProcesses.IsCriticalName"/>), and any
+    /// process Windows marks critical (its end would bug-check the machine). That last check needs the
+    /// <see cref="IRuleProcessAccess"/>, which counts a process it can't query as critical.
+    /// </summary>
+    internal bool IsProtected(ProcessInfo process) =>
+        process.Pid <= 4 || process.Pid == Environment.ProcessId || CriticalProcesses.IsCriticalName(process.Name)
+        || _access?.IsCritical(process.Pid) == true;
+
     private void OnProcessStarted(object? sender, ProcessInfo e)
     {
         // A standard user's rule acts only on that user's own processes; everyone else's start untouched.
         var rule = Scope.RuleFor(RuleStore, e);
         if (rule == null) return;
+
+        // Before anything at all: no rule ends, caps, re-prioritises or pins a process Windows can't do without.
+        if (IsProtected(e))
+        {
+            _logger.LogWarning("The rule for {Rule} matched {Name} ({Pid}), a protected system process; not applying it", rule.ProcessName, e.Name, e.Pid);
+            return;
+        }
 
         try
         {

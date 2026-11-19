@@ -77,6 +77,8 @@ public sealed class PersistentRuleService : IDisposable
     public IReadOnlyList<RuleApplyResult> Apply(ProcessRule rule, ProcessTarget target, bool onlyIfChanged = false)
     {
         var results = new List<RuleApplyResult>();
+        // A rule stored before such rules were refused still never reaches a session or security process.
+        if (target.Pid <= 4 || CriticalProcesses.IsCriticalName(target.Name)) return results;
         foreach (var applier in _appliers)
         {
             RuleApplyResult result;
@@ -126,6 +128,7 @@ public sealed class PersistentRuleService : IDisposable
     private int ReapplyPriority(ProcessRule rule, ProcessTarget target)
     {
         if (rule.PriorityClass is not int value || PriorityAccess is not { } access) return 0;
+        if (target.Pid <= 4 || CriticalProcesses.IsCriticalName(target.Name) || access.IsCritical(target.Pid)) return 0;
         var wanted = (ProcessPriorityClass)value;
         if (!Enum.IsDefined(wanted) || PriorityHeld?.Invoke(target.Pid) == true) return 0;
 

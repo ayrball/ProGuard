@@ -456,6 +456,8 @@ public class ResponsivenessGuardEngine : IResponsivenessGuardEngine, IDisposable
     {
         var original = _access.GetPriorityClass(p.Pid);
         if (original == null) return;
+        // Realtime was set by hand or by a rule on purpose; Responsiveness Guard neither lowers it nor, later, puts it back.
+        if (original == ProcessPriorityClass.RealTime) return;
         if (RestrainOnlyNormalPriority && original != ProcessPriorityClass.Normal) return;
 
         var r = new Restraint { Name = p.Name, SinceMs = now, PriorityAtStart = original.Value };

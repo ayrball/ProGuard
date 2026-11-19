@@ -23,6 +23,11 @@ public class PipeServer
     internal const int MaxConnections = 16;
     /// <summary>Connections one account may hold at once: a UI needs one, the preview tool or a script a few more.</summary>
     internal const int MaxConnectionsPerAccount = 4;
+    /// <summary>
+    /// Instances kept for administrators and LocalSystem: standard clients together hold at most
+    /// <see cref="MaxConnections"/> minus these, so four standard accounts at their own cap can't fill the pipe.
+    /// </summary>
+    internal const int ReservedForPrivileged = 4;
     /// <summary>A client that connects must send its first request within this long, or it is dropped.</summary>
     internal static readonly TimeSpan DefaultFirstRequestTimeout = TimeSpan.FromSeconds(15);
     /// <summary>A connection with no request for this long is dropped; the UI reconnects when it next asks.</summary>
@@ -36,7 +41,7 @@ public class PipeServer
     private readonly ILogger<PipeServer> _logger;
     private readonly IpcDispatcher _dispatcher;
     private CancellationTokenSource? _cts;
-    private PipeConnectionLimiter _connections = new(MaxConnectionsPerAccount);
+    private PipeConnectionLimiter _connections = new(MaxConnectionsPerAccount, MaxConnections - ReservedForPrivileged);
 
     public PipeServer(ILogger<PipeServer> logger, IpcDispatcher dispatcher)
     {
@@ -56,7 +61,11 @@ public class PipeServer
     /// <summary>Which account a connection counts against (<see cref="MaxConnectionsPerAccount"/>). Tests replace it.</summary>
     internal Func<NamedPipeServerStream, string> AccountOf { get; init; } = PipeConnectionLimiter.AccountOf;
 
-    internal int MaxPerAccount { init => _connections = new PipeConnectionLimiter(value); }
+    /// <summary>Whether a connection may use the instances kept for administrators and LocalSystem. Tests replace it.</summary>
+    internal Func<NamedPipeServerStream, bool> IsPrivileged { get; init; } = PipeConnectionLimiter.IsPrivileged;
+
+    internal int MaxPerAccount { init => _connections = new PipeConnectionLimiter(value, _connections.MaxStandardTotal); }
+    internal int MaxStandardTotal { init => _connections = new PipeConnectionLimiter(_connections.MaxPerAccount, value); }
     internal TimeSpan FirstRequestTimeout { get; init; } = DefaultFirstRequestTimeout;
     internal TimeSpan IdleTimeout { get; init; } = DefaultIdleTimeout;
 
@@ -144,12 +153,15 @@ public class PipeServer
     private async Task HandleClientAsync(NamedPipeServerStream pipe, CancellationToken token)
     {
         string? account = null;
+        var privileged = false;
         try
         {
             var candidate = AccountOf(pipe);
-            if (!_connections.TryAdmit(candidate))
+            privileged = IsPrivileged(pipe);
+            if (!_connections.TryAdmit(candidate, privileged))
             {
-                _logger.LogWarning("Refused a command pipe connection from {Account}: it already holds {Max} connections", candidate, _connections.MaxPerAccount);
+                _logger.LogWarning("Refused a command pipe connection from {Account}: it already holds {Max} connections, or standard users already hold the {Total} they may share",
+                    candidate, _connections.MaxPerAccount, _connections.MaxStandardTotal);
                 return;
             }
             account = candidate;
@@ -217,7 +229,7 @@ public class PipeServer
         finally
         {
             pipe.Dispose();
-            if (account != null) _connections.Release(account);
+            if (account != null) _connections.Release(account, privileged);
             _connections.Closed();
         }
     }

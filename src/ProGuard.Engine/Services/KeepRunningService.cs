@@ -85,6 +85,7 @@ public class KeepRunningService
             {
                 var displayName = rule.ProcessName;
                 if (!_watches.TryGetValue(key, out var watch)) _watches[key] = watch = new Watch(displayName);
+                watch.Rule = rule;
                 // A standard user's rule watches, and relaunches with the command line of, only that user's own
                 // instances: another user's copy neither counts as running nor lends its command line.
                 var running = processes.Where(p => ProcessExtensions.NormalizeName(p.Name) == key && Scope.AppliesTo(rule, p)).ToList();
@@ -176,11 +177,19 @@ public class KeepRunningService
         watch.Relaunches.Add(now);
         try
         {
-            var pid = _launcher.Launch(LaunchRequest.From(info));
+            // A standard user's rule starts the program only as that user: the session may since have been signed out
+            // of and taken by someone else, whose token must not run the author's command line.
+            var requiredUser = watch.Rule is { } rule && rule.IsScopedToAuthor() ? rule.AuthorSid : null;
+            var pid = _launcher.Launch(LaunchRequest.From(info, requiredUser));
             watch.LaunchedPids.Add(pid);
             watch.SeenRunning = true; // so an instant crash still counts as an exit on the next poll
             _events.Add(WatchdogEventKinds.Relaunched, $"Keep Running: {watch.DisplayName}",
                 $"Relaunched {watch.DisplayName} as process {pid}", watch.DisplayName, pid);
+        }
+        catch (Exception ex) when (ex is SessionUserMismatchException or SessionUnavailableException)
+        {
+            // Retrying can't help: the session is gone or someone else's. A new instance started by hand starts over.
+            GiveUp(watch, ex.Message);
         }
         catch (Exception ex)
         {
@@ -204,6 +213,8 @@ public class KeepRunningService
         public Watch(string displayName) => DisplayName = displayName;
 
         public string DisplayName { get; }
+        /// <summary>The rule as last read; a standard user's rule relaunches only as that user.</summary>
+        public ProcessRule? Rule;
         public ProcessLaunchInfo? LastKnown;
         /// <summary>Running instances whose command line has been read.</summary>
         public readonly HashSet<int> CapturedPids = new();

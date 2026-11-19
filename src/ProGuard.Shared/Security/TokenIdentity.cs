@@ -5,10 +5,23 @@ namespace ProGuard.Shared.Security;
 /// <summary>Who a process runs as, as far as ProGuard's trust decisions need to know.</summary>
 /// <param name="UserSid">The token's user, as an SDDL string such as S-1-5-18.</param>
 /// <param name="Elevated">An elevated token, or one above medium integrity (an administrator's full token, SYSTEM, a service).</param>
-public readonly record struct TokenIdentity(string UserSid, bool Elevated)
+/// <param name="IntegrityRid">
+/// The token's mandatory integrity level, as the RID of its label (<see cref="LowRid"/>, <see cref="MediumRid"/>,
+/// <see cref="HighRid"/>, <see cref="SystemRid"/>), or <see cref="UnknownRid"/> when it couldn't be read. Medium unless
+/// given, which is what an ordinary user's program runs at.
+/// </param>
+public readonly record struct TokenIdentity(string UserSid, bool Elevated, uint IntegrityRid = TokenIdentity.MediumRid)
 {
     public const string LocalSystemSid = "S-1-5-18";
     public const string AdministratorsSid = "S-1-5-32-544";
+
+    /// <summary>Couldn't be read: below every real level, so a check that needs "at least" fails.</summary>
+    public const uint UnknownRid = 0;
+    public const uint UntrustedRid = 0x0000;
+    public const uint LowRid = 0x1000;
+    public const uint MediumRid = 0x2000;
+    public const uint HighRid = 0x3000;
+    public const uint SystemRid = 0x4000;
 
     /// <summary>This process's own token.</summary>
     public static TokenIdentity? Current()
@@ -41,7 +54,34 @@ public readonly record struct TokenIdentity(string UserSid, bool Elevated)
     {
         var user = ReadUserSid(token);
         if (user == null) return null;
-        return new TokenIdentity(user, IsElevated(token));
+        var integrity = ReadIntegrityRid(token);
+        return new TokenIdentity(user, IsElevated(token, integrity), integrity ?? UnknownRid);
+    }
+
+    /// <summary>The RID of the last sub-authority of a mandatory label SID: its integrity level.</summary>
+    internal static uint? IntegrityRidOf(IntPtr labelSid)
+    {
+        if (labelSid == IntPtr.Zero) return null;
+        var count = Marshal.ReadByte(TokenNative.GetSidSubAuthorityCount(labelSid));
+        if (count == 0) return null;
+        return (uint)Marshal.ReadInt32(TokenNative.GetSidSubAuthority(labelSid, (uint)(count - 1)));
+    }
+
+    private static uint? ReadIntegrityRid(IntPtr token)
+    {
+        // TOKEN_MANDATORY_LABEL: SID_AND_ATTRIBUTES; the integrity level is the SID's last sub-authority.
+        TokenNative.GetTokenInformation(token, TokenNative.TokenIntegrityLevel, IntPtr.Zero, 0, out var needed);
+        if (needed <= 0) return null;
+        var label = Marshal.AllocHGlobal(needed);
+        try
+        {
+            if (!TokenNative.GetTokenInformation(token, TokenNative.TokenIntegrityLevel, label, needed, out _)) return null;
+            return IntegrityRidOf(Marshal.ReadIntPtr(label));
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(label);
+        }
     }
 
     private static string? ReadUserSid(IntPtr token)
@@ -61,31 +101,14 @@ public readonly record struct TokenIdentity(string UserSid, bool Elevated)
         }
     }
 
-    private static bool IsElevated(IntPtr token)
+    private static bool IsElevated(IntPtr token, uint? integrity)
     {
         var buffer = Marshal.AllocHGlobal(64);
         try
         {
             if (TokenNative.GetTokenInformation(token, TokenNative.TokenElevation, buffer, 4, out _) && Marshal.ReadInt32(buffer) != 0)
                 return true;
-
-            // TOKEN_MANDATORY_LABEL: SID_AND_ATTRIBUTES; the integrity level is the SID's last sub-authority.
-            TokenNative.GetTokenInformation(token, TokenNative.TokenIntegrityLevel, IntPtr.Zero, 0, out var needed);
-            if (needed <= 0) return false;
-            var label = Marshal.AllocHGlobal(needed);
-            try
-            {
-                if (!TokenNative.GetTokenInformation(token, TokenNative.TokenIntegrityLevel, label, needed, out _)) return false;
-                var sid = Marshal.ReadIntPtr(label);
-                var count = Marshal.ReadByte(TokenNative.GetSidSubAuthorityCount(sid));
-                if (count == 0) return false;
-                var rid = (uint)Marshal.ReadInt32(TokenNative.GetSidSubAuthority(sid, (uint)(count - 1)));
-                return rid >= TokenNative.SECURITY_MANDATORY_HIGH_RID;
-            }
-            finally
-            {
-                Marshal.FreeHGlobal(label);
-            }
+            return integrity >= TokenNative.SECURITY_MANDATORY_HIGH_RID;
         }
         finally
         {
@@ -150,6 +173,47 @@ internal static class TokenNative
         if (sid == IntPtr.Zero || !ConvertSidToStringSidW(sid, out var text)) return null;
         try { return Marshal.PtrToStringUni(text); }
         finally { LocalFree(text); }
+    }
+
+    public const uint LABEL_SECURITY_INFORMATION = 0x10;
+    private const byte SYSTEM_MANDATORY_LABEL_ACE_TYPE = 0x11;
+
+    [DllImport("advapi32.dll", EntryPoint = "GetSecurityInfo")]
+    private static extern uint GetSecurityInfoSacl(IntPtr handle, int objectType, uint securityInfo,
+        IntPtr owner, IntPtr group, IntPtr dacl, out IntPtr sacl, out IntPtr securityDescriptor);
+
+    /// <summary>
+    /// The integrity level of the kernel object behind <paramref name="handle"/> (which needs READ_CONTROL): the RID of
+    /// its mandatory label, or Medium when it has none (Windows treats an unlabeled object as Medium). Null when the
+    /// label can't be read.
+    /// </summary>
+    public static uint? MandatoryLabelRidOf(IntPtr handle)
+    {
+        if (GetSecurityInfoSacl(handle, SE_KERNEL_OBJECT, LABEL_SECURITY_INFORMATION, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero,
+                out var sacl, out var descriptor) != 0)
+            return null;
+        try { return LabelRidOf(sacl); }
+        finally { LocalFree(descriptor); }
+    }
+
+    /// <summary>The label in an ACL holding a SYSTEM_MANDATORY_LABEL_ACE, Medium if it holds none. Separate for tests.</summary>
+    internal static uint? LabelRidOf(IntPtr acl)
+    {
+        if (acl == IntPtr.Zero) return TokenIdentity.MediumRid;
+        // ACL: revision, Sbz1 (bytes), AclSize, AceCount, Sbz2 (ushorts); then each ACE starts with ACE_HEADER: type,
+        // flags (bytes), size (ushort). A mandatory label ACE then has its mask (uint) and the label SID.
+        var size = (ushort)Marshal.ReadInt16(acl, 2);
+        var count = (ushort)Marshal.ReadInt16(acl, 4);
+        var offset = 8;
+        for (var i = 0; i < count && offset + 4 <= size; i++)
+        {
+            var type = Marshal.ReadByte(acl, offset);
+            var aceSize = (ushort)Marshal.ReadInt16(acl, offset + 2);
+            if (aceSize < 4) return null; // malformed
+            if (type == SYSTEM_MANDATORY_LABEL_ACE_TYPE) return TokenIdentity.IntegrityRidOf(acl + offset + 8);
+            offset += aceSize;
+        }
+        return TokenIdentity.MediumRid;
     }
 
     /// <summary>The owner of the kernel object behind <paramref name="handle"/> (which needs READ_CONTROL), or null.</summary>

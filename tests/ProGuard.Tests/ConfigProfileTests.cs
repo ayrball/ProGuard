@@ -464,15 +464,15 @@ public class ConfigProfileTests
     public void StandardUser_CantChangeAdministratorOnlySettings_ThroughAProfile()
     {
         var h = new ProfileHarness();
-        h.Settings(s => s.SetTimerResolutionAtStartup = 5000);
+        h.Settings(s => s.TimerResolutionRequest = 5000);
         var profile = h.SaveProfile("Fine timer");
-        h.Settings(s => s.SetTimerResolutionAtStartup = 0);
+        h.Settings(s => s.TimerResolutionRequest = 0);
 
         var result = h.Send(Standard, CommandTypes.SwitchProfile, new SwitchProfileArgument { Id = profile });
 
         Assert.False(result.Success);
         Assert.Contains("timer resolution", result.Error);
-        Assert.Equal(0, h.T.Stored.SetTimerResolutionAtStartup);
+        Assert.Equal(0, h.T.Stored.TimerResolutionRequest);
         Assert.Equal(0, h.Replacements);
     }
 

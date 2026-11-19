@@ -16,11 +16,11 @@ namespace ProGuard.Engine.Services;
 /// <summary>
 /// Responsiveness Guard - temporarily lowers the priority of background processes that hog the CPU:
 /// <list type="bullet">
-/// <item>Restrain a process once it has used at least <see cref="PerProcessUsageBeforeRestraint"/> % of total CPU
-/// for <see cref="TimeOverQuotaBeforeRestraint"/> ms, while the system is at least
-/// <see cref="TotalProcessorUsageBeforeRestraint"/> % busy.</item>
-/// <item>Restore it once it drops to <see cref="PerProcessUsageForRestore"/> % and has been restrained for at least
-/// <see cref="MinimumTimeOfRestraint"/> ms, or after <see cref="MaximumTimeOfRestraint"/> ms if that is set.</item>
+/// <item>Restrain a process once it has used at least <see cref="RestrainAtProcessCpuPercent"/> % of total CPU
+/// for <see cref="RestrainAfterMs"/> ms, while the system is at least
+/// <see cref="RestrainAtSystemCpuPercent"/> % busy.</item>
+/// <item>Restore it once it drops to <see cref="RestoreAtProcessCpuPercent"/> % and has been restrained for at least
+/// <see cref="MinRestraintMs"/> ms, or after <see cref="MaxRestraintMs"/> ms if that is set.</item>
 /// <item>Restraint ends at once if the process comes to the foreground, and is abandoned without restoring if
 /// something else (usually the user) changes the priority meanwhile.</item>
 /// <item>When nobody has said which program is in the foreground (no session agent or UI reporting, see
@@ -28,7 +28,7 @@ namespace ProGuard.Engine.Services;
 /// restrained, and released if it was.</item>
 /// <item>Optionally (all off by default) a restraint also narrows the CPU affinity, lowers the
 /// I/O priority and turns on efficiency mode, or uses only those and leaves the priority class alone
-/// (<see cref="DoNotLowerPriorityClass"/>). Each is put back when the restraint ends, unless something else changed
+/// (<see cref="KeepPriorityClass"/>). Each is put back when the restraint ends, unless something else changed
 /// that setting meanwhile.</item>
 /// <item>Optionally pauses, lifting every restraint, while the user has been idle for
 /// <see cref="PauseAfterIdleMs"/>.</item>
@@ -97,42 +97,42 @@ public class ResponsivenessGuardEngine : IResponsivenessGuardEngine, IDisposable
     };
 
     /// <summary>System-wide CPU % that must be reached before anything is restrained.</summary>
-    public double TotalProcessorUsageBeforeRestraint { get; set; } = 10.0;
+    public double RestrainAtSystemCpuPercent { get; set; } = 10.0;
     /// <summary>A process must use at least this % of total CPU (all cores)...</summary>
-    public double PerProcessUsageBeforeRestraint { get; set; } = 5.0;
+    public double RestrainAtProcessCpuPercent { get; set; } = 5.0;
     /// <summary>...continuously for this many ms before it is restrained.</summary>
-    public int TimeOverQuotaBeforeRestraint { get; set; } = 900;
+    public int RestrainAfterMs { get; set; } = 900;
     /// <summary>Restore once the process uses no more than this % of total CPU.</summary>
-    public double PerProcessUsageForRestore { get; set; } = 2.0;
+    public double RestoreAtProcessCpuPercent { get; set; } = 2.0;
     /// <summary>A restraint lasts at least this many ms, whatever the usage does.</summary>
-    public int MinimumTimeOfRestraint { get; set; } = 4200;
+    public int MinRestraintMs { get; set; } = 4200;
     /// <summary>Force a restore after this many ms (the process may be restrained again later). 0 = no limit.</summary>
-    public int MaximumTimeOfRestraint { get; set; }
+    public int MaxRestraintMs { get; set; }
     /// <summary>Only restrain processes currently at Normal priority class.</summary>
-    public bool TameOnlyNormal { get; set; } = true;
+    public bool RestrainOnlyNormalPriority { get; set; } = true;
     /// <summary>Restrain to Idle instead of BelowNormal.</summary>
-    public bool LowerToIdleInsteadOfBelowNormal { get; set; }
+    public bool LowerToIdle { get; set; }
     /// <summary>The foreground process is exempt, and a restrained process that comes to the foreground is restored.</summary>
-    public bool ExcludeForegroundProcesses { get; set; } = true;
+    public bool ExemptForeground { get; set; } = true;
     /// <summary>Direct children (by parent PID) of the foreground process are exempt.</summary>
-    public bool ExcludeChildrenOfForeground { get; set; } = true;
+    public bool ExemptForegroundChildren { get; set; } = true;
     /// <summary>Processes in session 0 (services) are exempt.</summary>
-    public bool ExcludeServices { get; set; } = true;
+    public bool ExemptServices { get; set; } = true;
     // Optional restraint actions, all off by default (see ResponsivenessGuardRestraintOptions).
-    /// <summary>Also restrict a restrained process to <see cref="RestraintAffinity"/>, intersected with its own
+    /// <summary>Also restrict a restrained process to <see cref="RestrictedAffinity"/>, intersected with its own
     /// affinity; skipped if that leaves nothing or changes nothing.</summary>
-    public bool RestrainByAffinity { get; set; }
-    /// <summary>CPU mask for <see cref="RestrainByAffinity"/>; 0 = none chosen.</summary>
-    public long RestraintAffinity { get; set; }
+    public bool RestrictAffinity { get; set; }
+    /// <summary>CPU mask for <see cref="RestrictAffinity"/>; 0 = none chosen.</summary>
+    public long RestrictedAffinity { get; set; }
     /// <summary>Restrict affinity by dropping one random CPU from the process's own mask. Turns the affinity action on
-    /// by itself and takes precedence over <see cref="RestraintAffinity"/>.</summary>
+    /// by itself and takes precedence over <see cref="RestrictedAffinity"/>.</summary>
     public bool DropOneRandomCore { get; set; }
     /// <summary>Lower the I/O priority to Low (NtSetInformationProcess, ProcessIoPriority = 33) during restraint.</summary>
     public bool LowerIoPriority { get; set; }
     /// <summary>Turn on efficiency mode (EcoQoS via ProcessPowerThrottling) during restraint.</summary>
-    public bool UseEfficiencyMode { get; set; }
+    public bool EfficiencyModeWhileRestrained { get; set; }
     /// <summary>Leave the priority class alone; restrain only through the actions above (nothing happens if none is on).</summary>
-    public bool DoNotLowerPriorityClass { get; set; }
+    public bool KeepPriorityClass { get; set; }
     /// <summary>Pause Responsiveness Guard, lifting every restraint, while the user has been idle this long. The idle time
     /// comes from the UI's reports (<see cref="IUserIdleSource"/>), since a session-0 service can't read it; with no
     /// UI reporting, the system never counts as idle.</summary>
@@ -214,10 +214,10 @@ public class ResponsivenessGuardEngine : IResponsivenessGuardEngine, IDisposable
     public void SetSensitivity(int level)
     {
         level = Math.Clamp(level, 1, 10);
-        TotalProcessorUsageBeforeRestraint = 15.0 - level;          // 14 .. 5
-        PerProcessUsageBeforeRestraint = 7.5 - 0.5 * level;         // 7 .. 2.5
-        TimeOverQuotaBeforeRestraint = 1500 - 120 * level;          // 1380 .. 300 ms
-        PerProcessUsageForRestore = Math.Min(2.0, PerProcessUsageBeforeRestraint / 2);
+        RestrainAtSystemCpuPercent = 15.0 - level;          // 14 .. 5
+        RestrainAtProcessCpuPercent = 7.5 - 0.5 * level;         // 7 .. 2.5
+        RestrainAfterMs = 1500 - 120 * level;          // 1380 .. 300 ms
+        RestoreAtProcessCpuPercent = Math.Min(2.0, RestrainAtProcessCpuPercent / 2);
     }
 
     public void ConfigureRestraint(ResponsivenessGuardRestraintOptions options)
@@ -225,12 +225,12 @@ public class ResponsivenessGuardEngine : IResponsivenessGuardEngine, IDisposable
         ArgumentNullException.ThrowIfNull(options);
         lock (_gate)
         {
-            RestrainByAffinity = options.RestrainByAffinity;
-            RestraintAffinity = options.RestraintAffinity;
+            RestrictAffinity = options.RestrictAffinity;
+            RestrictedAffinity = options.RestrictedAffinity;
             DropOneRandomCore = options.DropOneRandomCore;
             LowerIoPriority = options.LowerIoPriority;
-            UseEfficiencyMode = options.UseEfficiencyMode;
-            DoNotLowerPriorityClass = options.DoNotLowerPriorityClass;
+            EfficiencyModeWhileRestrained = options.EfficiencyModeWhileRestrained;
+            KeepPriorityClass = options.KeepPriorityClass;
             PauseWhenIdle = options.PauseWhenIdle;
             PauseAfterIdleMs = Math.Max(0, options.PauseAfterIdleMs);
         }
@@ -330,7 +330,7 @@ public class ResponsivenessGuardEngine : IResponsivenessGuardEngine, IDisposable
             else
                 _logger.LogInformation("Foreground reports are back: Responsiveness Guard exempts only the foreground process again");
         }
-        return unknown && ExcludeForegroundProcesses;
+        return unknown && ExemptForeground;
     }
 
     /// <summary>Under <see cref="IsForegroundUnknown"/>: could this be the program the user is using?</summary>
@@ -387,27 +387,27 @@ public class ResponsivenessGuardEngine : IResponsivenessGuardEngine, IDisposable
             }
 
             var restrainedFor = now - r.SinceMs;
-            if (ExcludeForegroundProcesses && (pid == foregroundPid || info.IsForeground))
+            if (ExemptForeground && (pid == foregroundPid || info.IsForeground))
                 Restore(pid, "Came to the foreground");
             else if (foregroundUnknown && MightBeForeground(info))
                 Restore(pid, "No foreground report: it may be the program in use");
-            else if (MaximumTimeOfRestraint > 0 && restrainedFor >= MaximumTimeOfRestraint)
-                Restore(pid, $"Maximum restraint time ({MaximumTimeOfRestraint} ms) reached");
-            else if (restrainedFor >= MinimumTimeOfRestraint && info.CpuPercent <= PerProcessUsageForRestore)
+            else if (MaxRestraintMs > 0 && restrainedFor >= MaxRestraintMs)
+                Restore(pid, $"Maximum restraint time ({MaxRestraintMs} ms) reached");
+            else if (restrainedFor >= MinRestraintMs && info.CpuPercent <= RestoreAtProcessCpuPercent)
                 Restore(pid, $"CPU usage dropped to {info.CpuPercent:F1}%");
         }
     }
 
     private void RestrainHogs(List<ProcessInfo> processes, int foregroundPid, bool foregroundUnknown, long now)
     {
-        var systemBusy = _systemCpuPercent() >= TotalProcessorUsageBeforeRestraint;
+        var systemBusy = _systemCpuPercent() >= RestrainAtSystemCpuPercent;
 
         foreach (var p in processes)
         {
             if (_restrained.ContainsKey(p.Pid)) continue;
 
             // The over-quota run must be unbroken: any sample that doesn't qualify starts it over.
-            if (!systemBusy || p.CpuPercent < PerProcessUsageBeforeRestraint || IsExempt(p, foregroundPid, foregroundUnknown))
+            if (!systemBusy || p.CpuPercent < RestrainAtProcessCpuPercent || IsExempt(p, foregroundPid, foregroundUnknown))
             {
                 _overQuotaSince.Remove(p.Pid);
                 continue;
@@ -416,7 +416,7 @@ public class ResponsivenessGuardEngine : IResponsivenessGuardEngine, IDisposable
             if (!_overQuotaSince.TryGetValue(p.Pid, out var since))
                 _overQuotaSince[p.Pid] = since = now;
 
-            if (now - since >= TimeOverQuotaBeforeRestraint)
+            if (now - since >= RestrainAfterMs)
             {
                 _overQuotaSince.Remove(p.Pid);
                 TryRestrain(p, now);
@@ -431,16 +431,16 @@ public class ResponsivenessGuardEngine : IResponsivenessGuardEngine, IDisposable
         var name = Core.Helpers.ProcessExtensions.NormalizeName(p.Name);
         if (ProtectedProcesses.Contains(name) || _exclusions.ContainsKey(name)) return true;
 
-        if (ExcludeForegroundProcesses && (p.Pid == foregroundPid || p.IsForeground)) return true;
+        if (ExemptForeground && (p.Pid == foregroundPid || p.IsForeground)) return true;
 
         var rule = _ruleStore.GetProcessRule(p.Name);
         if (rule != null && rule.ExcludeFromResponsivenessGuard) return true;
 
-        if (ExcludeChildrenOfForeground && foregroundPid > 0
+        if (ExemptForegroundChildren && foregroundPid > 0
             && (p.ParentPid ?? _access.GetParentPid(p.Pid)) == foregroundPid)
             return true;
 
-        if (ExcludeServices && _access.GetSessionId(p.Pid) == 0) return true;
+        if (ExemptServices && _access.GetSessionId(p.Pid) == 0) return true;
 
         // Last: it may read the program file (once per program).
         if (foregroundUnknown && MightBeForeground(p)) return true;
@@ -452,12 +452,12 @@ public class ResponsivenessGuardEngine : IResponsivenessGuardEngine, IDisposable
     {
         var original = _access.GetPriorityClass(p.Pid);
         if (original == null) return;
-        if (TameOnlyNormal && original != ProcessPriorityClass.Normal) return;
+        if (RestrainOnlyNormalPriority && original != ProcessPriorityClass.Normal) return;
 
         var r = new Restraint { Name = p.Name, SinceMs = now, PriorityAtStart = original.Value };
-        if (!DoNotLowerPriorityClass)
+        if (!KeepPriorityClass)
         {
-            var target = LowerToIdleInsteadOfBelowNormal ? ProcessPriorityClass.Idle : ProcessPriorityClass.BelowNormal;
+            var target = LowerToIdle ? ProcessPriorityClass.Idle : ProcessPriorityClass.BelowNormal;
             if (Rank(original.Value) <= Rank(target)) return;
             if (!_access.SetPriorityClass(p.Pid, target))
             {
@@ -482,7 +482,7 @@ public class ResponsivenessGuardEngine : IResponsivenessGuardEngine, IDisposable
     /// or can't be read or written; the restraint holds whatever did apply.</summary>
     private void ApplyOptionalActions(int pid, Restraint r)
     {
-        if ((RestrainByAffinity || DropOneRandomCore) && _access.GetAffinityMask(pid) is { } mask
+        if ((RestrictAffinity || DropOneRandomCore) && _access.GetAffinityMask(pid) is { } mask
             && RestraintMask(mask) is { } narrowed && _access.SetAffinityMask(pid, narrowed))
             r.Affinity = new(mask, narrowed);
 
@@ -490,7 +490,7 @@ public class ResponsivenessGuardEngine : IResponsivenessGuardEngine, IDisposable
             && _access.SetIoPriority(pid, RestraintIoPriority))
             r.IoPriority = new(io, RestraintIoPriority);
 
-        if (UseEfficiencyMode && _access.GetEfficiencyMode(pid) is { } eco && eco != EfficiencyModeState.On
+        if (EfficiencyModeWhileRestrained && _access.GetEfficiencyMode(pid) is { } eco && eco != EfficiencyModeState.On
             && _access.SetEfficiencyMode(pid, EfficiencyModeState.On))
             r.Efficiency = new(eco, EfficiencyModeState.On);
     }
@@ -508,7 +508,7 @@ public class ResponsivenessGuardEngine : IResponsivenessGuardEngine, IDisposable
             return current & ~(long)(bits & (~bits + 1));
         }
 
-        var narrowed = current & RestraintAffinity;
+        var narrowed = current & RestrictedAffinity;
         return narrowed == 0 || narrowed == current ? null : narrowed;
     }
 

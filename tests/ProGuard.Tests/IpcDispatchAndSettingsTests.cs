@@ -450,8 +450,8 @@ public class IpcDispatchAndSettingsTests
 
         h.ResponsivenessGuard.Verify(p => p.ConfigureRestraint(new ResponsivenessGuardRestraintOptions
         {
-            RestrainByAffinity = true, RestraintAffinity = 0x3, LowerIoPriority = true, UseEfficiencyMode = true,
-            DoNotLowerPriorityClass = true, PauseWhenIdle = true, PauseAfterIdleMs = 60000
+            RestrictAffinity = true, RestrictedAffinity = 0x3, LowerIoPriority = true, EfficiencyModeWhileRestrained = true,
+            KeepPriorityClass = true, PauseWhenIdle = true, PauseAfterIdleMs = 60000
         }), Times.Once);
         h.ResponsivenessGuard.Verify(p => p.SetSensitivity(It.IsAny<int>()), Times.Once);
     }

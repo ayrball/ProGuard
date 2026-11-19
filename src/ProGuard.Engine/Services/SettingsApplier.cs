@@ -123,8 +123,8 @@ public class SettingsApplier
             if (_coreParking != null && (all || previous!.ResponsivenessGuardDisableCoreParking != settings.ResponsivenessGuardDisableCoreParking))
                 TryApply("core parking", () => _coreParking.Configure(settings.ResponsivenessGuardDisableCoreParking));
 
-            if (_timerResolution != null && (all || previous!.SetTimerResolutionAtStartup != settings.SetTimerResolutionAtStartup))
-                TryApply("timer resolution", () => _timerResolution.Configure(settings.SetTimerResolutionAtStartup));
+            if (_timerResolution != null && (all || previous!.TimerResolutionRequest != settings.TimerResolutionRequest))
+                TryApply("timer resolution", () => _timerResolution.Configure(settings.TimerResolutionRequest));
 
             _applied = settings.Clone();
         }

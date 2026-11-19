@@ -693,7 +693,7 @@ public class PowerManager : IPowerManager
         }
         _logger.LogInformation(
             "Load switcher configured: Enabled={Enabled}, Low={Low}% High={High}%, Window={Samples} samples, MinTime={Min}ms, DeferLowPlan={Defer}",
-            options.Enabled, options.LowThreshold, options.HighThreshold, options.AveragingWindowSamples,
+            options.Enabled, options.LowThreshold, options.HighThreshold, options.SampleWindow,
             options.MinimumTimeInPlanMs, options.DeferLowPlan);
     }
 

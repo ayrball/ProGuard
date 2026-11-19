@@ -75,7 +75,7 @@ public sealed class EngineSettingsDto
     public string? StartWithPowerPlanGuid { get; set; }
 
     /// <summary>Timer resolution the engine holds, in 100-ns units; 0 = none. Administrators only.</summary>
-    public int SetTimerResolutionAtStartup { get; set; }
+    public int TimerResolutionRequest { get; set; }
 
     // General
     public bool StartWithWindows { get; set; } = true;
@@ -97,7 +97,7 @@ public sealed class TimerResolutionDto
     public int Minimum { get; set; }
     /// <summary>The finest interval (typically 5000 = 0.5 ms).</summary>
     public int Maximum { get; set; }
-    /// <summary>The setting (<see cref="EngineSettingsDto.SetTimerResolutionAtStartup"/>); 0 = none.</summary>
+    /// <summary>The setting (<see cref="EngineSettingsDto.TimerResolutionRequest"/>); 0 = none.</summary>
     public int Requested { get; set; }
     /// <summary>What the engine is asking Windows for right now; 0 = nothing.</summary>
     public int Held { get; set; }

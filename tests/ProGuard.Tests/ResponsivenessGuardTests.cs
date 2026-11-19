@@ -141,23 +141,23 @@ public class ResponsivenessGuardTests
     {
         using var engine = NewEngine();
 
-        Assert.Equal(10.0, engine.TotalProcessorUsageBeforeRestraint);
-        Assert.Equal(5.0, engine.PerProcessUsageBeforeRestraint);
-        Assert.Equal(900, engine.TimeOverQuotaBeforeRestraint);
-        Assert.Equal(2.0, engine.PerProcessUsageForRestore);
-        Assert.Equal(4200, engine.MinimumTimeOfRestraint);
-        Assert.Equal(0, engine.MaximumTimeOfRestraint);
-        Assert.True(engine.TameOnlyNormal);
-        Assert.False(engine.LowerToIdleInsteadOfBelowNormal);
-        Assert.True(engine.ExcludeForegroundProcesses);
-        Assert.True(engine.ExcludeChildrenOfForeground);
-        Assert.True(engine.ExcludeServices);
-        Assert.False(engine.RestrainByAffinity);
-        Assert.Equal(0, engine.RestraintAffinity);
+        Assert.Equal(10.0, engine.RestrainAtSystemCpuPercent);
+        Assert.Equal(5.0, engine.RestrainAtProcessCpuPercent);
+        Assert.Equal(900, engine.RestrainAfterMs);
+        Assert.Equal(2.0, engine.RestoreAtProcessCpuPercent);
+        Assert.Equal(4200, engine.MinRestraintMs);
+        Assert.Equal(0, engine.MaxRestraintMs);
+        Assert.True(engine.RestrainOnlyNormalPriority);
+        Assert.False(engine.LowerToIdle);
+        Assert.True(engine.ExemptForeground);
+        Assert.True(engine.ExemptForegroundChildren);
+        Assert.True(engine.ExemptServices);
+        Assert.False(engine.RestrictAffinity);
+        Assert.Equal(0, engine.RestrictedAffinity);
         Assert.False(engine.DropOneRandomCore);
         Assert.False(engine.LowerIoPriority);
-        Assert.False(engine.UseEfficiencyMode);
-        Assert.False(engine.DoNotLowerPriorityClass);
+        Assert.False(engine.EfficiencyModeWhileRestrained);
+        Assert.False(engine.KeepPriorityClass);
         Assert.False(engine.PauseWhenIdle);
         Assert.Equal(30000, engine.PauseAfterIdleMs);
     }
@@ -167,8 +167,8 @@ public class ResponsivenessGuardTests
     {
         Assert.Equal(new ResponsivenessGuardRestraintOptions(), ResponsivenessGuardRestraintOptions.FromSettings(new AppSettings()));
         var o = new ResponsivenessGuardRestraintOptions();
-        Assert.False(o.RestrainByAffinity || o.DropOneRandomCore || o.LowerIoPriority
-                     || o.UseEfficiencyMode || o.DoNotLowerPriorityClass || o.PauseWhenIdle);
+        Assert.False(o.RestrictAffinity || o.DropOneRandomCore || o.LowerIoPriority
+                     || o.EfficiencyModeWhileRestrained || o.KeepPriorityClass || o.PauseWhenIdle);
         Assert.Equal(30000, o.PauseAfterIdleMs);
     }
 
@@ -194,10 +194,10 @@ public class ResponsivenessGuardTests
         engine.SetSensitivity(1);
         engine.SetSensitivity(5);
 
-        Assert.Equal(10.0, engine.TotalProcessorUsageBeforeRestraint);
-        Assert.Equal(5.0, engine.PerProcessUsageBeforeRestraint);
-        Assert.Equal(900, engine.TimeOverQuotaBeforeRestraint);
-        Assert.Equal(2.0, engine.PerProcessUsageForRestore);
+        Assert.Equal(10.0, engine.RestrainAtSystemCpuPercent);
+        Assert.Equal(5.0, engine.RestrainAtProcessCpuPercent);
+        Assert.Equal(900, engine.RestrainAfterMs);
+        Assert.Equal(2.0, engine.RestoreAtProcessCpuPercent);
     }
 
     [Fact]
@@ -214,7 +214,7 @@ public class ResponsivenessGuardTests
     {
         using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 50, name: "game");
-        h.Engine.TimeOverQuotaBeforeRestraint = 0;
+        h.Engine.RestrainAfterMs = 0;
 
         h.Engine.ExcludeProcess("game.exe");
         h.At(0);
@@ -231,7 +231,7 @@ public class ResponsivenessGuardTests
         using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 50, name: "render");
         h.Store.Setup(s => s.GetProcessRule("render")).Returns(new ProcessRule { ExcludeFromResponsivenessGuard = true });
-        h.Engine.TimeOverQuotaBeforeRestraint = 0;
+        h.Engine.RestrainAfterMs = 0;
 
         h.At(0);
         h.At(1000);
@@ -269,7 +269,7 @@ public class ResponsivenessGuardTests
     {
         using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 50, priority: priority);
-        h.Engine.TameOnlyNormal = false;
+        h.Engine.RestrainOnlyNormalPriority = false;
 
         h.At(0);
         h.At(1000);
@@ -282,7 +282,7 @@ public class ResponsivenessGuardTests
     {
         using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 50);
-        h.Engine.LowerToIdleInsteadOfBelowNormal = true;
+        h.Engine.LowerToIdle = true;
 
         h.At(0);
         h.At(1000);
@@ -339,7 +339,7 @@ public class ResponsivenessGuardTests
         h.Add(10, cpu: 1);
         h.Add(100, cpu: 50, parent: 10);
         h.ForegroundPid = 10;
-        h.Engine.ExcludeChildrenOfForeground = false;
+        h.Engine.ExemptForegroundChildren = false;
 
         h.At(0);
         h.At(1000);
@@ -354,7 +354,7 @@ public class ResponsivenessGuardTests
     {
         using var h = new ResponsivenessGuardHarness();
         h.Add(100, cpu: 50, session: 0);
-        h.Engine.ExcludeServices = excludeServices;
+        h.Engine.ExemptServices = excludeServices;
 
         h.At(0);
         h.At(1000);

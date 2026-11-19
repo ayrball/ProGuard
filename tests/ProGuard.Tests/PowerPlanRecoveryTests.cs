@@ -76,7 +76,7 @@ public class PowerPlanRecoveryTests
         Enabled = true,
         LowThreshold = 10,
         HighThreshold = 50,
-        AveragingWindowSamples = 1,
+        SampleWindow = 1,
         MinimumTimeInPlanMs = 0,
         LowPlan = LoadLow,
         HighPlan = LoadHigh,

@@ -21,7 +21,7 @@ public class ResponsivenessGuardForegroundFallbackTests
         h.Add(Game, cpu: 50);
         h.Add(Encoder, cpu: 50);
         h.Add(Service, cpu: 50, session: 0);
-        h.Engine.ExcludeServices = false;   // so session 0 is decided by the fallback alone
+        h.Engine.ExemptServices = false;   // so session 0 is decided by the fallback alone
         h.Fallback.Windowed.UnionWith(new[] { Game, Service });
         return h;
     }
@@ -81,7 +81,7 @@ public class ResponsivenessGuardForegroundFallbackTests
     public void WithTheForegroundExemptionOff_TheFallbackIsOffToo()
     {
         using var h = Harness();
-        h.Engine.ExcludeForegroundProcesses = false;
+        h.Engine.ExemptForeground = false;
         h.Fallback.IsForegroundKnown = false;
 
         h.At(0);

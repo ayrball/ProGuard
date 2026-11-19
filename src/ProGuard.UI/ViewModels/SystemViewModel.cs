@@ -42,8 +42,8 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     // Properties whose change is a setting to save. (Fields that wrap a number or a list raise their own Committed event.)
     private static readonly HashSet<string> Persisted = new()
     {
-        nameof(ResponsivenessGuardEnabled), nameof(SensitivityLevel), nameof(RestrainByAffinity), nameof(DropOneRandomCore),
-        nameof(LowerIoPriority), nameof(UseEfficiencyMode), nameof(DoNotLowerPriorityClass), nameof(PauseWhenIdle),
+        nameof(ResponsivenessGuardEnabled), nameof(SensitivityLevel), nameof(RestrictAffinity), nameof(DropOneRandomCore),
+        nameof(LowerIoPriority), nameof(EfficiencyModeWhileRestrained), nameof(KeepPriorityClass), nameof(PauseWhenIdle),
         nameof(UnparkCoresWhileRestraining),
         nameof(ForegroundBoostEnabled),
         nameof(MemoryTrimEnabled), nameof(TrimLogNoAction), nameof(StandbyPurgeEnabled), nameof(StandbyOnlyInPerformanceMode),
@@ -116,11 +116,11 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
     // Responsiveness Guard
     [ObservableProperty] private bool responsivenessGuardEnabled;
     [ObservableProperty] private int sensitivityLevel = 5;
-    [ObservableProperty] private bool restrainByAffinity;
+    [ObservableProperty] private bool restrictAffinity;
     [ObservableProperty] private bool dropOneRandomCore;
     [ObservableProperty] private bool lowerIoPriority;
-    [ObservableProperty] private bool useEfficiencyMode;
-    [ObservableProperty] private bool doNotLowerPriorityClass;
+    [ObservableProperty] private bool efficiencyModeWhileRestrained;
+    [ObservableProperty] private bool keepPriorityClass;
     [ObservableProperty] private bool pauseWhenIdle;
     /// <summary>Unpark every core while restraining. Administrators only: the engine refuses a standard user's change.</summary>
     [ObservableProperty] private bool unparkCoresWhileRestraining;
@@ -249,12 +249,12 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
 
                 ResponsivenessGuardEnabled = settings.ResponsivenessGuardEnabled;
                 SensitivityLevel = Math.Clamp(settings.ResponsivenessGuardSensitivity, 1, 10);
-                RestrainByAffinity = settings.ResponsivenessGuardRestrainByAffinity;
+                RestrictAffinity = settings.ResponsivenessGuardRestrainByAffinity;
                 BuildCores(settings.ResponsivenessGuardRestraintAffinity);
                 DropOneRandomCore = settings.ResponsivenessGuardDropOneRandomCore;
                 LowerIoPriority = settings.ResponsivenessGuardLowerIoPriority;
-                UseEfficiencyMode = settings.ResponsivenessGuardUseEfficiencyMode;
-                DoNotLowerPriorityClass = settings.ResponsivenessGuardDoNotLowerPriorityClass;
+                EfficiencyModeWhileRestrained = settings.ResponsivenessGuardUseEfficiencyMode;
+                KeepPriorityClass = settings.ResponsivenessGuardDoNotLowerPriorityClass;
                 PauseWhenIdle = settings.ResponsivenessGuardDisableWhenSysIdle;
                 UnparkCoresWhileRestraining = settings.ResponsivenessGuardDisableCoreParking;
                 IdlePauseMs.Load(settings.ResponsivenessGuardDisableIfSysIdleMs);
@@ -537,12 +537,12 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
 
         s.ResponsivenessGuardEnabled = ResponsivenessGuardEnabled;
         if (Math.Clamp(s.ResponsivenessGuardSensitivity, 1, 10) != SensitivityLevel) s.ResponsivenessGuardSensitivity = SensitivityLevel;
-        s.ResponsivenessGuardRestrainByAffinity = RestrainByAffinity;
+        s.ResponsivenessGuardRestrainByAffinity = RestrictAffinity;
         s.ResponsivenessGuardRestraintAffinity = MergeMask(s.ResponsivenessGuardRestraintAffinity);
         s.ResponsivenessGuardDropOneRandomCore = DropOneRandomCore;
         s.ResponsivenessGuardLowerIoPriority = LowerIoPriority;
-        s.ResponsivenessGuardUseEfficiencyMode = UseEfficiencyMode;
-        s.ResponsivenessGuardDoNotLowerPriorityClass = DoNotLowerPriorityClass;
+        s.ResponsivenessGuardUseEfficiencyMode = EfficiencyModeWhileRestrained;
+        s.ResponsivenessGuardDoNotLowerPriorityClass = KeepPriorityClass;
         s.ResponsivenessGuardDisableWhenSysIdle = PauseWhenIdle;
         s.ResponsivenessGuardDisableCoreParking = UnparkCoresWhileRestraining;
         s.ResponsivenessGuardDisableIfSysIdleMs = IdlePauseMs.ToStored(s.ResponsivenessGuardDisableIfSysIdleMs);
@@ -655,7 +655,7 @@ public sealed partial class SystemViewModel : ObservableObject, IPage
         {
             _shell.Toaster.Show(success);
             // The setting changed outside a save: keep the copy saves start from in step, or the next save would undo it.
-            if (_settings != null) _settings.SetTimerResolutionAtStartup = state.Requested;
+            if (_settings != null) _settings.TimerResolutionRequest = state.Requested;
         }
         state ??= await _hub.QueryAsync<TimerResolutionDto>(CommandTypes.GetTimerResolution, quiet: true);
         if (state == null) return;

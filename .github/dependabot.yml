@@ -1,0 +1,54 @@
+version: 2
+
+# Weekly update PRs. NuGet updates rewrite the packages.lock.json files along with the project files; CI restores in
+# locked mode, so a PR whose lock files don't match fails there.
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # The .NET 10 servicing packages ship together; one PR keeps them on the same patch.
+      dotnet:
+        patterns:
+          - Microsoft.EntityFrameworkCore*
+          - Microsoft.Extensions.*
+          - System.*
+      tests:
+        patterns:
+          - Microsoft.NET.Test.Sdk
+          - xunit*
+          - coverlet.*
+          - Moq
+    ignore:
+      # ProGuard targets .NET 10 (LTS): no 11.x libraries until the projects move to that runtime.
+      - dependency-name: Microsoft.EntityFrameworkCore*
+        update-types: [version-update:semver-major]
+      - dependency-name: Microsoft.Extensions.*
+        update-types: [version-update:semver-major]
+      - dependency-name: System.*
+        update-types: [version-update:semver-major]
+      # Moving the tests to xunit.v3 is its own change.
+      - dependency-name: xunit
+        update-types: [version-update:semver-major]
+      # The installer is written for WiX 5.
+      - dependency-name: WixToolset.*
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns:
+          - '*'
+
+  # global.json. The workflows build with the newest .NET 10 SDK anyway; this keeps the local minimum current.
+  - package-ecosystem: dotnet-sdk
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]

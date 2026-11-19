@@ -2,7 +2,8 @@
 .SYNOPSIS
     SIGNING HOOK: Authenticode-signs the given files. Does nothing unless PROGUARD_SIGNING is set.
 .DESCRIPTION
-    build.ps1 calls this twice: for the exes before they go into the MSI, then for the MSI.
+    build.ps1 calls this twice: for the exes before they go into the MSI, then for the MSI. (The release workflow
+    runs build.ps1 in two halves and calls this itself between and after them, so only those steps see the secrets.)
     It is OFF by default and the repository holds no credentials. To switch it on, set PROGUARD_SIGNING and the
     variables for one provider (in CI: repository variables and secrets, see .github/workflows/release.yml):
 
@@ -11,16 +12,20 @@
         PROGUARD_SIGN_PFX_BASE64        the .pfx as base64 (a CI secret)
         PROGUARD_SIGN_PFX_PASSWORD      its password
 
-    PROGUARD_SIGNING=trusted-signing  Azure Trusted Signing, through signtool and Microsoft's dlib.
+    PROGUARD_SIGNING=trusted-signing  Azure Artifact Signing (formerly Trusted Signing), through signtool and
+                                      Microsoft's dlib. "artifact-signing" is accepted as the same thing; the
+                                      PROGUARD_SIGN_TS_* names are kept from the old product name.
         PROGUARD_SIGN_TS_ENDPOINT       e.g. https://eus.codesigning.azure.net
-        PROGUARD_SIGN_TS_ACCOUNT        the code signing account name
+        PROGUARD_SIGN_TS_ACCOUNT        the Artifact Signing account name
         PROGUARD_SIGN_TS_PROFILE        the certificate profile name
-        PROGUARD_SIGN_TS_DLIB           path to Azure.CodeSigning.Dlib.dll (NuGet: Microsoft.Trusted.Signing.Client,
-                                        bin\x64)
+        PROGUARD_SIGN_TS_DLIB           path to Azure.CodeSigning.Dlib.dll (NuGet: Microsoft.ArtifactSigning.Client,
+                                        bin\x64; it replaces the unlisted Microsoft.Trusted.Signing.Client)
         AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET   an app registration with the
-                                        "Trusted Signing Certificate Profile Signer" role (read by the dlib)
+                                        "Artifact Signing Certificate Profile Signer" role (read by the dlib)
 
-    PROGUARD_SIGNING=signpath         SignPath, through its SignPath PowerShell module (installed if missing).
+    PROGUARD_SIGNING=signpath         SignPath, through its SignPath PowerShell module: version 4.4.6 exactly
+                                      ($signPathVersion below), installed from the PowerShell Gallery if missing,
+                                      and not used unless SignPath GmbH's valid Authenticode signature is on it.
         PROGUARD_SIGN_SIGNPATH_TOKEN          API token of a CI user
         PROGUARD_SIGN_SIGNPATH_ORGANIZATION   organization id
         PROGUARD_SIGN_SIGNPATH_PROJECT        project slug
@@ -90,7 +95,7 @@ switch ($mode) {
             if ($temp) { Remove-Item -Force $temp -ErrorAction SilentlyContinue }
         }
     }
-    "trusted-signing" {
+    { $_ -in "trusted-signing", "artifact-signing" } {
         $metadata = Join-Path ([IO.Path]::GetTempPath()) "proguard-trusted-signing-$([guid]::NewGuid()).json"
         @{
             Endpoint               = Get-Required "PROGUARD_SIGN_TS_ENDPOINT"
@@ -105,10 +110,25 @@ switch ($mode) {
         }
     }
     "signpath" {
-        if (-not (Get-Module -ListAvailable -Name SignPath)) {
-            Install-Module -Name SignPath -Scope CurrentUser -Force
+        # One version, so a new gallery release can't change what runs with the signing token. To move to another,
+        # change $signPathVersion (https://www.powershellgallery.com/packages/SignPath).
+        $signPathVersion = "4.4.6"
+        if (-not (Get-Module -ListAvailable -Name SignPath | Where-Object { $_.Version -eq [version]$signPathVersion })) {
+            Install-Module -Name SignPath -RequiredVersion $signPathVersion -Repository PSGallery -Scope CurrentUser -Force
         }
-        Import-Module SignPath
+        $module = Get-Module -ListAvailable -Name SignPath | Where-Object { $_.Version -eq [version]$signPathVersion } |
+            Select-Object -First 1
+        if (-not $module) { throw "The SignPath module $signPathVersion isn't installed after Install-Module." }
+        # SignPath signs its module; refuse one that isn't (or isn't theirs) before it sees the token.
+        foreach ($script in Get-ChildItem $module.ModuleBase -Include *.psm1, *.psd1, *.ps1 -Recurse) {
+            $signature = Get-AuthenticodeSignature $script.FullName
+            if ($signature.Status -ne "Valid" -or $signature.SignerCertificate.Subject -notmatch '(^|, )O=SignPath GmbH(,|$)') {
+                throw "$($script.FullName) isn't signed by SignPath GmbH ($($signature.Status), $($signature.SignerCertificate.Subject))."
+            }
+        }
+        Import-Module $module.Path -Force
+        $loaded = Get-Module -Name SignPath
+        if (-not $loaded -or $loaded.Version -ne [version]$signPathVersion) { throw "Loaded SignPath $($loaded.Version), not $signPathVersion." }
         $request = @{
             CIUserToken       = Get-Required "PROGUARD_SIGN_SIGNPATH_TOKEN"
             OrganizationId    = Get-Required "PROGUARD_SIGN_SIGNPATH_ORGANIZATION"
@@ -121,7 +141,7 @@ switch ($mode) {
             Submit-SigningRequest @request -InputArtifactPath $file -OutputArtifactPath $file -WaitForCompletion -Force
         }
     }
-    default { throw "Unknown PROGUARD_SIGNING '$mode': use pfx, trusted-signing, signpath or none." }
+    default { throw "Unknown PROGUARD_SIGNING '$mode': use pfx, trusted-signing (or artifact-signing), signpath or none." }
 }
 
 # Fail the build rather than ship a file the provider quietly left unsigned.

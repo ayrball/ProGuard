@@ -25,9 +25,11 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         id: dotnet
         with:
           dotnet-version: 10.0.x
@@ -36,11 +38,11 @@ jobs:
       - name: Pin the .NET 10 SDK
         run: dotnet new globaljson --sdk-version ${{ steps.dotnet.outputs.dotnet-version }} --force
 
-      # No packages.lock.json in the repo, so cache on the project files that list the packages.
-      - uses: actions/cache@v6
+      # Keyed on the lock files, which list every package (transitive ones too) with its hash.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.NUGET_PACKAGES }}
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
           restore-keys: nuget-${{ runner.os }}-
 
       # Some tests behave differently when elevated or without a console session; record what this runner is.
@@ -54,8 +56,9 @@ jobs:
           "Interactive: $([Environment]::UserInteractive)"
           dotnet --info | Select-Object -First 12
 
+      # Fails if a project's packages no longer match its committed packages.lock.json (see Directory.Build.props).
       - name: Restore
-        run: dotnet restore ProGuard.sln
+        run: dotnet restore ProGuard.sln --locked-mode
 
       - name: Build
         id: build
@@ -72,7 +75,7 @@ jobs:
 
       - name: Upload test results
         if: failure() && steps.test.outcome == 'failure' || cancelled()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: test-results
           path: |
@@ -88,7 +91,7 @@ jobs:
 
       - name: Upload UI preview
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ui-preview
           path: artifacts/preview/
@@ -101,9 +104,11 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         id: dotnet
         with:
           dotnet-version: 10.0.x
@@ -111,10 +116,10 @@ jobs:
       - name: Pin the .NET 10 SDK
         run: dotnet new globaljson --sdk-version ${{ steps.dotnet.outputs.dotnet-version }} --force
 
-      - uses: actions/cache@v6
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.NUGET_PACKAGES }}
-          key: nuget-installer-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'installer/*.wixproj') }}
+          key: nuget-installer-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
           restore-keys: nuget-installer-${{ runner.os }}-
 
       - name: Build the MSI
@@ -143,7 +148,7 @@ jobs:
           }
 
       - name: Upload the MSI
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: installer
           path: artifacts/installer/*.msi

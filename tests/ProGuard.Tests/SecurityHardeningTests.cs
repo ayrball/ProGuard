@@ -1048,7 +1048,7 @@ public class SecurityHardeningTests
     public void TheReleaseWorkflow_PinsTheSigningDlib_AndChecksItsHash()
     {
         var workflow = File.ReadAllText(Path.Combine(RepoRoot(), ".github", "workflows", "release.yml"));
-        var install = workflow.Split('\n').Single(l => l.Contains("nuget install Microsoft.Trusted.Signing.Client"));
+        var install = workflow.Split('\n').Single(l => l.Contains("nuget install Microsoft.ArtifactSigning.Client"));
 
         Assert.Contains("-Version $env:TS_VERSION", install);
         Assert.Matches(@"TS_VERSION: '\d+\.\d+\.\d+'", workflow);

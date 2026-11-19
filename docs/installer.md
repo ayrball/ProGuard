@@ -37,11 +37,47 @@ solution is unaffected.
 `1.2.3`, because Windows Installer versions are numeric and upgrades compare only the first three fields. The wixproj
 takes it as the `ProductVersion` MSBuild property. CI builds use `0.0.<run number>`; releases use the tag.
 
+**File properties.** The exes' version resource comes from `Directory.Build.props`: company and publisher `ayrball`
+(the MSI's Manufacturer), product `ProGuard`, `Copyright © 2026 ayrball`, and a description per exe ("ProGuard Engine
+Service", "ProGuard", "ProGuard Session Agent"). The file version is the numeric part of `-Version` plus `.0`
+(`1.2.3.0`); the product version is the whole string, plus the commit.
+
+**Bundled runtime.** The exes are self-contained, so each carries the .NET runtime of the SDK that published it.
+`build.ps1` prints that version for each exe (from the runtime packs named in the publish's `deps.json`), and with
+`-MinRuntime 10.0.15` it fails if any is older. The release workflow passes the latest .NET 10 runtime from
+[Microsoft's release metadata](https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/10.0/releases.json), so a
+release never ships a runtime with known, already-fixed vulnerabilities. A local build has no minimum unless you pass
+one.
+
+**Packages.** NuGet restores only from nuget.org (`nuget.config`) and against the committed `packages.lock.json` of
+each project, the wixproj included; in CI a restore that would change a lock file fails (NU1004). After changing a
+package reference, run `dotnet restore ProGuard.sln` and `.\installer\build.ps1` once, and commit the changed lock
+files. Audit covers transitive packages, and a high or critical advisory (NU1903, NU1904) fails the build. The
+single-file analyzer is off: it would add an SDK-versioned package to the lock files (see `Directory.Build.props`).
+
+**Notices.** `files\` gets `LICENSE.txt`, `NOTICE.txt` and `THIRD-PARTY-NOTICES.txt`; the last is the repository's
+`THIRD-PARTY-NOTICES.txt` with the bundled runtime pack's own `THIRD-PARTY-NOTICES.TXT` appended. All three go into the
+MSI and the zip.
+
+## Releases
+
+Releases are built by CI, not by hand: pushing a `v*` tag runs `.github/workflows/release.yml`, which waits for the
+owner's approval (the `release` environment, which only `v*` tags may use) and then:
+
+1. publishes and stages the exes, unsigned, with `build.ps1 -Step Stage -MinRuntime <latest .NET 10 runtime>`;
+2. signs the exes with `sign.ps1` (only when `PROGUARD_SIGNING` is set);
+3. builds the MSI and the zip from those files with `build.ps1 -Step Package -Portable`;
+4. signs the MSI (likewise);
+5. writes `SHA256SUMS.txt` and attaches everything to the GitHub Release.
+
+Only steps 2 and 4 are given the signing variables and secrets. A build from a developer machine is for testing; it
+carries whatever runtime that machine's SDK has.
+
 ## What the MSI does
 
 | | |
 | --- | --- |
-| Program files | `C:\Program Files\ProGuard`: `ProGuard.Engine.exe`, `ProGuard.UI.exe`, `ProGuard.SessionAgent.exe` (the engine starts it from its own folder), native libraries, `appsettings.json`, `LICENSE.txt`, `NOTICE.txt` |
+| Program files | `C:\Program Files\ProGuard`: `ProGuard.Engine.exe`, `ProGuard.UI.exe`, `ProGuard.SessionAgent.exe` (the engine starts it from its own folder), native libraries, `appsettings.json`, `LICENSE.txt`, `NOTICE.txt`, `THIRD-PARTY-NOTICES.txt` |
 | Service | `ProGuardEngine`, "ProGuard Engine", LocalSystem, automatic start, same description as `install-service.ps1`. Recovery: restart after 5 s, 10 s, then every 60 s; the count resets after a day. It is set with the same `sc.exe failure` command as the script, because Windows Installer's own `MsiServiceConfigFailureActions` fails with access denied (error 1939) for restart actions. Started at the end of the install, which fails and rolls back if the engine doesn't start. |
 | Start menu | "ProGuard" (all users) → `ProGuard.UI.exe` |
 | Start at sign-in | Optional, on by default: `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, value `ProGuard.UI` = `"C:\Program Files\ProGuard\ProGuard.UI.exe" --tray` |
@@ -107,13 +143,22 @@ shortcut and the uninstalling user's Run value. Keeps `%ProgramData%\ProGuard` u
 
 Off. `installer/sign.ps1` is the hook: `build.ps1` calls it for the exes before packaging them and for the MSI
 afterwards. With `PROGUARD_SIGNING` unset it prints that signing is off and returns. Set it to `pfx`,
-`trusted-signing` or `signpath` and provide that provider's variables (listed at the top of `sign.ps1`) to switch it on;
-after signing, it fails the build if a file still has no signature.
+`trusted-signing` (Azure Artifact Signing, formerly Trusted Signing; `artifact-signing` is accepted too) or `signpath`
+and provide that provider's variables (listed at the top of `sign.ps1`) to switch it on; after signing, it fails the
+build if a file still has no signature.
 
-In CI, `.github/workflows/release.yml` passes the repository variable `PROGUARD_SIGNING` and the matching secrets to
-the build step, so turning signing on for releases needs no workflow change: add the secrets, then set the variable.
+- Artifact Signing uses signtool with Microsoft's dlib from the `Microsoft.ArtifactSigning.Client` NuGet package (the
+  older `Microsoft.Trusted.Signing.Client` is unlisted). The release workflow pins its version and the SHA-512 of the
+  `.nupkg`. The app registration needs the "Artifact Signing Certificate Profile Signer" role. The variable names keep
+  the `PROGUARD_SIGN_TS_` prefix.
+- SignPath uses the `SignPath` PowerShell module, pinned to one version (4.4.6) and refused unless SignPath GmbH's
+  Authenticode signature on it is valid.
+
+In CI, `.github/workflows/release.yml` reads the repository variable `PROGUARD_SIGNING` and gives the matching
+variables and secrets to its two signing steps only (see [Releases](#releases)), so turning signing on for releases
+needs no workflow change: add the secrets (preferably as secrets of the `release` environment), then set the variable.
 PR builds are never signed. CI checks the `pfx` route on every PR with a throw-away self-signed certificate on a copy of
-one exe. `trusted-signing` and `signpath` are untested until there's an account.
+one exe. Artifact Signing and SignPath are untested until there's an account.
 
 ## Testing an install
 

@@ -1,0 +1,58 @@
+<Project>
+  <!-- Applies to every project under the repository: src, tests, tools and the installer's wixproj. -->
+
+  <!-- The version every ProGuard assembly carries. installer/build.ps1 and the release workflow override it with
+       -p:Version=<tag>, so a built installer always says what its tag says; this is what a plain dotnet build reports.
+       FileVersion is the numeric part (Windows file versions can't hold a -prerelease suffix) plus .0;
+       InformationalVersion ("Product version" in the file's properties) is the whole string. -->
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <FileVersion>$([System.Text.RegularExpressions.Regex]::Match('$(Version)', '^\d+\.\d+\.\d+').Value).0</FileVersion>
+    <InformationalVersion>$(Version)</InformationalVersion>
+  </PropertyGroup>
+
+  <!-- The exes' version resource. The publisher is the same as the MSI's Manufacturer. -->
+  <PropertyGroup>
+    <Company>ayrball</Company>
+    <Authors>ayrball</Authors>
+    <Product>ProGuard</Product>
+    <Copyright>Copyright © 2026 ayrball</Copyright>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'ProGuard.Engine'">
+    <AssemblyTitle>ProGuard Engine Service</AssemblyTitle>
+    <Description>ProGuard Engine Service</Description>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'ProGuard.UI'">
+    <AssemblyTitle>ProGuard</AssemblyTitle>
+    <Description>ProGuard</Description>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'ProGuard.SessionAgent'">
+    <AssemblyTitle>ProGuard Session Agent</AssemblyTitle>
+    <Description>ProGuard Session Agent</Description>
+  </PropertyGroup>
+
+  <!-- NuGet supply chain. Every project restores against its committed packages.lock.json; in CI (GitHub Actions sets
+       CI=true) a restore that would change a lock file fails instead. After changing a PackageReference, run
+       dotnet restore ProGuard.sln (and installer\build.ps1 once, for the wixproj) and commit the lock files.
+       Packages come only from nuget.org (nuget.config). Audit covers transitive packages too, and a high or critical
+       advisory fails the build. -->
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <WarningsAsErrors>$(WarningsAsErrors);NU1903;NU1904</WarningsAsErrors>
+  </PropertyGroup>
+
+  <!-- So that installer\build.ps1's publish (-r win-x64, self-contained, single file) restores exactly what the lock
+       files hold:
+       - win-x64 is in every lock file, since publishing passes it to the referenced projects too.
+       - The single-file analyzer is off. It needs Microsoft.NET.ILLink.Tasks, an implicit package whose version is the
+         SDK's own runtime version, so every SDK patch would change the lock files and fail the locked restore (and
+         releases take the newest SDK, to bundle the newest runtime). The exes don't use Assembly.Location or similar
+         APIs the analyzer looks for; it reported nothing when it was last on. -->
+  <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <EnableSingleFileAnalyzer>false</EnableSingleFileAnalyzer>
+  </PropertyGroup>
+</Project>

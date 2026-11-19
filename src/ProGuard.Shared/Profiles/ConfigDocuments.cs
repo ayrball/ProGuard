@@ -205,7 +205,7 @@ public static class ConfigDocuments
         if (rule.EfficiencyMode is bool eco) parts.Add(eco ? "efficiency mode" : "efficiency mode off");
         if (!string.IsNullOrEmpty(rule.CpuSetIds)) parts.Add("CPU Sets " + rule.CpuSetIds);
         if (rule.PowerProfileGuid != null) parts.Add("power plan");
-        if (rule.ExcludeFromResponsivenessGuard) parts.Add("excluded from ResponsivenessGuard");
+        if (rule.ExcludeFromResponsivenessGuard) parts.Add("excluded from Responsiveness Guard");
         if (rule.KeepRunning) parts.Add("kept running");
         return parts.Count == 0 ? "no settings" : string.Join(", ", parts);
     }
@@ -244,7 +244,7 @@ public static class ConfigDocuments
         _ => value.ToString() ?? string.Empty,
     };
 
-    /// <summary>"ResponsivenessGuardCpuThreshold" → "ResponsivenessGuard CPU threshold".</summary>
+    /// <summary>"ResponsivenessGuardCpuThreshold" → "Responsiveness Guard CPU threshold".</summary>
     public static string Words(string name)
     {
         var words = Regex.Replace(name, "(?<=[a-z0-9])(?=[A-Z])", " ").Split(' ');
@@ -257,7 +257,8 @@ public static class ConfigDocuments
                 _ => words[i].ToLowerInvariant(),
             };
         }
-        return string.Join(' ', words).Replace("responsiveness guard", "ResponsivenessGuard").Replace("memory trim", "MemoryTrim");
+        return string.Join(' ', words).Replace("Responsiveness guard", "Responsiveness Guard").Replace("Memory trim", "Memory Trim")
+            .Replace("Away mode", "Away Mode").Replace("Instance spread", "Instance Spread");
     }
 
     // ------------------------------------------------------------------ machine-specific values
@@ -267,7 +268,7 @@ public static class ConfigDocuments
     /// on are left out, and each one is listed in <paramref name="flags"/>. The document itself is not changed.
     /// <list type="bullet">
     /// <item>CPU Set IDs, unless the document comes from a machine with the same CPU Set layout and every ID exists here.</item>
-    /// <item>Affinity masks that name a logical processor this machine doesn't have (rules, ResponsivenessGuard's restraint cores,
+    /// <item>Affinity masks that name a logical processor this machine doesn't have (rules, Responsiveness Guard's restraint cores,
     /// Watchdog "set affinity" rules, which are turned off instead since they can't do without one).</item>
     /// <item>Power plan GUIDs of plans that aren't installed here (the setting goes back to its default).</item>
     /// </list>
@@ -330,12 +331,12 @@ public static class ConfigDocuments
         var s = fitted.Settings;
         if ((s.ResponsivenessGuardRestraintAffinity & ~allowed) != 0)
         {
-            found.Add(new() { Where = "Settings", Setting = "ResponsivenessGuard restraint cores", Value = Mask(s.ResponsivenessGuardRestraintAffinity), Reason = Beyond(s.ResponsivenessGuardRestraintAffinity), Outcome = "Left out: no cores are picked" });
+            found.Add(new() { Where = "Settings", Setting = "Responsiveness Guard restraint cores", Value = Mask(s.ResponsivenessGuardRestraintAffinity), Reason = Beyond(s.ResponsivenessGuardRestraintAffinity), Outcome = "Left out: no cores are picked" });
             s.ResponsivenessGuardRestraintAffinity = 0;
         }
         foreach (var (name, get, set, fallback) in new (string, Func<string?>, Action<string?>, string)[]
         {
-            ("AwayMode plan", () => s.IdlePowerPlanGuid, v => s.IdlePowerPlanGuid = v, "Power saver"),
+            ("Away Mode plan", () => s.IdlePowerPlanGuid, v => s.IdlePowerPlanGuid = v, "Power saver"),
             ("Performance Mode plan", () => s.PerformanceModePlanGuid, v => s.PerformanceModePlanGuid = v, "High performance"),
             ("Load switcher low-load plan", () => s.LoadSwitcherLowPlanGuid, v => s.LoadSwitcherLowPlanGuid = v, "Balanced"),
             ("Load switcher high-load plan", () => s.LoadSwitcherHighPlanGuid, v => s.LoadSwitcherHighPlanGuid = v, "High performance"),

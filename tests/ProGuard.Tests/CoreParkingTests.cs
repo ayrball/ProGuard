@@ -40,7 +40,7 @@ internal sealed class FakeCoreParkingPower : ICoreParkingPower
 }
 
 /// <summary>
-/// ResponsivenessGuard's OocDisableCoreParkingWhileIn: the active plan's core parking minimum goes to 100 % while anything is
+/// Unparking cores while Responsiveness Guard restrains: the active plan's core parking minimum goes to 100 % while anything is
 /// restrained and comes back afterwards, also after an engine crash. Only administrators may switch it on.
 /// </summary>
 public class CoreParkingTests
@@ -61,7 +61,7 @@ public class CoreParkingTests
     }
 
     [Fact]
-    public void Off_ByDefault_AsInanother process manager()
+    public void Off_ByDefault()
     {
         Assert.False(new ProGuard.Core.Models.AppSettings().ResponsivenessGuardDisableCoreParking);
         Assert.False(new EngineSettingsDto().ResponsivenessGuardDisableCoreParking);
@@ -217,7 +217,7 @@ public class CoreParkingTests
         Assert.InRange(values.Value.Dc, 0u, 100u);
     }
 
-    // ------------------------------------------------------------------ ResponsivenessGuard drives it
+    // ------------------------------------------------------------------ Responsiveness Guard drives it
 
     [Fact]
     public void ResponsivenessGuard_ReportsAfterEachPass_WhetherAnythingIsRestrained()
@@ -225,7 +225,7 @@ public class CoreParkingTests
         using var h = new ResponsivenessGuardHarness();
         var reports = new List<bool>();
         h.Engine.RestraintsUpdated += reports.Add;
-        h.Engine.TimeOverQuotaBeforeRestraint = 0;
+        h.Engine.RestrainAfterMs = 0;
         var hog = h.Add(100, cpu: 50);
 
         h.At(0);
@@ -253,7 +253,7 @@ public class CoreParkingTests
         using var h = new ResponsivenessGuardHarness();
         var (service, power, _) = New();
         h.Engine.RestraintsUpdated += service.Update;
-        h.Engine.TimeOverQuotaBeforeRestraint = 0;
+        h.Engine.RestrainAfterMs = 0;
         var hog = h.Add(100, cpu: 50);
 
         h.At(0);

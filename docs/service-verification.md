@@ -2,8 +2,7 @@
 
 ProGuard installed for real and checked against real processes: the engine as a LocalSystem Windows service in
 session 0, the UI as the signed-in user, unelevated. Everything below was run on 2026-10-11 on the development machine
-(Windows 11 Pro 26200, 16 logical CPUs, 47 GB RAM). another process manager 18.4's ProcessOrchestrator service and tray GUI were
-stopped for the run and restored afterwards.
+(Windows 11 Pro 26200, 16 logical CPUs, 47 GB RAM).
 
 ## How it was run
 
@@ -31,13 +30,13 @@ stopped for the run and restored afterwards.
 | # | Item | First install (`main`) | Final build |
 |---|------|------------------------|-------------|
 | 1 | UI ↔ command pipe; standard-user commands work; admin-only commands refused clearly | **FAIL** | PASS |
-| 2 | Foreground PID and idle time from the UI; ResponsivenessGuard exempts the foreground; AwayMode | PASS (no visibility) | PASS |
-| 3 | ResponsivenessGuard restrains/restores on another process manager's timing | **FAIL** (slow) | PASS |
+| 2 | Foreground PID and idle time from the UI; Responsiveness Guard exempts the foreground; Away Mode | PASS (no visibility) | PASS |
+| 3 | Responsiveness Guard restrains/restores on time | **FAIL** (slow) | PASS |
 | 4 | Per-process rules applied at process start, GPU preference in the user's hive | **FAIL** (rules never loaded) | PASS |
 | 5 | CPU Limiter affinity reduction, instance limit, Instance Spread, startup boost | not reached (same cause) | PASS |
 | 6 | Watchdog Restart / Launch / Keep Running in the user's session | not reached (same cause) | PASS |
-| 7 | MemoryTrim trim, standby purge, file-cache purge with the service's privileges | **FAIL** | PASS |
-| 8 | Automatic Performance Mode; load switcher and AwayMode respect its precedence | not reached | PASS |
+| 7 | Memory Trim trim, standby purge, file-cache purge with the service's privileges | **FAIL** | PASS |
+| 8 | Automatic Performance Mode; load switcher and Away Mode respect its precedence | not reached | PASS |
 | 9 | Older database at the shared path upgrades when the new engine starts | PASS | PASS |
 
 ### 1. UI and the command pipe
@@ -64,7 +63,7 @@ From an elevated client: SetPriority RealTime → `RealTime`; PurgeMemory → su
 
 **Failures found on the first install, now fixed:**
 - *The UI could not save anything.* The service creates `%ProgramData%\ProGuard` and the database as SYSTEM; users get
-  read-only access (another process manager's `otherpm.ini` is the same). Writing as the UI's account: `attempt to write a
+  read-only access. Writing as the UI's account: `attempt to write a
   readonly database`. Every Settings/Power/Rules/Watchdog/Logs save went straight to the database, and the settings
   pages swallowed the error. → **bd54dd9**: the engine owns the database; the UI saves through new pipe commands
   (`SaveProcessRule`, `DeleteProcessRule`, `SaveWatchdogRule`, `DeleteWatchdogRule`, `ClearActionLog`) and a merging
@@ -92,26 +91,26 @@ sends, from the same account.
   `0.32s Normal engineForegroundPid=self` → (minimized at 8.0 s) `9.72s BelowNormal` → (foreground again at 16.0 s)
   `16.52s engineForegroundPid=self`, `16.74s Normal`. Log: `ResponsivenessGuard restored pgtest-fg (38432) to Normal: Came to
   the foreground`. Never restrained while in front; no boost (see below).
-- AwayMode (1 min, Balanced): `Power plan High performance -> Balanced: AwayMode: no input for 1 min` at 62 s idle;
-  one injected mouse event (`SendInput`) → `Balanced -> High performance: AwayMode: user input; restored the plan from
-  before AwayMode` **0.40 s** later (0.39 s on the first install).
+- Away Mode (1 min, Balanced): `Power plan High performance -> Balanced: Away Mode: no input for 1 min` at 62 s idle;
+  one injected mouse event (`SendInput`) → `Balanced -> High performance: Away Mode: user input; restored the plan from
+  before Away Mode` **0.40 s** later (0.39 s on the first install).
 - Found: ForegroundBoost was always on. Once the engine knew the foreground process, it raised every foreground app to
-  Above Normal (seen at 0.3 s in the first-install run). another process manager's default is off. → **21d1b0a**
+  Above Normal (seen at 0.3 s in the first-install run). It should be off by default. → **21d1b0a**
   (`AppSettings.ForegroundBoostEnabled`, default false, toggle on the Settings page).
 - Added for diagnosis: **662f1c6** (foreground/idle/Performance Mode in GetStatus, reporter connect/disconnect logged).
 
-### 3. ResponsivenessGuard timing
+### 3. Responsiveness Guard timing
 
 Background burner on 2 of 16 threads (12.5% total CPU), priority sampled every 50–100 ms:
 
 | | Restrained after start | Restored after the load stopped |
 |---|---|---|
-| another process manager (docs/another process manager-internals.md) | 1.86 s | ~1.7 s |
+
 | First install | 3.18 s | 2.18 s |
 | Final build, 3 runs | 1.13 s, 1.11 s, 2.00 s | 1.13 s, 1.11 s, 1.00 s |
 
-Cause: ResponsivenessGuard evaluated on its own 1 s timer, out of phase with ProcessMonitor's 1 s CPU sampling, so it judged
-usage up to a second old; and a new process read 0% on its first sample. → **3bba281**: ResponsivenessGuard evaluates on
+Cause: Responsiveness Guard evaluated on its own 1 s timer, out of phase with ProcessMonitor's 1 s CPU sampling, so it judged
+usage up to a second old; and a new process read 0% on its first sample. → **3bba281**: Responsiveness Guard evaluates on
 `IProcessMonitor.Refreshed`; a process first seen within 5 s of starting gets its usage since start as its first
 reading.
 
@@ -160,17 +159,17 @@ All started processes checked with `Win32_Process` (the test processes were star
   first attempt failed because the test rule I wrote into the database contained a stray `\b` character; corrected over
   the pipe as administrator, not a product bug.)
 
-### 7. MemoryTrim
+### 7. Memory Trim
 
 **First install: FAIL.** An administrator's "Purge now" over the pipe returned `Standby list purge failed:
 SeProfileSingleProcessPrivilege is not enabled`, with `OpenProcessToken failed (Access is denied., error 5)` for the
-engine's own token. Once MemoryTrim and the purges were enabled over the pipe, the periodic passes produced no log lines
+engine's own token. Once Memory Trim and the purges were enabled over the pipe, the periodic passes produced no log lines
 at all and the standby list stayed at ~19 GB, though the same build run as an elevated console process trimmed and
 purged normally (`purge returned 0x00000000 in 2704 ms`, standby 19062 → 131 MB).
 
 Cause: `NamedPipeServerStream.RunAsClient` (used to check the caller) reverts the thread's token but leaves the client's
 identity in the ExecutionContext, so await continuations, tasks and timers started from that connection later ran **as
-the client**. The purge, dispatched after an await, ran as the admin client; MemoryTrim's timers, created while applying
+the client**. The purge, dispatched after an await, ran as the admin client; Memory Trim's timers, created while applying
 settings received over the pipe, ran as the unelevated user (trims of the user's own processes worked, purges failed,
 and their log writes were denied). Reproduced in a test: a timer started after the check ran at
 `TokenImpersonationLevel.Impersonation`. → **fd48ff2** (impersonated checks run in a throw-away context);
@@ -187,19 +186,19 @@ Final build:
 
 ### 8. Performance Mode precedence
 
-`pgtest-perf.exe` listed for automatic Performance Mode (plan: the vendor Highest Performance), load switcher set to want
-Power saver, AwayMode 1 min → Balanced; plan sampled every second (`evidence: powercfg`):
+`pgtest-perf.exe` listed for automatic Performance Mode (plan: a custom high-performance plan), load switcher set to want
+Power saver, Away Mode 1 min → Balanced; plan sampled every second (`evidence: powercfg`):
 
 ```
 16:05:51 enable load switcher             -> 16:05:57 (Power saver)   Load switcher: average CPU 26.1% is below 90%
-16:06:00 idle 60 s                        -> (Balanced)               AwayMode: no input for 1 min
-16:06:12 start pgtest-perf.exe            -> 16:06:14 (the vendor Highest Performance)  Performance Mode engaged automatically
-16:06:14 .. 16:07:42, idle 75 s -> 163 s     plan stays the vendor Highest Performance (AwayMode and load switcher held off)
-16:07:42 stop pgtest-perf.exe             -> 16:07:44 (Power saver) Performance Mode released, 16:07:45 (Balanced) AwayMode
+16:06:00 idle 60 s                        -> (Balanced)               Away Mode: no input for 1 min
+16:06:12 start pgtest-perf.exe            -> 16:06:14 (custom high-performance plan)  Performance Mode engaged automatically
+16:06:14 .. 16:07:42, idle 75 s -> 163 s     plan stays on the custom high-performance plan (Away Mode and load switcher held off)
+16:07:42 stop pgtest-perf.exe             -> 16:07:44 (Power saver) Performance Mode released, 16:07:45 (Balanced) Away Mode
 ```
 
-Precedence holds (Performance Mode > AwayMode > load switcher). Minor: on release the load switcher's plan applied for
-one second before AwayMode took over again (follow-up below).
+Precedence holds (Performance Mode > Away Mode > load switcher). Minor: on release the load switcher's plan applied for
+one second before Away Mode took over again (follow-up below).
 
 ### 9. Schema upgrade
 
@@ -222,7 +221,7 @@ watchdog rules`.
 ## Follow-ups (not fixed here)
 
 - When automatic Performance Mode ends while the user is idle, the load switcher's plan is applied for about a second
-  before AwayMode re-takes the plan: AwayMode's request is not re-evaluated when Performance Mode releases.
+  before Away Mode re-takes the plan: Away Mode's request is not re-evaluated when Performance Mode releases.
 - The Power page's Performance Mode toggle starts off even when Performance Mode is on (manual or automatic); it doesn't
   read the engine's state (`EngineStatus.PerformanceModeActive` now has it).
 - Watchdog Restart fires again for each restarted instance that still breaks the rule (the cooldown is per process);

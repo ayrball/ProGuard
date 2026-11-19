@@ -45,14 +45,14 @@ public class Pass4_Watchdog_And_MemoryTrim_Tests
         var mockLogger = new Mock<ILogger<MemoryTrimService>>();
         var mockMonitor = new Mock<IProcessMonitor>();
 
-        using var memory trim = new MemoryTrimService(mockLogger.Object, mockMonitor.Object);
+        using var memoryTrim = new MemoryTrimService(mockLogger.Object, mockMonitor.Object);
 
-        // Default is another process manager's MinimumProcessWSSInMb, 196 MB
-        Assert.Equal(1024L * 1024L * 196L, memory trim.ThresholdBytes);
+        // Default working-set threshold is 196 MB
+        Assert.Equal(1024L * 1024L * 196L, memoryTrim.ThresholdBytes);
 
         // Configure to 1 GB
-        memory trim.ThresholdBytes = 1024L * 1024L * 1024L;
-        Assert.Equal(1024L * 1024L * 1024L, memory trim.ThresholdBytes);
+        memoryTrim.ThresholdBytes = 1024L * 1024L * 1024L;
+        Assert.Equal(1024L * 1024L * 1024L, memoryTrim.ThresholdBytes);
     }
 
     [Fact]
@@ -61,10 +61,10 @@ public class Pass4_Watchdog_And_MemoryTrim_Tests
         var mockLogger = new Mock<ILogger<MemoryTrimService>>();
         var mockMonitor = new Mock<IProcessMonitor>();
 
-        using var memory trim = new MemoryTrimService(mockLogger.Object, mockMonitor.Object);
+        using var memoryTrim = new MemoryTrimService(mockLogger.Object, mockMonitor.Object);
         using var currentProc = Process.GetCurrentProcess();
 
         // Should cleanly call EmptyWorkingSet on current process without throwing
-        memory trim.TrimProcess(currentProc.Id);
+        memoryTrim.TrimProcess(currentProc.Id);
     }
 }

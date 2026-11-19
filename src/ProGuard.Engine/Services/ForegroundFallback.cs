@@ -7,7 +7,7 @@ using ProGuard.Core.Helpers;
 namespace ProGuard.Engine.Services;
 
 /// <summary>
-/// What ResponsivenessGuard falls back on when nobody has said which program the user is using (no session agent or UI
+/// What Responsiveness Guard falls back on when nobody has said which program the user is using (no session agent or UI
 /// reporting): rather than restraining whatever it likes, including the game in use, it leaves alone every process
 /// that could be that program.
 /// </summary>
@@ -28,7 +28,7 @@ public interface IForegroundFallback
 /// <c>EnumDesktopWindows</c> only reach window stations in the caller's own session, and session 0 has none of the
 /// user's. The subsystem is a property of the program file, so it can be read from anywhere, and it separates what
 /// matters here: games, browsers and editors are GUI programs, while compilers, encoders and scripts run as console
-/// programs whose window belongs to conhost or the terminal, so ResponsivenessGuard still restrains them. A console program
+/// programs whose window belongs to conhost or the terminal, so Responsiveness Guard still restrains them. A console program
 /// that opens a window of its own (java.exe running a Swing app, say) isn't covered.
 /// </para>
 /// <para>

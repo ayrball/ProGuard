@@ -7,7 +7,7 @@ using ProGuard.Engine.Services;
 namespace ProGuard.Tests;
 
 /// <summary>
-/// PowerManager's single arbitration point: Performance Mode beats AwayMode, which beats the load switcher; AwayMode
+/// PowerManager's single arbitration point: Performance Mode beats Away Mode, which beats the load switcher; Away Mode
 /// is off during Performance Mode; manual Performance Mode outlives the automatic one; manual plan changes win; and
 /// every switch is logged with a reason. Plans, idle time, CPU load and the clock are all fakes.
 /// </summary>
@@ -55,7 +55,7 @@ public class PowerArbitrationTests
         Enabled = true,
         LowThreshold = 10,
         HighThreshold = 50,
-        AveragingWindowSamples = 1,
+        SampleWindow = 1,
         MinimumTimeInPlanMs = 0,
         LowPlan = LoadLow,
         HighPlan = LoadHigh,
@@ -101,7 +101,7 @@ public class PowerArbitrationTests
     [Fact]
     public void LoadSwitcher_InvalidSettings_AreRefused()
     {
-        _power.ConfigureLoadSwitcher(new LoadSwitcherOptions { Enabled = true, LowThreshold = 60, HighThreshold = 50, AveragingWindowSamples = 1 });
+        _power.ConfigureLoadSwitcher(new LoadSwitcherOptions { Enabled = true, LowThreshold = 60, HighThreshold = 50, SampleWindow = 1 });
         Load(80);
         Load(80);
         Assert.Empty(_plans.Writes);
@@ -157,7 +157,7 @@ public class PowerArbitrationTests
         Assert.Equal(PowerPlanOwner.PerformanceMode, _power.Owner);
 
         _power.EnablePerformanceMode(false);
-        Assert.Equal(Balanced, _plans.Active);   // AwayMode starts over rather than taking over at once
+        Assert.Equal(Balanced, _plans.Active);   // Away Mode starts over rather than taking over at once
         Away();
         Assert.Equal(Powrprof.PowerSaver, _plans.Active);
     }
@@ -323,8 +323,8 @@ public class PowerArbitrationTests
             c => { Assert.Equal(PowerPlanOwner.LoadSwitcher, c.Owner); Assert.Contains("above 50%", c.Reason); },
             c => { Assert.Equal(PowerPlanOwner.AwayMode, c.Owner); Assert.Contains("no input", c.Reason); },
             c => { Assert.Equal(PowerPlanOwner.PerformanceMode, c.Owner); Assert.Contains("game.exe is running", c.Reason); },
-            // Performance Mode ends while the user is still away: AwayMode is off during it, so the load switcher's
-            // plan comes back first and AwayMode gets its turn on the next check.
+            // Performance Mode ends while the user is still away: Away Mode is off during it, so the load switcher's
+            // plan comes back first and Away Mode gets its turn on the next check.
             c => { Assert.Equal(LoadHigh, c.To); Assert.Contains("game.exe exited", c.Reason); },
             c => { Assert.Equal(Balanced, c.To); Assert.Contains("below 10%", c.Reason); });
     }

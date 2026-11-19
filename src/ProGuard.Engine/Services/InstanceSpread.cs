@@ -10,12 +10,12 @@ using ProGuard.Core.Services;
 namespace ProGuard.Engine.Services;
 
 /// <summary>
-/// Instance Spread (another process manager's InstanceManagedCPUAffinities): splits the CPU cores across the running
+/// Instance Spread: splits the CPU cores across the running
 /// instances of a process with plain affinity masks, re-splitting whenever an instance starts or exits.
 /// <para>
 /// An instance takes part once it reaches the rule's minimum CPU percent and then stays in until it exits, so
 /// usage hovering around the threshold doesn't reshuffle every instance. Instances that haven't qualified keep
-/// their own affinity. If something else changes a balanced instance's affinity, the balancer lets it go and
+/// their own affinity. If something else changes a balanced instance's affinity, the spread lets it go and
 /// splits the cores among the rest.
 /// </para>
 /// </summary>
@@ -84,7 +84,7 @@ public sealed class InstanceSpread : IDisposable
 
     public void Dispose() => Stop();
 
-    /// <summary>The mask the balancer gave <paramref name="pid"/>, or null if it isn't balancing it.</summary>
+    /// <summary>The mask the spread gave <paramref name="pid"/>, or null if it isn't balancing it.</summary>
     public long? GetAppliedMask(int pid)
     {
         lock (_gate) return _members.TryGetValue(pid, out var m) && !m.Released ? m.AppliedMask : null;

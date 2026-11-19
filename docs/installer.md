@@ -102,12 +102,6 @@ Stops and deletes the service, ends the UI and session agents (as above), remove
 shortcut and the uninstalling user's Run value. Keeps `%ProgramData%\ProGuard` unless `REMOVE_DATA=1`
 (`msiexec /x ProGuard.msi /qn REMOVE_DATA=1`, or the checkbox in the Remove dialog).
 
-### another process manager
-
-The MSI looks for `HKLM\SOFTWARE\another process manager\Install_Dir` (64- and 32-bit views) and the `ProcessOrchestrator` service.
-If it finds either, it sets `another process manager_FOUND=1` and the Options dialog shows a note that the two will fight. The
-install carries on either way, and a quiet install only records the property in its log. another process manager is never
-changed or removed.
 
 ## Code signing
 

@@ -167,7 +167,7 @@ public class UiSystemTests
         LoadSwitcherMinimumTimeInPlanMs = 7777, LoadSwitcherLowPlanGuid = PowerSaver.ToString("N"), LoadSwitcherHighPlanGuid = HighPerformance.ToString("B"),
         LoadSwitcherDeferLowPlan = false,
         StartWithPowerPlanGuid = Balanced.ToString(),
-        SetTimerResolutionAtStartup = 7777,
+        TimerResolutionRequest = 7777,
         StartWithWindows = true, MinimizeToTray = false, Theme = "Dark", PollingIntervalMs = 1500
     };
 
@@ -192,10 +192,10 @@ public class UiSystemTests
 
         Assert.False(vm.ResponsivenessGuardEnabled);
         Assert.Equal(10, vm.SensitivityLevel);
-        Assert.True(vm.RestrainByAffinity);
+        Assert.True(vm.RestrictAffinity);
         Assert.Equal(new[] { 4, 5, 6, 7 }, vm.RestraintCores.Where(c => c.IsOn).Select(c => c.Index).ToArray());
         Assert.Equal(8, vm.RestraintCores.Count);
-        Assert.True(vm.DropOneRandomCore && vm.LowerIoPriority && vm.UseEfficiencyMode && vm.DoNotLowerPriorityClass && vm.PauseWhenIdle);
+        Assert.True(vm.DropOneRandomCore && vm.LowerIoPriority && vm.EfficiencyModeWhileRestrained && vm.KeepPriorityClass && vm.PauseWhenIdle);
         Assert.Equal("12345", vm.IdlePauseMs.Text);
         Assert.False(vm.ForegroundBoostEnabled);
 
@@ -243,12 +243,12 @@ public class UiSystemTests
 
         vm.ResponsivenessGuardEnabled = true;
         vm.SetSensitivityCommand.Execute(3);
-        vm.RestrainByAffinity = false;
+        vm.RestrictAffinity = false;
         vm.RestraintCores[0].IsOn = true; // cores 0 and 4-7
         vm.DropOneRandomCore = false;
         vm.LowerIoPriority = false;
-        vm.UseEfficiencyMode = false;
-        vm.DoNotLowerPriorityClass = false;
+        vm.EfficiencyModeWhileRestrained = false;
+        vm.KeepPriorityClass = false;
         vm.PauseWhenIdle = false;
         vm.UnparkCoresWhileRestraining = false;
         vm.IdlePauseMs.Text = "60000";
@@ -293,7 +293,7 @@ public class UiSystemTests
         var s = saved[^1];
         Assert.True(s.ResponsivenessGuardEnabled);
         Assert.Equal(3, s.ResponsivenessGuardSensitivity);
-        // No control on the page (the engine's ResponsivenessGuard doesn't use them): they go back exactly as stored.
+        // No control on the page (the engine's Responsiveness Guard doesn't use them): they go back exactly as stored.
         Assert.Equal(33.3, s.ResponsivenessGuardCpuThreshold);
         Assert.Equal(7.5, s.ResponsivenessGuardRecoveryThreshold);
         Assert.False(s.ResponsivenessGuardRestrainByAffinity);
@@ -1083,7 +1083,7 @@ public class UiSystemTests
         Assert.Null(seed.MemoryPriority);
         Assert.Equal(0x0F, seed.AffinityMask);
 
-        // ResponsivenessGuard's lowered priority and the CPU Limiter's cores are temporary; all cores and Normal I/O are defaults.
+        // Responsiveness Guard's lowered priority and the CPU Limiter's cores are temporary; all cores and Normal I/O are defaults.
         s.IsRestrained = true;
         s.IsAffinityLimited = true;
         s.IoPriority = 2;

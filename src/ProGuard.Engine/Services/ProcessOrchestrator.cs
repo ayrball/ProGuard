@@ -16,7 +16,7 @@ public class ProcessOrchestrator : IProcessOrchestrator
 {
     private readonly ILogger<ProcessOrchestrator> _logger;
     private readonly InstanceLimiter? _instanceLimiter;
-    private readonly InstanceSpread? _instance spread;
+    private readonly InstanceSpread? _instanceSpread;
     private readonly StartupBoostService? _startupBoost;
     private bool _isRunning;
 
@@ -34,27 +34,27 @@ public class ProcessOrchestrator : IProcessOrchestrator
     public ProcessOrchestrator(
         ILogger<ProcessOrchestrator> logger,
         IProcessMonitor processMonitor,
-        IResponsivenessGuardEngine responsiveness guard,
+        IResponsivenessGuardEngine responsivenessGuard,
         ICpuLimiter cpuLimiter,
-        IMemoryTrimService memory trim,
+        IMemoryTrimService memoryTrim,
         IPowerManager powerManager,
         IWatchdogService watchdog,
         IRuleStore ruleStore,
         InstanceLimiter? instanceLimiter = null,
-        InstanceSpread? instance spread = null,
+        InstanceSpread? instanceSpread = null,
         StartupBoostService? startupBoost = null,
         PersistentRuleService? persistentRules = null)
     {
         _logger = logger;
         Monitor = processMonitor;
-        ResponsivenessGuard = responsiveness guard;
+        ResponsivenessGuard = responsivenessGuard;
         CpuLimiter = cpuLimiter;
-        MemoryTrim = memory trim;
+        MemoryTrim = memoryTrim;
         PowerManager = powerManager;
         Watchdog = watchdog;
         RuleStore = ruleStore;
         _instanceLimiter = instanceLimiter;
-        _instance spread = instance spread;
+        _instanceSpread = instanceSpread;
         _startupBoost = startupBoost;
 
         PersistentRules = persistentRules;
@@ -67,7 +67,7 @@ public class ProcessOrchestrator : IProcessOrchestrator
     {
         _isRunning = true;
         _startupBoost?.Start();
-        _instance spread?.Start();
+        _instanceSpread?.Start();
 
         PersistentRules?.Start();
         _logger.LogInformation("Process Orchestrator started");
@@ -80,7 +80,7 @@ public class ProcessOrchestrator : IProcessOrchestrator
         Monitor.ProcessStarted -= OnProcessStarted;
         Monitor.ProcessExited -= OnProcessExited;
         _startupBoost?.Stop();
-        _instance spread?.Stop();
+        _instanceSpread?.Stop();
         _logger.LogInformation("Process Orchestrator stopped");
     }
 
@@ -90,7 +90,7 @@ public class ProcessOrchestrator : IProcessOrchestrator
         CpuLimiter.RemoveLimit(pid);
         _instanceLimiter?.OnProcessExited(pid);
         _startupBoost?.OnProcessExited(pid);
-        _instance spread?.OnProcessExited(pid); // re-splits the cores among the remaining instances
+        _instanceSpread?.OnProcessExited(pid); // re-splits the cores among the remaining instances
 
         PersistentRules?.Forget(pid);
     }
@@ -141,8 +141,8 @@ public class ProcessOrchestrator : IProcessOrchestrator
         // Separate from the block above so a priority/affinity failure doesn't skip these. Logs and never throws.
         PersistentRules?.Apply(rule, new ProcessTarget(e.Pid, e.Name, e.FilePath));
 
-        // After the rule's priority and affinity, so those are what the boost and the balancer restore.
+        // After the rule's priority and affinity, so those are what the boost and Instance Spread restore.
         _startupBoost?.TryBoost(e, rule);
-        _instance spread?.OnProcessStarted(e, rule);
+        _instanceSpread?.OnProcessStarted(e, rule);
     }
 }

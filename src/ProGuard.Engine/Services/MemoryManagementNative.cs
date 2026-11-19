@@ -7,7 +7,7 @@ using ProGuard.Core.Native;
 namespace ProGuard.Engine.Services;
 
 /// <summary>
-/// The system memory readings MemoryTrim gates on. Kept behind an interface so the gating rules can be tested
+/// The system memory readings Memory Trim gates on. Kept behind an interface so the gating rules can be tested
 /// without depending on how much memory the test machine happens to be using.
 /// </summary>
 public interface IMemoryStatus
@@ -28,7 +28,7 @@ public readonly record struct WorkingSetTrimResult(bool Success, long BytesBefor
     public long BytesReclaimed => Math.Max(0, BytesBefore - BytesAfter);
 }
 
-/// <summary>The memory actions MemoryTrim takes. Each returns null on success, otherwise a readable error.</summary>
+/// <summary>The memory actions Memory Trim takes. Each returns null on success, otherwise a readable error.</summary>
 public interface IMemoryOperations
 {
     /// <summary>Enables a privilege on the engine's own token. Returns null when it is enabled.</summary>
@@ -57,7 +57,7 @@ public sealed class Win32MemoryStatus : IMemoryStatus
 
     /// <summary>
     /// SystemMemoryListInformation when the engine holds SeProfileSingleProcessPrivilege (it does, as SYSTEM, once
-    /// MemoryTrim has enabled it); otherwise the PDH counter, which needs no privilege.
+    /// Memory Trim has enabled it); otherwise the PDH counter, which needs no privilege.
     /// </summary>
     public long? GetFreeRamBytes() => QueryMemoryLists() is { } lists
         ? (long)(lists.FreePages + lists.ZeroPages) * PageSize
@@ -136,7 +136,7 @@ public sealed class Win32MemoryOperations : IMemoryOperations
         try
         {
             var before = WorkingSet(handle);
-            // Equivalent to SetProcessWorkingSetSize(h, -1, -1), which is what another process manager calls.
+            // Equivalent to SetProcessWorkingSetSize(h, -1, -1).
             if (!Kernel32.EmptyWorkingSet(handle))
                 return new WorkingSetTrimResult(false, before, before, $"EmptyWorkingSet failed ({Win32Message(Marshal.GetLastWin32Error())})");
             return new WorkingSetTrimResult(true, before, WorkingSet(handle), null);

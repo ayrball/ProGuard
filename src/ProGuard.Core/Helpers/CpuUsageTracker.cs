@@ -23,8 +23,7 @@ public class CpuUsageTracker
     /// Gets the CPU usage percentage for a process since the last call.
     /// Returns 0 on the first call for any given process, unless <paramref name="seedFromLifetime"/> is set and the
     /// process started within <see cref="LifetimeSeedWindow"/>: then its usage since it started. Without that, a new
-    /// CPU hog would show 0% for a whole polling interval and ResponsivenessGuard would act on it a second later than Process
-    /// otherpm does.
+    /// CPU hog would show 0% for a whole polling interval and Responsiveness Guard would act on it a second late.
     /// </summary>
     public double GetCpuUsage(Process process, bool seedFromLifetime = false)
     {

@@ -468,7 +468,7 @@ public class PersistentRuleServiceTests
         // Already High: nothing to do.
         Assert.Equal(0, service.ReapplyChanged());
 
-        // ResponsivenessGuard (or a boost) holds it lower for a while: left alone, so they don't fight.
+        // Responsiveness Guard (or a boost) holds it lower for a while: left alone, so they don't fight.
         priorities[1] = ProcessPriorityClass.BelowNormal;
         held.Add(1);
         Assert.Equal(0, service.ReapplyChanged());

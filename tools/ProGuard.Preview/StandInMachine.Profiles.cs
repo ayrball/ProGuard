@@ -126,10 +126,10 @@ public sealed partial class StandInMachine
             if (WatchRefusal(rule) is { } refused) preview.Refusals.Add(Deny(refused).Error!);
         foreach (var rule in current.WatchdogRules.Where(r => unmatched.Contains(ConfigDocuments.WatchdogKey(r))))
             if (WatchRefusal(rule) is { } refused) preview.Refusals.Add(Deny(refused).Error!);
-        if (!_admin && fitted.Settings.SetTimerResolutionAtStartup != _settings.SetTimerResolutionAtStartup)
+        if (!_admin && fitted.Settings.TimerResolutionRequest != _settings.TimerResolutionRequest)
             preview.Refusals.Add(Deny("change the system timer resolution").Error!);
         if (!_admin && fitted.Settings.ResponsivenessGuardDisableCoreParking != _settings.ResponsivenessGuardDisableCoreParking)
-            preview.Refusals.Add(Deny("change whether ResponsivenessGuard unparks cores (it edits the power plan)").Error!);
+            preview.Refusals.Add(Deny("change whether Responsiveness Guard unparks cores (it edits the power plan)").Error!);
         preview.Refusals = preview.Refusals.Distinct().ToList();
 
         if (previewOnly) return Data(preview);

@@ -7,7 +7,7 @@ namespace ProGuard.Preview;
 
 /// <summary>
 /// The stand-in engine's answers to GetLogEntries and ExportLogs: a canned engine log plus the stand-in's own action
-/// entries (the activity feed's ResponsivenessGuard, rule and power entries), filtered the way the engine filters. Cursors here are
+/// entries (the activity feed's Responsiveness Guard, rule and power entries), filtered the way the engine filters. Cursors here are
 /// just an entry's time in ticks (the canned entries are seconds apart); the UI treats them as opaque either way. Unless read-only, every few tail requests add a line,
 /// so the live tail can be watched against <c>--serve</c>.
 /// </summary>
@@ -131,15 +131,15 @@ internal sealed class StandInLogs
     private static readonly string[] LiveLines =
     {
         "IPC command SetPriority (pid 7220, arg BelowNormal) from " + StandInData.Me,
-        "ResponsivenessGuard restrained chrome (7220) from Normal to BelowNormal at 6.1% CPU",
-        "MemoryTrim trimmed 4 processes, 212 MB reclaimed",
-        "ResponsivenessGuard restored chrome (7220) to Normal: CPU usage dropped to 0.4%",
+        "Responsiveness Guard restrained chrome (7220) from Normal to BelowNormal at 6.1% CPU",
+        "Memory Trim trimmed 4 processes, 212 MB reclaimed",
+        "Responsiveness Guard restored chrome (7220) to Normal: CPU usage dropped to 0.4%",
     };
 
     private void AddLiveLine()
     {
         var message = LiveLines[_liveLines++ % LiveLines.Length];
-        var category = message.StartsWith("IPC", StringComparison.Ordinal) ? "IpcDispatcher" : message.StartsWith("Smart", StringComparison.Ordinal) ? "MemoryTrimService" : "ResponsivenessGuardEngine";
+        var category = message.StartsWith("IPC", StringComparison.Ordinal) ? "IpcDispatcher" : message.StartsWith("Memory", StringComparison.Ordinal) ? "MemoryTrimService" : "ResponsivenessGuardEngine";
         var now = DateTime.UtcNow;
         _engine.Add(new LogEntryDto
         {

@@ -24,9 +24,9 @@ public class IpcDispatcher
     private readonly ILogger<IpcDispatcher> _logger;
     private readonly IRuleStore _ruleStore;
     private readonly SettingsApplier _settingsApplier;
-    private readonly IResponsivenessGuardEngine _responsiveness guard;
+    private readonly IResponsivenessGuardEngine _responsivenessGuard;
     private readonly IPowerManager _powerManager;
-    private readonly IMemoryTrimService _memory trim;
+    private readonly IMemoryTrimService _memoryTrim;
     private readonly ICpuLimiter _cpuLimiter;
     private readonly IProcessController _processController;
     private readonly IProcessMonitor _processMonitor;
@@ -44,9 +44,9 @@ public class IpcDispatcher
         ILogger<IpcDispatcher> logger,
         IRuleStore ruleStore,
         SettingsApplier settingsApplier,
-        IResponsivenessGuardEngine responsiveness guard,
+        IResponsivenessGuardEngine responsivenessGuard,
         IPowerManager powerManager,
-        IMemoryTrimService memory trim,
+        IMemoryTrimService memoryTrim,
         ICpuLimiter cpuLimiter,
         IProcessController processController,
         IProcessMonitor processMonitor,
@@ -59,9 +59,9 @@ public class IpcDispatcher
         _logger = logger;
         _ruleStore = ruleStore;
         _settingsApplier = settingsApplier;
-        _responsiveness guard = responsiveness guard;
+        _responsivenessGuard = responsivenessGuard;
         _powerManager = powerManager;
-        _memory trim = memory trim;
+        _memoryTrim = memoryTrim;
         _cpuLimiter = cpuLimiter;
         _processController = processController;
         _processMonitor = processMonitor;
@@ -187,7 +187,7 @@ public class IpcDispatcher
                 return Trim(cmd);
 
             case CommandTypes.PurgeMemory:
-                var report = _memory trim.PurgeNow() ?? new MemoryPurgeReport();
+                var report = _memoryTrim.PurgeNow() ?? new MemoryPurgeReport();
                 var data = JsonSerializer.Serialize(ToDto(report));
                 _thinClient?.RecordMemory(null, report.Summary() + ".");
                 // Partial success (e.g. trimmed, but the standby purge lacked a privilege) is a success; the report says what failed.
@@ -269,7 +269,7 @@ public class IpcDispatcher
     private CommandResult Trim(CommandMessage cmd)
     {
         var single = cmd.TargetPid is int;
-        var report = (cmd.TargetPid is int pid ? _memory trim.TrimProcess(pid) : _memory trim.TrimMemory()) ?? new MemoryPurgeReport();
+        var report = (cmd.TargetPid is int pid ? _memoryTrim.TrimProcess(pid) : _memoryTrim.TrimMemory()) ?? new MemoryPurgeReport();
         if (single && report.ProcessesTrimmed == 0 && report.Errors.Count > 0)
             return CommandResult.Fail($"Could not trim process {cmd.TargetPid}: {report.Errors[0]}");
 
@@ -335,17 +335,17 @@ public class IpcDispatcher
     internal static string? ValidateSettings(EngineSettingsDto d)
     {
         if (d.ResponsivenessGuardSensitivity < 1 || d.ResponsivenessGuardSensitivity > 10) return "Sensitivity must be between 1 and 10";
-        if (!Percent(d.ResponsivenessGuardCpuThreshold) || !Percent(d.ResponsivenessGuardRecoveryThreshold)) return "ResponsivenessGuard thresholds must be between 0% and 100%";
-        if (d.ResponsivenessGuardDisableIfSysIdleMs < 0) return "The ResponsivenessGuard idle time can't be negative";
+        if (!Percent(d.ResponsivenessGuardCpuThreshold) || !Percent(d.ResponsivenessGuardRecoveryThreshold)) return "Responsiveness Guard thresholds must be between 0% and 100%";
+        if (d.ResponsivenessGuardDisableIfSysIdleMs < 0) return "The Responsiveness Guard idle time can't be negative";
         if (d.PollingIntervalMs < (int)ProcessMonitor.MinPollingInterval.TotalMilliseconds || d.PollingIntervalMs > (int)ProcessMonitor.MaxPollingInterval.TotalMilliseconds)
             return "The refresh interval must be between 0.25 and 60 seconds";
-        if (d.MemoryTrimIntervalSeconds < 1 || d.MemoryTrimMemoryThresholdMB < 0 || d.StandbyPurgeFreeRamThresholdMB < 0) return "Invalid MemoryTrim setting";
-        if (d.MemoryTrimMinimumRamLoadPercent < 0 || d.MemoryTrimMinimumRamLoadPercent > 100) return "The MemoryTrim memory load must be between 0% and 100%";
+        if (d.MemoryTrimIntervalSeconds < 1 || d.MemoryTrimMemoryThresholdMB < 0 || d.StandbyPurgeFreeRamThresholdMB < 0) return "Invalid Memory Trim setting";
+        if (d.MemoryTrimMinimumRamLoadPercent < 0 || d.MemoryTrimMinimumRamLoadPercent > 100) return "The Memory Trim memory load must be between 0% and 100%";
         if (d.IdleTimeoutMinutes < 1) return "The idle timeout must be at least 1 minute";
         if (!Percent(d.LoadSwitcherLowThreshold) || !Percent(d.LoadSwitcherHighThreshold)) return "Load switcher thresholds must be between 0% and 100%";
         if (d.LoadSwitcherAveragingWindowSamples < 1 || d.LoadSwitcherMinimumTimeInPlanMs < 0) return "Invalid load switcher setting";
         if (string.IsNullOrWhiteSpace(d.Theme)) return "The theme can't be empty";
-        if (d.SetTimerResolutionAtStartup < 0 || d.SetTimerResolutionAtStartup > MaxTimerResolution) return "The timer resolution must be between 0 and 100 ms";
+        if (d.TimerResolutionRequest < 0 || d.TimerResolutionRequest > MaxTimerResolution) return "The timer resolution must be between 0 and 100 ms";
         foreach (var guid in new[] { d.IdlePowerPlanGuid, d.PerformanceModePlanGuid, d.LoadSwitcherLowPlanGuid, d.LoadSwitcherHighPlanGuid, d.StartWithPowerPlanGuid })
             if (!string.IsNullOrEmpty(guid) && !Guid.TryParse(guid, out _)) return "Invalid power plan GUID";
         return null;
@@ -380,7 +380,7 @@ public class IpcDispatcher
         if (argument.GlobalRequests != null && !_timerResolution.GlobalRequestsSupported)
             return CommandResult.Fail("This version of Windows has no GlobalTimerResolutionRequests switch: every timer request is already system-wide");
 
-        var result = UpdateSettings(s => s.SetTimerResolutionAtStartup = argument.Resolution);
+        var result = UpdateSettings(s => s.TimerResolutionRequest = argument.Resolution);
         if (!result.Success) return result;
         if (argument.GlobalRequests is bool global) _timerResolution.SetGlobalRequests(global);
         _thinClient?.Record(0, argument.Resolution == 0
@@ -459,8 +459,8 @@ public class IpcDispatcher
     private EngineStatus BuildStatus() => new()
     {
         IsRunning = true,
-        ResponsivenessGuardEngaged = _responsiveness guard.IsEngaged,
-        ActiveInterventions = _responsiveness guard.ActiveInterventions,
+        ResponsivenessGuardEngaged = _responsivenessGuard.IsEngaged,
+        ActiveInterventions = _responsivenessGuard.ActiveInterventions,
         CpuPercent = SystemInfo.GetOverallCpuPercent(),
         RamPercent = SystemInfo.GetMemoryLoadPercent(),
         Uptime = _uptime.Elapsed.ToString(@"d\.hh\:mm\:ss", CultureInfo.InvariantCulture),

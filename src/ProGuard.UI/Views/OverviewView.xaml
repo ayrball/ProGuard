@@ -88,7 +88,7 @@
                     <ui:BlockMeter Value="{Binding Responsiveness}" Blocks="20" Height="12" Gap="2" VerticalAlignment="Center"/>
                 </DockPanel>
 
-                <TextBlock Grid.Row="1" Text="{x:Static r:Strings.responsiveness guard}" Style="{StaticResource Text.Label}" Margin="0,9"/>
+                <TextBlock Grid.Row="1" Text="{x:Static r:Strings.ResponsivenessGuardShort}" Style="{StaticResource Text.Label}" Margin="0,9"/>
                 <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,7">
                     <Border Style="{StaticResource Tag}" Margin="0,0,10,0">
                         <TextBlock Text="{Binding ResponsivenessGuardState}" Style="{StaticResource Tag.Text}"/>
@@ -138,7 +138,7 @@
                     </Button>
                     <Border BorderBrush="{StaticResource VoltBrush}" BorderThickness="2" Padding="18,14" Margin="0,0,0,6">
                         <Grid>
-                            <TextBlock Text="{x:Static r:Strings.BalancedNow}" Style="{StaticResource Text.Label}" VerticalAlignment="Top"/>
+                            <TextBlock Text="{x:Static r:Strings.RestrainedNow}" Style="{StaticResource Text.Label}" VerticalAlignment="Top"/>
                             <TextBlock Text="{Binding RestrainedCount}" FontSize="58" FontWeight="Bold" FontStretch="Condensed" VerticalAlignment="Bottom" Margin="0,18,0,-8"/>
                         </Grid>
                     </Border>
@@ -161,11 +161,11 @@
                     <DockPanel Margin="0,2,0,0">
                         <Border DockPanel.Dock="Right" Style="{StaticResource Tag}" VerticalAlignment="Center"
                                 Visibility="{Binding ResponsivenessGuardEnabled, Converter={StaticResource VisibleWhen}}">
-                            <TextBlock Text="{x:Static r:Strings.responsiveness guardArmed}" Style="{StaticResource Tag.Text}"/>
+                            <TextBlock Text="{x:Static r:Strings.ResponsivenessGuardArmed}" Style="{StaticResource Tag.Text}"/>
                         </Border>
                         <Border DockPanel.Dock="Right" Style="{StaticResource Tag}" VerticalAlignment="Center"
                                 Visibility="{Binding ResponsivenessGuardEnabled, Converter={StaticResource VisibleWhen}, ConverterParameter=invert}">
-                            <TextBlock Text="{x:Static r:Strings.responsiveness guardOff}" Style="{StaticResource Tag.Text}"/>
+                            <TextBlock Text="{x:Static r:Strings.ResponsivenessGuardOff}" Style="{StaticResource Tag.Text}"/>
                         </Border>
                         <TextBlock Text="{Binding Foreground}" Style="{StaticResource Text.H2}" TextTrimming="CharacterEllipsis"/>
                     </DockPanel>

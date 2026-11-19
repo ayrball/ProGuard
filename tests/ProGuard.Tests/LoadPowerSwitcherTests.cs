@@ -19,7 +19,7 @@ public class LoadPowerSwitcherTests
         Enabled = true,
         LowThreshold = 10,
         HighThreshold = 50,
-        AveragingWindowSamples = samples,
+        SampleWindow = samples,
         MinimumTimeInPlanMs = minimumMs,
         LowPlan = LowPlan,
         HighPlan = HighPlan,
@@ -184,7 +184,7 @@ public class LoadPowerSwitcherTests
     [Fact]
     public void Validate_ChecksWindowTimeAndPlans()
     {
-        Assert.NotNull((Options() with { AveragingWindowSamples = 0 }).Validate());
+        Assert.NotNull((Options() with { SampleWindow = 0 }).Validate());
         Assert.NotNull((Options() with { MinimumTimeInPlanMs = -1 }).Validate());
         Assert.NotNull((Options() with { HighPlan = Guid.Empty }).Validate());
         Assert.NotNull((Options() with { LowPlan = Guid.Empty }).Validate());
@@ -192,13 +192,13 @@ public class LoadPowerSwitcherTests
     }
 
     [Fact]
-    public void Defaults_Matchanother process manager()
+    public void Defaults_AreTheDocumentedOnes()
     {
         var o = LoadSwitcherOptions.FromSettings(new ProGuard.Core.Models.AppSettings());
         Assert.False(o.Enabled);
         Assert.Equal(10, o.LowThreshold);
         Assert.Equal(50, o.HighThreshold);
-        Assert.Equal(5, o.AveragingWindowSamples);
+        Assert.Equal(5, o.SampleWindow);
         Assert.Equal(5000, o.MinimumTimeInPlanMs);
         Assert.True(o.DeferLowPlan);
         Assert.Null(o.Validate());

@@ -23,8 +23,8 @@ namespace ProGuard.Tests;
 
 /// <summary>
 /// The UI's settings and commands must actually reach the engine services: IPC commands are routed to the
-/// right service, and settings (from IPC or from the shared database) are applied to MemoryTrim, the power
-/// manager, the process monitor and ResponsivenessGuard.
+/// right service, and settings (from IPC or from the shared database) are applied to Memory Trim, the power
+/// manager, the process monitor and Responsiveness Guard.
 /// </summary>
 public class IpcDispatchAndSettingsTests
 {
@@ -450,8 +450,8 @@ public class IpcDispatchAndSettingsTests
 
         h.ResponsivenessGuard.Verify(p => p.ConfigureRestraint(new ResponsivenessGuardRestraintOptions
         {
-            RestrainByAffinity = true, RestraintAffinity = 0x3, LowerIOPriorityDuringRestraint = true, UseEfficiencyMode = true,
-            DoNotLowerPriorityClass = true, DisableResponsivenessGuardWhenSysIdle = true, DisableResponsivenessGuardIfSysIdleThisManyMS = 60000
+            RestrictAffinity = true, RestrictedAffinity = 0x3, LowerIoPriority = true, EfficiencyModeWhileRestrained = true,
+            KeepPriorityClass = true, PauseWhenIdle = true, PauseAfterIdleMs = 60000
         }), Times.Once);
         h.ResponsivenessGuard.Verify(p => p.SetSensitivity(It.IsAny<int>()), Times.Once);
     }

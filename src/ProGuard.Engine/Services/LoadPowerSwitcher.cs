@@ -5,12 +5,12 @@ using ProGuard.Core.Services;
 namespace ProGuard.Engine.Services;
 
 /// <summary>
-/// The decision half of another process manager's load-based power switcher: feed it one system CPU sample at a time and it
+/// The decision half of the load-based power switcher: feed it one system CPU sample at a time and it
 /// says which plan the load calls for. It never touches the power plan itself; <see cref="PowerManager"/> decides
-/// whether a higher-precedence feature (Performance Mode, AwayMode) wins. Time comes from the caller, so tests drive
+/// whether a higher-precedence feature (Performance Mode, Away Mode) wins. Time comes from the caller, so tests drive
 /// it with a fake clock.
 /// <list type="bullet">
-/// <item>The load is the average of the last <see cref="LoadSwitcherOptions.AveragingWindowSamples"/> samples; no
+/// <item>The load is the average of the last <see cref="LoadSwitcherOptions.SampleWindow"/> samples; no
 /// decision is made until the window is full.</item>
 /// <item>Above the high threshold the high plan is wanted, below the low threshold the low plan (or, with
 /// <see cref="LoadSwitcherOptions.DeferLowPlan"/>, no plan: the one from before comes back). In between, the last
@@ -37,7 +37,7 @@ public sealed class LoadPowerSwitcher
     public LoadLevel Level { get; private set; }
 
     /// <summary>The moving average, or null until the window is full.</summary>
-    public double? Average => _window.Count >= Options.AveragingWindowSamples ? _sum / _window.Count : null;
+    public double? Average => _window.Count >= Options.SampleWindow ? _sum / _window.Count : null;
 
     /// <summary>The plan the load calls for, or null for "no opinion" (undecided, or low load with the low plan deferred).</summary>
     public Guid? RequestedPlan => Level switch
@@ -55,7 +55,7 @@ public sealed class LoadPowerSwitcher
 
         _window.Enqueue(cpuPercent);
         _sum += cpuPercent;
-        while (_window.Count > Options.AveragingWindowSamples) _sum -= _window.Dequeue();
+        while (_window.Count > Options.SampleWindow) _sum -= _window.Dequeue();
         if (Average is not { } average) return null;
 
         var target = average > Options.HighThreshold ? LoadLevel.High

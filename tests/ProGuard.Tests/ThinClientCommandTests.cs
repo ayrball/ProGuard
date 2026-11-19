@@ -304,7 +304,7 @@ public class ThinClientCommandTests
         var h = new ThinHarness();
         var dto = Rule();
         dto.AffinityMask = 0xF;
-        dto.InstanceSpreadMode = BalancerMode.FixedCoresPerInstance;
+        dto.InstanceSpreadMode = SpreadMode.FixedCoresPerInstance;
         dto.StartupBoostPriorityClass = (int)ProcessPriorityClass.High;
         dto.StartupBoostSeconds = 30;
 
@@ -419,7 +419,7 @@ public class ThinClientCommandTests
         new object[] { "time over", new Action<ProcessRuleDto>(r => r.CpuLimitOverThresholdSeconds = 0) },
         new object[] { "remove at least", new Action<ProcessRuleDto>(r => r.CpuLimitCoresToRemove = 0) },
         new object[] { "duration", new Action<ProcessRuleDto>(r => r.CpuLimitDurationSeconds = 0) },
-        new object[] { "Balancer mode", new Action<ProcessRuleDto>(r => r.InstanceSpreadMode = (BalancerMode)9) },
+        new object[] { "Spread mode", new Action<ProcessRuleDto>(r => r.InstanceSpreadMode = (SpreadMode)9) },
         new object[] { "at least 1 core", new Action<ProcessRuleDto>(r => r.InstanceSpreadCoresPerInstance = 0) },
         new object[] { "Reserved cores", new Action<ProcessRuleDto>(r => r.InstanceSpreadReservedCores = -1) },
         new object[] { "minimum CPU", new Action<ProcessRuleDto>(r => r.InstanceSpreadMinCpuPercent = 101) },

@@ -28,10 +28,10 @@ public sealed class RuleService
     private readonly IRuleStore _store;
     private readonly IProcessMonitor _monitor;
     private readonly ICpuLimiter _cpuLimiter;
-    private readonly IResponsivenessGuardEngine _responsiveness guard;
+    private readonly IResponsivenessGuardEngine _responsivenessGuard;
     private readonly IRuleProcessAccess _access;
     private readonly PersistentRuleService? _persistent;
-    private readonly InstanceSpread? _balancer;
+    private readonly InstanceSpread? _spread;
     private readonly LaunchPriorityService? _launchPriorities;
     private readonly ActivityLog _activity;
 
@@ -40,22 +40,22 @@ public sealed class RuleService
         IRuleStore store,
         IProcessMonitor monitor,
         ICpuLimiter cpuLimiter,
-        IResponsivenessGuardEngine responsiveness guard,
+        IResponsivenessGuardEngine responsivenessGuard,
         IRuleProcessAccess access,
         ActivityLog activity,
         PersistentRuleService? persistent = null,
-        InstanceSpread? balancer = null,
+        InstanceSpread? spread = null,
         LaunchPriorityService? launchPriorities = null)
     {
         _logger = logger;
         _store = store;
         _monitor = monitor;
         _cpuLimiter = cpuLimiter;
-        _responsiveness guard = responsiveness guard;
+        _responsivenessGuard = responsivenessGuard;
         _access = access;
         _activity = activity;
         _persistent = persistent;
-        _balancer = balancer;
+        _spread = spread;
         _launchPriorities = launchPriorities;
     }
 
@@ -112,7 +112,7 @@ public sealed class RuleService
         _store.DeleteProcessRule(id);
         _launchPriorities?.Sync(_store.GetProcessRules());
         ReleaseCap(existing);
-        _balancer?.Tick(); // gives balanced instances their own affinity back now rather than at the next check
+        _spread?.Tick(); // gives balanced instances their own affinity back now rather than at the next check
         _activity.Add(ActivityKind.Manual, existing.ProcessName, 0, $"Deleted the rule for {existing.ProcessName}.");
         return CommandResult.Ok();
     }
@@ -180,7 +180,7 @@ public sealed class RuleService
             if (!after.Contains(key)) ReleaseCap(rule);
         foreach (var rule in current)
             ApplyToRunning(rule, before.GetValueOrDefault(ProcessExtensions.NormalizeName(rule.ProcessName)));
-        _balancer?.Tick();
+        _spread?.Tick();
     }
 
     private void ApplyToRunning(ProcessRule rule, ProcessRule? previous)
@@ -195,7 +195,7 @@ public sealed class RuleService
             foreach (var p in Running(rule.ProcessName))
                 ApplyTo(rule, p);
 
-            _balancer?.Tick();
+            _spread?.Tick();
         }
         catch (Exception ex)
         {
@@ -228,8 +228,8 @@ public sealed class RuleService
 
         var applied = new List<string>();
 
-        // First, so a process ResponsivenessGuard holds down is put back before the rule sets its own priority.
-        if (rule.ExcludeFromResponsivenessGuard && _responsiveness guard.ReleaseRestraint(p.Pid)) applied.Add("released from ResponsivenessGuard");
+        // First, so a process Responsiveness Guard holds down is put back before the rule sets its own priority.
+        if (rule.ExcludeFromResponsivenessGuard && _responsivenessGuard.ReleaseRestraint(p.Pid)) applied.Add("released from Responsiveness Guard");
 
         if (rule.PriorityClass is int priority && _access.SetPriorityClass(p.Pid, (ProcessPriorityClass)priority))
             applied.Add($"{(ProcessPriorityClass)priority} priority");

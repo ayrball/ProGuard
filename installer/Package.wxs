@@ -55,20 +55,6 @@
     <SetProperty Action="KeepStartAtSignInOff" Id="START_AT_SIGNIN" Value="0" After="AppSearch" Sequence="execute"
                  Condition="WIX_UPGRADE_DETECTED AND NOT EXISTING_RUN_VALUE AND UILevel &lt; 4" />
 
-    <!-- another process manager and ProGuard adjust the same processes and fight. Detected only to warn (OptionsDlg, and the
-         another process manager_FOUND property in the log of a quiet install); the installer never touches it. -->
-    <Property Id="PL_INSTALL_DIR64">
-      <RegistrySearch Root="HKLM" Key="SOFTWARE\another process manager" Name="Install_Dir" Type="raw" Bitness="always64" />
-    </Property>
-    <Property Id="PL_INSTALL_DIR32">
-      <RegistrySearch Root="HKLM" Key="SOFTWARE\another process manager" Name="Install_Dir" Type="raw" Bitness="always32" />
-    </Property>
-    <Property Id="PL_SERVICE">
-      <RegistrySearch Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\ProcessOrchestrator" Name="ImagePath" Type="raw" Bitness="always64" />
-    </Property>
-    <SetProperty Id="another process manager_FOUND" Value="1" After="AppSearch" Sequence="both"
-                 Condition="PL_INSTALL_DIR64 OR PL_INSTALL_DIR32 OR PL_SERVICE" />
-
     <!-- Folders RemoveFolderEx may delete; each RemoveFolderEx below has its own condition. -->
     <SetProperty Id="PROGUARD_DATA_DIR" Value="[CommonAppDataFolder]ProGuard\" After="AppSearch" Sequence="execute" />
     <SetProperty Id="LEGACY_ENGINE_DIR" Value="[ProgramFiles64Folder]ProGuard\Engine\" After="AppSearch" Sequence="execute" />

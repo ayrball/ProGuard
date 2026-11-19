@@ -30,7 +30,7 @@ internal static class RuleEffects
                 if (d.KeepRunning) parts.Add(Strings.Rule_KeepRunning);
                 if (d.PriorityClass is { } p) parts.Add(string.Format(Strings.Proc_Priority, RuleText.PriorityName(p)));
                 if (d.AffinityMask is { } m) parts.Add(string.Format(Strings.Dialog_Cores, Fmt.Affinity(m, logical)));
-                if (d.ExcludeFromResponsivenessGuard) parts.Add(Strings.responsiveness guardOff);
+                if (d.ExcludeFromResponsivenessGuard) parts.Add(Strings.ResponsivenessGuardOff);
                 break;
 
             case RuleSection.Cpu:
@@ -52,12 +52,12 @@ internal static class RuleEffects
                 if (d.MaxInstances is { } max) parts.Add(string.Format(d.MaxInstancesAllSessions ? Strings.Rule_MaxAllSessions : Strings.Rule_Max, max));
                 if (d.InstanceSpreadMode is { } mode)
                 {
-                    parts.Add(mode == BalancerMode.FixedCoresPerInstance
-                        ? string.Format(Strings.Rule_BalanceFixed, d.InstanceSpreadCoresPerInstance ?? RuleText.DefaultCoresPerInstance)
-                        : Strings.Rule_BalanceEqual);
+                    parts.Add(mode == SpreadMode.FixedCoresPerInstance
+                        ? string.Format(Strings.Rule_SpreadFixed, d.InstanceSpreadCoresPerInstance ?? RuleText.DefaultCoresPerInstance)
+                        : Strings.Rule_SpreadEqual);
                     if (d.InstanceSpreadAvoidSmt) parts.Add(Strings.AvoidSmt);
                     if (d.InstanceSpreadReservedCores is > 0 and var reserved) parts.Add(string.Format(Strings.Rule_Reserve, reserved));
-                    if (d.InstanceSpreadMinCpuPercent is > 0 and var minCpu) parts.Add(string.Format(Strings.Rule_BalanceMinCpu, EditorNumbers.Text(minCpu)));
+                    if (d.InstanceSpreadMinCpuPercent is > 0 and var minCpu) parts.Add(string.Format(Strings.Rule_SpreadMinCpu, EditorNumbers.Text(minCpu)));
                 }
                 break;
 
@@ -116,11 +116,11 @@ public sealed partial class RuleEditor : ObservableObject
     // ---- the choices on offer (a stored value that isn't one of them is added, so loading never changes it) ----
     public IReadOnlyList<Choice<ProcessPriorityClass?>> Priorities { get; }
     public IReadOnlyList<Choice<ProcessPriorityClass?>> BoostPriorities { get; }
-    public IReadOnlyList<Choice<BalancerMode?>> BalancerModes { get; } = new Choice<BalancerMode?>[]
+    public IReadOnlyList<Choice<SpreadMode?>> SpreadModes { get; } = new Choice<SpreadMode?>[]
     {
         new(Strings.Off, null),
-        new(Strings.Rule_Equal, BalancerMode.EqualCoresPerInstance),
-        new(Strings.Rule_Fixed, BalancerMode.FixedCoresPerInstance),
+        new(Strings.Rule_Equal, SpreadMode.EqualCoresPerInstance),
+        new(Strings.Rule_Fixed, SpreadMode.FixedCoresPerInstance),
     };
     public IReadOnlyList<Choice<int?>> IoPriorities { get; }
     public IReadOnlyList<Choice<int?>> MemoryPriorities { get; }
@@ -153,11 +153,11 @@ public sealed partial class RuleEditor : ObservableObject
     // ---- instances ----
     [ObservableProperty] private string maxInstances = string.Empty;
     [ObservableProperty] private bool maxInstancesAllSessions;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(BalancerOn), nameof(BalancerFixed))] private Choice<BalancerMode?> balancer;
-    [ObservableProperty] private string balancerCores = string.Empty;
-    [ObservableProperty] private bool balancerAvoidSmt;
-    [ObservableProperty] private string balancerReserved = string.Empty;
-    [ObservableProperty] private string balancerMinCpu = string.Empty;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(SpreadOn), nameof(SpreadFixed))] private Choice<SpreadMode?> spread;
+    [ObservableProperty] private string spreadCores = string.Empty;
+    [ObservableProperty] private bool spreadAvoidSmt;
+    [ObservableProperty] private string spreadReserved = string.Empty;
+    [ObservableProperty] private string spreadMinCpu = string.Empty;
 
     // ---- startup boost ----
     [ObservableProperty, NotifyPropertyChangedFor(nameof(BoostOn))] private Choice<ProcessPriorityClass?> boostPriority;
@@ -194,8 +194,8 @@ public sealed partial class RuleEditor : ObservableObject
     [ObservableProperty] private string advancedSummary = string.Empty;
 
     public bool LimiterOn => !string.IsNullOrWhiteSpace(LimiterThreshold);
-    public bool BalancerOn => Balancer.Value.HasValue;
-    public bool BalancerFixed => Balancer.Value == BalancerMode.FixedCoresPerInstance;
+    public bool SpreadOn => Spread.Value.HasValue;
+    public bool SpreadFixed => Spread.Value == SpreadMode.FixedCoresPerInstance;
     public bool BoostOn => BoostPriority.Value.HasValue;
 
     public string CpuSetsText => CpuSetIds == null ? Strings.LeaveAlone
@@ -224,7 +224,7 @@ public sealed partial class RuleEditor : ObservableObject
         memoryPriority = Pick(memory, from?.MemoryPriority);
         gpuPriority = Pick(gpu, from?.GpuPriority);
         gpuPreference = Pick(preference, from?.GpuPreference);
-        balancer = BalancerModes.FirstOrDefault(c => c.Value == from?.InstanceSpreadMode) ?? BalancerModes[0];
+        spread = SpreadModes.FirstOrDefault(c => c.Value == from?.InstanceSpreadMode) ?? SpreadModes[0];
         efficiencyMode = EfficiencyModes.First(c => c.Value == from?.EfficiencyMode);
         threadBoost = ThreadBoosts.First(c => c.Value == from?.DisablePriorityBoost);
 
@@ -256,10 +256,10 @@ public sealed partial class RuleEditor : ObservableObject
 
             maxInstances = from.MaxInstances?.ToString() ?? string.Empty;
             maxInstancesAllSessions = from.MaxInstancesAllSessions;
-            balancerCores = from.InstanceSpreadCoresPerInstance?.ToString() ?? string.Empty;
-            balancerAvoidSmt = from.InstanceSpreadAvoidSmt;
-            balancerReserved = from.InstanceSpreadReservedCores?.ToString() ?? string.Empty;
-            balancerMinCpu = from.InstanceSpreadMinCpuPercent is { } min ? EditorNumbers.Text(min) : string.Empty;
+            spreadCores = from.InstanceSpreadCoresPerInstance?.ToString() ?? string.Empty;
+            spreadAvoidSmt = from.InstanceSpreadAvoidSmt;
+            spreadReserved = from.InstanceSpreadReservedCores?.ToString() ?? string.Empty;
+            spreadMinCpu = from.InstanceSpreadMinCpuPercent is { } min ? EditorNumbers.Text(min) : string.Empty;
 
             boostSeconds = from.StartupBoostSeconds?.ToString() ?? string.Empty;
             reapplyIfChanged = from.ReapplyIfChanged;
@@ -412,17 +412,17 @@ public sealed partial class RuleEditor : ObservableObject
         d.MaxInstances = OptionalInt(MaxInstances, 1, 100000, Strings.Rule_BadMaxInstances);
         d.MaxInstancesAllSessions = MaxInstancesAllSessions;
 
-        d.InstanceSpreadMode = Balancer.Value;
-        if (Balancer.Value is { } mode)
+        d.InstanceSpreadMode = Spread.Value;
+        if (Spread.Value is { } mode)
         {
-            if (mode == BalancerMode.FixedCoresPerInstance)
-                d.InstanceSpreadCoresPerInstance = OptionalInt(BalancerCores, 1, Math.Max(1, _logical),
+            if (mode == SpreadMode.FixedCoresPerInstance)
+                d.InstanceSpreadCoresPerInstance = OptionalInt(SpreadCores, 1, Math.Max(1, _logical),
                     string.Format(Strings.Rule_BadCoresPerInstance, Math.Max(1, _logical)));
-            d.InstanceSpreadAvoidSmt = BalancerAvoidSmt;
-            d.InstanceSpreadReservedCores = OptionalInt(BalancerReserved, 0, Math.Max(0, _logical - 1),
+            d.InstanceSpreadAvoidSmt = SpreadAvoidSmt;
+            d.InstanceSpreadReservedCores = OptionalInt(SpreadReserved, 0, Math.Max(0, _logical - 1),
                 _logical > 1 ? string.Format(Strings.Rule_BadReserved, _logical - 1)
                              : Strings.Rule_OneCoreNoReserve);
-            d.InstanceSpreadMinCpuPercent = OptionalPercent(BalancerMinCpu, 0, 100, Strings.Rule_BadMinCpu);
+            d.InstanceSpreadMinCpuPercent = OptionalPercent(SpreadMinCpu, 0, 100, Strings.Rule_BadMinCpu);
         }
 
         // ---- startup boost

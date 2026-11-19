@@ -12,7 +12,7 @@ namespace ProGuard.Tests;
 /// <summary>The power settings reaching the engine services and the Power page.</summary>
 public class PowerSettingsTests
 {
-    private static readonly Guid the vendor = new("7e7c1a77-6191-4f35-95bc-f3e18e688049");
+    private static readonly Guid Vendor = new("3c1e5f2a-8b4d-4e6f-9a07-5d2c1b8e4f60");
 
     // ---------- SettingsApplier ----------
 
@@ -35,7 +35,7 @@ public class PowerSettingsTests
         var h = new Harness();
         h.Applier.Apply(new AppSettings
         {
-            PerformanceModePlanGuid = the vendor.ToString(),
+            PerformanceModePlanGuid = Vendor.ToString(),
             AutoPerformanceModeProcesses = "a.exe;b.exe",
             AutoPerformanceModeDetectGames = true,
             LoadSwitcherEnabled = true,
@@ -45,7 +45,7 @@ public class PowerSettingsTests
             StartWithPowerPlanGuid = Powrprof.Balanced.ToString(),
         });
 
-        h.Power.Verify(p => p.ConfigurePerformanceMode(the vendor), Times.Once);
+        h.Power.Verify(p => p.ConfigurePerformanceMode(Vendor), Times.Once);
         h.Auto.Verify(a => a.Configure(It.Is<AutoPerformanceModeOptions>(o =>
             o.DetectGames && !o.EngageForSteam && o.Processes.SequenceEqual(new[] { "a.exe", "b.exe" }))), Times.Once);
         h.Power.Verify(p => p.ConfigureLoadSwitcher(It.Is<LoadSwitcherOptions>(o =>

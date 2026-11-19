@@ -244,7 +244,7 @@ public sealed class ThinClientCommands
 
     /// <summary>
     /// The user's choice of plan: applied through the power manager's arbitration (<see cref="IPowerManager.SetActivePlan"/>),
-    /// so it becomes the plan the machine returns to. If Performance Mode, AwayMode or the load switcher holds the plan,
+    /// so it becomes the plan the machine returns to. If Performance Mode, Away Mode or the load switcher holds the plan,
     /// the user's choice wins: it is applied now and the feature does not take it back or restore over it (Performance
     /// Mode stays on, but the snapshot then reports the plan's owner as "User").
     /// </summary>

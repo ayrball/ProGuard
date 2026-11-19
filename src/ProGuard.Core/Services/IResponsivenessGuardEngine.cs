@@ -5,10 +5,10 @@ public interface IResponsivenessGuardEngine
     bool IsEngaged { get; }
     int ActiveInterventions { get; }
 
-    /// <summary>ResponsivenessGuard is switched on (it may still be paused, see <see cref="IsPausedForIdle"/>).</summary>
+    /// <summary>Responsiveness Guard is switched on (it may still be paused, see <see cref="IsPausedForIdle"/>).</summary>
     bool IsEnabled { get; }
 
-    /// <summary>Paused because the user is idle (DisableResponsivenessGuardWhenSysIdle); no restraints are held meanwhile.</summary>
+    /// <summary>Paused because the user is idle; no restraints are held meanwhile.</summary>
     bool IsPausedForIdle { get; }
 
     /// <summary>Restraints started since the engine started.</summary>

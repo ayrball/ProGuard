@@ -39,8 +39,8 @@ public class Review_Regression_Tests
 
     /// <summary>
     /// A process that uses next to no CPU, even while starting, for tests whose CPU figures come from a mocked
-    /// monitor. A spinner, or PowerShell's ~1 s of startup CPU, gets restrained by any ResponsivenessGuard-like tool running on
-    /// the machine (another process manager does exactly that) and breaks the test.
+    /// monitor. A spinner, or PowerShell's ~1 s of startup CPU, gets restrained by any process manager running on
+    /// the machine that restrains CPU hogs, and breaks the test.
     /// </summary>
     private static Process StartIdleProcess()
     {
@@ -235,9 +235,9 @@ public class Review_Regression_Tests
         Assert.Null(Record.Exception(() => wd.EvaluateRules()));
     }
 
-    // ---------- ResponsivenessGuard ----------
+    // ---------- Responsiveness Guard ----------
 
-    /// <summary>Starts a stand-in hog and a ResponsivenessGuard whose monitor reports it at 50% CPU on a machine pinned at 99%.</summary>
+    /// <summary>Starts a stand-in hog and a Responsiveness Guard whose monitor reports it at 50% CPU on a machine pinned at 99%.</summary>
     private static (ResponsivenessGuardEngine Engine, Process Victim, Action MarkExited) MakeEngagedResponsivenessGuard()
     {
         var victim = StartIdleProcess();
@@ -254,7 +254,7 @@ public class Review_Regression_Tests
         var store = new Mock<IRuleStore>();
         var engine = new ResponsivenessGuardEngine(NullLogger<ResponsivenessGuardEngine>.Instance, monitor.Object, store.Object, () => 99.0)
         {
-            TimeOverQuotaBeforeRestraint = 0 // restrain on the first over-quota sample
+            RestrainAfterMs = 0 // restrain on the first over-quota sample
         };
         return (engine, victim, () => exited = true);
     }
@@ -317,7 +317,7 @@ public class Review_Regression_Tests
             using var engine = new ResponsivenessGuardEngine(NullLogger<ResponsivenessGuardEngine>.Instance,
                 monitor.Object, new Mock<IRuleStore>().Object, () => 99.0)
             {
-                TimeOverQuotaBeforeRestraint = 0
+                RestrainAfterMs = 0
             };
 
             engine.Evaluate(null);

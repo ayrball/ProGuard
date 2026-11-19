@@ -38,7 +38,7 @@ public sealed partial class CpuTuningRow : ObservableObject
     [ObservableProperty] private string valueText = string.Empty;
     /// <summary>"WINDOWS DEFAULT 10 % · BEFORE PROGUARD 5 %".</summary>
     [ObservableProperty] private string reference = string.Empty;
-    /// <summary>Set while ResponsivenessGuard holds another value in force for now.</summary>
+    /// <summary>Set while Responsiveness Guard holds another value in force for now.</summary>
     [ObservableProperty] private string liveNote = string.Empty;
     [ObservableProperty] private bool hiddenInWindows;
 

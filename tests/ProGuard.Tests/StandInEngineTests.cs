@@ -182,8 +182,8 @@ public class StandInEngineTests
         Assert.True(rules.Count >= 10);
         Assert.Equal(rules.Count, rules.Select(r => r.Id).Distinct().Count());
         Assert.Contains(rules, r => r.CpuLimitThresholdPercent.HasValue && r.CpuLimitCoresToRemove.HasValue);
-        Assert.Contains(rules, r => r.InstanceSpreadMode == BalancerMode.EqualCoresPerInstance);
-        Assert.Contains(rules, r => r.InstanceSpreadMode == BalancerMode.FixedCoresPerInstance);
+        Assert.Contains(rules, r => r.InstanceSpreadMode == SpreadMode.EqualCoresPerInstance);
+        Assert.Contains(rules, r => r.InstanceSpreadMode == SpreadMode.FixedCoresPerInstance);
         Assert.Contains(rules, r => r.StartupBoostPriorityClass.HasValue && r.StartupBoostSeconds.HasValue);
         Assert.Contains(rules, r => r.IoPriority.HasValue);
         Assert.Contains(rules, r => r.MemoryPriority.HasValue);

@@ -11,7 +11,7 @@ namespace ProGuard.Engine.Services;
 
 /// <summary>
 /// The activity feed the UI shows, merged from the three places the engine records what happened: the action log in
-/// the database (ResponsivenessGuard restraints and restores, CPU Limiter, power plan changes), the Watchdog event log, and the
+/// the database (Responsiveness Guard restraints and restores, CPU Limiter, power plan changes), the Watchdog event log, and the
 /// in-memory log of what users did through the command pipe.
 /// </summary>
 public sealed class ActivityFeed

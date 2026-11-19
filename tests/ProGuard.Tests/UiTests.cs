@@ -200,7 +200,7 @@ public class UiTests
         var original = new ProcessRuleDto
         {
             Id = 9, ProcessName = "game.exe", IoPriority = 1, MemoryPriority = 3, EfficiencyMode = false, KeepRunning = true,
-            CpuLimitThresholdPercent = 40, InstanceSpreadMode = BalancerMode.FixedCoresPerInstance, StartupBoostPriorityClass = 0x80
+            CpuLimitThresholdPercent = 40, InstanceSpreadMode = SpreadMode.FixedCoresPerInstance, StartupBoostPriorityClass = 0x80
         };
         var dto = new RuleEditor(8, original).ToDto();
 
@@ -209,7 +209,7 @@ public class UiTests
         Assert.False(dto.EfficiencyMode);
         Assert.True(dto.KeepRunning);
         Assert.Equal(40, dto.CpuLimitThresholdPercent);
-        Assert.Equal(BalancerMode.FixedCoresPerInstance, dto.InstanceSpreadMode);
+        Assert.Equal(SpreadMode.FixedCoresPerInstance, dto.InstanceSpreadMode);
         Assert.Equal(0x80, dto.StartupBoostPriorityClass);
     }
 

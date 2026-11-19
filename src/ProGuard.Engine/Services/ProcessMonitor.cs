@@ -166,7 +166,7 @@ public class ProcessMonitor : IProcessMonitor, IDisposable
                 // and service processes.
                 var probed = ProcessProbe.TryQuery(pid, includeImagePath: info == null, out var probe);
                 // A process seen for the first time gets its usage since it started (if that was within
-                // CpuUsageTracker.LifetimeSeedWindow) instead of 0, so ResponsivenessGuard doesn't lose a whole interval.
+                // CpuUsageTracker.LifetimeSeedWindow) instead of 0, so Responsiveness Guard doesn't lose a whole interval.
                 DateTime? seedFrom = info == null && probed && probe.StartTimeUtc != DateTime.MinValue ? probe.StartTimeUtc : null;
                 var cpuUsage = probed ? _cpuTracker.GetCpuUsage(pid, probe.CpuTime, seedFrom) : 0;
 

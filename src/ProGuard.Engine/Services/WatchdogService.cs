@@ -15,7 +15,7 @@ using ProGuard.Shared.Contracts;
 namespace ProGuard.Engine.Services;
 
 /// <summary>
-/// another process manager's Watchdog: "if a process exceeds X (CPU, memory, run time, instance count) for Y seconds, then ...".
+/// The Watchdog: "if a process exceeds X (CPU, memory, run time, instance count) for Y seconds, then ...".
 /// <para>
 /// Every second it measures each process a rule names. A rule fires for a process only once its condition has held on
 /// every sample for <see cref="WatchdogRule.DurationSeconds"/>. After firing it stays quiet for that process until the
@@ -175,7 +175,7 @@ public class WatchdogService : IWatchdogService, IDisposable
             var step = tracker.Advance(targets.Count > rule.ThresholdValue, now, rule);
             if (step == Step.None || (step == Step.Holding && !IsContinuousTrim(rule))) return;
 
-            // Act on the newest instances beyond the limit, as another process manager's instance limit does.
+            // Act on the newest instances beyond the limit, as the instance limit does.
             var limit = Math.Max(0, (int)Math.Floor(rule.ThresholdValue));
             var victims = targets
                 .OrderByDescending(p => StartTimeUtc(p, null) ?? DateTime.MinValue)
@@ -212,7 +212,7 @@ public class WatchdogService : IWatchdogService, IDisposable
         switch (rule.ConditionType)
         {
             case WatchdogCondition.CpuAbove:
-                return process.CpuPercent; // percent of the whole machine, like another process manager's
+                return process.CpuPercent; // percent of the whole machine
             case WatchdogCondition.RamAbove:
                 var memory = _actions.GetMemory(process.Pid);
                 var bytes = rule.MemoryMetric == WatchdogMemoryMetric.PrivateBytes

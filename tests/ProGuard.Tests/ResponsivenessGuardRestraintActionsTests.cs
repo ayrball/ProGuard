@@ -7,7 +7,7 @@ using ProGuard.Engine.Services.ProcessRules;
 namespace ProGuard.Tests;
 
 /// <summary>
-/// ResponsivenessGuard's optional restraint actions (affinity, I/O priority, efficiency mode, priority-free restraint) and its
+/// Responsiveness Guard's optional restraint actions (affinity, I/O priority, efficiency mode, priority-free restraint) and its
 /// idle pause, on the fake clock of <see cref="ResponsivenessGuardHarness"/>. With the default timing a hog first over quota at
 /// t=0 is restrained at t=1000, and can be restored from t=5200 (4200 ms minimum restraint).
 /// </summary>
@@ -39,7 +39,7 @@ public class ResponsivenessGuardRestraintActionsTests
     [Fact]
     public void RestrainByAffinity_NarrowsToTheRestraintAffinity_AndRestoresIt()
     {
-        using var h = Restrained(h => { h.Engine.RestrainByAffinity = true; h.Engine.RestraintAffinity = 0x0F; }, out var hog);
+        using var h = Restrained(h => { h.Engine.RestrictAffinity = true; h.Engine.RestrictedAffinity = 0x0F; }, out var hog);
 
         Assert.Equal(ProcessPriorityClass.BelowNormal, h.PriorityOf(100));
         Assert.Equal(0x0F, h.Access.Affinity[100]);
@@ -52,7 +52,7 @@ public class ResponsivenessGuardRestraintActionsTests
     [Fact]
     public void RestrainByAffinity_IntersectsWithTheProcessAffinity()
     {
-        using var h = Restrained(h => { h.Engine.RestrainByAffinity = true; h.Engine.RestraintAffinity = 0x0F; }, out _, affinity: 0x3C);
+        using var h = Restrained(h => { h.Engine.RestrictAffinity = true; h.Engine.RestrictedAffinity = 0x0F; }, out _, affinity: 0x3C);
 
         Assert.Equal(0x0C, h.Access.Affinity[100]);
     }
@@ -63,7 +63,7 @@ public class ResponsivenessGuardRestraintActionsTests
     [InlineData(0xFFL, 0L)]      // no restraint affinity chosen
     public void RestrainByAffinity_LeavesAffinityAlone_WhenItWouldChangeNothingOrLeaveNoCpu(long processMask, long restraintMask)
     {
-        using var h = Restrained(h => { h.Engine.RestrainByAffinity = true; h.Engine.RestraintAffinity = restraintMask; }, out _, affinity: processMask);
+        using var h = Restrained(h => { h.Engine.RestrictAffinity = true; h.Engine.RestrictedAffinity = restraintMask; }, out _, affinity: processMask);
 
         Assert.Equal(processMask, h.Access.Affinity[100]);
         Assert.Equal(ProcessPriorityClass.BelowNormal, h.PriorityOf(100));
@@ -77,8 +77,8 @@ public class ResponsivenessGuardRestraintActionsTests
     {
         using var h = Restrained(h =>
         {
-            h.Engine.ResponsivenessGuardDropOneRandomCore = true;
-            h.Engine.RestraintAffinity = 0x1;   // ignored: dropping a core takes precedence
+            h.Engine.DropOneRandomCore = true;
+            h.Engine.RestrictedAffinity = 0x1;   // ignored: dropping a core takes precedence
             h.Engine.RandomIndex = count => { Assert.Equal(3, count); return index; };
         }, out var hog, affinity: 0b1011);
 
@@ -91,7 +91,7 @@ public class ResponsivenessGuardRestraintActionsTests
     [Fact]
     public void DropOneRandomCore_LeavesASingleCpuProcessAlone()
     {
-        using var h = Restrained(h => h.Engine.ResponsivenessGuardDropOneRandomCore = true, out _, affinity: 0x4);
+        using var h = Restrained(h => h.Engine.DropOneRandomCore = true, out _, affinity: 0x4);
 
         Assert.Equal(0x4, h.Access.Affinity[100]);
         Assert.True(h.Engine.IsEngaged);
@@ -104,7 +104,7 @@ public class ResponsivenessGuardRestraintActionsTests
     [InlineData(3)]
     public void LowerIOPriority_LowersToLow_AndRestoresTheOriginal(int original)
     {
-        using var h = Restrained(h => h.Engine.LowerIOPriorityDuringRestraint = true, out var hog, io: original);
+        using var h = Restrained(h => h.Engine.LowerIoPriority = true, out var hog, io: original);
 
         Assert.Equal(1, h.Access.Io[100]);
 
@@ -117,7 +117,7 @@ public class ResponsivenessGuardRestraintActionsTests
     [InlineData(1)]
     public void LowerIOPriority_LeavesAlreadyLowIoAlone(int original)
     {
-        using var h = Restrained(h => h.Engine.LowerIOPriorityDuringRestraint = true, out var hog, io: original);
+        using var h = Restrained(h => h.Engine.LowerIoPriority = true, out var hog, io: original);
 
         Assert.Equal(original, h.Access.Io[100]);
         CalmDown(h, hog);
@@ -131,7 +131,7 @@ public class ResponsivenessGuardRestraintActionsTests
     [InlineData(EfficiencyModeState.Off)]
     public void UseEfficiencyMode_TurnsEcoQoSOn_AndRestoresTheOriginalState(EfficiencyModeState original)
     {
-        using var h = Restrained(h => h.Engine.UseEfficiencyMode = true, out var hog, eco: original);
+        using var h = Restrained(h => h.Engine.EfficiencyModeWhileRestrained = true, out var hog, eco: original);
 
         Assert.Equal(EfficiencyModeState.On, h.Access.Eco[100]);
 
@@ -142,21 +142,21 @@ public class ResponsivenessGuardRestraintActionsTests
     [Fact]
     public void UseEfficiencyMode_LeavesAProcessAlreadyInEfficiencyModeAlone()
     {
-        using var h = Restrained(h => h.Engine.UseEfficiencyMode = true, out var hog, eco: EfficiencyModeState.On);
+        using var h = Restrained(h => h.Engine.EfficiencyModeWhileRestrained = true, out var hog, eco: EfficiencyModeState.On);
 
         CalmDown(h, hog);
         Assert.Equal(EfficiencyModeState.On, h.Access.Eco[100]);
     }
 
-    // ---------- DoNotLowerPriorityClass ----------
+    // ---------- KeepPriorityClass ----------
 
     [Fact]
     public void DoNotLowerPriorityClass_RestrainsOnlyThroughTheOtherActions_WithTheSameTiming()
     {
         using var h = new ResponsivenessGuardHarness();
-        h.Engine.DoNotLowerPriorityClass = true;
-        h.Engine.LowerIOPriorityDuringRestraint = true;
-        h.Engine.UseEfficiencyMode = true;
+        h.Engine.KeepPriorityClass = true;
+        h.Engine.LowerIoPriority = true;
+        h.Engine.EfficiencyModeWhileRestrained = true;
         var hog = h.Add(100, cpu: 50);
 
         h.At(0);
@@ -178,7 +178,7 @@ public class ResponsivenessGuardRestraintActionsTests
     [Fact]
     public void DoNotLowerPriorityClass_WithNoOtherAction_RestrainsNothing()
     {
-        using var h = Restrained(h => h.Engine.DoNotLowerPriorityClass = true, out _);
+        using var h = Restrained(h => h.Engine.KeepPriorityClass = true, out _);
 
         Assert.False(h.Engine.IsEngaged);
         Assert.Equal(0, h.Access.SetCalls);
@@ -188,8 +188,8 @@ public class ResponsivenessGuardRestraintActionsTests
     public void DoNotLowerPriorityClass_StillHonoursTameOnlyNormal()
     {
         using var h = new ResponsivenessGuardHarness();
-        h.Engine.DoNotLowerPriorityClass = true;
-        h.Engine.UseEfficiencyMode = true;
+        h.Engine.KeepPriorityClass = true;
+        h.Engine.EfficiencyModeWhileRestrained = true;
         h.Add(100, cpu: 50, priority: ProcessPriorityClass.High);
 
         h.At(0);
@@ -202,7 +202,7 @@ public class ResponsivenessGuardRestraintActionsTests
     [Fact]
     public void DoNotLowerPriorityClass_RestraintAndRestore_AreLoggedWithTheUnchangedPriority()
     {
-        using var h = Restrained(h => { h.Engine.DoNotLowerPriorityClass = true; h.Engine.UseEfficiencyMode = true; }, out var hog);
+        using var h = Restrained(h => { h.Engine.KeepPriorityClass = true; h.Engine.EfficiencyModeWhileRestrained = true; }, out var hog);
         CalmDown(h, hog);
 
         h.Store.Verify(s => s.LogResponsivenessGuardActionAsync(It.Is<ResponsivenessGuardAction>(a => !a.IsRestored && a.Pid == 100
@@ -218,10 +218,10 @@ public class ResponsivenessGuardRestraintActionsTests
     {
         using var h = Restrained(h =>
         {
-            h.Engine.RestrainByAffinity = true;
-            h.Engine.RestraintAffinity = 0x0F;
-            h.Engine.LowerIOPriorityDuringRestraint = true;
-            h.Engine.UseEfficiencyMode = true;
+            h.Engine.RestrictAffinity = true;
+            h.Engine.RestrictedAffinity = 0x0F;
+            h.Engine.LowerIoPriority = true;
+            h.Engine.EfficiencyModeWhileRestrained = true;
         }, out var hog);
 
         h.Access.Affinity[100] = 0x30;                     // the user picks other CPUs
@@ -239,7 +239,7 @@ public class ResponsivenessGuardRestraintActionsTests
     [Fact]
     public void ExternalPriorityChange_EndsTheRestraint_AndPutsBackWhatIsStillOurs()
     {
-        using var h = Restrained(h => { h.Engine.LowerIOPriorityDuringRestraint = true; h.Engine.UseEfficiencyMode = true; }, out _);
+        using var h = Restrained(h => { h.Engine.LowerIoPriority = true; h.Engine.EfficiencyModeWhileRestrained = true; }, out _);
 
         h.Access.Priority[100] = ProcessPriorityClass.High;
         h.Access.Io[100] = 0;
@@ -254,7 +254,7 @@ public class ResponsivenessGuardRestraintActionsTests
     [Fact]
     public void DoNotLowerPriorityClass_RestraintEnds_WhenEverythingItChangedWasChangedExternally()
     {
-        using var h = Restrained(h => { h.Engine.DoNotLowerPriorityClass = true; h.Engine.LowerIOPriorityDuringRestraint = true; }, out _);
+        using var h = Restrained(h => { h.Engine.KeepPriorityClass = true; h.Engine.LowerIoPriority = true; }, out _);
         Assert.True(h.Engine.IsEngaged);
         var sets = h.Access.SetCalls;
 
@@ -269,7 +269,7 @@ public class ResponsivenessGuardRestraintActionsTests
     [Fact]
     public void ExitedProcess_WithOptionalActions_IsForgottenWithoutWritingItsPid()
     {
-        using var h = Restrained(h => { h.Engine.ResponsivenessGuardDropOneRandomCore = true; h.Engine.UseEfficiencyMode = true; }, out _);
+        using var h = Restrained(h => { h.Engine.DropOneRandomCore = true; h.Engine.EfficiencyModeWhileRestrained = true; }, out _);
         var sets = h.Access.SetCalls;
 
         h.Exit(100);
@@ -282,7 +282,7 @@ public class ResponsivenessGuardRestraintActionsTests
     [Fact]
     public void Disabling_RestoresTheOptionalActionsToo()
     {
-        using var h = Restrained(h => { h.Engine.LowerIOPriorityDuringRestraint = true; h.Engine.ResponsivenessGuardDropOneRandomCore = true; }, out _);
+        using var h = Restrained(h => { h.Engine.LowerIoPriority = true; h.Engine.DropOneRandomCore = true; }, out _);
 
         h.Engine.SetEnabled(false);
 
@@ -297,19 +297,19 @@ public class ResponsivenessGuardRestraintActionsTests
         using var h = new ResponsivenessGuardHarness();
         h.Engine.ConfigureRestraint(new ResponsivenessGuardRestraintOptions
         {
-            RestrainByAffinity = true, RestraintAffinity = 0x5, ResponsivenessGuardDropOneRandomCore = true,
-            LowerIOPriorityDuringRestraint = true, UseEfficiencyMode = true, DoNotLowerPriorityClass = true,
-            DisableResponsivenessGuardWhenSysIdle = true, DisableResponsivenessGuardIfSysIdleThisManyMS = 12345
+            RestrictAffinity = true, RestrictedAffinity = 0x5, DropOneRandomCore = true,
+            LowerIoPriority = true, EfficiencyModeWhileRestrained = true, KeepPriorityClass = true,
+            PauseWhenIdle = true, PauseAfterIdleMs = 12345
         });
 
-        Assert.True(h.Engine.RestrainByAffinity);
-        Assert.Equal(0x5, h.Engine.RestraintAffinity);
-        Assert.True(h.Engine.ResponsivenessGuardDropOneRandomCore);
-        Assert.True(h.Engine.LowerIOPriorityDuringRestraint);
-        Assert.True(h.Engine.UseEfficiencyMode);
-        Assert.True(h.Engine.DoNotLowerPriorityClass);
-        Assert.True(h.Engine.DisableResponsivenessGuardWhenSysIdle);
-        Assert.Equal(12345, h.Engine.DisableResponsivenessGuardIfSysIdleThisManyMS);
+        Assert.True(h.Engine.RestrictAffinity);
+        Assert.Equal(0x5, h.Engine.RestrictedAffinity);
+        Assert.True(h.Engine.DropOneRandomCore);
+        Assert.True(h.Engine.LowerIoPriority);
+        Assert.True(h.Engine.EfficiencyModeWhileRestrained);
+        Assert.True(h.Engine.KeepPriorityClass);
+        Assert.True(h.Engine.PauseWhenIdle);
+        Assert.Equal(12345, h.Engine.PauseAfterIdleMs);
     }
 
     // ---------- Idle pause ----------
@@ -317,7 +317,7 @@ public class ResponsivenessGuardRestraintActionsTests
     [Fact]
     public void SysIdle_PreventsRestraint_AndLiftsRestraintsInPlace()
     {
-        using var h = Restrained(h => h.Engine.DisableResponsivenessGuardWhenSysIdle = true, out _);
+        using var h = Restrained(h => h.Engine.PauseWhenIdle = true, out _);
         Assert.True(h.Engine.IsEngaged);
 
         h.IdleSource.Idle = TimeSpan.FromMilliseconds(30000);
@@ -335,7 +335,7 @@ public class ResponsivenessGuardRestraintActionsTests
     public void SysIdle_ResumesOnInput_AndTheOverQuotaRunStartsAfresh()
     {
         using var h = new ResponsivenessGuardHarness();
-        h.Engine.DisableResponsivenessGuardWhenSysIdle = true;
+        h.Engine.PauseWhenIdle = true;
         h.IdleSource.Idle = TimeSpan.FromMinutes(5);
         h.Add(100, cpu: 50);
         for (var t = 0; t <= 5000; t += 1000) h.At(t);
@@ -356,7 +356,7 @@ public class ResponsivenessGuardRestraintActionsTests
     public void SysIdle_DoesNotPause_UnlessEnabledAndIdleLongEnough(bool enabled, double? idleMs)
     {
         using var h = new ResponsivenessGuardHarness();
-        h.Engine.DisableResponsivenessGuardWhenSysIdle = enabled;
+        h.Engine.PauseWhenIdle = enabled;
         h.IdleSource.Idle = idleMs is { } ms ? TimeSpan.FromMilliseconds(ms) : null;
         h.Add(100, cpu: 50);
 
@@ -371,8 +371,8 @@ public class ResponsivenessGuardRestraintActionsTests
     public void SysIdle_ThresholdIsConfigurable()
     {
         using var h = new ResponsivenessGuardHarness();
-        h.Engine.DisableResponsivenessGuardWhenSysIdle = true;
-        h.Engine.DisableResponsivenessGuardIfSysIdleThisManyMS = 5000;
+        h.Engine.PauseWhenIdle = true;
+        h.Engine.PauseAfterIdleMs = 5000;
         h.IdleSource.Idle = TimeSpan.FromSeconds(6);
         h.Add(100, cpu: 50);
 

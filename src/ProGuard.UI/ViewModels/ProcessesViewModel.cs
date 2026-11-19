@@ -413,7 +413,7 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
     }
 
     /// <summary>
-    /// A new rule holding what <paramref name="row"/> has now. Left out: a priority ResponsivenessGuard lowered and cores the CPU
+    /// A new rule holding what <paramref name="row"/> has now. Left out: a priority Responsiveness Guard lowered and cores the CPU
     /// Limiter took away (both temporary), and I/O priority, memory priority and cores at Windows' defaults, which a rule
     /// would only repeat.
     /// </summary>
@@ -522,7 +522,7 @@ public sealed partial class ProcessesViewModel : ObservableObject, IPage
         var rule = existing != null ? DtoCopy.Clone(existing) : new ProcessRuleDto { ProcessName = RuleText.Display(row.Name) };
         change(rule);
         // Kept means kept: if the program (a game resetting its own priority, say) changes it later, the engine puts it
-        // back. ResponsivenessGuard and the boosts still lower or raise it for a while; the engine waits until they let go.
+        // back. Responsiveness Guard and the boosts still lower or raise it for a while; the engine waits until they let go.
         if (!forgetting) rule.ReapplyIfChanged = true;
 
         // A change that undid the last thing the rule kept (all cores again, the cap removed): no rule is left to keep.

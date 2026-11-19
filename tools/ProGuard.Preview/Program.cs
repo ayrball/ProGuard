@@ -25,7 +25,7 @@ internal static class Program
 
         ProGuard.Preview --probe <pipeName>
             Against a running engine (the real one, or --serve): measures UI-thread stalls and right-click latency
-            on the Processes page. Briefly turns the engine's ResponsivenessGuard/Foreground Boost/MemoryTrim off, then restores them.
+            on the Processes page. Briefly turns the engine's Responsiveness Guard/Foreground Boost/Memory Trim off, then restores them.
         """;
 
     [STAThread]

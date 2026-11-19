@@ -297,7 +297,7 @@ public sealed partial class StandInMachine
                 if (arg.Resolution is < 0 or > 1_000_000) return CommandResult.Fail("The timer resolution must be between 0 and 100 ms");
                 Mutate(() =>
                 {
-                    _settings.SetTimerResolutionAtStartup = arg.Resolution;
+                    _settings.TimerResolutionRequest = arg.Resolution;
                     if (arg.GlobalRequests is bool global) _timerGlobalRequests = global;
                 });
                 Log(ActivityKind.Manual, null, arg.Resolution == 0 ? "Stopped asking for a timer resolution." : $"Asked for a {arg.Resolution / 10000.0:0.###} ms timer resolution.");
@@ -306,10 +306,10 @@ public sealed partial class StandInMachine
             case CommandTypes.SaveSettings:
             {
                 var settings = Argument<EngineSettingsDto>(cmd);
-                if (!_admin && settings.SetTimerResolutionAtStartup != _settings.SetTimerResolutionAtStartup)
+                if (!_admin && settings.TimerResolutionRequest != _settings.TimerResolutionRequest)
                     return Deny("change the system timer resolution");
                 if (!_admin && settings.ResponsivenessGuardDisableCoreParking != _settings.ResponsivenessGuardDisableCoreParking)
-                    return Deny("change whether ResponsivenessGuard unparks cores (it edits the power plan)");
+                    return Deny("change whether Responsiveness Guard unparks cores (it edits the power plan)");
                 if (settings.ResponsivenessGuardSensitivity is < 1 or > 10) return CommandResult.Fail("Sensitivity must be between 1 and 10");
                 if (settings.PollingIntervalMs < 100) return CommandResult.Fail("The polling interval must be at least 100 ms.");
                 Mutate(() => _settings = settings);
@@ -490,7 +490,7 @@ public sealed partial class StandInMachine
     /// <summary>A typical machine: 0.5-15.625 ms, with a browser holding 1 ms unless the engine asks for finer.</summary>
     private TimerResolutionDto TimerState()
     {
-        int requested = _settings.SetTimerResolutionAtStartup;
+        int requested = _settings.TimerResolutionRequest;
         int held = requested == 0 ? 0 : Math.Clamp(requested, StandInData.TimerFinest, StandInData.TimerCoarsest);
         return new TimerResolutionDto
         {

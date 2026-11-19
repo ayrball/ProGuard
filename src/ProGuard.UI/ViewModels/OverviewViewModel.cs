@@ -33,18 +33,18 @@ public sealed partial class OverviewViewModel : ObservableObject
     [ObservableProperty] private int ruledCount;
     [ObservableProperty] private int limitedCount;
     [ObservableProperty] private string foreground = "—";
-    [ObservableProperty] private bool responsiveness guardEnabled;
+    [ObservableProperty] private bool responsivenessGuardEnabled;
     [ObservableProperty] private string coresText = "—";
     [ObservableProperty] private bool isElevated = true;
 
-    // Responsiveness (another process manager's measure of how long the CPU queue is) and the load of each logical processor.
+    // Responsiveness (a measure of how long the CPU queue is) and the load of each logical processor.
     [ObservableProperty] private double responsiveness;
     [ObservableProperty] private string responsivenessText = "—";
     [ObservableProperty] private IReadOnlyList<double> coreLoads = Array.Empty<double>();
 
-    // ResponsivenessGuard in detail: armed, paused because the user is idle, or off; and how many restraints so far.
-    [ObservableProperty] private bool responsiveness guardPaused;
-    [ObservableProperty] private string responsiveness guardState = "—";
+    // Responsiveness Guard in detail: armed, paused because the user is idle, or off; and how many restraints so far.
+    [ObservableProperty] private bool responsivenessGuardPaused;
+    [ObservableProperty] private string responsivenessGuardState = "—";
     [ObservableProperty] private int restraintsTotal;
     [ObservableProperty] private string restraintsText = "—";
 

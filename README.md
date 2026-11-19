@@ -5,11 +5,11 @@
 [![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
 
 ProGuard keeps a Windows PC responsive. A Windows service watches every process and, when the machine is under load,
-temporarily lowers the priority of the programs responsible so whatever you are using stays smooth (ResponsivenessGuard). It
+temporarily lowers the priority of the programs responsible so whatever you are using stays smooth (Responsiveness Guard). It
 applies the rules you set for individual programs every time they run, watches for programs that misbehave
-(Watchdog), trims memory when RAM is tight (MemoryTrim) and switches power plans to match what you are doing
-(Performance Mode, AwayMode). A WPF window shows what the engine is doing and lets you change it, with or without
-administrator rights. It is an open-source alternative to another process manager, built in C# on .NET 10.
+(Watchdog), trims memory when RAM is tight (Memory Trim) and switches power plans to match what you are doing
+(Performance Mode, Away Mode). A WPF window shows what the engine is doing and lets you change it, with or without
+administrator rights. It is open source, built in C# on .NET 10.
 
 ![ProGuard's Overview page](docs/images/overview.png)
 
@@ -22,11 +22,11 @@ portable zip, 64-bit Windows 10 or 11, no .NET install needed.
 
 | | |
 | --- | --- |
-| **ResponsivenessGuard** | Restrains CPU hogs while the system is loaded and restores them after, with tunable thresholds; never touches the program you are using. Optional restraint by affinity, I/O priority or efficiency mode, and unparking every core meanwhile. |
+| **Responsiveness Guard** | Restrains CPU hogs while the system is loaded and restores them after, with tunable thresholds; never touches the program you are using. Optional restraint by affinity, I/O priority or efficiency mode, and unparking every core meanwhile. |
 | **Rules** | Per-program priority, I/O and memory priority, affinity, CPU Sets, efficiency mode, GPU priority, a CPU limit (hard cap or affinity reduction), startup boost, instance limits and balancing, keep-running, disallowed programs, a power plan while it runs, and "set at launch" through Image File Execution Options. |
 | **Watchdog** | When a program's CPU, memory, running time or instance count stays over a threshold: terminate, restart, change its priority or affinity for a while, trim it, launch something, log or notify. |
-| **MemoryTrim** | Working-set trimming on a schedule while RAM is tight, standby-list and file-cache purges. |
-| **Power** | Performance Mode for listed programs, detected games and Steam; AwayMode after a period without input; a load-based plan switcher; the Windows 11 power mode; your plan put back if the engine dies holding one. |
+| **Memory Trim** | Working-set trimming on a schedule while RAM is tight, standby-list and file-cache purges. |
+| **Power** | Performance Mode for listed programs, detected games and Steam; Away Mode after a period without input; a load-based plan switcher; the Windows 11 power mode; your plan put back if the engine dies holding one. |
 | **System** | System timer resolution, CPU tuning per power plan (core parking, processor states, boost, EPP), config profiles with export and import, an activity log and a log viewer. |
 | **Languages** | English, Spanish, German, French and Brazilian Portuguese (System → General → Language; Windows' own language by default). Messages from the engine, such as its refusals and logs, stay in English. |
 
@@ -38,8 +38,8 @@ portable zip, 64-bit Windows 10 or 11, no .NET install needed.
  user session                                  session 0
  ┌──────────────────────────┐   named pipe    ┌──────────────────────────────┐
  │ ProGuard.UI (WPF)        │ ◄─────────────► │ ProGuard.Engine (service)    │
- │ thin client, no engine   │  JSON, one      │ ResponsivenessGuard · rules · Watchdog│
- │ logic; works unelevated  │  line per call  │ MemoryTrim · power · logs     │
+ │ thin client, no engine   │  JSON, one      │ Responsiveness Guard · rules · Watchdog│
+ │ logic; works unelevated  │  line per call  │ Memory Trim · power · logs     │
  └──────────────────────────┘                 │ EF Core + SQLite in          │
  ┌──────────────────────────┐   foreground,   │ %ProgramData%\ProGuard       │
  │ ProGuard.SessionAgent    │ ─────────────►  └──────────────────────────────┘
@@ -48,8 +48,8 @@ portable zip, 64-bit Windows 10 or 11, no .NET install needed.
 ```
 
 - **The engine** (`src/ProGuard.Engine`) runs as the `ProGuardEngine` Windows service (LocalSystem) or as a console
-  process for development. All the logic lives there and in `src/ProGuard.Core`: process monitoring, the ResponsivenessGuard
-  algorithm, rule application, the Watchdog, MemoryTrim, power plan arbitration and CPU tuning. Settings, rules,
+  process for development. All the logic lives there and in `src/ProGuard.Core`: process monitoring, the Responsiveness Guard
+  algorithm, rule application, the Watchdog, Memory Trim, power plan arbitration and CPU tuning. Settings, rules,
   Watchdog rules and config profiles are an EF Core SQLite database that the engine owns.
 - **The UI** (`src/ProGuard.UI`) is a thin client. It holds no engine logic and has no reference to Core; it polls a
   snapshot over a named pipe and sends commands. The engine checks the caller of every request: a standard user can
@@ -58,26 +58,23 @@ portable zip, 64-bit Windows 10 or 11, no .NET install needed.
 - **The pipe contract** (`src/ProGuard.Shared`) is one JSON message per line, answered by exactly one reply, with
   DTOs shared by both sides. The engine impersonates the caller for the authorization check only.
 - **The session agent** (`src/ProGuard.SessionAgent`) is a windowless process the engine starts in every user session
-  (a service in session 0 cannot see the desktop) to report the foreground program and idle time, which ResponsivenessGuard's
-  foreground exemption, Foreground Boost and AwayMode depend on.
+  (a service in session 0 cannot see the desktop) to report the foreground program and idle time, which Responsiveness Guard's
+  foreground exemption, Foreground Boost and Away Mode depend on.
 - **Previews and tests.** `tools/ProGuard.Preview` renders every page and dialog of the real UI to PNG against a
   stand-in engine, so UI changes can be reviewed without an engine or administrator rights; CI uploads the images for
   every pull request. `tests/ProGuard.Tests` (xUnit) covers the engine services, the pipe authorization policy, the
   view models and the installer's helpers.
 - **Packaging.** `installer/` builds a WiX v5 MSI (service registration with recovery actions, upgrade in place,
-  optional start at sign-in, another process manager detection) and a portable zip, both from self-contained single-file
+  optional start at sign-in) and a portable zip, both from self-contained single-file
   publishes. [docs/installer.md](docs/installer.md) explains the decisions.
 
-How another process manager implements each feature, and where ProGuard still differs, is written up in
-[docs/another process manager-internals.md](docs/another process manager-internals.md).
 
 ## Install
 
 Download `ProGuard-<version>-x64.msi` from [Releases](https://github.com/ayrball/ProGuard/releases) and run it
 (64-bit Windows 10 or 11; no .NET install needed). It installs ProGuard in `C:\Program Files\ProGuard`, runs the
 engine as the `ProGuardEngine` service and adds ProGuard to the Start menu. Tick or untick "Start ProGuard in the
-notification area when I sign in" (on by default; you can change it later in ProGuard's System page). If another process manager
-is installed, the installer warns you, since the two fight over the same processes; it never touches another process manager.
+notification area when I sign in" (on by default; you can change it later in ProGuard's System page).
 
 Silent install from an elevated prompt: `msiexec /i ProGuard-<version>-x64.msi /qn` (add `START_AT_SIGNIN=0` to skip
 the tray icon at sign-in, or `START_AS_ADMIN=0` so the window doesn't ask for administrator rights each time it starts).
@@ -106,7 +103,7 @@ The builds are not code-signed yet, so Windows SmartScreen warns about an unknow
 - `tools/ProGuard.Preview` — renders the UI to PNG against a stand-in engine
 - `tests/ProGuard.Tests` — xUnit tests
 - `installer/` — the MSI (WiX v5) and the portable zip
-- `docs/` — schema, installer, service verification, release notes, and notes on how another process manager does things
+- `docs/` — schema, installer, service verification and release notes
 
 ## Build, run, test
 

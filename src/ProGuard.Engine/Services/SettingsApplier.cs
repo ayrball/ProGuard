@@ -16,9 +16,9 @@ public class SettingsApplier
 {
     private readonly ILogger<SettingsApplier> _logger;
     private readonly IProcessMonitor _processMonitor;
-    private readonly IMemoryTrimService _memory trim;
+    private readonly IMemoryTrimService _memoryTrim;
     private readonly IPowerManager _powerManager;
-    private readonly IResponsivenessGuardEngine _responsiveness guard;
+    private readonly IResponsivenessGuardEngine _responsivenessGuard;
     private readonly IAutoPerformanceMode? _autoPerformanceMode;
     private readonly ForegroundBoostService? _foregroundBoost;
     private readonly TimerResolutionService? _timerResolution;
@@ -30,9 +30,9 @@ public class SettingsApplier
     public SettingsApplier(
         ILogger<SettingsApplier> logger,
         IProcessMonitor processMonitor,
-        IMemoryTrimService memory trim,
+        IMemoryTrimService memoryTrim,
         IPowerManager powerManager,
-        IResponsivenessGuardEngine responsiveness guard,
+        IResponsivenessGuardEngine responsivenessGuard,
         IAutoPerformanceMode? autoPerformanceMode = null,
         ForegroundBoostService? foregroundBoost = null,
         TimerResolutionService? timerResolution = null,
@@ -40,9 +40,9 @@ public class SettingsApplier
     {
         _logger = logger;
         _processMonitor = processMonitor;
-        _memory trim = memory trim;
+        _memoryTrim = memoryTrim;
         _powerManager = powerManager;
-        _responsiveness guard = responsiveness guard;
+        _responsivenessGuard = responsivenessGuard;
         _autoPerformanceMode = autoPerformanceMode;
         _foregroundBoost = foregroundBoost;
         _timerResolution = timerResolution;
@@ -73,7 +73,7 @@ public class SettingsApplier
             if (all || previous!.MemoryTrimEnabled != settings.MemoryTrimEnabled
                     || previous.MemoryTrimIntervalSeconds != settings.MemoryTrimIntervalSeconds
                     || previous.MemoryTrimMemoryThresholdMB != settings.MemoryTrimMemoryThresholdMB)
-                TryApply("MemoryTrim", () => _memory trim.Configure(
+                TryApply("Memory Trim", () => _memoryTrim.Configure(
                     settings.MemoryTrimEnabled,
                     TimeSpan.FromSeconds(settings.MemoryTrimIntervalSeconds),
                     settings.MemoryTrimMemoryThresholdMB * 1024L * 1024L));
@@ -85,12 +85,12 @@ public class SettingsApplier
                     || previous.StandbyPurgeFreeRamThresholdMB != settings.StandbyPurgeFreeRamThresholdMB
                     || previous.StandbyPurgeOnlyInPerformanceMode != settings.StandbyPurgeOnlyInPerformanceMode
                     || previous.FileCachePurgeEnabled != settings.FileCachePurgeEnabled)
-                TryApply("MemoryTrim policy", () => _memory trim.ConfigurePolicy(ToMemoryTrimPolicy(settings)));
+                TryApply("Memory Trim policy", () => _memoryTrim.ConfigurePolicy(ToMemoryTrimPolicy(settings)));
 
             if (all || previous!.AwayModeEnabled != settings.AwayModeEnabled
                     || previous.IdleTimeoutMinutes != settings.IdleTimeoutMinutes
                     || previous.IdlePowerPlanGuid != settings.IdlePowerPlanGuid)
-                TryApply("AwayMode", () => _powerManager.ConfigureAwayMode(
+                TryApply("Away Mode", () => _powerManager.ConfigureAwayMode(
                     settings.AwayModeEnabled,
                     Math.Max(1, settings.IdleTimeoutMinutes),
                     Guid.TryParse(settings.IdlePowerPlanGuid, out var plan) ? plan : Powrprof.PowerSaver));
@@ -115,31 +115,31 @@ public class SettingsApplier
                     || previous.ResponsivenessGuardSensitivity != settings.ResponsivenessGuardSensitivity
                     || previous.ResponsivenessGuardCpuThreshold != settings.ResponsivenessGuardCpuThreshold
                     || previous.ResponsivenessGuardRecoveryThreshold != settings.ResponsivenessGuardRecoveryThreshold)
-                TryApply("ResponsivenessGuard", () => ApplyResponsivenessGuardSettings(settings));
+                TryApply("Responsiveness Guard", () => ApplyResponsivenessGuardSettings(settings));
 
             if (all || ResponsivenessGuardRestraintOptions.FromSettings(previous!) != ResponsivenessGuardRestraintOptions.FromSettings(settings))
-                TryApply("ResponsivenessGuard restraint actions", () => _responsiveness guard.ConfigureRestraint(ResponsivenessGuardRestraintOptions.FromSettings(settings)));
+                TryApply("Responsiveness Guard restraint actions", () => _responsivenessGuard.ConfigureRestraint(ResponsivenessGuardRestraintOptions.FromSettings(settings)));
 
             if (_coreParking != null && (all || previous!.ResponsivenessGuardDisableCoreParking != settings.ResponsivenessGuardDisableCoreParking))
                 TryApply("core parking", () => _coreParking.Configure(settings.ResponsivenessGuardDisableCoreParking));
 
-            if (_timerResolution != null && (all || previous!.SetTimerResolutionAtStartup != settings.SetTimerResolutionAtStartup))
-                TryApply("timer resolution", () => _timerResolution.Configure(settings.SetTimerResolutionAtStartup));
+            if (_timerResolution != null && (all || previous!.TimerResolutionRequest != settings.TimerResolutionRequest))
+                TryApply("timer resolution", () => _timerResolution.Configure(settings.TimerResolutionRequest));
 
             _applied = settings.Clone();
         }
     }
 
     /// <summary>
-    /// Hook for the ResponsivenessGuard settings. Only the members <see cref="IResponsivenessGuardEngine"/> exposes today are
+    /// Hook for the Responsiveness Guard settings. Only the members <see cref="IResponsivenessGuardEngine"/> exposes today are
     /// applied; when the engine grows setters for <see cref="AppSettings.ResponsivenessGuardCpuThreshold"/> and
     /// <see cref="AppSettings.ResponsivenessGuardRecoveryThreshold"/>, apply them here (change detection already
     /// covers both).
     /// </summary>
     protected virtual void ApplyResponsivenessGuardSettings(AppSettings settings)
     {
-        _responsiveness guard.SetEnabled(settings.ResponsivenessGuardEnabled);
-        _responsiveness guard.SetSensitivity(settings.ResponsivenessGuardSensitivity);
+        _responsivenessGuard.SetEnabled(settings.ResponsivenessGuardEnabled);
+        _responsivenessGuard.SetSensitivity(settings.ResponsivenessGuardSensitivity);
     }
 
     internal static MemoryTrimPolicy ToMemoryTrimPolicy(AppSettings settings) => new()

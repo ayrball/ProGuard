@@ -28,7 +28,7 @@
     <value>VIDER LE JOURNAL ?</value>
   </data>
   <data name="Act_ClearWarning" xml:space="preserve">
-    <value>Vide le journal d'activité pour tout le monde : actions de ResponsivenessGuard et des plans d'alimentation, événements Watchdog et modifications des utilisateurs. Cette action est irréversible.</value>
+    <value>Vide le journal d'activité pour tout le monde : actions de la Garde de réactivité et des plans d'alimentation, événements Watchdog et modifications des utilisateurs. Cette action est irréversible.</value>
   </data>
   <data name="Act_Cleared" xml:space="preserve">
     <value>JOURNAL D'ACTIVITÉ VIDÉ</value>
@@ -130,14 +130,14 @@ CALME.</value>
   <data name="BackToThisPlansValuesBefore" xml:space="preserve">
     <value>Revenir aux valeurs de ce plan avant la première modification par ProGuard</value>
   </data>
-  <data name="BalanceAutomatically" xml:space="preserve">
-    <value>RÉGULER AUTOMATIQUEMENT</value>
+  <data name="RestrainAutomatically" xml:space="preserve">
+    <value>RESTREINDRE AUTOMATIQUEMENT</value>
   </data>
-  <data name="Balanced" xml:space="preserve">
-    <value>ÉQUILIBRÉ</value>
+  <data name="Restrained" xml:space="preserve">
+    <value>RESTREINT</value>
   </data>
-  <data name="BalancedNow" xml:space="preserve">
-    <value>ÉQUILIBRÉS</value>
+  <data name="RestrainedNow" xml:space="preserve">
+    <value>RESTREINTS</value>
   </data>
   <data name="Basics" xml:space="preserve">
     <value>GÉNÉRALITÉS</value>
@@ -334,8 +334,8 @@ CALME.</value>
   <data name="DeleteRule" xml:space="preserve">
     <value>Supprimer la règle</value>
   </data>
-  <data name="DeletesTheLoggedresponsiveness guardCpuLimiter" xml:space="preserve">
-    <value>Supprime les actions ResponsivenessGuard, CPU Limiter et plans d'alimentation journalisées pour tout le monde (administrateurs uniquement)</value>
+  <data name="DeletesTheLoggedResponsivenessGuardCpuLimiter" xml:space="preserve">
+    <value>Supprime les actions Garde de réactivité, CPU Limiter et plans d'alimentation journalisées pour tout le monde (administrateurs uniquement)</value>
   </data>
   <data name="Detail" xml:space="preserve">
     <value>DÉTAIL</value>
@@ -474,7 +474,7 @@ HORS LIGNE</value>
     <value>DÉFINI PAR {0}</value>
   </data>
   <data name="Fmt_SetByAwayMode" xml:space="preserve">
-    <value>DÉFINI PAR AWAY MODE</value>
+    <value>DÉFINI PAR LE MODE ABSENCE</value>
   </data>
   <data name="Fmt_SetByLoadSwitcher" xml:space="preserve">
     <value>DÉFINI PAR LE COMMUTATEUR DE CHARGE</value>
@@ -569,8 +569,8 @@ HORS LIGNE</value>
   <data name="Idle2" xml:space="preserve">
     <value>BASSE</value>
   </data>
-  <data name="away mode" xml:space="preserve">
-    <value>AWAY MODE</value>
+  <data name="AwayMode" xml:space="preserve">
+    <value>MODE ABSENCE</value>
   </data>
   <data name="IfThisHappensDoThatChecked" xml:space="preserve">
     <value>SI CECI SE PRODUIT, FAIRE CELA — VÉRIFIÉ TOUTES LES QUELQUES SECONDES</value>
@@ -585,7 +585,7 @@ HORS LIGNE</value>
     <value>PLANS INSTALLÉS</value>
   </data>
   <data name="InstanceSpread" xml:space="preserve">
-    <value>RÉPARTITEUR D'INSTANCES</value>
+    <value>RÉPARTITION DES INSTANCES</value>
   </data>
   <data name="Instances" xml:space="preserve">
     <value>INSTANCES</value>
@@ -690,7 +690,7 @@ HORS LIGNE</value>
     <value>VIDER LE JOURNAL DES ACTIONS ?</value>
   </data>
   <data name="Logs_ClearWarning" xml:space="preserve">
-    <value>Supprime les actions ResponsivenessGuard, CPU Limiter et plans d'alimentation journalisées pour tout le monde. Le journal du moteur est conservé. Cette action est irréversible.</value>
+    <value>Supprime les actions Garde de réactivité, CPU Limiter et plans d'alimentation journalisées pour tout le monde. Le journal du moteur est conservé. Cette action est irréversible.</value>
   </data>
   <data name="Logs_Cleared" xml:space="preserve">
     <value>JOURNAL DES ACTIONS VIDÉ</value>
@@ -803,8 +803,8 @@ HORS LIGNE</value>
   <data name="MostCopiesAtOnce" xml:space="preserve">
     <value>MAX DE COPIES SIMULTANÉES</value>
   </data>
-  <data name="N0Balanced" xml:space="preserve">
-    <value>{0} ÉQUILIBRÉS</value>
+  <data name="N0Restrained" xml:space="preserve">
+    <value>{0} RESTREINTS</value>
   </data>
   <data name="N0EntriesShown" xml:space="preserve">
     <value>{0} ENTRÉES AFFICHÉES</value>
@@ -830,8 +830,8 @@ HORS LIGNE</value>
   <data name="NeedsAdministratorRights" xml:space="preserve">
     <value>EXIGE LES DROITS D'ADMINISTRATEUR</value>
   </data>
-  <data name="NeverBalanceIt" xml:space="preserve">
-    <value>NE JAMAIS LE RÉGULER</value>
+  <data name="NeverRestrainIt" xml:space="preserve">
+    <value>NE JAMAIS LE RESTREINDRE</value>
   </data>
   <data name="NewRule" xml:space="preserve">
     <value>+ NOUVELLE RÈGLE</value>
@@ -973,8 +973,8 @@ DE JOURNALISÉ.</value>
   <data name="Pause2" xml:space="preserve">
     <value>SUSPENDRE</value>
   </data>
-  <data name="Pauseresponsiveness guardWhenTheMachineIs" xml:space="preserve">
-    <value>SUSPENDRE GUARD QUAND LA MACHINE EST INACTIVE</value>
+  <data name="PauseResponsivenessGuardWhenTheMachineIs" xml:space="preserve">
+    <value>SUSPENDRE LA GARDE QUAND LA MACHINE EST INACTIVE</value>
   </data>
   <data name="Paused" xml:space="preserve">
     <value>❚❚ EN PAUSE</value>
@@ -1039,20 +1039,23 @@ DE JOURNALISÉ.</value>
   <data name="Private" xml:space="preserve">
     <value>PRIVÉE</value>
   </data>
-  <data name="responsiveness guard" xml:space="preserve">
-    <value>GUARD</value>
+  <data name="ResponsivenessGuard" xml:space="preserve">
+    <value>GARDE DE RÉACTIVITÉ</value>
   </data>
-  <data name="responsiveness guardArmed" xml:space="preserve">
-    <value>GUARD ARMÉ</value>
+  <data name="ResponsivenessGuardShort" xml:space="preserve">
+    <value>GARDE</value>
   </data>
-  <data name="responsiveness guardIsRestrainingAndHoldsEvery" xml:space="preserve">
-    <value>GUARD RESTREINT UN PROCESSUS ET GARDE TOUS LES CŒURS DE CE PLAN ACTIFS. VOS VALEURS DE CŒURS MIN. REVIENNENT QUAND IL RELÂCHE.</value>
+  <data name="ResponsivenessGuardArmed" xml:space="preserve">
+    <value>GARDE ARMÉE</value>
   </data>
-  <data name="responsiveness guardOff" xml:space="preserve">
-    <value>GUARD DÉSACTIVÉ</value>
+  <data name="ResponsivenessGuardIsRestrainingAndHoldsEvery" xml:space="preserve">
+    <value>LA GARDE DE RÉACTIVITÉ RESTREINT UN PROCESSUS ET GARDE TOUS LES CŒURS DE CE PLAN ACTIFS. VOS VALEURS DE CŒURS MIN. REVIENNENT QUAND ELLE RELÂCHE.</value>
   </data>
-  <data name="responsiveness guardWontLowerItsPriorityEven" xml:space="preserve">
-    <value>ResponsivenessGuard ne baissera pas sa priorité, même en cas de forte charge.</value>
+  <data name="ResponsivenessGuardOff" xml:space="preserve">
+    <value>GARDE DÉSACTIVÉE</value>
+  </data>
+  <data name="ResponsivenessGuardWontLowerItsPriorityEven" xml:space="preserve">
+    <value>La Garde de réactivité ne baissera pas sa priorité, même en cas de forte charge.</value>
   </data>
   <data name="Proc_Always" xml:space="preserve">
     <value>{0} · TOUJOURS {1}. Défini maintenant, et de nouveau à chaque démarrage.</value>
@@ -1429,13 +1432,13 @@ DE JOURNALISÉ.</value>
   <data name="Rule_BadThreshold" xml:space="preserve">
     <value>Le seuil du CPU Limiter est un pourcentage supérieur à 0 et au plus égal à 100, p. ex. 40. Videz-le pour désactiver le limiteur.</value>
   </data>
-  <data name="Rule_BalanceEqual" xml:space="preserve">
+  <data name="Rule_SpreadEqual" xml:space="preserve">
     <value>RÉPARTITION ÉGALE</value>
   </data>
-  <data name="Rule_BalanceFixed" xml:space="preserve">
+  <data name="Rule_SpreadFixed" xml:space="preserve">
     <value>RÉPARTITION FIXE {0}</value>
   </data>
-  <data name="Rule_BalanceMinCpu" xml:space="preserve">
+  <data name="Rule_SpreadMinCpu" xml:space="preserve">
     <value>RÉPARTITION ≥{0}% CPU</value>
   </data>
   <data name="Rule_BlockAndKeep" xml:space="preserve">
@@ -1678,8 +1681,8 @@ DE JOURNALISÉ.</value>
   <data name="SignIn_Refused" xml:space="preserve">
     <value>Le Planificateur de tâches a refusé la modification.</value>
   </data>
-  <data name="memory trim" xml:space="preserve">
-    <value>MEMORY TRIM</value>
+  <data name="MemoryTrim" xml:space="preserve">
+    <value>ALLÈGEMENT MÉMOIRE</value>
   </data>
   <data name="Source" xml:space="preserve">
     <value>SOURCE</value>
@@ -1927,7 +1930,7 @@ DE JOURNALISÉ.</value>
   <data name="TheFinestTheTimerCanBe" xml:space="preserve">
     <value>Le réglage le plus fin que l'on puisse demander au minuteur (Windows parle de résolution maximale)</value>
   </data>
-  <data name="TheLoggerresponsiveness guardengineIpcdispatcherOrFor" xml:space="preserve">
+  <data name="TheLoggerResponsivenessGuardEngineIpcdispatcherOrFor" xml:space="preserve">
     <value>L'émetteur (ResponsivenessGuardEngine, IpcDispatcher...) ou, pour le journal des actions, ResponsivenessGuard, CpuLimiter ou Power</value>
   </data>
   <data name="TheWindowYoureWorkingInRuns" xml:space="preserve">
@@ -2039,7 +2042,7 @@ DE JOURNALISÉ.</value>
     <value>{0} S'applique au plan d'alimentation {1} pour tous les utilisateurs de ce PC. Vous pouvez à tout moment revenir aux valeurs d'avant la première modification de ProGuard.</value>
   </data>
   <data name="Tune_ResponsivenessGuardHolds" xml:space="preserve">
-    <value>GUARD MAINTIENT {0} PENDANT QU'IL RESTREINT</value>
+    <value>LA GARDE MAINTIENT {0} PENDANT QU'ELLE RESTREINT</value>
   </data>
   <data name="Tune_ReadOnly" xml:space="preserve">
     <value>LECTURE SEULE · MODIFIER UN PLAN D'ALIMENTATION EXIGE LES DROITS D'ADMINISTRATEUR. {0}.</value>
@@ -2293,8 +2296,8 @@ DE JOURNALISÉ.</value>
   <data name="WhenItUsesAtLeast" xml:space="preserve">
     <value>QUAND IL UTILISE AU MOINS (%)</value>
   </data>
-  <data name="Whenresponsiveness guardStepsInARule" xml:space="preserve">
-    <value>Quand ResponsivenessGuard intervient, qu'une règle ou une surveillance se déclenche, ou que vous modifiez un processus, cela apparaît ici.</value>
+  <data name="WhenResponsivenessGuardStepsInARule" xml:space="preserve">
+    <value>Quand la Garde de réactivité intervient, qu'une règle ou une surveillance se déclenche, ou que vous modifiez un processus, cela apparaît ici.</value>
   </data>
   <data name="WhenTheMachineIsOverloadedBackground" xml:space="preserve">
     <value>Quand la machine est surchargée, les processus d'arrière-plan gourmands voient leur priorité abaissée pour que ce que vous utilisez reste réactif. Rétablie dès que les choses se calment.</value>

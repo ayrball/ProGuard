@@ -15,7 +15,7 @@ public class ProcessRule
     public bool ExcludeFromResponsivenessGuard { get; set; }
     public bool DisallowExecution { get; set; }
 
-    // CPU Limiter, affinity-reduction mode (another process manager's CPULimitRules). Off while the threshold is null;
+    // CPU Limiter, affinity-reduction mode. Off while the threshold is null;
     // the other three fall back to CpuAffinityLimiter's defaults when null. CpuLimitPercent above is the
     // separate job-object hard cap.
     /// <summary>Total-CPU percent the process must reach before cores are taken away.</summary>
@@ -27,12 +27,12 @@ public class ProcessRule
     /// <summary>How long to keep the reduced affinity before restoring the original, in seconds.</summary>
     public int? CpuLimitDurationSeconds { get; set; }
 
-    // Instance count limit (another process manager's InstanceLimitedProcesses): MaxInstances above is the limit, off while null.
+    // Instance count limit: MaxInstances above is the limit, off while null.
     /// <summary>Count instances in every session instead of only the new instance's session.</summary>
     public bool MaxInstancesAllSessions { get; set; }
 
-    // Instance Spread (InstanceManagedCPUAffinities): splits CPU cores across running instances. Off while the
-    // mode is null; the other values fall back to InstanceSpread's defaults when null.
+    // Instance Spread: splits CPU cores across running instances. Off while the
+    // mode is null; the other values fall back to Instance Spread's defaults when null.
     public InstanceSpreadMode? InstanceSpreadMode { get; set; }
     /// <summary>Cores each instance gets in <see cref="Models.InstanceSpreadMode.FixedCoresPerInstance"/> mode.</summary>
     public int? InstanceSpreadCoresPerInstance { get; set; }
@@ -43,13 +43,13 @@ public class ProcessRule
     /// <summary>Total-CPU percent an instance must reach before it gets its own share of cores.</summary>
     public double? InstanceSpreadMinCpuPercent { get; set; }
 
-    // Startup boost (StartupBoostRules): raise a new process's priority class for a while, then restore it.
+    // Startup boost: raise a new process's priority class for a while, then restore it.
     // Off while the priority class is null.
     public int? StartupBoostPriorityClass { get; set; }
     /// <summary>How long the boost lasts, 1-3600 seconds.</summary>
     public int? StartupBoostSeconds { get; set; }
 
-    // Persistent per-process defaults (another process manager's [ProcessDefaults]). Null leaves the process as Windows set it.
+    // Persistent per-process defaults. Null leaves the process as Windows set it.
     /// <summary>IO_PRIORITY_HINT: 0 Very Low, 1 Low, 2 Normal, 3 High.</summary>
     public int? IoPriority { get; set; }
     /// <summary>MEMORY_PRIORITY_*: 1 Very Low .. 5 Normal.</summary>
@@ -70,7 +70,7 @@ public class ProcessRule
     /// <summary>
     /// Also write <see cref="PriorityClass"/>, <see cref="IoPriority"/> and <see cref="MemoryPriority"/> to the
     /// program's Image File Execution Options (<c>PerfOptions</c>), so Windows applies them as the process is created
-    /// instead of up to a poll later (another process manager's <c>ioPriorityEnforcedByRegistry</c>). Only for a plain exe name
+    /// instead of up to a poll later. Only for a plain exe name
     /// (no wildcard or path), and administrators only: it is a machine-wide registry setting.
     /// </summary>
     public bool ApplyPrioritiesAtCreation { get; set; }

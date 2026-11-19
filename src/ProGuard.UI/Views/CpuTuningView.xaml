@@ -145,7 +145,7 @@
             </ItemsControl>
             <TextBlock Style="{StaticResource Note}" Margin="0,8,0,0" Visibility="{Binding ParkingOverrideActive, Converter={StaticResource VisibleWhen}}"
                        Opacity="1" FontWeight="Bold"
-                       Text="{x:Static r:Strings.responsiveness guardIsRestrainingAndHoldsEvery}"/>
+                       Text="{x:Static r:Strings.ResponsivenessGuardIsRestrainingAndHoldsEvery}"/>
 
             <!-- Presets and revert -->
             <TextBlock Text="{x:Static r:Strings.Presets}" Style="{StaticResource Text.Label}" FontWeight="Bold" Margin="0,28,0,10"/>

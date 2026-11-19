@@ -58,12 +58,12 @@ public sealed class CpuTuningSettingDto
     /// <summary>Windows' Power Options doesn't show it (powercfg's ATTRIB_HIDE). Changing it from ProGuard shows it there.</summary>
     public bool Hidden { get; set; }
 
-    /// <summary>The plan's values (plugged in, on battery): the user's own, even while ResponsivenessGuard overrides them for now.</summary>
+    /// <summary>The plan's values (plugged in, on battery): the user's own, even while Responsiveness Guard overrides them for now.</summary>
     public uint Ac { get; set; }
     public uint Dc { get; set; }
 
     /// <summary>
-    /// Set while ResponsivenessGuard's "unpark every core while restraining" holds a different value in force: what Windows
+    /// Set while Responsiveness Guard's "unpark every core while restraining" holds a different value in force: what Windows
     /// uses right now. <see cref="Ac"/>/<see cref="Dc"/> come back when it lets go.
     /// </summary>
     public uint? LiveAc { get; set; }
@@ -95,7 +95,7 @@ public sealed class CpuTuningDto
     public bool HasOriginals { get; set; }
     public DateTime? OriginalsTakenUtc { get; set; }
 
-    /// <summary>ResponsivenessGuard holds every core of this plan unparked right now (the min cores settings show <see cref="CpuTuningSettingDto.LiveAc"/>).</summary>
+    /// <summary>Responsiveness Guard holds every core of this plan unparked right now (the min cores settings show <see cref="CpuTuningSettingDto.LiveAc"/>).</summary>
     public bool ParkingOverrideActive { get; set; }
 
     public List<CpuTuningSettingDto> Settings { get; set; } = new();

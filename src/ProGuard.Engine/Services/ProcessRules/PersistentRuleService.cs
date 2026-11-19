@@ -54,6 +54,13 @@ public sealed class PersistentRuleService : IDisposable
     {
     }
 
+    /// <param name="gpuPreferences">Records the graphics preferences written, so they can be removed again.</param>
+    internal PersistentRuleService(ILogger<PersistentRuleService> logger, IProcessTuningNative native, IProcessMonitor monitor, IRuleStore ruleStore,
+        IGpuPreferenceLedger? gpuPreferences)
+        : this(logger, CreateAppliers(native, gpuPreferences), monitor, ruleStore)
+    {
+    }
+
     public PersistentRuleService(ILogger<PersistentRuleService> logger, IEnumerable<IProcessRuleApplier> appliers, IProcessMonitor monitor, IRuleStore ruleStore)
     {
         _logger = logger;
@@ -62,7 +69,9 @@ public sealed class PersistentRuleService : IDisposable
         _ruleStore = ruleStore;
     }
 
-    public static IReadOnlyList<IProcessRuleApplier> CreateAppliers(IProcessTuningNative native) => new IProcessRuleApplier[]
+    public static IReadOnlyList<IProcessRuleApplier> CreateAppliers(IProcessTuningNative native) => CreateAppliers(native, null);
+
+    internal static IReadOnlyList<IProcessRuleApplier> CreateAppliers(IProcessTuningNative native, IGpuPreferenceLedger? gpuPreferences) => new IProcessRuleApplier[]
     {
         new IoPriorityApplier(native),
         new MemoryPriorityApplier(native),
@@ -70,7 +79,7 @@ public sealed class PersistentRuleService : IDisposable
         new PriorityBoostApplier(native),
         new CpuSetsApplier(native),
         new GpuPriorityApplier(native),
-        new GpuPreferenceApplier(native),
+        new GpuPreferenceApplier(native, gpuPreferences),
     };
 
     /// <summary>Applies every setting <paramref name="rule"/> configures and returns their results (unconfigured ones omitted).</summary>

@@ -33,6 +33,7 @@ public sealed class RuleService
     private readonly PersistentRuleService? _persistent;
     private readonly InstanceSpread? _spread;
     private readonly LaunchPriorityService? _launchPriorities;
+    private readonly GpuPreferenceService? _gpuPreferences;
     private readonly ActivityLog _activity;
 
     public RuleService(
@@ -45,7 +46,8 @@ public sealed class RuleService
         ActivityLog activity,
         PersistentRuleService? persistent = null,
         InstanceSpread? spread = null,
-        LaunchPriorityService? launchPriorities = null)
+        LaunchPriorityService? launchPriorities = null,
+        GpuPreferenceService? gpuPreferences = null)
     {
         _logger = logger;
         _store = store;
@@ -57,6 +59,7 @@ public sealed class RuleService
         _persistent = persistent;
         _spread = spread;
         _launchPriorities = launchPriorities;
+        _gpuPreferences = gpuPreferences;
     }
 
     /// <summary>Which processes a rule may act on (see <see cref="RuleScope"/>). Tests supply fake owners.</summary>
@@ -101,6 +104,7 @@ public sealed class RuleService
 
         _store.SaveProcessRule(rule);
         _launchPriorities?.Sync(_store.GetProcessRules());
+        _gpuPreferences?.Sync(_store.GetProcessRules());
         ApplyToRunning(rule, existing);
         _activity.Add(ActivityKind.Manual, rule.ProcessName, 0, existing == null ? $"Added a rule for {rule.ProcessName}." : $"Changed the rule for {rule.ProcessName}.");
         return CommandResult.Ok(Serialize(RuleDtoMapper.ToDto(rule)));
@@ -115,6 +119,7 @@ public sealed class RuleService
 
         _store.DeleteProcessRule(id);
         _launchPriorities?.Sync(_store.GetProcessRules());
+        _gpuPreferences?.Sync(_store.GetProcessRules());
         ReleaseCap(existing);
         _spread?.Tick(); // gives balanced instances their own affinity back now rather than at the next check
         _activity.Add(ActivityKind.Manual, existing.ProcessName, 0, $"Deleted the rule for {existing.ProcessName}.");
@@ -178,6 +183,7 @@ public sealed class RuleService
     public void ApplyReplaced(IReadOnlyList<ProcessRule> previous, IReadOnlyList<ProcessRule> current)
     {
         _launchPriorities?.Sync(_store.GetProcessRules());
+        _gpuPreferences?.Sync(_store.GetProcessRules());
         var before = previous.GroupBy(r => ProcessExtensions.NormalizeName(r.ProcessName)).ToDictionary(g => g.Key, g => g.First());
         var after = current.Select(r => ProcessExtensions.NormalizeName(r.ProcessName)).ToHashSet();
         foreach (var (key, rule) in before)

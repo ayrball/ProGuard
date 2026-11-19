@@ -701,10 +701,10 @@ public class SecurityHardeningTests
         var guard = new DataDirectoryGuard(elevated: true) { IsTrustedOwner = _ => true };
 
         // A folder in this user's temp: this user (not an administrator's group) has full control of it.
-        Assert.False(guard.CheckOtherDirectory(temp.Root));
+        Assert.False(guard.CheckOtherDatabase(Path.Combine(temp.Root, "proguard.db")));
         Assert.Contains(guard.Findings, f => f.Level == LogLevel.Critical && f.Message.Contains(ProGuardDbContext.DatabasePathVariable));
 
-        Assert.True(new DataDirectoryGuard(elevated: false).CheckOtherDirectory(temp.Root));
+        Assert.True(new DataDirectoryGuard(elevated: false).CheckOtherDatabase(Path.Combine(temp.Root, "proguard.db")));
     }
 
     [Fact]
@@ -713,7 +713,7 @@ public class SecurityHardeningTests
         var wxs = File.ReadAllText(Path.Combine(RepoRoot(), "installer", "Package.wxs"));
         Assert.Contains("<CreateFolder>", wxs);
         Assert.Contains("Directory Id=\"DATAFOLDER\" Name=\"ProGuard\"", wxs);
-        Assert.Contains("Sddl=\"D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)\"", wxs);
+        Assert.Contains("Sddl=\"O:BAD:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)\"", wxs);
         Assert.DoesNotContain(";;;BU)", wxs);
     }
 

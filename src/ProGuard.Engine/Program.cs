@@ -10,6 +10,7 @@ using ProGuard.Engine.Services.SessionAgents;
 using ProGuard.Engine.IPC;
 using ProGuard.Engine.Logging;
 using ProGuard.Engine.Security;
+using ProGuard.Shared.Security;
 
 namespace ProGuard.Engine;
 
@@ -19,14 +20,21 @@ public class Program
     {
         System.IO.Directory.SetCurrentDirectory(System.AppContext.BaseDirectory);
 
+        // The MSI's uninstall: remove what ProGuard left outside its own folders, then exit. Before anything else, so it
+        // neither touches the data folder nor opens the database.
+        if (UninstallCleanup.IsRequested(args)) return UninstallCleanup.Run();
+
         // Before anything opens a file there: the logger and the database both create the folder when they start.
         var guard = DataDirectoryGuard.ForThisProcess();
-        var dataDirectory = System.IO.Path.GetDirectoryName(System.IO.Path.GetDirectoryName(FileLoggerProvider.DefaultPath))!;
-        var ownDirectoryUsable = guard.SecureOwnDirectory(dataDirectory);
+        var dataDirectory = guard.SecureDataDirectory(ProGuardDbContext.DefaultDataDirectory);
+        var ownDirectoryUsable = dataDirectory != null;
+        if (dataDirectory != null && !SamePath(dataDirectory, ProGuardDbContext.DefaultDataDirectory))
+            ProGuardDbContext.RelocateDataDirectory(dataDirectory); // the logger, database and recovery files all follow
         var databaseDirectory = System.IO.Path.GetDirectoryName(ProGuardDbContext.DatabasePath)!;
-        var databaseUsable = SamePath(databaseDirectory, dataDirectory)
-            ? ownDirectoryUsable
-            : guard.CheckOtherDirectory(databaseDirectory);
+        var databaseIsOwn = dataDirectory != null && SamePath(databaseDirectory, dataDirectory);
+        var databaseUsable = databaseIsOwn ? ownDirectoryUsable : guard.CheckOtherDatabase(ProGuardDbContext.DatabasePath);
+        // A database the engine doesn't own is checked again whenever it changes on disk, before the rules are reloaded.
+        RuleStoreTrustCheck = databaseIsOwn || !guard.Elevated ? null : path => DirectoryTrust.WhyReplaceable(path, allowMissingFile: false);
 
         using var host = CreateHostBuilder(args, fileLogging: ownDirectoryUsable).Build();
         var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("ProGuard.Engine.DataDirectory");
@@ -41,6 +49,9 @@ public class Program
         host.Run();
         return 0;
     }
+
+    /// <summary>Set by <see cref="Main"/> for a database outside the engine's own data folder; see <see cref="RuleStore.TrustCheck"/>.</summary>
+    internal static Func<string, string?>? RuleStoreTrustCheck { get; private set; }
 
     private static bool SamePath(string a, string b) =>
         string.Equals(System.IO.Path.TrimEndingDirectorySeparator(System.IO.Path.GetFullPath(a)),
@@ -60,7 +71,7 @@ public class Program
                 // Register Core Services
                 services.AddDbContext<ProGuardDbContext>();
                 
-                services.AddSingleton<RuleStore>();
+                services.AddSingleton(sp => new RuleStore(sp.GetRequiredService<ILogger<RuleStore>>(), sp, RuleStoreTrustCheck));
                 services.AddSingleton<IRuleStore>(sp => sp.GetRequiredService<RuleStore>());
 
                 services.AddSingleton<ForegroundTracker>();
@@ -76,7 +87,9 @@ public class Program
                 services.AddSingleton<ResponsivenessGuardEngine>();
                 services.AddSingleton<IResponsivenessGuardEngine>(sp => sp.GetRequiredService<ResponsivenessGuardEngine>());
 
-                services.AddSingleton<CpuLimiter>();
+                // Records every cap in the data folder, so a cap a crash left in force is lifted at the next start.
+                services.AddSingleton(sp => new CpuLimiter(sp.GetRequiredService<ILogger<CpuLimiter>>(),
+                    new FileCpuCapRecoveryStore(sp.GetRequiredService<ILogger<CpuLimiter>>())));
                 services.AddSingleton<ICpuLimiter>(sp => sp.GetRequiredService<CpuLimiter>());
                 services.AddSingleton<CpuAffinityLimiter>();
 
@@ -118,7 +131,8 @@ public class Program
                         sp.GetRequiredService<ILogger<PersistentRuleService>>(),
                         sp.GetRequiredService<IProcessTuningNative>(),
                         sp.GetRequiredService<IProcessMonitor>(),
-                        sp.GetRequiredService<IRuleStore>());
+                        sp.GetRequiredService<IRuleStore>(),
+                        sp.GetRequiredService<IGpuPreferenceLedger>());
                     // Re-applying a rule's CPU priority must not fight what holds it for a while: those put it back.
                     var responsivenessGuard = sp.GetRequiredService<IResponsivenessGuardEngine>();
                     var startupBoost = sp.GetRequiredService<StartupBoostService>();
@@ -129,6 +143,9 @@ public class Program
                 });
 
                 services.AddSingleton(sp => new LaunchPriorityService(sp.GetRequiredService<ILogger<LaunchPriorityService>>()));
+                // The graphics preferences rules wrote to users' registries, and taking them out again when no rule wants them.
+                services.AddSingleton<IGpuPreferenceLedger>(sp => new FileGpuPreferenceLedger(sp.GetRequiredService<ILogger<GpuPreferenceService>>()));
+                services.AddSingleton(sp => new GpuPreferenceService(sp.GetRequiredService<IGpuPreferenceLedger>(), logger: sp.GetRequiredService<ILogger<GpuPreferenceService>>()));
 
                 services.AddSingleton<ProcessOrchestrator>();
                 services.AddSingleton<IProcessOrchestrator>(sp => sp.GetRequiredService<ProcessOrchestrator>());

@@ -13,9 +13,12 @@ namespace ProGuard.Engine.Logging;
 /// </summary>
 public sealed class FileLoggerProvider : ILoggerProvider
 {
-    /// <summary>Default log file: <c>%ProgramData%\ProGuard\logs\engine.log</c>, next to the shared database.</summary>
-    public static string DefaultPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "ProGuard", "logs", "engine.log");
+    /// <summary>
+    /// Default log file: <c>logs\engine.log</c> in the engine's data folder, <c>%ProgramData%\ProGuard</c> (or the
+    /// fallback folder <see cref="ProGuard.Core.Data.ProGuardDbContext.DataDirectory"/> names when that one couldn't be
+    /// made safe).
+    /// </summary>
+    public static string DefaultPath => Path.Combine(ProGuard.Core.Data.ProGuardDbContext.DataDirectory, "logs", "engine.log");
 
     private readonly ConcurrentDictionary<string, FileLogger> _loggers = new(StringComparer.Ordinal);
     private readonly object _lock = new();

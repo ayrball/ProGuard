@@ -21,8 +21,16 @@ public sealed class GpuPreferenceApplier : IProcessRuleApplier
 {
     private const string Key = "GpuPreference";
     private readonly IProcessTuningNative _native;
+    private readonly IGpuPreferenceLedger? _ledger;
 
-    public GpuPreferenceApplier(IProcessTuningNative native) => _native = native;
+    /// <param name="ledger">Where each write is recorded, so it can be taken back out (<see cref="GpuPreferenceService"/>).</param>
+    internal GpuPreferenceApplier(IProcessTuningNative native, IGpuPreferenceLedger? ledger)
+    {
+        _native = native;
+        _ledger = ledger;
+    }
+
+    public GpuPreferenceApplier(IProcessTuningNative native) : this(native, null) { }
 
     public string Setting => "GPU preference";
 
@@ -46,6 +54,8 @@ public sealed class GpuPreferenceApplier : IProcessRuleApplier
             if (TryParse(existing, out var current) && current == preference)
                 return Result(RuleApplyOutcome.Unchanged, $"{label} for {sid}");
 
+            // Recorded first: a write that lands without its record could never be taken back out.
+            _ledger?.Record(sid, path, preference, TryParse(existing, out var found) ? found : null);
             _native.WriteUserGpuPreference(sid, path, Merge(existing, preference));
             return Result(RuleApplyOutcome.Applied, $"{label} for {sid} at {path} (takes effect on next launch)");
         }
@@ -69,6 +79,13 @@ public sealed class GpuPreferenceApplier : IProcessRuleApplier
         var entries = Split(existing).Where(e => !e.Key.Equals(Key, StringComparison.OrdinalIgnoreCase)).ToList();
         entries.Insert(0, new KeyValuePair<string, string>(Key, preference.ToString(CultureInfo.InvariantCulture)));
         return string.Concat(entries.Select(e => $"{e.Key}={e.Value};"));
+    }
+
+    /// <summary>The value without its GpuPreference entry, keeping the others; null when nothing else is left.</summary>
+    public static string? Strip(string? existing)
+    {
+        var rest = Split(existing).Where(e => !e.Key.Equals(Key, StringComparison.OrdinalIgnoreCase)).ToList();
+        return rest.Count == 0 ? null : string.Concat(rest.Select(e => $"{e.Key}={e.Value};"));
     }
 
     private static IEnumerable<KeyValuePair<string, string>> Split(string? value)

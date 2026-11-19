@@ -36,9 +36,15 @@ namespace ProGuard.Engine.Security;
 /// administrator rights runs as the user and gains nothing from these files, can't set such a DACL, and leaves the folder
 /// as it is (a warning says so).</item>
 /// </list>
+/// When the folder can't be made safe (renaming it aside or moving an entry out fails, as when someone holds a file in
+/// it open), the engine falls back to a fresh sibling, <c>ProGuard.&lt;n&gt;</c>, rather than not starting
+/// (<see cref="SecureDataDirectory"/>).
+/// <para>
 /// A database somewhere else (<c>PROGUARD_DB_PATH</c>, set by an administrator for a portable or test setup) is
-/// checked, not changed: when the engine is elevated, its folder must be neither a link nor changeable by anyone but
-/// administrators, or the engine refuses to start rather than load rules a standard user could have written.
+/// checked, not changed: when the engine is elevated, the file, its folder and the folder above must be neither links nor
+/// changeable by anyone but administrators, or the engine refuses to start rather than load rules a standard user could
+/// have written (<see cref="CheckOtherDatabase"/>). The rule store checks it again before every reload.
+/// </para>
 /// </summary>
 public sealed class DataDirectoryGuard
 {
@@ -93,9 +99,17 @@ public sealed class DataDirectoryGuard
             if (Exists(directory) && UntrustedRoot(directory) is { } why)
             {
                 var aside = $"{directory}.untrusted-{_stamp}";
+                try
+                {
+                    if (File.Exists(directory)) File.Move(directory, aside);
+                    else Directory.Move(directory, aside);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    Note(LogLevel.Critical, $"{directory} can't be trusted ({why}), and it couldn't be renamed aside ({ex.Message}): something may be holding a file in it open. The engine won't use it.");
+                    return false;
+                }
                 Note(LogLevel.Error, $"{directory} can't be trusted ({why}). It was renamed to {aside} and will not be used; a new, protected one is created in its place. Delete the old one once you have looked at it.");
-                if (File.Exists(directory)) File.Move(directory, aside);
-                else Directory.Move(directory, aside);
             }
 
             if (!Directory.Exists(directory))
@@ -124,35 +138,83 @@ public sealed class DataDirectoryGuard
         }
     }
 
-    /// <summary>
-    /// Checks a data directory the engine doesn't own (the folder of a <c>PROGUARD_DB_PATH</c> database) without changing
-    /// it. False when the elevated engine must not use it.
-    /// </summary>
-    public bool CheckOtherDirectory(string directory)
-    {
-        directory = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
-        if (!Elevated) return true; // the engine has only the user's own rights, so nothing to protect
-        if (!Exists(directory)) return true; // created by the engine itself, as an administrator, when the database opens
+    /// <summary>How many <c>ProGuard.&lt;n&gt;</c> folders <see cref="SecureDataDirectory"/> tries before giving up.</summary>
+    public const int MaxFallbacks = 9;
 
-        try
+    /// <summary>
+    /// Prepares <paramref name="preferred"/> (<c>%ProgramData%\ProGuard</c>) with <see cref="SecureOwnDirectory"/>, and
+    /// when that fails falls back to a sibling, <c>ProGuard.1</c> to <c>ProGuard.9</c>, rather than not starting at all:
+    /// a standard user could otherwise keep the engine down for good by creating the folder first and holding a file in it
+    /// open, so it can be neither renamed aside nor cleaned. The first sibling that is already trusted (an earlier
+    /// fallback, so the choice stays the same across restarts) or can be newly created with the protected DACL is used;
+    /// one that exists but is a link or someone else's is skipped, never adopted. Returns the folder to use, or null when
+    /// none is.
+    /// </summary>
+    public string? SecureDataDirectory(string preferred)
+    {
+        preferred = Path.TrimEndingDirectorySeparator(Path.GetFullPath(preferred));
+        if (SecureOwnDirectory(preferred)) return preferred;
+
+        for (var n = 1; n <= MaxFallbacks; n++)
         {
-            if (UntrustedRoot(directory) is { } why)
+            var candidate = $"{preferred}.{n}";
+            try
             {
-                Note(LogLevel.Critical, $"The database folder {directory} (from {Core.Data.ProGuardDbContext.DatabasePathVariable}) can't be trusted: {why}. The engine runs with administrator rights and won't load rules from it. Point {Core.Data.ProGuardDbContext.DatabasePathVariable} at a folder only administrators can change.");
-                return false;
+                if (Exists(candidate))
+                {
+                    if (UntrustedRoot(candidate) is { } why)
+                    {
+                        Note(LogLevel.Warning, $"Not using {candidate} as the fallback data folder: {why}.");
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (ApplyDacl) new DirectoryInfo(candidate).Create(ProtectedSecurity());
+                    else Directory.CreateDirectory(candidate);
+                    // Someone may have created it between the check and here: only one we can trust will do.
+                    if (UntrustedRoot(candidate) is { } why)
+                    {
+                        Note(LogLevel.Warning, $"Not using {candidate} as the fallback data folder: {why}.");
+                        continue;
+                    }
+                }
             }
-            if (DirectoryTrust.WhoElseCanChange(new DirectoryInfo(directory).GetAccessControl()) is { } writable)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SystemException)
             {
-                Note(LogLevel.Critical, $"The database folder {directory} (from {Core.Data.ProGuardDbContext.DatabasePathVariable}) isn't protected: {writable}. The engine runs with administrator rights and won't load rules from it. Point {Core.Data.ProGuardDbContext.DatabasePathVariable} at a folder only administrators can change.");
-                return false;
+                Note(LogLevel.Warning, $"Not using {candidate} as the fallback data folder: {ex.Message}");
+                continue;
             }
-            return true;
+
+            if (!SecureOwnDirectory(candidate)) continue;
+            Note(LogLevel.Critical, $"THE ENGINE IS USING {candidate} INSTEAD OF {preferred}, which couldn't be made safe (see the messages above). Rules, settings and logs in {preferred} are not used, and an uninstall that removes ProGuard's data doesn't remove {candidate}. Someone may have set this up on purpose to keep ProGuard from starting: once nothing holds files open in {preferred}, an administrator should delete or rename it and restart the ProGuard Engine service.");
+            return candidate;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SystemException)
+
+        Note(LogLevel.Critical, $"Neither {preferred} nor any of {preferred}.1 to {preferred}.{MaxFallbacks} could be made safe to use.");
+        return null;
+    }
+
+    /// <summary>Why a database the elevated engine is pointed at could be replaced by a non-administrator. Tests replace it.</summary>
+    internal Func<string, string?> WhyDatabaseReplaceable { get; init; } = path => DirectoryTrust.WhyReplaceable(path, allowMissingFile: true);
+
+    /// <summary>
+    /// Checks a database the engine doesn't own (a <c>PROGUARD_DB_PATH</c> database) without changing it: the file itself,
+    /// its folder and the folder above that (<see cref="DirectoryTrust.WhyReplaceable(string, bool)"/>) must be neither
+    /// links nor changeable by anyone but administrators, or a standard user could swap in rules the engine then applies
+    /// as SYSTEM. A file or folders that don't exist yet are skipped: the engine creates them, as an administrator. False
+    /// when the elevated engine must not use it.
+    /// </summary>
+    public bool CheckOtherDatabase(string databasePath)
+    {
+        if (!Elevated) return true; // the engine has only the user's own rights, so nothing to protect
+        var full = Path.GetFullPath(databasePath);
+        if (WhyDatabaseReplaceable(full) is { } why)
         {
-            Note(LogLevel.Critical, $"Could not check the database folder {directory}: {ex.Message}. The engine won't use it.");
+            Note(LogLevel.Critical, $"The database {full} (from {Core.Data.ProGuardDbContext.DatabasePathVariable}) isn't protected: {why}. The engine runs with administrator rights and won't load rules from it. Point {Core.Data.ProGuardDbContext.DatabasePathVariable} at a file in a folder only administrators can change.");
             return false;
         }
+        return true;
     }
 
     /// <summary>SYSTEM and Administrators full control, inherited by every file and folder below; nothing for anyone else.</summary>

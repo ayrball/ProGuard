@@ -113,16 +113,18 @@
     <!-- %ProgramData%\ProGuard holds the database the engine (LocalSystem) reads its rules from, and logs\engine.log,
          which records every user's processes. It would otherwise inherit %ProgramData%'s permissions, which let every
          user read it and create files in it. A protected DACL instead: SYSTEM and Administrators full control, inherited
-         by everything below; nothing for Users, since the UI only ever talks to the engine over its pipes. No owner is
-         set here, so a folder a standard user created before the install keeps that user as its owner, and the engine
-         (DataDirectoryGuard) renames it aside on start rather than trusting what is in it. The engine applies the same
-         DACL itself on every start, for copies installed without this MSI. -->
+         by everything below; nothing for Users, since the UI only ever talks to the engine over its pipes. The owner is
+         set to Administrators (O:BA) too, so an installed folder is trusted whoever created it: a standard user who
+         created it before the install can't keep the engine from starting by holding a file in it open (which would stop
+         DataDirectoryGuard renaming the whole folder aside). The entries inside such a folder are still checked one by
+         one on every start and moved out if they aren't trustworthy. The engine applies the same DACL itself on every
+         start, for copies installed without this MSI. -->
     <Component Id="DataFolder" Directory="DATAFOLDER" Guid="890E219F-3BB0-43A7-B79C-CE553A52EEF1">
       <CreateFolder>
-        <PermissionEx Sddl="D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)" />
+        <PermissionEx Sddl="O:BAD:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)" />
       </CreateFolder>
       <CreateFolder Directory="DATALOGSFOLDER">
-        <PermissionEx Sddl="D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)" />
+        <PermissionEx Sddl="O:BAD:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)" />
       </CreateFolder>
     </Component>
 
@@ -171,7 +173,17 @@
     <CustomAction Id="RemoveSignInTasks" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred"
                   Impersonate="no" Return="ignore" />
 
+    <!-- On removal (not on an upgrade), the engine takes out what it wrote outside the folders Windows Installer knows
+         about: the Image File Execution Options PerfOptions it marked as its own, the graphics preferences rules wrote
+         to signed-in users' registries, every loaded user's ProGuard.UI Run value that starts this copy, the sign-in
+         tasks in \ProGuard\, and any CPU limit a crashed engine left on a running process (UninstallCleanup.cs).
+         As LocalSystem, after the service and the UI have stopped and before the exe itself is removed. Never fails the
+         uninstall: the engine always exits 0 in this mode, and the result is ignored besides. -->
+    <CustomAction Id="CleanupUninstall" FileRef="EngineExe" ExeCommand="--cleanup-uninstall" Execute="deferred"
+                  Impersonate="no" Return="ignore" />
+
     <InstallExecuteSequence>
+      <Custom Action="CleanupUninstall" Before="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
       <Custom Action="ConfigureEngineRecovery" After="InstallServices" Condition="$Engine = 3" />
       <Custom Action="StopProGuardProcesses" After="StopServices" Condition="Installed OR WIX_UPGRADE_DETECTED" />
       <Custom Action="RemoveRunValue" After="RemoveRegistryValues"

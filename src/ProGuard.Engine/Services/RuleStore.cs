@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using Microsoft.EntityFrameworkCore;
@@ -42,12 +43,25 @@ public class RuleStore : IRuleStore
     private readonly List<PowerProfile> _powerProfiles = new();
     private AppSettings _settings = new();
 
-    public RuleStore(ILogger<RuleStore> logger, IServiceProvider serviceProvider)
+    public RuleStore(ILogger<RuleStore> logger, IServiceProvider serviceProvider) : this(logger, serviceProvider, null) { }
+
+    /// <param name="trustCheck">See <see cref="TrustCheck"/>.</param>
+    public RuleStore(ILogger<RuleStore> logger, IServiceProvider serviceProvider, Func<string, string?>? trustCheck)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
+        TrustCheck = trustCheck;
         LoadRules();
     }
+
+    /// <summary>
+    /// For a database outside the engine's own folder (<c>PROGUARD_DB_PATH</c>): why the file could now be replaced by a
+    /// non-administrator, or null. Checked before every reload; while it finds a problem the engine keeps the rules it
+    /// has and doesn't read the file. Null (the engine's own, protected folder, and tests) checks nothing.
+    /// </summary>
+    public Func<string, string?>? TrustCheck { get; }
+
+    private DatabaseStamp? _refusedStamp;
 
     /// <summary>
     /// Reloads every cache from the database if the database file has been written since the last load,
@@ -57,7 +71,18 @@ public class RuleStore : IRuleStore
     {
         if (string.IsNullOrEmpty(_dbFilePath) || !File.Exists(_dbFilePath)) return false;
 
-        if (Stamp(_dbFilePath) == _lastLoadedStamp) return false;
+        var stamp = Stamp(_dbFilePath);
+        if (stamp == _lastLoadedStamp) return false;
+
+        if (TrustCheck?.Invoke(_dbFilePath) is { } untrusted)
+        {
+            // Once per change, not on every two-second check.
+            if (_refusedStamp != stamp)
+                _logger.LogCritical("Not reloading rules from {Path}: {Problem}. The engine keeps the rules it already has until the file is protected again.", _dbFilePath, untrusted);
+            _refusedStamp = stamp;
+            return false;
+        }
+        _refusedStamp = null;
 
         // The engine's own writes (e.g. the Responsiveness Guard log) land here too, so this is routine.
         _logger.LogDebug("Database changed on disk, reloading rules");
@@ -348,10 +373,47 @@ public class RuleStore : IRuleStore
             var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
             db.ResponsivenessGuardActions.Add(action);
             await db.SaveChangesAsync();
+            if (Interlocked.Increment(ref _actionsSincePrune) >= PruneEveryActions) PruneResponsivenessGuardActions(DateTime.UtcNow);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to log Responsiveness Guard action");
+        }
+    }
+
+    /// <summary>How long the Responsiveness Guard action log keeps an entry.</summary>
+    public static readonly TimeSpan ActionRetention = TimeSpan.FromDays(30);
+    /// <summary>The most entries the action log keeps, however recent: a busy machine logs thousands a day.</summary>
+    public const int MaxActions = 50_000;
+    /// <summary>Between the daily prunes, how many new entries trigger one, so the cap holds in between too.</summary>
+    internal const int PruneEveryActions = 1_000;
+    private int _actionsSincePrune;
+
+    /// <summary>
+    /// Deletes action log entries older than <see cref="ActionRetention"/> before <paramref name="nowUtc"/>, then the oldest
+    /// beyond <see cref="MaxActions"/>. Returns how many went. Never throws: a log that can't be pruned now is pruned later.
+    /// </summary>
+    public int PruneResponsivenessGuardActions(DateTime nowUtc, int maxActions = MaxActions)
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ProGuardDbContext>();
+            var cutoff = DateTime.SpecifyKind(nowUtc - ActionRetention, DateTimeKind.Unspecified); // stored without a kind
+            var deleted = db.ResponsivenessGuardActions.Where(a => a.Timestamp < cutoff).ExecuteDelete();
+
+            // Ids only grow, so the newest maxActions are those from the maxActions-th highest Id up.
+            var keepFrom = db.ResponsivenessGuardActions.OrderByDescending(a => a.Id).Skip(maxActions - 1).Select(a => (int?)a.Id).FirstOrDefault();
+            if (keepFrom is int lowest) deleted += db.ResponsivenessGuardActions.Where(a => a.Id < lowest).ExecuteDelete();
+
+            Interlocked.Exchange(ref _actionsSincePrune, 0);
+            if (deleted > 0) _logger.LogInformation("Pruned {Count} old entries from the Responsiveness Guard action log", deleted);
+            return deleted;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not prune the Responsiveness Guard action log");
+            return 0;
         }
     }
 

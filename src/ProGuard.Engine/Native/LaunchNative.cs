@@ -21,6 +21,9 @@ internal static class LaunchNative
 
     public const uint INVALID_SESSION = 0xFFFFFFFF;
     public const int ERROR_NO_TOKEN = 1008;
+    public const int ERROR_FILE_NOT_FOUND = 2;
+    public const int ERROR_INVALID_PARAMETER = 87;
+    public const int ERROR_CTX_WINSTATION_NOT_FOUND = 7022;
 
     public const uint SYNCHRONIZE = 0x00100000;
     public const uint PROCESS_TERMINATE = 0x0001;

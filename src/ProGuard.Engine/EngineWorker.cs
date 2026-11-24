@@ -34,8 +34,10 @@ public class EngineWorker : BackgroundService
     private readonly TimerResolutionService? _timerResolution;
     private readonly CoreParkingService? _coreParking;
     private readonly SessionAgentSupervisor? _sessionAgents;
+    private readonly GpuPreferenceService? _gpuPreferences;
 
     private static readonly TimeSpan RuleReloadInterval = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan ActionPruneInterval = TimeSpan.FromDays(1);
 
     public EngineWorker(
         ILogger<EngineWorker> logger,
@@ -56,7 +58,8 @@ public class EngineWorker : BackgroundService
         LaunchPriorityService? launchPriorities = null,
         TimerResolutionService? timerResolution = null,
         CoreParkingService? coreParking = null,
-        SessionAgentSupervisor? sessionAgents = null)
+        SessionAgentSupervisor? sessionAgents = null,
+        GpuPreferenceService? gpuPreferences = null)
     {
         _logger = logger;
         _processMonitor = processMonitor;
@@ -77,6 +80,7 @@ public class EngineWorker : BackgroundService
         _timerResolution = timerResolution;
         _coreParking = coreParking;
         _sessionAgents = sessionAgents;
+        _gpuPreferences = gpuPreferences;
     }
 
     internal const string IncreaseBasePriorityPrivilege = "SeIncreaseBasePriorityPrivilege";
@@ -98,10 +102,17 @@ public class EngineWorker : BackgroundService
             _responsivenessGuardEngine.RestraintsUpdated += _coreParking.Update;
         }
 
+        // Before any rule caps anything: caps a crashed run left on processes that are still running come off first.
+        _cpuLimiter.RecoverFromLastRun();
+        // The action log is kept for a month, and to a fixed size (again daily, below).
+        _ruleStore.PruneResponsivenessGuardActions(DateTime.UtcNow);
+        var lastPruneUtc = DateTime.UtcNow;
+
         // Before the services start, so they come up with the user's settings rather than their defaults.
         _settingsApplier.Apply(_ruleStore.GetSettings());
         // Catches up on rules changed while the engine was stopped (forced: the registry may have changed too).
         _launchPriorities?.Sync(_ruleStore.GetProcessRules(), force: true);
+        _gpuPreferences?.Sync(_ruleStore.GetProcessRules());
 
         // Before anything asks for the foreground process, so a UI that's already running can reconnect.
         _foregroundPipeServer.Start();
@@ -132,9 +143,16 @@ public class EngineWorker : BackgroundService
                     {
                         _settingsApplier.Apply(_ruleStore.GetSettings());
                         _launchPriorities?.Sync(_ruleStore.GetProcessRules());
+                        _gpuPreferences?.Sync(_ruleStore.GetProcessRules());
                     }
                 }
                 catch (Exception ex) { _logger.LogError(ex, "Failed to reload rules"); }
+
+                if (DateTime.UtcNow - lastPruneUtc >= ActionPruneInterval)
+                {
+                    lastPruneUtc = DateTime.UtcNow;
+                    _ruleStore.PruneResponsivenessGuardActions(lastPruneUtc);
+                }
             }
         }
         catch (OperationCanceledException) { }

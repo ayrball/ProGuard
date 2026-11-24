@@ -44,7 +44,10 @@ public sealed class Win32RuleProcessAccess : IRuleProcessAccess
 
     public DateTime? GetStartTimeUtc(int pid) => With(pid, p => (DateTime?)p.StartTime.ToUniversalTime());
 
-    public bool IsCritical(int pid)
+    public bool IsCritical(int pid) => IsCriticalOrUnknown(pid);
+
+    /// <summary>See <see cref="IRuleProcessAccess.IsCritical"/>: also true when the process can't be opened.</summary>
+    public static bool IsCriticalOrUnknown(int pid)
     {
         if (pid <= 4) return true; // Idle and System
 

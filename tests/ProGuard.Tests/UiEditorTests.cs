@@ -420,7 +420,7 @@ public class UiEditorTests
 
         var realtime = vm.Editor.Priorities.Single(c => c.Value == ProcessPriorityClass.RealTime);
         Assert.True(realtime.AdminOnly);
-        Assert.True(vm.Editor.BoostPriorities.Single(c => c.Value == ProcessPriorityClass.RealTime).AdminOnly);
+        Assert.DoesNotContain(vm.Editor.BoostPriorities, c => c.Value == ProcessPriorityClass.RealTime); // a boost raises to High at most
         Assert.DoesNotContain(vm.Editor.Priorities.Where(c => c.Value != ProcessPriorityClass.RealTime), c => c.AdminOnly);
 
         // An administrator sees no restriction, and the editor on screen follows.

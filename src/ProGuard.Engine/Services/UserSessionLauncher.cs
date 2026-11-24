@@ -15,11 +15,26 @@ namespace ProGuard.Engine.Services;
 /// <summary>
 /// A program to start in a user's session. <see cref="SessionId"/> null means the session at the physical console.
 /// <see cref="ExecutablePath"/> null lets CreateProcess find the program named at the start of <see cref="CommandLine"/>.
+/// <see cref="RequiredUserSid"/>, when set, is the only account the program may start as: the launch is refused
+/// (<see cref="SessionUserMismatchException"/>) if someone else is signed in to the session by then.
 /// </summary>
-public sealed record LaunchRequest(string? ExecutablePath, string CommandLine, string? WorkingDirectory = null, int? SessionId = null)
+public sealed record LaunchRequest(string? ExecutablePath, string CommandLine, string? WorkingDirectory = null, int? SessionId = null,
+    string? RequiredUserSid = null)
 {
-    public static LaunchRequest From(ProcessLaunchInfo info) =>
-        new(info.ExecutablePath, info.CommandLine, info.WorkingDirectory, info.SessionId);
+    public static LaunchRequest From(ProcessLaunchInfo info, string? requiredUserSid = null) =>
+        new(info.ExecutablePath, info.CommandLine, info.WorkingDirectory, info.SessionId, requiredUserSid);
+}
+
+/// <summary>The session's user isn't the one the launch was for (<see cref="LaunchRequest.RequiredUserSid"/>). Nothing was started.</summary>
+public sealed class SessionUserMismatchException : InvalidOperationException
+{
+    public SessionUserMismatchException(string message) : base(message) { }
+}
+
+/// <summary>The session is gone, or nobody is signed in to it. Nothing was started, and retrying won't help.</summary>
+public sealed class SessionUnavailableException : InvalidOperationException
+{
+    public SessionUnavailableException(string message) : base(message) { }
 }
 
 /// <summary>Starts processes on a user's desktop on behalf of the engine (Watchdog Restart and Launch, Keep Running).</summary>
@@ -74,10 +89,12 @@ public class UserSessionLauncher : IUserSessionLauncher
         LaunchNative.PROCESS_INFORMATION info;
         if (IsRunningAsSystem())
         {
-            info = LaunchAsSessionUser(session, request.ExecutablePath, commandLine, directory);
+            info = LaunchAsSessionUser(session, request.ExecutablePath, commandLine, directory, request.RequiredUserSid);
         }
         else if (Kernel32.ProcessIdToSessionId((uint)Environment.ProcessId, out var own) && own == session)
         {
+            using (var self = WindowsIdentity.GetCurrent())
+                CheckUser(request.RequiredUserSid, self.User?.Value, session);
             info = LaunchAsSelf(request.ExecutablePath, commandLine, directory);
         }
         else
@@ -123,18 +140,38 @@ public class UserSessionLauncher : IUserSessionLauncher
         return identity.IsSystem;
     }
 
-    private static LaunchNative.PROCESS_INFORMATION LaunchAsSessionUser(uint session, string? program, string commandLine, string directory)
+    /// <summary>
+    /// Throws <see cref="SessionUserMismatchException"/> unless <paramref name="actualSid"/> (the account the program would
+    /// start as) is <paramref name="requiredSid"/>. Nothing required, nothing to check.
+    /// </summary>
+    internal static void CheckUser(string? requiredSid, string? actualSid, uint session)
+    {
+        if (requiredSid == null) return;
+        if (actualSid == null || !string.Equals(requiredSid, actualSid, StringComparison.OrdinalIgnoreCase))
+            throw new SessionUserMismatchException(
+                $"session {session} now belongs to {actualSid ?? "an account that can't be read"}, not to {requiredSid}, who the rule is for");
+    }
+
+    /// <summary>What a failed WTSQueryUserToken means: the session gone or empty (no point retrying), or something else.</summary>
+    internal static Exception TokenQueryFailure(int error, uint session) => error switch
+    {
+        LaunchNative.ERROR_NO_TOKEN => new SessionUnavailableException($"No user is signed in to session {session}"),
+        LaunchNative.ERROR_FILE_NOT_FOUND or LaunchNative.ERROR_INVALID_PARAMETER or LaunchNative.ERROR_CTX_WINSTATION_NOT_FOUND
+            => new SessionUnavailableException($"Session {session} no longer exists"),
+        _ => new Win32Exception(error, $"WTSQueryUserToken({session}) failed"),
+    };
+
+    private static LaunchNative.PROCESS_INFORMATION LaunchAsSessionUser(uint session, string? program, string commandLine, string directory, string? requiredSid)
     {
         IntPtr userToken = IntPtr.Zero, primaryToken = IntPtr.Zero, environment = IntPtr.Zero;
         try
         {
             if (!LaunchNative.WTSQueryUserToken(session, out userToken))
-            {
-                var error = Marshal.GetLastWin32Error();
-                throw error == LaunchNative.ERROR_NO_TOKEN
-                    ? new InvalidOperationException($"No user is signed in to session {session}")
-                    : new Win32Exception(error, $"WTSQueryUserToken({session}) failed");
-            }
+                throw TokenQueryFailure(Marshal.GetLastWin32Error(), session);
+
+            // The very token the program would get: whoever is signed in to the session now, which needn't be who was
+            // when the process to relaunch last ran.
+            CheckUser(requiredSid, ProGuard.Shared.Security.TokenIdentity.FromToken(userToken)?.UserSid, session);
 
             if (!LaunchNative.DuplicateTokenEx(userToken, LaunchNative.TOKEN_ALL_ACCESS, IntPtr.Zero,
                     LaunchNative.SecurityImpersonation, LaunchNative.TokenPrimary, out primaryToken))

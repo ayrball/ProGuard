@@ -445,7 +445,9 @@ public class SecurityHardeningTests
         var refused = h.Send(Standard, CommandTypes.SaveProcessRule, null, new ProcessRuleDto { ProcessName = name, PriorityClass = 16384 });
         Assert.False(refused.Success);
         Assert.Contains("a system process", refused.Error);
-        Assert.True(h.Send(Admin, CommandTypes.SaveProcessRule, null, new ProcessRuleDto { ProcessName = name, PriorityClass = 16384 }).Success);
+        // An administrator may, except for the session and security processes no rule acts on (SafetyGuardTests).
+        Assert.Equal(!CriticalProcesses.IsCriticalName(name),
+            h.Send(Admin, CommandTypes.SaveProcessRule, null, new ProcessRuleDto { ProcessName = name, PriorityClass = 16384 }).Success);
     }
 
     [Theory]
@@ -699,10 +701,10 @@ public class SecurityHardeningTests
         var guard = new DataDirectoryGuard(elevated: true) { IsTrustedOwner = _ => true };
 
         // A folder in this user's temp: this user (not an administrator's group) has full control of it.
-        Assert.False(guard.CheckOtherDirectory(temp.Root));
+        Assert.False(guard.CheckOtherDatabase(Path.Combine(temp.Root, "proguard.db")));
         Assert.Contains(guard.Findings, f => f.Level == LogLevel.Critical && f.Message.Contains(ProGuardDbContext.DatabasePathVariable));
 
-        Assert.True(new DataDirectoryGuard(elevated: false).CheckOtherDirectory(temp.Root));
+        Assert.True(new DataDirectoryGuard(elevated: false).CheckOtherDatabase(Path.Combine(temp.Root, "proguard.db")));
     }
 
     [Fact]
@@ -711,7 +713,7 @@ public class SecurityHardeningTests
         var wxs = File.ReadAllText(Path.Combine(RepoRoot(), "installer", "Package.wxs"));
         Assert.Contains("<CreateFolder>", wxs);
         Assert.Contains("Directory Id=\"DATAFOLDER\" Name=\"ProGuard\"", wxs);
-        Assert.Contains("Sddl=\"D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)\"", wxs);
+        Assert.Contains("Sddl=\"O:BAD:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)\"", wxs);
         Assert.DoesNotContain(";;;BU)", wxs);
     }
 
@@ -965,6 +967,64 @@ public class SecurityHardeningTests
             foreach (var c in clients) c.Dispose();
             server.Stop();
         }
+    }
+
+    [Fact]
+    public async Task StandardAccountsTogether_CantTakeTheInstancesKeptForAdministrators()
+    {
+        var name = "ProGuardTest_" + Guid.NewGuid().ToString("N");
+        var next = 0;
+        var privileged = false;
+        var server = new PipeServer(NullLogger<PipeServer>.Instance, new ThinHarness().Dispatcher)
+        {
+            PipeName = name,
+            AccountOf = _ => $"S-1-5-21-user-{Interlocked.Increment(ref next)}", // every connection another account
+            IsPrivileged = _ => Volatile.Read(ref privileged),
+            MaxStandardTotal = 2,
+        };
+        server.Start();
+        var clients = new List<NamedPipeClientStream>();
+        async Task<NamedPipeClientStream> Connect()
+        {
+            var c = new NamedPipeClientStream(".", name, PipeDirection.InOut, PipeOptions.Asynchronous);
+            await c.ConnectAsync(5000);
+            c.ReadMode = PipeTransmissionMode.Message;
+            clients.Add(c);
+            return c;
+        }
+        try
+        {
+            Assert.Equal(MessageType.Pong, await Ping(await Connect()));
+            Assert.Equal(MessageType.Pong, await Ping(await Connect()));
+            // A third standard account is turned away although it holds nothing itself...
+            Assert.True(await ClosedByServer(await Connect()));
+            // ...while an administrator still gets in.
+            Volatile.Write(ref privileged, true);
+            Assert.Equal(MessageType.Pong, await Ping(await Connect()));
+        }
+        finally
+        {
+            foreach (var c in clients) c.Dispose();
+            server.Stop();
+        }
+    }
+
+    [Fact]
+    public void TheCommandPipe_KeepsFourInstancesForAdministrators()
+    {
+        Assert.True(PipeServer.ReservedForPrivileged >= 4);
+        var limiter = new PipeConnectionLimiter(PipeServer.MaxConnectionsPerAccount, PipeServer.MaxConnections - PipeServer.ReservedForPrivileged);
+        for (var user = 0; user < 4; user++)
+            for (var i = 0; i < PipeServer.MaxConnectionsPerAccount; i++)
+                limiter.TryAdmit($"S-1-5-21-{user}");
+        Assert.Equal(PipeServer.MaxConnections - PipeServer.ReservedForPrivileged, limiter.StandardHeld);
+        for (var i = 0; i < PipeServer.ReservedForPrivileged; i++)
+            Assert.True(limiter.TryAdmit(i == 0 ? TokenIdentity.LocalSystemSid : "S-1-5-21-admin", privileged: true));
+
+        // Giving one back makes room for exactly one more standard client.
+        limiter.Release("S-1-5-21-0");
+        Assert.True(limiter.TryAdmit("S-1-5-21-9"));
+        Assert.False(limiter.TryAdmit("S-1-5-21-10"));
     }
 
     [Fact]

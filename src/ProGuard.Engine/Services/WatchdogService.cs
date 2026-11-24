@@ -260,7 +260,7 @@ public class WatchdogService : IWatchdogService, IDisposable
             if (IsContinuousTrim(rule) && now - tracker.LastTrimUtc >= ContinuousTrimInterval)
             {
                 tracker.LastTrimUtc = now;
-                foreach (var victim in victims) TryRun(rule, victim, reason, quiet: true, () => Trim(victim));
+                foreach (var victim in victims.Where(v => !IsProtected(v))) TryRun(rule, victim, reason, quiet: true, () => Trim(victim));
             }
             return;
         }
@@ -292,7 +292,7 @@ public class WatchdogService : IWatchdogService, IDisposable
 
         foreach (var victim in victims)
         {
-            if (IsProtected(victim.Pid))
+            if (IsProtected(victim))
             {
                 _logger.LogWarning("Watchdog rule {Id} matched protected process {Pid}; not touching it", rule.Id, victim.Pid);
                 continue;
@@ -301,7 +301,7 @@ public class WatchdogService : IWatchdogService, IDisposable
             TryRun(rule, victim, reason, quiet: false, () => rule.ActionType switch
             {
                 WatchdogAction.Terminate => Terminate(victim),
-                WatchdogAction.Restart => Restart(victim, now),
+                WatchdogAction.Restart => Restart(rule, victim, now),
                 WatchdogAction.SetPriority => SetPriority(rule, victim, now),
                 WatchdogAction.SetIoPriority => SetIoPriority(rule, victim, now),
                 WatchdogAction.SetAffinity => SetAffinity(rule, victim, now),
@@ -334,7 +334,7 @@ public class WatchdogService : IWatchdogService, IDisposable
         return $"terminated {victim.Name} ({victim.Pid})";
     }
 
-    private string Restart(ProcessInfo victim, DateTime now)
+    private string Restart(WatchdogRule rule, ProcessInfo victim, DateTime now)
     {
         if (_launcher == null) throw new InvalidOperationException("No launcher is available to restart processes");
         // Read before terminating: the command line lives in the process.
@@ -343,7 +343,8 @@ public class WatchdogService : IWatchdogService, IDisposable
 
         _keepRunning?.ExpectRestart(victim.Name, now + RestartExitTimeout);
         _actions.Terminate(victim.Pid);
-        _restarts.Add(new PendingRestart(victim.Pid, victim.Name, info, now + RestartExitTimeout));
+        // A standard user's rule restarts the program only as that user, even if the session changes hands meanwhile.
+        _restarts.Add(new PendingRestart(victim.Pid, victim.Name, info, now + RestartExitTimeout, rule.IsScopedToAuthor() ? rule.AuthorSid : null));
         return $"terminated {victim.Name} ({victim.Pid}) to restart it";
     }
 
@@ -410,8 +411,14 @@ public class WatchdogService : IWatchdogService, IDisposable
 
     private static int? SinglePid(List<ProcessInfo> victims) => victims.Count == 1 ? victims[0].Pid : null;
 
-    // The System process, the idle process and the engine itself.
-    private static bool IsProtected(int pid) => pid <= 4 || pid == Environment.ProcessId;
+    /// <summary>
+    /// Processes no Watchdog action may touch: Idle, System and the engine itself; the session, security and ProGuard
+    /// processes by name (<see cref="CriticalProcesses.IsCriticalName"/>, which includes the UI and the session agent);
+    /// and any process Windows marks critical, or that can't be queried at all.
+    /// </summary>
+    internal bool IsProtected(ProcessInfo process) =>
+        process.Pid <= 4 || process.Pid == Environment.ProcessId || CriticalProcesses.IsCriticalName(process.Name)
+        || _actions.IsCritical(process.Pid);
 
     private static string Capitalize(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
 
@@ -427,7 +434,7 @@ public class WatchdogService : IWatchdogService, IDisposable
 
             try
             {
-                var pid = _launcher!.Launch(LaunchRequest.From(pending.Info));
+                var pid = _launcher!.Launch(LaunchRequest.From(pending.Info, pending.RequiredUserSid));
                 _events.Add(WatchdogEventKinds.Relaunched, $"Watchdog: {pending.Name}", $"Restarted {pending.Name} as process {pid}", pending.Name, pid);
             }
             catch (Exception ex)
@@ -523,7 +530,7 @@ public class WatchdogService : IWatchdogService, IDisposable
 
     private sealed record PendingRestore(int Pid, string Name, RestoreKind Kind, long Original, long Applied, DateTime DueUtc, DateTime? StartTimeUtc);
 
-    private sealed record PendingRestart(int OldPid, string Name, ProcessLaunchInfo Info, DateTime DeadlineUtc);
+    private sealed record PendingRestart(int OldPid, string Name, ProcessLaunchInfo Info, DateTime DeadlineUtc, string? RequiredUserSid);
 
     /// <summary>Whether one rule's condition has held long enough for one process (or, for instance counts, one rule).</summary>
     internal sealed class ConditionTracker

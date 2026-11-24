@@ -61,19 +61,33 @@ public static class DirectoryTrust
     /// could have the file swapped out), nor the folder above that (which could have the folder renamed away and
     /// replaced). Otherwise why not, worded for a log line.
     /// </summary>
-    public static string? WhyReplaceable(string filePath)
+    public static string? WhyReplaceable(string filePath) => WhyReplaceable(filePath, allowMissingFile: false);
+
+    /// <summary>
+    /// <see cref="WhyReplaceable(string)"/>, for a file that may not have been created yet (a database the engine is about
+    /// to create): then the file itself is skipped, and so are folders that don't exist yet, so the check covers the
+    /// first two that do, which are what decide who could put something there first.
+    /// </summary>
+    public static string? WhyReplaceable(string filePath, bool allowMissingFile)
     {
         try
         {
             var full = Path.GetFullPath(filePath);
             var file = new FileInfo(full);
-            if (WhoElseCanChange(file.GetAccessControl()) is { } fileProblem) return $"{full}: {fileProblem}";
+            var fileExists = file.Exists || IsLink(file);
+            if (fileExists || !allowMissingFile)
+            {
+                if (IsLink(file)) return $"{full} is a link to somewhere else";
+                if (WhoElseCanChange(file.GetAccessControl()) is { } fileProblem) return $"{full}: {fileProblem}";
+            }
 
             var directory = file.Directory;
-            for (var level = 0; level < 2 && directory != null; level++, directory = directory.Parent)
+            for (var level = 0; level < 2 && directory != null; directory = directory.Parent)
             {
-                if (directory.Attributes.HasFlag(FileAttributes.ReparsePoint)) return $"{directory.FullName} is a link to somewhere else";
+                if (allowMissingFile && !directory.Exists && !IsLink(directory)) continue;
+                if (IsLink(directory)) return $"{directory.FullName} is a link to somewhere else";
                 if (WhoElseCanChange(directory.GetAccessControl()) is { } problem) return $"{directory.FullName}: {problem}";
+                level++;
             }
             return null;
         }
@@ -81,6 +95,13 @@ public static class DirectoryTrust
         {
             return $"{filePath}: its permissions can't be read ({ex.Message})";
         }
+    }
+
+    /// <summary>A junction or symbolic link itself (not its target); false for a path that doesn't exist.</summary>
+    private static bool IsLink(FileSystemInfo entry)
+    {
+        var attributes = entry.Attributes; // -1 when nothing is there
+        return attributes != (FileAttributes)(-1) && attributes.HasFlag(FileAttributes.ReparsePoint);
     }
 
     private static string Describe(SecurityIdentifier? sid)

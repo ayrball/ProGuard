@@ -81,7 +81,7 @@ carries whatever runtime that machine's SDK has.
 | Service | `ProGuardEngine`, "ProGuard Engine", LocalSystem, automatic start, same description as `install-service.ps1`. Recovery: restart after 5 s, 10 s, then every 60 s; the count resets after a day. It is set with the same `sc.exe failure` command as the script, because Windows Installer's own `MsiServiceConfigFailureActions` fails with access denied (error 1939) for restart actions. Started at the end of the install, which fails and rolls back if the engine doesn't start. |
 | Start menu | "ProGuard" (all users) → `ProGuard.UI.exe` |
 | Start at sign-in | Optional, on by default: `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, value `ProGuard.UI` = `"C:\Program Files\ProGuard\ProGuard.UI.exe" --tray` |
-| Data | `%ProgramData%\ProGuard` belongs to the engine. The MSI creates it (and `logs`) with a protected DACL, SYSTEM and Administrators full control and nothing for Users (`PermissionEx Sddl`), and the engine checks and reapplies that on every start (`DataDirectoryGuard`): a folder that is a link or owned by anyone else is renamed aside, not used. Its files are never removed by the MSI, except on uninstall with `REMOVE_DATA=1`. |
+| Data | `%ProgramData%\ProGuard` belongs to the engine. The MSI creates it (and `logs`) with a protected DACL, SYSTEM and Administrators full control and nothing for Users (`PermissionEx Sddl`), and makes Administrators the owner (`O:BA`), so an installed folder is trusted whoever created it first. The engine checks and reapplies that on every start (`DataDirectoryGuard`): a folder that is a link or owned by anyone else is renamed aside, not used, and an entry inside it that is a link, hard-linked or someone else's is moved out. If that can't be done (someone holds a file there open), the engine starts with a fresh `ProGuard.<n>` folder beside it instead and logs that loudly; `REMOVE_DATA` only removes `ProGuard` itself. Its files are never removed by the MSI, except on uninstall with `REMOVE_DATA=1`. |
 
 Properties: `START_AT_SIGNIN=0|1` (default 1), `START_AS_ADMIN=0|1` (default 1), `REMOVE_DATA=1` (uninstall only). The
 dialogs set the same properties: Options (install) has the start-at-sign-in and administrator-rights checkboxes; Remove (in
@@ -113,8 +113,9 @@ belongs to the user. The trade-off: the installer sets it only for the user who 
 on in the UI.
 
 On upgrade the current state is kept: if the value is gone (the user turned it off), the new version doesn't add it
-back. On uninstall the value is removed for the user who uninstalls, whoever created it. Other users who turned it on
-in the UI keep a Run value that points at a deleted exe; Windows ignores it.
+back. On uninstall the value is removed for the user who uninstalls, whoever created it. The engine's uninstall cleanup (below) also
+removes it from every other user signed in at the time, where it starts this installation's ProGuard.UI.exe. Users who
+aren't signed in keep a Run value that points at a deleted exe; Windows ignores it.
 
 ### Upgrades
 
@@ -137,6 +138,15 @@ Installing the MSI over a service installed by `install-service.ps1` replaces it
 Stops and deletes the service, ends the UI and session agents (as above), removes the program files, the Start menu
 shortcut and the uninstalling user's Run value. Keeps `%ProgramData%\ProGuard` unless `REMOVE_DATA=1`
 (`msiexec /x ProGuard.msi /qn REMOVE_DATA=1`, or the checkbox in the Remove dialog).
+
+Before the files go, the `CleanupUninstall` custom action runs `ProGuard.Engine.exe --cleanup-uninstall` as LocalSystem
+(deferred, not impersonated, on removal only and never on an upgrade; its result is ignored). It removes what the engine
+and UI wrote outside the folders Windows Installer tracks: every Image File Execution Options `PerfOptions` key marked
+`ProGuardManaged`; the graphics preferences rules wrote to users' `UserGpuPreferences` (from the engine's record of them,
+`gpu-preferences.json`, and only where the value still holds what ProGuard wrote); the `ProGuard.UI` Run value of every
+loaded user hive that starts this installation; the tasks in Task Scheduler's `\ProGuard\` folder (through its COM
+interface); and any CPU limit a crashed engine left on a running process. The hives of users who aren't signed in aren't
+loaded, so their graphics preferences and Run values stay.
 
 
 ## Code signing

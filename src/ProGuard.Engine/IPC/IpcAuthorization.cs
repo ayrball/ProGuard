@@ -253,6 +253,9 @@ public static class IpcAuthorization
             : Deny(caller, $"{CommandTypes.Describe(cmd.CommandType)} process {pid}: it belongs to another user, is elevated or protected, or is not running");
     }
 
+    /// <summary>A refusal, worded for the UI. Administrators are refused only what nobody may do, so they aren't told to elevate.</summary>
     internal static CommandResult Deny(IIpcCaller caller, string what) =>
-        CommandResult.Fail($"Access denied: {caller.Name} may not {what}. Run ProGuard as administrator to do this.");
+        CommandResult.Fail(caller.IsAdministrator
+            ? $"Access denied: {caller.Name} may not {what}."
+            : $"Access denied: {caller.Name} may not {what}. Run ProGuard as administrator to do this.");
 }

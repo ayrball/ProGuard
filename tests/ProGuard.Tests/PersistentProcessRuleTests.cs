@@ -537,16 +537,19 @@ public class PersistentRuleServiceTests
     [Fact]
     public void Orchestrator_AppliesTheNewSettingsWhenAProcessStarts()
     {
-        var self = Environment.ProcessId;
-        _rules.Setup(r => r.GetProcessRule("testhost")).Returns(new ProcessRule { ProcessName = "testhost.exe", IoPriority = 1, GpuPriority = 1 });
+        // A real process other than this one: the engine never applies rules to itself.
+        using var child = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("ping.exe", "-n 30 127.0.0.1") { CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true })!;
+        var self = child.Id;
+        _rules.Setup(r => r.GetProcessRule("ping")).Returns(new ProcessRule { ProcessName = "ping.exe", IoPriority = 1, GpuPriority = 1 });
         var orchestrator = new ProcessOrchestrator(NullLogger<ProcessOrchestrator>.Instance, _monitor.Object, Mock.Of<IResponsivenessGuardEngine>(), Mock.Of<ICpuLimiter>(),
             Mock.Of<IMemoryTrimService>(), Mock.Of<IPowerManager>(), Mock.Of<IWatchdogService>(), _rules.Object, persistentRules: Create());
 
-        _monitor.Raise(m => m.ProcessStarted += null, _monitor.Object, new ProcessInfo { Pid = self, Name = "testhost" });
+        _monitor.Raise(m => m.ProcessStarted += null, _monitor.Object, new ProcessInfo { Pid = self, Name = "ping" });
 
         Assert.Equal(1, _native.Io[self]);
         Assert.Equal(1, _native.Gpu[self]);
         orchestrator.Stop();
+        try { child.Kill(); } catch (InvalidOperationException) { }
     }
 
     [Fact]

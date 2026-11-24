@@ -69,6 +69,9 @@ public sealed class StartupBoostService : IDisposable
         if (rule.StartupBoostPriorityClass is not int value) return false;
         var target = (ProcessPriorityClass)value;
         if (!Enum.IsDefined(target)) return false;
+        // A boost is automatic, unattended and repeats at every launch: it raises to High at most. Realtime can starve
+        // the mouse, keyboard and Windows itself, so only a priority someone sets on purpose may be Realtime.
+        if (target == ProcessPriorityClass.RealTime) target = ProcessPriorityClass.High;
         if (CriticalProcesses.IsCriticalName(process.Name)) return false;
 
         int seconds = Math.Clamp(rule.StartupBoostSeconds ?? DefaultSeconds, MinSeconds, MaxSeconds);
@@ -83,7 +86,7 @@ public sealed class StartupBoostService : IDisposable
             if (_boosts.ContainsKey(process.Pid)) return false;
 
             original = _access.GetPriorityClass(process.Pid);
-            if (original == null || original == target) return false;
+            if (original == null || original == target || original == ProcessPriorityClass.RealTime) return false;
             if (!_access.SetPriorityClass(process.Pid, target))
             {
                 _logger.LogDebug("Startup boost: could not raise {Name} ({Pid}) to {Priority}", process.Name, process.Pid, target);

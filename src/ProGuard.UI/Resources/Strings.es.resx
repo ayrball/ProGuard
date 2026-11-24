@@ -1504,6 +1504,9 @@ REGISTRADO.</value>
   <data name="Rule_LaunchNeedsSomething" xml:space="preserve">
     <value>"Establecer al iniciar" necesita una prioridad, una prioridad de I/O o una prioridad de memoria que establecer. Elige una o desactívalo.</value>
   </data>
+  <data name="Rule_LaunchProtectedProgram" xml:space="preserve">
+    <value>{0} es un producto de seguridad o un programa esencial de Windows, así que ProGuard no establece sus prioridades al iniciar: el software de seguridad vigila ese ajuste, y cambiarlo podría debilitar tu protección o el propio Windows. Desactiva "Establecer al iniciar".</value>
+  </data>
   <data name="Rule_LaunchNoRealtime" xml:space="preserve">
     <value>Windows no aplica la prioridad Tiempo real al iniciar. Elige otra prioridad o desactiva "Establecer al iniciar".</value>
   </data>

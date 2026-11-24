@@ -1504,6 +1504,9 @@ PROTOKOLLIERT.</value>
   <data name="Rule_LaunchNeedsSomething" xml:space="preserve">
     <value>„Beim Start setzen“ braucht eine Priorität, I/O-Priorität oder Speicherpriorität zum Setzen. Wählen Sie eine aus oder schalten Sie es aus.</value>
   </data>
+  <data name="Rule_LaunchProtectedProgram" xml:space="preserve">
+    <value>{0} ist ein Sicherheitsprogramm oder ein zentrales Windows-Programm, daher setzt ProGuard seine Prioritäten nicht beim Start: Sicherheitssoftware überwacht diese Einstellung, und eine Änderung könnte Ihren Schutz oder Windows selbst schwächen. Schalten Sie „Beim Start setzen“ aus.</value>
+  </data>
   <data name="Rule_LaunchNoRealtime" xml:space="preserve">
     <value>Windows wendet die Echtzeitpriorität beim Start nicht an. Wählen Sie eine andere Priorität oder schalten Sie „Beim Start setzen“ aus.</value>
   </data>

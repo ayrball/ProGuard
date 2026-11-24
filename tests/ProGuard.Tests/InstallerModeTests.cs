@@ -233,6 +233,77 @@ public class InstallerModeTests
         Assert.Equal(1, ServiceRecovery.Run(service));
     }
 
+    /// <summary>
+    /// The real ChangeServiceConfig2 on a throw-away service that is never started, created and deleted here. Only on
+    /// CI (GitHub Actions runners are elevated and disposable): it never creates a service on a developer's machine.
+    /// </summary>
+    [ThrowawayServiceFact]
+    public void ConfigureRecovery_WritesTheActionsWindowsReadsBack()
+    {
+        var name = "ProGuardTest" + Guid.NewGuid().ToString("N")[..8];
+        var manager = OpenSCManager(null, null, SC_MANAGER_ALL_ACCESS);
+        Assert.NotEqual(IntPtr.Zero, manager);
+        var service = CreateService(manager, name, name, SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START,
+            SERVICE_ERROR_IGNORE, "\"" + Path.Combine(Environment.SystemDirectory, "PING.EXE") + "\"", null, IntPtr.Zero, null, null, null);
+        Assert.NotEqual(IntPtr.Zero, service);
+        try
+        {
+            new Win32ServiceFailureActions().Set(name, ServiceRecovery.ResetPeriod, ServiceRecovery.RestartDelays);
+
+            QueryServiceConfig2(service, 2, IntPtr.Zero, 0, out var needed);
+            var buffer = System.Runtime.InteropServices.Marshal.AllocHGlobal((int)needed);
+            try
+            {
+                Assert.True(QueryServiceConfig2(service, 2, buffer, needed, out _));
+                // SERVICE_FAILURE_ACTIONS on x64: DWORD reset, (padding), LPWSTR reboot, LPWSTR command, DWORD count, (padding), SC_ACTION*.
+                var reset = System.Runtime.InteropServices.Marshal.ReadInt32(buffer, 0);
+                var count = System.Runtime.InteropServices.Marshal.ReadInt32(buffer, 24);
+                var actions = System.Runtime.InteropServices.Marshal.ReadIntPtr(buffer, 32);
+                Assert.Equal(86400, reset);
+                Assert.Equal(3, count);
+                var read = Enumerable.Range(0, count).Select(i => (
+                    Type: System.Runtime.InteropServices.Marshal.ReadInt32(actions, i * 8),
+                    Delay: System.Runtime.InteropServices.Marshal.ReadInt32(actions, i * 8 + 4))).ToArray();
+                Assert.Equal(new[] { (1, 5000), (1, 10000), (1, 60000) }, read); // SC_ACTION_RESTART
+            }
+            finally
+            {
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(buffer);
+            }
+        }
+        finally
+        {
+            DeleteService(service);
+            CloseServiceHandle(service);
+            CloseServiceHandle(manager);
+        }
+    }
+
+    private const uint SC_MANAGER_ALL_ACCESS = 0xF003F;
+    private const uint SERVICE_ALL_ACCESS = 0xF01FF;
+    private const uint SERVICE_WIN32_OWN_PROCESS = 0x10;
+    private const uint SERVICE_DEMAND_START = 3;
+    private const uint SERVICE_ERROR_IGNORE = 0;
+
+    [System.Runtime.InteropServices.DllImport("advapi32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true, EntryPoint = "OpenSCManagerW")]
+    private static extern IntPtr OpenSCManager(string? machine, string? database, uint access);
+
+    [System.Runtime.InteropServices.DllImport("advapi32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true, EntryPoint = "CreateServiceW")]
+    private static extern IntPtr CreateService(IntPtr manager, string name, string displayName, uint access, uint type, uint start,
+        uint errorControl, string binaryPath, string? loadOrderGroup, IntPtr tagId, string? dependencies, string? account, string? password);
+
+    [System.Runtime.InteropServices.DllImport("advapi32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true, EntryPoint = "QueryServiceConfig2W")]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool QueryServiceConfig2(IntPtr service, uint infoLevel, IntPtr buffer, uint size, out uint needed);
+
+    [System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError = true)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool DeleteService(IntPtr service);
+
+    [System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError = true)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool CloseServiceHandle(IntPtr handle);
+
     [Fact]
     public void ConfigureRecovery_ForAServiceThatDoesntExist_FailsWithoutChangingAnything()
     {
@@ -240,5 +311,17 @@ public class InstallerModeTests
         var actions = new Win32ServiceFailureActions();
         Assert.Throws<System.ComponentModel.Win32Exception>(() =>
             actions.Set("ProGuard.Tests.NoSuchService." + Guid.NewGuid().ToString("N"), TimeSpan.FromDays(1), new[] { TimeSpan.FromSeconds(5) }));
+    }
+}
+
+/// <summary>Runs only on GitHub Actions with an elevated test host, where creating and deleting a throw-away service is harmless.</summary>
+public sealed class ThrowawayServiceFactAttribute : FactAttribute
+{
+    public ThrowawayServiceFactAttribute()
+    {
+        if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != "true")
+            Skip = "Creates a throw-away service: runs on CI only.";
+        else if (!ElevationFactAttribute.IsElevated)
+            Skip = "Needs an elevated test host to create a service.";
     }
 }

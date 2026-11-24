@@ -42,7 +42,7 @@ sends it is checked against that user's own rights first (`src/ProGuard.Engine/I
 ## Installer custom actions
 
 The MSI starts no shell, script host or system tool (no `cmd.exe`, PowerShell, `reg.exe`, `sc.exe` or `schtasks.exe`).
-Its custom actions all run `ProGuard.Engine.exe` itself, as LocalSystem:
+Its deferred custom actions all run `ProGuard.Engine.exe` itself, as LocalSystem:
 
 | Custom action | Command | When | What it does |
 | --- | --- | --- | --- |
@@ -50,7 +50,9 @@ Its custom actions all run `ProGuard.Engine.exe` itself, as LocalSystem:
 | `StopProGuardClients` | `--stop-clients` | Uninstall, repair, and the old version's removal during an upgrade (after `StopServices`) | Ends `ProGuard.UI.exe` and `ProGuard.SessionAgent.exe` processes whose image is inside the install folder, in every session. Each window is asked to quit through its quit event first; whatever is still running 5 s later is terminated (`ClientShutdown.cs`). |
 | `CleanupUninstall` | `--cleanup-uninstall` | Uninstall only, never an upgrade (before `RemoveFiles`) | See [What uninstall removes](#what-uninstall-removes) (`UninstallCleanup.cs`). |
 
-Besides those, the MSI uses WiX's own `RemoveFoldersEx` action (from `Wix4UtilCA_X64`) to delete the leftover
+Besides those, the installer's dialogs have two actions of their own (`installer/UI.wxs`): `LaunchProGuard`
+starts `ProGuard.UI.exe` as the installing user when they leave "Open ProGuard now" ticked on the Finish page, and
+WiX's `PrintEula` prints the license from the license page's Print button. The MSI also uses WiX's own `RemoveFoldersEx` action (from `Wix4UtilCA_X64`) to delete the leftover
 `Program Files\ProGuard\Engine` folder of a script install, and `%ProgramData%\ProGuard` on uninstall with
 `REMOVE_DATA=1`.
 
@@ -139,11 +141,14 @@ reads it at boot.
 
 ### Service and event log
 
-Windows Installer creates the `ProGuardEngine` service key under `HKLM\SYSTEM\CurrentControlSet\Services`. Engine
-warnings and errors also go to the Application event log: .NET's generic host adds its Event Log provider on Windows
-(`Host.CreateDefaultBuilder` in `src/ProGuard.Engine/Program.cs`), with the application's name, `ProGuard.Engine`, as
-the source. .NET's `EventLog` registers a missing source under
-`HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Application` the first time it writes.
+Windows Installer creates the `ProGuardEngine` service key under `HKLM\SYSTEM\CurrentControlSet\Services`.
+
+The engine also writes to the Application event log, through .NET rather than its own code. .NET's generic host adds
+its Event Log provider on Windows (`Host.CreateDefaultBuilder` in `src/ProGuard.Engine/Program.cs`), which logs the
+engine's warnings and errors under the source `ProGuard.Engine`. .NET's Windows-service support logs service start and
+stop under `ProGuard Engine Service`, the name given to `UseWindowsService`. .NET registers each source the first time
+it writes, as a key under `HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Application` whose `EventMessageFile`
+points at the .NET Framework's `EventLogMessages.dll`. Both keys were there after an install on a test machine.
 
 ## Scheduled tasks
 
@@ -179,8 +184,9 @@ The engine runs as LocalSystem and enables these on its own token:
 | `SeProfileSingleProcessPrivilege` | Before a Memory Trim purge | Purging the standby list (`src/ProGuard.Engine/Services/MemoryTrimService.cs`) |
 | `SeIncreaseQuotaPrivilege` | Before a Memory Trim purge | Flushing the system file cache |
 
-It also relies on `SeTcbPrivilege`, which LocalSystem holds, for `WTSQueryUserToken`, to start the session agent and
-Watchdog Launch programs as the session's user. It never enables `SeDebugPrivilege`.
+It doesn't adjust any other privilege. LocalSystem's token has others enabled from the start, which the engine uses
+as they are: `SeTcbPrivilege`, for `WTSQueryUserToken`, to start the session agent and Watchdog Launch programs as the
+session's user. `SeDebugPrivilege` is also enabled in that token by Windows; ProGuard neither enables nor needs it.
 
 ## Processes ProGuard starts
 
@@ -190,6 +196,7 @@ Watchdog Launch programs as the session's user. It never enables `SeDebugPrivile
 - `ProGuard.UI.exe` at sign-in (Run value or scheduled task, above), and again with a UAC prompt (`runas`) when the
   window restarts itself as administrator.
 - `schtasks.exe`, from an elevated window, to manage the sign-in task.
+- `explorer.exe /select,"<path>"`, as the user, when they ask to open a process's file location from the Processes page.
 - A program named in a Watchdog Launch action, or a program a Keep running rule restarts, in the session and as the
   user of the process that triggered it. Only administrators may create Launch actions.
 

@@ -1504,6 +1504,9 @@ REGISTRADO.</value>
   <data name="Rule_LaunchNeedsSomething" xml:space="preserve">
     <value>"Definir na inicialização" precisa de uma prioridade, prioridade de E/S ou prioridade de memória para definir. Escolha uma ou desative a opção.</value>
   </data>
+  <data name="Rule_LaunchProtectedProgram" xml:space="preserve">
+    <value>{0} é um produto de segurança ou um programa essencial do Windows, então o ProGuard não define as prioridades dele na inicialização: softwares de segurança vigiam essa configuração, e alterá-la pode enfraquecer sua proteção ou o próprio Windows. Desative "Definir na inicialização".</value>
+  </data>
   <data name="Rule_LaunchNoRealtime" xml:space="preserve">
     <value>O Windows não aplica a prioridade Tempo real na inicialização. Escolha outra prioridade ou desative "Definir na inicialização".</value>
   </data>

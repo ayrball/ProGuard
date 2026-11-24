@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using ProGuard.Core.Helpers;
 using ProGuard.Core.Native;
+using ProGuard.Shared.Security;
 
 namespace ProGuard.Engine.Services;
 
@@ -99,17 +100,8 @@ public sealed class Win32RuleProcessAccess : IRuleProcessAccess
 /// </summary>
 public static class CriticalProcesses
 {
-    private static readonly HashSet<string> Names = new(StringComparer.Ordinal)
-    {
-        "system", "idle", "registry", "memory compression", "secure system", "smss", "csrss", "wininit",
-        "winlogon", "services", "lsass", "lsaiso", "dwm", "fontdrvhost", "proguard.engine", "proguard.ui", "proguard.sessionagent",
-        // Sign-in, UAC and the session shell host: ending them logs the user off or breaks elevation prompts.
-        "consent", "logonui", "userinit", "sihost",
-        // Hosts many services at once: ending one by name takes unrelated services down.
-        "svchost",
-        // Windows Security's service.
-        "securityhealthservice",
-    };
+    // The list itself is in ProGuard.Shared, so the UI checks the same names.
+    private static IReadOnlySet<string> Names => ProtectedProcessNames.CriticalNames;
 
     private static readonly HashSet<string> AdministratorOnlyNames = new(StringComparer.Ordinal)
     {

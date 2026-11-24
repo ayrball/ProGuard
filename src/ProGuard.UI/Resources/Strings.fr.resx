@@ -1504,6 +1504,9 @@ DE JOURNALISÉ.</value>
   <data name="Rule_LaunchNeedsSomething" xml:space="preserve">
     <value>"Définir au lancement" exige une priorité, une priorité E/S ou une priorité mémoire à définir. Choisissez-en une, ou désactivez-le.</value>
   </data>
+  <data name="Rule_LaunchProtectedProgram" xml:space="preserve">
+    <value>{0} est un produit de sécurité ou un programme essentiel de Windows : ProGuard ne définit donc pas ses priorités au lancement. Les logiciels de sécurité surveillent ce réglage, et le modifier pourrait affaiblir votre protection ou Windows lui-même. Désactivez "Définir au lancement".</value>
+  </data>
   <data name="Rule_LaunchNoRealtime" xml:space="preserve">
     <value>Windows n'applique pas la priorité Temps réel au lancement. Choisissez une autre priorité, ou désactivez "Définir au lancement".</value>
   </data>

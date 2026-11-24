@@ -1504,6 +1504,9 @@ LOGGED.</value>
   <data name="Rule_LaunchNeedsSomething" xml:space="preserve">
     <value>"Set at launch" needs a priority, I/O priority or memory priority to set. Pick one, or switch it off.</value>
   </data>
+  <data name="Rule_LaunchProtectedProgram" xml:space="preserve">
+    <value>{0} is a security product or a core Windows program, so ProGuard doesn't set its priorities at launch: security software guards that setting, and changing it could weaken your protection or Windows itself. Switch off "Set at launch".</value>
+  </data>
   <data name="Rule_LaunchNoRealtime" xml:space="preserve">
     <value>Windows doesn't apply Realtime priority at launch. Pick another priority, or switch off "Set at launch".</value>
   </data>

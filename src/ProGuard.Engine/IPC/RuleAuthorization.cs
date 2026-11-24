@@ -5,6 +5,7 @@ using ProGuard.Core.Models;
 using ProGuard.Core.Native;
 using ProGuard.Core.Services;
 using ProGuard.Engine.Services;
+using ProGuard.Shared.Security;
 
 namespace ProGuard.Engine.IPC;
 
@@ -31,6 +32,9 @@ namespace ProGuard.Engine.IPC;
 /// <item>No launch-time priorities (<see cref="ProcessRule.ApplyPrioritiesAtCreation"/>): they are written to
 /// Image File Execution Options under HKLM, a machine-wide setting only administrators may change, and apply to every
 /// user's copy of the program from the moment it is created.</item>
+/// <item>No launch-time priorities for a security product or a core system program
+/// (<see cref="ProtectedProcessNames.IsLaunchPriorityBlocked"/>), for administrators either
+/// (<see cref="CheckCriticalTarget(ProcessRule)"/>).</item>
 /// <item>No Watchdog Launch actions: the program starts in the session of the process that triggered the rule, as that
 /// session's user, so it would let one user run code as another.</item>
 /// </list>
@@ -114,9 +118,17 @@ internal static class RuleAuthorization
     /// happen, and a rule that ends or starves csrss, lsass or svchost would take Windows down with it. What stays
     /// allowed is what leaves the process alone: excluding it from Responsiveness Guard and a power plan while it runs.
     /// Deleting an older rule like this is never refused.
+    /// <para>
+    /// Also refused, for everyone: launch-time priorities (<see cref="ProcessRule.ApplyPrioritiesAtCreation"/>) for a
+    /// security product or core system program (<see cref="ProtectedProcessNames.IsLaunchPriorityBlocked"/>). They would
+    /// be written to that program's Image File Execution Options key, which security products guard, and the engine
+    /// never writes them (<see cref="LaunchPriorityService.Desired"/>).
+    /// </para>
     /// </summary>
     public static string? CheckCriticalTarget(ProcessRule rule)
     {
+        if (rule.ApplyPrioritiesAtCreation && ProtectedProcessNames.IsLaunchPriorityBlocked(rule.ProcessName))
+            return LaunchPriorityRefusal(rule.ProcessName);
         if (!CriticalProcesses.IsCriticalName(rule.ProcessName)) return null;
         var acts = rule.DisallowExecution || rule.PriorityClass != null || rule.AffinityMask != null || rule.CpuLimitPercent != null
             || rule.CpuLimitThresholdPercent != null || rule.MaxInstances != null || rule.InstanceSpreadMode != null
@@ -137,6 +149,10 @@ internal static class RuleAuthorization
             _ => CriticalRefusal(rule.TargetProcessName),
         };
     }
+
+    /// <summary>The engine's refusal; the UI shows its own translated text (<c>Rule_LaunchProtectedProgram</c>) before it gets here.</summary>
+    internal static string LaunchPriorityRefusal(string processName) =>
+        $"set launch-time priorities for {processName}: it is a security product or a core Windows program, so ProGuard never writes its Image File Execution Options";
 
     private static string CriticalRefusal(string processName) =>
         $"save a rule that changes or ends {processName}: Windows depends on it, so ProGuard never acts on it";

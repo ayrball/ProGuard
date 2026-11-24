@@ -1005,6 +1005,8 @@ public static class Strings
 
     public static string Rule_LaunchNoRealtime => Get(nameof(Rule_LaunchNoRealtime));
 
+    public static string Rule_LaunchProtectedProgram => Get(nameof(Rule_LaunchProtectedProgram));
+
     public static string Rule_Leave => Get(nameof(Rule_Leave));
 
     public static string Rule_LimiterCores => Get(nameof(Rule_LimiterCores));

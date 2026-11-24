@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ProGuard.Shared.Contracts;
 using ProGuard.Shared.Messages;
+using ProGuard.Shared.Security;
 using ProGuard.UI.Services;
 using ProGuard.UI.Resources;
 
@@ -455,6 +456,9 @@ public sealed partial class RuleEditor : ObservableObject
         {
             if (!RuleText.IsPlainProgramName(d.ProcessName))
                 Fail(Strings.Rule_LaunchNeedsPlainName);
+            // Security products and core Windows programs: the engine refuses these too (RuleAuthorization).
+            else if (ProtectedProcessNames.IsLaunchPriorityBlocked(d.ProcessName))
+                Fail(string.Format(Strings.Rule_LaunchProtectedProgram, RuleText.Display(d.ProcessName)));
             else if (d.PriorityClass == (int)ProcessPriorityClass.RealTime)
                 Fail(Strings.Rule_LaunchNoRealtime);
             else if (d.PriorityClass == null && d.IoPriority == null && d.MemoryPriority == null)

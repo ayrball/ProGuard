@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Win32;
 using ProGuard.Core.Models;
+using ProGuard.Shared.Security;
 
 namespace ProGuard.Engine.Services.ProcessRules;
 
@@ -44,6 +45,11 @@ public interface ILaunchPriorityRegistry
 /// touching PerfOptions an administrator or another tool set up. A key already holding PerfOptions values that ProGuard
 /// didn't write is taken over when a rule asks for it, and those values go when the rule does.
 /// </para>
+/// <para>
+/// It writes nothing but the three documented PerfOptions values (<see cref="ValueNames"/>) and the marker, all DWORDs,
+/// and never for a security product or core system program (<see cref="ProtectedProcessNames.IsLaunchPriorityBlocked"/>):
+/// <see cref="Write"/> refuses those. <see cref="Remove"/> still removes ProGuard's own entry for one, from an older version.
+/// </para>
 /// </summary>
 public sealed class RegistryLaunchPriorityRegistry : ILaunchPriorityRegistry
 {
@@ -51,6 +57,9 @@ public sealed class RegistryLaunchPriorityRegistry : ILaunchPriorityRegistry
     public const string MarkerValue = "ProGuardManaged";
     private const string PerfOptionsKey = "PerfOptions";
     private static readonly string[] Values = { "CpuPriorityClass", "IoPriority", "PagePriority" };
+
+    /// <summary>The only values written under PerfOptions, besides <see cref="MarkerValue"/>.</summary>
+    public static IReadOnlyList<string> ValueNames => Values;
 
     private readonly RegistryKey _root;
     private readonly string _path;
@@ -82,6 +91,8 @@ public sealed class RegistryLaunchPriorityRegistry : ILaunchPriorityRegistry
 
     public void Write(string image, PerfOptions options)
     {
+        if (ProtectedProcessNames.IsLaunchPriorityBlocked(image))
+            throw new ArgumentException($"{image} is a security product or a core Windows program: ProGuard never writes its Image File Execution Options.", nameof(image));
         using var perf = _root.CreateSubKey(_path + "\\" + image + "\\" + PerfOptionsKey, writable: true);
         WriteInt(perf, Values[0], options.CpuPriorityClass);
         WriteInt(perf, Values[1], options.IoPriority);
@@ -170,13 +181,19 @@ public sealed class LaunchPriorityService
         rule.IoPriority,
         rule.MemoryPriority);
 
-    /// <summary>The entries the rules ask for, by image name. Where two rules name the same image, the first one wins.</summary>
+    /// <summary>
+    /// The entries the rules ask for, by image name. Where two rules name the same image, the first one wins. A security
+    /// product or core system program (<see cref="ProtectedProcessNames.IsLaunchPriorityBlocked"/>) is left out even if a
+    /// stored rule asks for it (one saved before the check existed, or written to the database by hand), so
+    /// <see cref="Sync"/> also removes an entry ProGuard wrote for it earlier.
+    /// </summary>
     public static Dictionary<string, PerfOptions> Desired(IEnumerable<ProcessRule> rules)
     {
         var desired = new Dictionary<string, PerfOptions>(StringComparer.OrdinalIgnoreCase);
         foreach (var rule in rules.Where(r => r.ApplyPrioritiesAtCreation && !r.DisallowExecution))
         {
             if (ImageName(rule.ProcessName) is not { } image) continue;
+            if (ProtectedProcessNames.IsLaunchPriorityBlocked(image)) continue;
             var options = ToPerfOptions(rule);
             if (!options.IsEmpty) desired.TryAdd(image, options);
         }
@@ -193,8 +210,11 @@ public sealed class LaunchPriorityService
     {
         lock (_sync)
         {
-            var desired = Desired(rules);
+            var all = rules as IReadOnlyCollection<ProcessRule> ?? rules.ToList();
+            var desired = Desired(all);
             if (!force && _lastSynced != null && SameEntries(_lastSynced, desired)) return 0;
+            foreach (var blocked in Blocked(all))
+                _logger.LogWarning("Not writing launch priorities for {Image}: it is a security product or a core Windows program", blocked);
             // Failures aren't retried until the rules change or the engine restarts: they mean no rights, which a retry
             // every reload wouldn't fix, only log again.
             _lastSynced = desired;
@@ -230,6 +250,14 @@ public sealed class LaunchPriorityService
             }
         }
     }
+
+    /// <summary>The images rules ask launch priorities for that <see cref="Desired"/> leaves out as protected.</summary>
+    public static IEnumerable<string> Blocked(IEnumerable<ProcessRule> rules) => rules
+        .Where(r => r.ApplyPrioritiesAtCreation && !r.DisallowExecution)
+        .Select(r => ImageName(r.ProcessName))
+        .OfType<string>()
+        .Where(ProtectedProcessNames.IsLaunchPriorityBlocked)
+        .Distinct(StringComparer.OrdinalIgnoreCase);
 
     private static bool SameEntries(Dictionary<string, PerfOptions> a, Dictionary<string, PerfOptions> b) =>
         a.Count == b.Count && a.All(e => b.TryGetValue(e.Key, out var other) && other == e.Value);

@@ -94,6 +94,10 @@ nothing installed. Its README.txt covers both. How the installer works and how t
 The builds are not code-signed yet, so Windows SmartScreen warns about an unknown publisher: click "More info" >
 "Run anyway".
 
+Everything ProGuard installs, writes or changes on a system (the service, files, registry values, scheduled tasks,
+pipes, privileges, the process and power APIs it uses, and what uninstall removes) is listed in
+[docs/what-proguard-changes.md](docs/what-proguard-changes.md), for antivirus analysts and anyone who wants to check.
+
 ## Repository layout
 
 - `src/ProGuard.Engine` — the engine (Windows service, or a console process for development)
@@ -103,7 +107,7 @@ The builds are not code-signed yet, so Windows SmartScreen warns about an unknow
 - `tools/ProGuard.Preview` — renders the UI to PNG against a stand-in engine
 - `tests/ProGuard.Tests` — xUnit tests
 - `installer/` — the MSI (WiX v5) and the portable zip
-- `docs/` — schema, installer, service verification and release notes
+- `docs/` — schema, installer, what ProGuard changes on a system, service verification and release notes
 
 ## Build, run, test
 

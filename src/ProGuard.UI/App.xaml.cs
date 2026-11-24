@@ -62,7 +62,9 @@ public partial class App : Application
 
         // A copy already runs in this session: it shows its window (unless this is the sign-in start) and this one leaves.
         if (!SingleInstance.TryClaim(() => Dispatcher.BeginInvoke(() => (MainWindow as MainWindow)?.BringToFront()), out _instance, askToShow: !trayStart,
-            name: SingleInstance.NameFor(elevation.IsElevated)))
+            name: SingleInstance.NameFor(elevation.IsElevated),
+            // The installer, before it replaces or removes the files (the engine's --stop-clients): quit as Exit does.
+            onQuitRequested: () => Dispatcher.BeginInvoke(Quit)))
         {
             Shutdown();
             return;

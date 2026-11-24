@@ -78,7 +78,7 @@ carries whatever runtime that machine's SDK has.
 | | |
 | --- | --- |
 | Program files | `C:\Program Files\ProGuard`: `ProGuard.Engine.exe`, `ProGuard.UI.exe`, `ProGuard.SessionAgent.exe` (the engine starts it from its own folder), native libraries, `appsettings.json`, `LICENSE.txt`, `NOTICE.txt`, `THIRD-PARTY-NOTICES.txt` |
-| Service | `ProGuardEngine`, "ProGuard Engine", LocalSystem, automatic start, same description as `install-service.ps1`. Recovery: restart after 5 s, 10 s, then every 60 s; the count resets after a day. It is set with the same `sc.exe failure` command as the script, because Windows Installer's own `MsiServiceConfigFailureActions` fails with access denied (error 1939) for restart actions. Started at the end of the install, which fails and rolls back if the engine doesn't start. |
+| Service | `ProGuardEngine`, "ProGuard Engine", LocalSystem, automatic start, same description as `install-service.ps1`. Recovery: restart after 5 s, 10 s, then every 60 s; the count resets after a day. The `ConfigureEngineRecovery` custom action runs `ProGuard.Engine.exe --configure-recovery`, which sets them through `ChangeServiceConfig2` (`ServiceRecovery.cs`): Windows Installer's own `MsiServiceConfigFailureActions` fails with access denied (error 1939) for restart actions, and WiX's `util:ServiceConfig` has only one restart delay for all three failures. A failure there rolls the install back. Started at the end of the install, which fails and rolls back if the engine doesn't start. |
 | Start menu | "ProGuard" (all users) → `ProGuard.UI.exe` |
 | Start at sign-in | Optional, on by default: `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, value `ProGuard.UI` = `"C:\Program Files\ProGuard\ProGuard.UI.exe" --tray` |
 | Data | `%ProgramData%\ProGuard` belongs to the engine. The MSI creates it (and `logs`) with a protected DACL, SYSTEM and Administrators full control and nothing for Users (`PermissionEx Sddl`), and makes Administrators the owner (`O:BA`), so an installed folder is trusted whoever created it first. The engine checks and reapplies that on every start (`DataDirectoryGuard`): a folder that is a link or owned by anyone else is renamed aside, not used, and an entry inside it that is a link, hard-linked or someone else's is moved out. If that can't be done (someone holds a file there open), the engine starts with a fresh `ProGuard.<n>` folder beside it instead and logs that loudly; `REMOVE_DATA` only removes `ProGuard` itself. Its files are never removed by the MSI, except on uninstall with `REMOVE_DATA=1`. |
@@ -94,8 +94,8 @@ UAC prompt. It has no time limit and normal priority (scheduled tasks otherwise 
 days). Every elevated start reconciles the two: an upgrade that writes the Run value again has it removed, and turning
 "Always start as administrator" off moves start-at-sign-in back to the Run value. The first elevated start after
 installing (the finish page's "Open ProGuard now", after its UAC prompt) creates the task, so the first sign-in is already
-prompt-free. Opening ProGuard from the Start menu still asks. On uninstall, `RemoveSignInTasks` removes every task under
-`\ProGuard\` for all users, as LocalSystem; the empty folder may stay in Task Scheduler.
+prompt-free. Opening ProGuard from the Start menu still asks. On uninstall, the engine's uninstall cleanup (below) removes every task under
+`\ProGuard\` for all users, and the folder, as LocalSystem through Task Scheduler's COM interface.
 
 `START_AS_ADMIN` writes `HKLM\Software\ProGuard`, value `StartAsAdministrator` (DWORD), the machine-wide default for the
 UI's "Always start as administrator". A copy handed out then starts elevated (after a UAC prompt) without its users
@@ -113,8 +113,9 @@ belongs to the user. The trade-off: the installer sets it only for the user who 
 on in the UI.
 
 On upgrade the current state is kept: if the value is gone (the user turned it off), the new version doesn't add it
-back. On uninstall the value is removed for the user who uninstalls, whoever created it. The engine's uninstall cleanup (below) also
-removes it from every other user signed in at the time, where it starts this installation's ProGuard.UI.exe. Users who
+back. On uninstall, Windows Installer removes the value it wrote for the user who uninstalls, and the engine's uninstall cleanup
+(below) removes it from every user signed in at the time, the one uninstalling included, where it starts this
+installation's ProGuard.UI.exe (a value that starts a portable copy elsewhere is left alone). Users who
 aren't signed in keep a Run value that points at a deleted exe; Windows ignores it.
 
 ### Upgrades
@@ -125,8 +126,9 @@ or both would try to own the service. The old version is removed after `InstallI
 transaction, so a failed upgrade rolls back to it. Downgrades are refused.
 
 During an upgrade the old package stops and deletes the service, ends any UI and leftover session agent running from
-`Program Files\ProGuard` (in every session, matched by path so a portable copy elsewhere is left alone) and removes its
-files; the new package installs its files and starts the service. `%ProgramData%\ProGuard` isn't touched. UI windows
+`Program Files\ProGuard` (in every session, matched by path so a portable copy elsewhere is left alone; the
+`StopProGuardClients` custom action, `ProGuard.Engine.exe --stop-clients`, which asks each window to quit through its
+session's quit event and terminates what is still running 5 s later) and removes its files; the new package installs its files and starts the service. `%ProgramData%\ProGuard` isn't touched. UI windows
 aren't reopened after a quiet upgrade; the Finish page of an interactive one offers to open ProGuard.
 
 Installing the MSI over a service installed by `install-service.ps1` replaces it: the MSI deletes the existing
@@ -136,7 +138,7 @@ Installing the MSI over a service installed by `install-service.ps1` replaces it
 ### Uninstall
 
 Stops and deletes the service, ends the UI and session agents (as above), removes the program files, the Start menu
-shortcut and the uninstalling user's Run value. Keeps `%ProgramData%\ProGuard` unless `REMOVE_DATA=1`
+shortcut and the Run value the installer wrote. Keeps `%ProgramData%\ProGuard` unless `REMOVE_DATA=1`
 (`msiexec /x ProGuard.msi /qn REMOVE_DATA=1`, or the checkbox in the Remove dialog).
 
 Before the files go, the `CleanupUninstall` custom action runs `ProGuard.Engine.exe --cleanup-uninstall` as LocalSystem

@@ -140,37 +140,30 @@
                      Value="&quot;[INSTALLFOLDER]ProGuard.UI.exe&quot; --tray" Type="string" KeyPath="yes" />
     </Component>
 
-    <!-- Restart after a crash: 5 s, 10 s, then every 60 s; the count resets after a day without one. The same
-         sc.exe command as install-service.ps1. Not Windows Installer's MsiServiceConfigFailureActions: it fails with
-         access denied (error 1939) when the actions restart the service. Runs between InstallServices and
-         StartServices whenever the engine component is (re)installed; a failure rolls the install back. -->
-    <SetProperty Id="ConfigureEngineRecovery" Before="ConfigureEngineRecovery" Sequence="execute"
-                 Value="&quot;[System64Folder]sc.exe&quot; failure ProGuardEngine reset= 86400 actions= restart/5000/restart/10000/restart/60000" />
-    <CustomAction Id="ConfigureEngineRecovery" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred"
+    <!-- Every custom action below runs ProGuard.Engine.exe itself, in one of its installer modes, as LocalSystem. None
+         starts a shell, a script host or a system tool: what they do is done through the Win32 API, so the install
+         looks like nothing more than the program configuring itself (docs/what-proguard-changes.md). -->
+
+    <!-- Restart after a crash: 5 s, 10 s, then every 60 s; the count resets after a day without one, as
+         install-service.ps1 sets for a script install. The engine sets them through ChangeServiceConfig2
+         (ServiceRecovery.cs). Not Windows Installer's MsiServiceConfigFailureActions: it fails with access denied (error
+         1939) when the actions restart the service. Not util:ServiceConfig either: it has one restart delay for all three
+         failures. Runs between InstallServices and StartServices whenever the engine component is (re)installed; a
+         failure (exit code 1) rolls the install back. -->
+    <CustomAction Id="ConfigureEngineRecovery" FileRef="EngineExe" ExeCommand="--configure-recovery" Execute="deferred"
                   Impersonate="no" Return="check" />
 
     <!-- The UI runs in each user's session and the engine's session agents should have ended with the service; end
-         whatever is left of this copy (matched by path, so other copies such as a portable one are left alone),
-         after the service has stopped and before files are replaced or removed. As LocalSystem, so it reaches
-         every session. (Short aliases: the command must fit the 255 characters of CustomAction.Target.) -->
-    <SetProperty Id="StopProGuardProcesses" Before="StopProGuardProcesses" Sequence="execute"
-                 Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -Command &quot;Get-Process ProGuard.UI,ProGuard.SessionAgent -EA 0 | ? Path -Like '[INSTALLFOLDER]*' | Stop-Process -Force; exit 0&quot;" />
-    <CustomAction Id="StopProGuardProcesses" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred"
-                  Impersonate="no" Return="ignore" />
+         whatever is left of this copy (matched by path, so other copies such as a portable one are left alone), after
+         the service has stopped and before files are replaced or removed. Each window is asked to quit first, through
+         its quit event, and terminated if it hasn't after 5 s (ClientShutdown.cs). As LocalSystem, so it reaches every
+         session. Never fails the install: the engine always exits 0 in this mode, and the result is ignored besides.
 
-    <!-- The UI's switch can also turn start-at-sign-in on, outside the installer. On uninstall, clear the value for
-         the user who uninstalls, whoever set it (it would point at a deleted exe). -->
-    <SetProperty Id="RemoveRunValue" Before="RemoveRunValue" Sequence="execute"
-                 Value="&quot;[System64Folder]reg.exe&quot; delete &quot;HKCU\Software\Microsoft\Windows\CurrentVersion\Run&quot; /v ProGuard.UI /f" />
-    <CustomAction Id="RemoveRunValue" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred"
-                  Impersonate="yes" Return="ignore" />
-
-    <!-- An elevated UI with "Always start as administrator" starts at sign-in through a scheduled task per user
-         (SignInStartup), which Windows Installer doesn't know about. On uninstall, remove them all, for every user, as
-         LocalSystem. -->
-    <SetProperty Id="RemoveSignInTasks" Before="RemoveSignInTasks" Sequence="execute"
-                 Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -Command &quot;Get-ScheduledTask -TaskPath '\ProGuard\' -EA 0 | Unregister-ScheduledTask -Confirm:$false; exit 0&quot;" />
-    <CustomAction Id="RemoveSignInTasks" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred"
+         Condition "Installed": it runs on uninstall, repair and modify, and, on an upgrade, in the old package's removal
+         (which RemoveExistingProducts runs before this package's own StopServices), with the old package's engine. In
+         this package's own upgrade sequence the old engine is already gone and the new one isn't installed yet, so
+         there would be nothing to run. -->
+    <CustomAction Id="StopProGuardClients" FileRef="EngineExe" ExeCommand="--stop-clients" Execute="deferred"
                   Impersonate="no" Return="ignore" />
 
     <!-- On removal (not on an upgrade), the engine takes out what it wrote outside the folders Windows Installer knows
@@ -183,13 +176,10 @@
                   Impersonate="no" Return="ignore" />
 
     <InstallExecuteSequence>
+      <!-- The Run values and sign-in tasks the UI creates go here too, on removal only (UninstallCleanup.cs). -->
       <Custom Action="CleanupUninstall" Before="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
       <Custom Action="ConfigureEngineRecovery" After="InstallServices" Condition="$Engine = 3" />
-      <Custom Action="StopProGuardProcesses" After="StopServices" Condition="Installed OR WIX_UPGRADE_DETECTED" />
-      <Custom Action="RemoveRunValue" After="RemoveRegistryValues"
-              Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
-      <Custom Action="RemoveSignInTasks" After="RemoveRunValue"
-              Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+      <Custom Action="StopProGuardClients" After="StopServices" Condition="Installed" />
     </InstallExecuteSequence>
 
     <UIRef Id="ProGuardUI" />

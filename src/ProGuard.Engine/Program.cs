@@ -23,6 +23,10 @@ public class Program
         // The MSI's uninstall: remove what ProGuard left outside its own folders, then exit. Before anything else, so it
         // neither touches the data folder nor opens the database.
         if (UninstallCleanup.IsRequested(args)) return UninstallCleanup.Run();
+        // The MSI's other two modes, also before anything else: end this installation's windows and session agents before
+        // the files are replaced or removed, and set the service's recovery actions after it is created.
+        if (ClientShutdown.IsRequested(args)) return ClientShutdown.Run();
+        if (ServiceRecovery.IsRequested(args)) return ServiceRecovery.Run();
 
         // Before anything opens a file there: the logger and the database both create the folder when they start.
         var guard = DataDirectoryGuard.ForThisProcess();
